@@ -1,4 +1,4 @@
-RevClear – AI-Powered Medical Billing MVP
+# RevClear – AI-Powered Medical Billing MVP
 Overview
 
 RevClear is an academic project that explores the design and development of an AI-powered medical billing system. The goal is to improve claim accuracy, reduce denials, and save time for providers in specialized practices such as Physical Therapy (PT), Mental Health (MH), and optionally Speech-Language Pathology (SLP).
@@ -11,7 +11,7 @@ AI Code Suggestion: Recommend CPT/ICD codes based on the documentation.
 
 Claim Validation & Finalization: Run payer checks, flag missing data, and finalize claims for submission.
 
-Success Criteria
+## Success Criteria
 
 A working MVP with the three demo stages (STT → Code Suggestion → Report).
 
@@ -23,7 +23,7 @@ Clear cost-benefit for providers (time saved, reduced denials).
 
 Strong positioning against existing solutions through a unique AI-driven approach.
 
-Secure by Design
+## Secure by Design
 
 Security and compliance are built into the architecture from the start:
 
@@ -39,25 +39,25 @@ Two-Factor Authentication (2FA): Optional support for added protection.
 
 Fail-Safe Defaults: Deny by default if access checks fail.
 
-Functional Scope (MVP)
+## Functional Scope (MVP)
 
-Claim submission (FR1).
+Claim submission
 
-AI-powered coding (FR4).
+AI-powered coding
 
-Billing dashboard (FR6).
+Billing dashboard
 
-Secure login and roles (FR9/FR10).
+Secure login and roles
 
-Pre-submission payer validation (FR12).
+Pre-submission payer validation
 
-Audit logging (FR10).
+Audit logging
 
-Analytics and exports (FR15).
+Analytics and exports
 
 Future enhancements may include voice dictation, SOAP note generation, denial ingestion, adaptive learning, and integrations with EHRs or clearinghouses.
 
-Tech Stack
+## Tech Stack
 
 Backend: Python (local-first design, no reliance on external APIs).
 
@@ -69,7 +69,7 @@ AI/ML: Prototype with reinforcement learning for adaptive coding improvements.
 
 Frontend (planned): Lightweight React UI for demo dashboard.
 
-Team
+## Team
 
 Aseel Alqoud
 
@@ -79,10 +79,10 @@ Rasmus Seppanen
 
 Yoga Sai Swetha Narni
 
-Supervising Instructor
+## Supervising Instructor
 
 Dr. Davide Piovesan, Gannon University
 
-License
+## License
 
 This repository is for academic purposes under Gannon University. Licensing details will be added based on project needs.
