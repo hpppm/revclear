@@ -11,71 +11,63 @@ AI Code Suggestion: Recommend CPT/ICD codes based on the documentation.
 
 Claim Validation & Finalization: Run payer checks, flag missing data, and finalize claims for submission.
 
-[!TIP]
-Our design is local-first (SQLite + SQLCipher), ensuring data stays secure without relying on third-party APIs.
-
 Success Criteria
 
- Define MVP structure (STT → Code Suggestion → Validation).
+A working MVP with the three demo stages (STT → Code Suggestion → Report).
 
- Collect initial sample data (PT + MH focus).
+Positive feedback from early adopters (PT/MH/SLP).
 
- Build working MVP with 3 demo stages.
+Evidence of improved coding accuracy and claim acceptance.
 
- Test and validate with simulated claim scenarios.
+Clear cost-benefit for providers (time saved, reduced denials).
 
- Gather feedback from early adopters (students, instructors, or pilot users).
-
-[!IMPORTANT]
-Success will be measured by improved coding accuracy, higher claim acceptance, and clear provider cost-benefit (time saved + fewer denials).
+Strong positioning against existing solutions through a unique AI-driven approach.
 
 Secure by Design
 
 Security and compliance are built into the architecture from the start:
 
- Role-based access (Therapist, Biller, Admin).
+Authentication & Authorization: Role-based access (Therapist, Biller, Admin).
 
- Add authentication & optional 2FA.
+Audit Logging: Immutable logs of claims and user actions.
 
- Implement audit logging.
+Encryption: TLS 1.3 for communication, SQLCipher for database storage.
 
- Encrypt database with SQLCipher.
+Password Security: Bcrypt for password hashing.
 
- Default to “deny access” on failed lookups.
+Two-Factor Authentication (2FA): Optional support for added protection.
 
-[!WARNING]
-Never store raw patient identifiers in logs. Use masking like P****23.
+Fail-Safe Defaults: Deny by default if access checks fail.
 
 Functional Scope (MVP)
 
-Claim submission (FR1)
+Claim submission (FR1).
 
-AI-powered coding (FR4)
+AI-powered coding (FR4).
 
-Billing dashboard (FR6)
+Billing dashboard (FR6).
 
-Secure login and roles (FR9/FR10)
+Secure login and roles (FR9/FR10).
 
-Pre-submission payer validation (FR12)
+Pre-submission payer validation (FR12).
 
-Audit logging (FR10)
+Audit logging (FR10).
 
-Analytics and exports (FR15)
+Analytics and exports (FR15).
 
-[!NOTE]
-Future enhancements may include voice dictation, SOAP generation, denial ingestion, adaptive learning, and EHR integrations.
+Future enhancements may include voice dictation, SOAP note generation, denial ingestion, adaptive learning, and integrations with EHRs or clearinghouses.
 
 Tech Stack
 
-Backend: Python (local-first).
+Backend: Python (local-first design, no reliance on external APIs).
 
-Database: SQLite + SQLCipher.
+Database: SQLite + SQLCipher for encryption.
 
 Version Control: GitHub for collaboration.
 
 AI/ML: Prototype with reinforcement learning for adaptive coding improvements.
 
-Frontend (planned): Lightweight React UI for dashboard.
+Frontend (planned): Lightweight React UI for demo dashboard.
 
 Team
 
