@@ -1,0 +1,2 @@
+# Placeholder requirements file
+# Pin dependencies when ready to implement
