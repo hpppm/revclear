@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIPAA AI Medical Claims System - Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f1f3f4;
+            border-bottom: 2px solid #dadce0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #5f6368;
+            transition: all 0.3s;
+            border: none;
+            background: none;
+            font-size: 16px;
+        }
+        
+        .tab:hover {
+            background: #e8eaed;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #4285f4;
+            border-bottom: 3px solid #4285f4;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .diagram-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        
+        .demo-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .workflow-step {
+            background: white;
+            padding: 25px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 5px solid #4285f4;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .workflow-step:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .workflow-step h3 {
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+        
+        .workflow-step.gate {
+            border-left-color: #fbbc04;
+        }
+        
+        .workflow-step.gate h3 {
+            color: #fbbc04;
+        }
+        
+        .step-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .status-pending {
+            background: #e8eaed;
+            color: #5f6368;
+        }
+        
+        .status-processing {
+            background: #e8f0fe;
+            color: #1967d2;
+        }
+        
+        .status-review {
+            background: #fef7e0;
+            color: #f29900;
+        }
+        
+        .status-complete {
+            background: #e6f4ea;
+            color: #137333;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+        }
+        
+        .btn-primary {
+            background: #4285f4;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1967d2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+        }
+        
+        .btn-success {
+            background: #34a853;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #188038;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 168, 83, 0.4);
+        }
+        
+        .btn-warning {
+            background: #fbbc04;
+            color: #000;
+        }
+        
+        .btn-warning:hover {
+            background: #f29900;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .info-card h4 {
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+        
+        .info-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .info-card li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .info-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #34a853;
+            font-weight: bold;
+        }
+        
+        code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        .alert-info {
+            background: #e8f0fe;
+            border-left: 4px solid #4285f4;
+            color: #1967d2;
+        }
+        
+        .alert-warning {
+            background: #fef7e0;
+            border-left: 4px solid #fbbc04;
+            color: #f29900;
+        }
+        
+        .footer {
+            background: #f1f3f4;
+            padding: 20px;
+            text-align: center;
+            color: #5f6368;
+            font-size: 0.9em;
+        }
+        
+        .hitl-section {
+            background: #fff3cd;
+            border: 2px solid #fbbc04;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .hitl-section h4 {
+            color: #f29900;
+            margin-bottom: 10px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #dadce0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            resize: vertical;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e8eaed;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4285f4, #34a853);
+            width: 0%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .api-tracker {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: 80vh;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+        
+        .api-tracker.visible {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .api-tracker-header {
+            background: linear-gradient(135deg, #1967d2, #4285f4);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .api-tracker-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        
+        .api-tracker-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 25px;
+            height: 25px;
+        }
+        
+        .api-tracker-body {
+            max-height: calc(80vh - 50px);
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .api-call {
+            background: #f8f9fa;
+            border-left: 4px solid #4285f4;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .api-call.success {
+            border-left-color: #34a853;
+        }
+        
+        .api-call.warning {
+            border-left-color: #fbbc04;
+        }
+        
+        .api-call-method {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 11px;
+        }
+        
+        .method-post {
+            background: #4285f4;
+            color: white;
+        }
+        
+        .method-get {
+            background: #34a853;
+            color: white;
+        }
+        
+        .method-put {
+            background: #fbbc04;
+            color: black;
+        }
+        
+        .method-delete {
+            background: #ea4335;
+            color: white;
+        }
+        
+        .api-call-endpoint {
+            color: #1967d2;
+            font-weight: 600;
+        }
+        
+        .api-call-time {
+            color: #5f6368;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+        
+        .api-call-details {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #dadce0;
+            font-size: 12px;
+            color: #5f6368;
+        }
+        
+        .api-call-payload {
+            background: white;
+            padding: 8px;
+            border-radius: 3px;
+            margin-top: 5px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .api-toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+            z-index: 999;
+            transition: all 0.3s;
+        }
+        
+        .api-toggle-btn:hover {
+            background: #1967d2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(66, 133, 244, 0.5);
+        }
+        
+        .api-toggle-btn.active {
+            background: #34a853;
+        }
+        
+        .badge {
+            background: #ea4335;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- API Call Tracker Toggle Button -->
+    <button class="api-toggle-btn" onclick="toggleApiTracker()">
+        📡 API Calls <span class="badge" id="apiCallCount">0</span>
+    </button>
+    
+    <!-- API Call Tracker Panel -->
+    <div class="api-tracker" id="apiTracker">
+        <div class="api-tracker-header">
+            <h3>🔌 Backend API Calls</h3>
+            <button class="api-tracker-close" onclick="toggleApiTracker()">✕</button>
+        </div>
+        <div class="api-tracker-body" id="apiTrackerBody">
+            <div style="text-align: center; color: #5f6368; padding: 20px;">
+                <p>No API calls yet. Start the demo to see backend routes!</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🏥 HIPAA AI Medical Claims System</h1>
+            <p>Google Cloud Architecture - Interactive Demo</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('architecture')">📊 Architecture</button>
+            <button class="tab" onclick="showTab('demo')">🚀 Interactive Demo</button>
+            <button class="tab" onclick="showTab('api')">🔌 API Routes</button>
+            <button class="tab" onclick="showTab('components')">🔧 Components</button>
+            <button class="tab" onclick="showTab('security')">🔒 Security & Compliance</button>
+        </div>
+        
+        <div class="content">
+            <!-- Architecture Tab -->
+            <div id="architecture" class="tab-content active">
+                <h2>System Architecture Diagram</h2>
+                <div class="alert alert-info">
+                    <strong>ℹ️ About this Architecture:</strong> This diagram shows a complete HIPAA-compliant medical claims processing system built on Google Cloud Platform with three Human-in-the-Loop (HITL) validation gates to ensure accuracy and compliance.
+                </div>
+                
+                <div class="diagram-container">
+                    <pre class="mermaid">
+---
+config:
+  theme: base
+  look: neo
+---
+flowchart TB
+    %% Entry Point
+    U["👤 Clinician<br/><small>SSO + MFA Auth</small>"] --> LB["Load Balancer<br/><small>HTTPS + SSL</small>"]
+    
+    LB --> WAF["Cloud Armor WAF<br/><small>DDoS + Threat Protection</small>"]
+    
+    %% Main Application
+    WAF --> APP["Claims Application<br/><small>Cloud Run - Auto Scaling</small>"]
+    
+    %% Storage Access
+    APP --> GCS["Cloud Storage<br/><small>Audio Files + Documents</small>"]
+    APP --> SM["Secret Manager<br/><small>DB Credentials</small>"]
+    
+    %% Speech Processing
+    GCS --> STT["Speech-to-Text API<br/><small>Audio Transcription</small>"]
+    
+    %% HITL Gate 1
+    STT --> H1["🔍 HITL Gate 1<br/><small>Transcription Review</small><br/><small>Human Validation</small>"]
+    
+    %% AI Processing
+    H1 --> AI["Vertex AI<br/><small>Extract Diagnosis</small><br/><small>Suggest CPT/ICD Codes</small>"]
+    
+    %% HITL Gate 2
+    AI --> H2["🔍 HITL Gate 2<br/><small>CPT Code Validation</small><br/><small>Medical Coder Review</small>"]
+    
+    %% Database Validation
+    H2 --> SQL["Cloud SQL PostgreSQL<br/><small>CPT Reference Database</small><br/><small>Patient History</small>"]
+    
+    %% Healthcare API
+    SQL --> HCA["Healthcare API<br/><small>FHIR Resources</small><br/><small>Generate EDI 837</small>"]
+    
+    %% HITL Gate 3
+    HCA --> H3["🔍 HITL Gate 3<br/><small>EDI 837 Final Review</small><br/><small>Billing Validation</small>"]
+    
+    %% Event System
+    H3 --> PS["Pub/Sub Topic<br/><small>Claim Events</small>"]
+    PS --> BQ["BigQuery<br/><small>Analytics Warehouse</small><br/><small>Claims Data</small>"]
+    
+    %% External Submission
+    H3 --> OUT["✅ External Clearinghouse<br/><small>Claim Submission</small>"]
+    
+    %% Security Layer
+    KMS["🔒 Cloud KMS<br/><small>3 Encryption Keys</small><br/><small>GCS, SQL, BigQuery</small>"]
+    VPC["🌐 VPC Network<br/><small>Private Connectivity</small><br/><small>Traffic Isolation</small>"]
+    MON["📊 App Hub + Monitoring<br/><small>Service Health</small><br/><small>Audit Logs</small>"]
+    
+    KMS -.-> GCS
+    KMS -.-> SQL
+    KMS -.-> BQ
+    VPC -.-> APP
+    
+    %% Styling
+    classDef main fill:#4285f4,stroke:#1967d2,stroke-width:2px,color:#fff
+    classDef gate fill:#fbbc04,stroke:#f29900,stroke-width:3px,color:#000
+    classDef ai fill:#9334e6,stroke:#7627bb,stroke-width:2px,color:#fff
+    classDef data fill:#34a853,stroke:#188038,stroke-width:2px,color:#fff
+    classDef sec fill:#ea4335,stroke:#c5221f,stroke-width:2px,color:#fff
+    
+    class U,LB,WAF,APP,STT,HCA,OUT main
+    class H1,H2,H3 gate
+    class AI ai
+    class GCS,SM,SQL,PS,BQ data
+    class KMS,VPC,MON sec
+                    </pre>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>🔐 Security Features</h4>
+                        <ul>
+                            <li>SSO + MFA Authentication</li>
+                            <li>Cloud Armor WAF</li>
+                            <li>Cloud KMS Encryption</li>
+                            <li>VPC Network Isolation</li>
+                            <li>Audit Logging</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>🤖 AI Components</h4>
+                        <ul>
+                            <li>Speech-to-Text API</li>
+                            <li>Vertex AI Processing</li>
+                            <li>CPT/ICD Code Extraction</li>
+                            <li>FHIR Resource Generation</li>
+                            <li>EDI 837 Creation</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>✅ HITL Gates</h4>
+                        <ul>
+                            <li>Gate 1: Transcription Review</li>
+                            <li>Gate 2: Code Validation</li>
+                            <li>Gate 3: EDI Final Review</li>
+                            <li>Human Validation Required</li>
+                            <li>Quality Assurance</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>💾 Data Storage</h4>
+                        <ul>
+                            <li>Cloud Storage (Audio/Docs)</li>
+                            <li>Cloud SQL PostgreSQL</li>
+                            <li>BigQuery Analytics</li>
+                            <li>Secret Manager</li>
+                            <li>Healthcare API (FHIR)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Interactive Demo Tab -->
+            <div id="demo" class="tab-content">
+                <h2>Interactive Workflow Demo</h2>
+                <div class="alert alert-warning">
+                    <strong>⚠️ Demo Mode:</strong> This is a simulated workflow for demonstration purposes. No actual patient data is processed.
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>💡 Tip:</strong> Click the "📡 API Calls" button in the top-right corner to see all backend routes being called in real-time!
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar">0%</div>
+                </div>
+                
+                <div class="demo-section">
+                    <!-- Step 1 -->
+                    <div class="workflow-step" id="step1">
+                        <span class="step-status status-pending">Step 1: Upload</span>
+                        <h3>📁 Audio Upload & Authentication</h3>
+                        <p>Clinician uploads audio recording of patient consultation</p>
+                        <button class="btn btn-primary" onclick="startDemo()">Start Demo</button>
+                    </div>
+                    
+                    <!-- Step 2 -->
+                    <div class="workflow-step" id="step2">
+                        <span class="step-status status-pending">Step 2: Transcription</span>
+                        <h3>🎤 Speech-to-Text Processing</h3>
+                        <p>Google Cloud Speech-to-Text API transcribes the audio</p>
+                        <div id="transcriptionResult" style="display:none;">
+                            <textarea rows="4" readonly>Patient presents with persistent cough for 2 weeks, fever of 101°F, and chest congestion. Physical examination reveals crackles in lower right lung. Diagnosed with acute bronchitis. Prescribed azithromycin 250mg and recommended rest.</textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3 - HITL Gate 1 -->
+                    <div class="workflow-step gate" id="step3">
+                        <span class="step-status status-pending">Step 3: HITL Gate 1</span>
+                        <h3>🔍 Human Review: Transcription Validation</h3>
+                        <div class="hitl-section" id="hitl1" style="display:none;">
+                            <h4>Review and Correct Transcription</h4>
+                            <p>Medical professional reviews the AI-generated transcription for accuracy</p>
+                            <button class="btn btn-success" onclick="approveGate(1)">✓ Approve Transcription</button>
+                            <button class="btn btn-warning" onclick="alert('In production, this would allow editing the transcription')">✎ Request Corrections</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 4 -->
+                    <div class="workflow-step" id="step4">
+                        <span class="step-status status-pending">Step 4: AI Analysis</span>
+                        <h3>🤖 Vertex AI: Code Extraction</h3>
+                        <p>AI extracts diagnosis and suggests CPT/ICD codes</p>
+                        <div id="aiResult" style="display:none;">
+                            <strong>Extracted Information:</strong>
+                            <ul>
+                                <li><strong>Diagnosis:</strong> Acute Bronchitis</li>
+                                <li><strong>ICD-10 Code:</strong> J20.9</li>
+                                <li><strong>CPT Code:</strong> 99213 (Office visit, established patient)</li>
+                                <li><strong>Treatment:</strong> Azithromycin 250mg</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 5 - HITL Gate 2 -->
+                    <div class="workflow-step gate" id="step5">
+                        <span class="step-status status-pending">Step 5: HITL Gate 2</span>
+                        <h3>🔍 Human Review: Medical Coding Validation</h3>
+                        <div class="hitl-section" id="hitl2" style="display:none;">
+                            <h4>Medical Coder Review</h4>
+                            <p>Certified medical coder validates the CPT and ICD codes against clinical documentation</p>
+                            <button class="btn btn-success" onclick="approveGate(2)">✓ Approve Codes</button>
+                            <button class="btn btn-warning" onclick="alert('In production, coder could modify codes here')">✎ Modify Codes</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 6 -->
+                    <div class="workflow-step" id="step6">
+                        <span class="step-status status-pending">Step 6: EDI Generation</span>
+                        <h3>📄 Healthcare API: FHIR & EDI 837</h3>
+                        <p>Generate standardized FHIR resources and EDI 837 claim</p>
+                        <div id="ediResult" style="display:none;">
+                            <code>ISA*00* *00* *ZZ*SENDER *ZZ*RECEIVER *...</code>
+                            <p style="margin-top:10px;"><em>EDI 837 Professional claim format generated</em></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 7 - HITL Gate 3 -->
+                    <div class="workflow-step gate" id="step7">
+                        <span class="step-status status-pending">Step 7: HITL Gate 3</span>
+                        <h3>🔍 Human Review: Final Billing Validation</h3>
+                        <div class="hitl-section" id="hitl3" style="display:none;">
+                            <h4>Final Compliance Check</h4>
+                            <p>Billing specialist performs final review before submission to clearinghouse</p>
+                            <button class="btn btn-success" onclick="approveGate(3)">✓ Approve for Submission</button>
+                            <button class="btn btn-warning" onclick="alert('In production, would send back for revision')">✎ Request Changes</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 8 -->
+                    <div class="workflow-step" id="step8">
+                        <span class="step-status status-pending">Step 8: Submission</span>
+                        <h3>✅ External Clearinghouse Submission</h3>
+                        <p>Claim submitted to external clearinghouse for payer processing</p>
+                        <div id="submissionResult" style="display:none;">
+                            <p style="color:#34a853;font-weight:600;">✓ Claim successfully submitted!</p>
+                            <p>Tracking ID: CLM-2025-10-30-001</p>
+                            <p>Data stored in BigQuery for analytics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Routes Tab -->
+            <div id="api" class="tab-content">
+                <h2>🔌 Backend API Routes</h2>
+                <div class="alert alert-info">
+                    <strong>ℹ️ Production API Endpoints:</strong> These are the RESTful API routes that would be called in a production deployment on Google Cloud Run.
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🔐 Authentication & Authorization</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/login</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Authenticate clinician with SSO + MFA. Returns JWT token.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/refresh</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Refresh expired JWT token.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/logout</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Invalidate session and revoke token.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>📁 File Upload & Storage</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/claims/upload</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Upload audio file to Cloud Storage. Returns GCS path and upload_id.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Check upload status and retrieve metadata.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-delete">DELETE</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Delete uploaded file (with audit log).</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🎤 Speech-to-Text Processing</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/start</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Trigger Google Speech-to-Text API for audio transcription.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/transcription/{job_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Poll transcription job status and retrieve result.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/{job_id}/cancel</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Cancel ongoing transcription job.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step gate">
+                    <h3>🔍 HITL Gate 1: Transcription Review</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/transcription/approve</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Medical professional approves transcription accuracy.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/transcription/reject</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Request corrections or re-transcription.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-put">PUT</span> <strong>/api/v1/hitl/transcription/{job_id}/edit</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Edit transcription text with version tracking.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🤖 AI Code Extraction (Vertex AI)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/extract-codes</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Vertex AI analyzes transcription and suggests CPT/ICD codes.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/ai/suggestions/{claim_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Retrieve AI-generated code suggestions with confidence scores.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/feedback</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Submit feedback to improve AI model (reinforcement learning).</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>💾 Code Validation (Cloud SQL)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/validate</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Validate CPT/ICD codes against reference database.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/search</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Search for CPT/ICD codes by keyword or description.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/compatibility</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Check if CPT and ICD codes are compatible for billing.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step gate">
+                    <h3>🔍 HITL Gate 2: Medical Coding Review</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/codes/approve</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Certified coder approves CPT/ICD code selection.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-put">PUT</span> <strong>/api/v1/hitl/codes/modify</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Coder modifies codes with justification notes.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/codes/reject</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Reject codes and send back to AI for re-analysis.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🏥 Healthcare API (FHIR & EDI)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/fhir/create-claim</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Create FHIR Claim resource in Healthcare API.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/fhir/claim/{claim_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Retrieve FHIR Claim resource.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/edi/generate-837</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Generate EDI 837 Professional claim format from FHIR data.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/edi/{edi_file_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Download generated EDI 837 file.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step gate">
+                    <h3>🔍 HITL Gate 3: Final Billing Review</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/approve</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Billing specialist approves claim for submission.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/hold</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Place claim on hold for additional review.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/reject</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Reject claim and send back for corrections.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>📡 Event Publishing (Pub/Sub)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/pubsub/publish</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Publish claim events to Pub/Sub topics for async processing.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/pubsub/topics</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">List available Pub/Sub topics.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🚀 External Submission</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/clearinghouse/submit</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Submit EDI 837 to external clearinghouse (Availity, Change Healthcare, etc.).</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/clearinghouse/status/{submission_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Check submission status and payer response.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/clearinghouse/acknowledgment/{submission_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Retrieve 997/999 functional acknowledgment.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>📊 Analytics (BigQuery)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/analytics/store</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Store claim data in BigQuery for analytics and reporting.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/reports</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Generate reports: denial rates, revenue, turnaround time.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/metrics</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Real-time metrics dashboard data.</p>
+                    </div>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🔐 Audit & Compliance</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/audit/logs</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Query Cloud Audit Logs for compliance reporting.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/audit/access/{resource_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Track who accessed specific patient/claim data.</p>
+                        
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/audit/event</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Log custom audit events for HIPAA compliance.</p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>💡 API Architecture Notes:</strong>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>Base URL:</strong> <code>https://api.revclear.health</code> (hosted on Cloud Run)</li>
+                        <li><strong>Authentication:</strong> JWT Bearer tokens in Authorization header</li>
+                        <li><strong>Rate Limiting:</strong> 1000 requests/minute per user</li>
+                        <li><strong>Versioning:</strong> URL path versioning (v1, v2, etc.)</li>
+                        <li><strong>Response Format:</strong> JSON with standard error codes</li>
+                        <li><strong>Encryption:</strong> TLS 1.3 for all communications</li>
+                        <li><strong>CORS:</strong> Configured for approved frontend origins only</li>
+                        <li><strong>Monitoring:</strong> All endpoints logged to Cloud Logging</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Components Tab -->
+            <div id="components" class="tab-content">
+                <h2>GCP Components Overview</h2>
+                
+                <div class="workflow-step">
+                    <h3>🌐 Frontend & Security Layer</h3>
+                    <p><strong>Load Balancer:</strong> HTTPS/SSL termination and traffic distribution</p>
+                    <p><strong>Cloud Armor WAF:</strong> Web Application Firewall with DDoS protection and threat detection</p>
+                    <p><strong>Identity Platform:</strong> SSO and MFA authentication for clinicians</p>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>⚙️ Application Layer</h3>
+                    <p><strong>Cloud Run:</strong> Serverless container platform with auto-scaling for the claims application</p>
+                    <p><strong>Secret Manager:</strong> Secure storage for API keys, database credentials, and certificates</p>
+                    <p><strong>VPC Network:</strong> Private network connectivity with traffic isolation</p>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🤖 AI/ML Services</h3>
+                    <p><strong>Speech-to-Text API:</strong> Converts audio recordings to text with medical vocabulary support</p>
+                    <p><strong>Vertex AI:</strong> Custom ML models for diagnosis extraction and CPT/ICD code suggestion</p>
+                    <p><strong>Healthcare API:</strong> FHIR-compliant data storage and EDI 837 generation</p>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>💾 Data Layer</h3>
+                    <p><strong>Cloud Storage:</strong> Object storage for audio files and documents (encrypted at rest)</p>
+                    <p><strong>Cloud SQL PostgreSQL:</strong> Relational database for CPT reference data and patient history</p>
+                    <p><strong>BigQuery:</strong> Data warehouse for claims analytics and reporting</p>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🔐 Security & Compliance</h3>
+                    <p><strong>Cloud KMS:</strong> Key Management Service with 3 separate encryption keys for GCS, SQL, and BigQuery</p>
+                    <p><strong>Cloud Audit Logs:</strong> Comprehensive logging of all access and changes (HIPAA requirement)</p>
+                    <p><strong>App Hub:</strong> Application monitoring and service health tracking</p>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>📡 Event & Integration Layer</h3>
+                    <p><strong>Pub/Sub:</strong> Asynchronous messaging for claim events and workflow orchestration</p>
+                    <p><strong>External Clearinghouse Integration:</strong> Secure API connection for claim submission</p>
+                </div>
+            </div>
+            
+            <!-- Security Tab -->
+            <div id="security" class="tab-content">
+                <h2>🔒 HIPAA Compliance & Security</h2>
+                
+                <div class="alert alert-info">
+                    <strong>ℹ️ HIPAA Compliance:</strong> This architecture implements comprehensive security controls to meet HIPAA requirements for Protected Health Information (PHI).
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🔐 Encryption</h3>
+                    <ul>
+                        <li><strong>At Rest:</strong> All data encrypted using Cloud KMS with customer-managed keys</li>
+                        <li><strong>In Transit:</strong> TLS 1.3 encryption for all network communication</li>
+                        <li><strong>Key Rotation:</strong> Automatic key rotation every 90 days</li>
+                        <li><strong>Separate Keys:</strong> Individual encryption keys for GCS, Cloud SQL, and BigQuery</li>
+                    </ul>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>👤 Access Control</h3>
+                    <ul>
+                        <li><strong>Authentication:</strong> SSO with Multi-Factor Authentication (MFA) required</li>
+                        <li><strong>Authorization:</strong> IAM roles following principle of least privilege</li>
+                        <li><strong>VPC Service Controls:</strong> Network perimeter to prevent data exfiltration</li>
+                        <li><strong>Private Service Access:</strong> Resources not exposed to public internet</li>
+                    </ul>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>📊 Audit & Monitoring</h3>
+                    <ul>
+                        <li><strong>Cloud Audit Logs:</strong> Admin activity, data access, and system events logged</li>
+                        <li><strong>Log Retention:</strong> 7-year retention for HIPAA compliance</li>
+                        <li><strong>Real-time Monitoring:</strong> App Hub tracks service health and anomalies</li>
+                        <li><strong>Alerting:</strong> Automated alerts for security events and policy violations</li>
+                    </ul>
+                </div>
+                
+                <div class="workflow-step gate">
+                    <h3>🔍 Human-in-the-Loop (HITL) Gates</h3>
+                    <p>Three mandatory validation gates ensure accuracy and compliance:</p>
+                    <ul>
+                        <li><strong>Gate 1:</strong> Transcription accuracy validation by medical professional</li>
+                        <li><strong>Gate 2:</strong> CPT/ICD code validation by certified medical coder</li>
+                        <li><strong>Gate 3:</strong> Final billing compliance review before submission</li>
+                    </ul>
+                    <p style="margin-top:10px;"><em>HITL gates prevent automated errors and ensure regulatory compliance</em></p>
+                </div>
+                
+                <div class="workflow-step">
+                    <h3>🛡️ Threat Protection</h3>
+                    <ul>
+                        <li><strong>Cloud Armor:</strong> DDoS protection and WAF rules</li>
+                        <li><strong>Security Command Center:</strong> Threat detection and vulnerability scanning</li>
+                        <li><strong>Private Endpoints:</strong> No direct internet exposure for databases</li>
+                        <li><strong>Regular Audits:</strong> Automated compliance scanning and manual security reviews</li>
+                    </ul>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>✅ HIPAA Technical Safeguards</h4>
+                        <ul>
+                            <li>Access Control</li>
+                            <li>Audit Controls</li>
+                            <li>Integrity Controls</li>
+                            <li>Transmission Security</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>✅ HIPAA Physical Safeguards</h4>
+                        <ul>
+                            <li>Facility Access Controls</li>
+                            <li>Workstation Security</li>
+                            <li>Device Controls</li>
+                            <li>GCP Data Centers</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>✅ HIPAA Administrative Safeguards</h4>
+                        <ul>
+                            <li>Security Management</li>
+                            <li>Workforce Security</li>
+                            <li>Information Access</li>
+                            <li>Security Awareness</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>✅ Business Associate Agreement</h4>
+                        <ul>
+                            <li>Google Cloud BAA</li>
+                            <li>HIPAA Compliance Cert</li>
+                            <li>Annual Assessments</li>
+                            <li>Breach Notification</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🏥 HIPAA AI Medical Claims System | Google Cloud Platform Architecture Demo</p>
+            <p>© 2025 | Built for demonstration purposes</p>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#4285f4',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#1967d2',
+                lineColor: '#5f6368',
+                secondaryColor: '#34a853',
+                tertiaryColor: '#fbbc04'
+            }
+        });
+        
+        // API Call Tracker
+        let apiCallCounter = 0;
+        
+        function toggleApiTracker() {
+            const tracker = document.getElementById('apiTracker');
+            const btn = document.querySelector('.api-toggle-btn');
+            tracker.classList.toggle('visible');
+            btn.classList.toggle('active');
+        }
+        
+        function logApiCall(method, endpoint, description, payload = null, responseData = null, status = 'success') {
+            apiCallCounter++;
+            document.getElementById('apiCallCount').textContent = apiCallCounter;
+            
+            const trackerBody = document.getElementById('apiTrackerBody');
+            
+            // Clear the "no calls" message on first call
+            if (apiCallCounter === 1) {
+                trackerBody.innerHTML = '';
+            }
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let payloadHtml = '';
+            if (payload) {
+                payloadHtml = `
+                    <div class="api-call-details">
+                        <strong>Request Body:</strong>
+                        <div class="api-call-payload">${JSON.stringify(payload, null, 2)}</div>
+                    </div>
+                `;
+            }
+            
+            let responseHtml = '';
+            if (responseData) {
+                responseHtml = `
+                    <div class="api-call-details">
+                        <strong>Response:</strong>
+                        <div class="api-call-payload">${JSON.stringify(responseData, null, 2)}</div>
+                    </div>
+                `;
+            }
+            
+            const apiCallHtml = `
+                <div class="api-call ${status}">
+                    <div>
+                        <span class="api-call-method method-${method.toLowerCase()}">${method}</span>
+                        <span class="api-call-endpoint">${endpoint}</span>
+                    </div>
+                    <div style="margin-top: 5px; color: #5f6368;">${description}</div>
+                    ${payloadHtml}
+                    ${responseHtml}
+                    <div class="api-call-time">⏱️ ${timestamp}</div>
+                </div>
+            `;
+            
+            trackerBody.insertAdjacentHTML('afterbegin', apiCallHtml);
+            
+            // Auto-show tracker on first call
+            if (apiCallCounter === 1) {
+                setTimeout(() => {
+                    const tracker = document.getElementById('apiTracker');
+                    if (!tracker.classList.contains('visible')) {
+                        toggleApiTracker();
+                    }
+                }, 500);
+            }
+        }
+        
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Demo workflow
+        let currentStep = 0;
+        const totalSteps = 8;
+        
+        function updateProgress() {
+            const progress = (currentStep / totalSteps) * 100;
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = Math.round(progress) + '%';
+        }
+        
+        function startDemo() {
+            currentStep = 1;
+            updateProgress();
+            
+            // Step 1: Upload - Authenticate User
+            logApiCall(
+                'POST',
+                '/api/v1/auth/login',
+                'Authenticate clinician with SSO + MFA',
+                { 
+                    email: 'dr.smith@clinic.com',
+                    mfa_code: '123456'
+                },
+                {
+                    success: true,
+                    token: 'eyJhbGc...',
+                    user_id: 'usr_12345',
+                    role: 'clinician'
+                }
+            );
+            
+            updateStepStatus('step1', 'processing');
+            
+            setTimeout(() => {
+                // Upload audio file
+                logApiCall(
+                    'POST',
+                    '/api/v1/claims/upload',
+                    'Upload audio file to Cloud Storage',
+                    {
+                        patient_id: 'PAT-2025-001',
+                        file_name: 'consultation_20251030.mp3',
+                        file_size: '2.4 MB',
+                        session_type: 'initial_consultation'
+                    },
+                    {
+                        upload_id: 'upl_789xyz',
+                        gcs_path: 'gs://clinic-audio/2025/10/consultation_20251030.mp3',
+                        status: 'uploaded'
+                    }
+                );
+                
+                updateStepStatus('step1', 'complete');
+                currentStep = 2;
+                updateProgress();
+                
+                // Step 2: Transcription - Call Speech-to-Text API
+                updateStepStatus('step2', 'processing');
+                
+                logApiCall(
+                    'POST',
+                    '/api/v1/transcription/start',
+                    'Trigger Google Speech-to-Text API',
+                    {
+                        upload_id: 'upl_789xyz',
+                        language: 'en-US',
+                        model: 'medical_conversation',
+                        enable_word_confidence: true
+                    },
+                    {
+                        job_id: 'trans_456abc',
+                        status: 'processing'
+                    }
+                );
+                
+                document.getElementById('transcriptionResult').style.display = 'block';
+                
+                setTimeout(() => {
+                    // Get transcription result
+                    logApiCall(
+                        'GET',
+                        '/api/v1/transcription/trans_456abc',
+                        'Retrieve transcription result',
+                        null,
+                        {
+                            job_id: 'trans_456abc',
+                            status: 'completed',
+                            text: 'Patient presents with persistent cough...',
+                            confidence: 0.94,
+                            word_count: 47
+                        }
+                    );
+                    
+                    updateStepStatus('step2', 'complete');
+                    currentStep = 3;
+                    updateProgress();
+                    
+                    // Step 3: HITL Gate 1
+                    updateStepStatus('step3', 'review');
+                    document.getElementById('hitl1').style.display = 'block';
+                    document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 2000);
+            }, 1500);
+        }
+        
+        function approveGate(gateNumber) {
+            if (gateNumber === 1) {
+                // HITL Gate 1: Approve transcription
+                logApiCall(
+                    'POST',
+                    '/api/v1/hitl/transcription/approve',
+                    'Medical professional approves transcription',
+                    {
+                        job_id: 'trans_456abc',
+                        reviewer_id: 'usr_12345',
+                        approved: true,
+                        corrections: null
+                    },
+                    {
+                        status: 'approved',
+                        next_stage: 'ai_analysis'
+                    }
+                );
+                
+                updateStepStatus('step3', 'complete');
+                currentStep = 4;
+                updateProgress();
+                
+                // Step 4: AI Analysis - Call Vertex AI
+                updateStepStatus('step4', 'processing');
+                
+                logApiCall(
+                    'POST',
+                    '/api/v1/ai/extract-codes',
+                    'Vertex AI analyzes transcription and extracts CPT/ICD codes',
+                    {
+                        transcription_id: 'trans_456abc',
+                        model: 'medical-coder-v2',
+                        patient_history_id: 'PAT-2025-001'
+                    },
+                    {
+                        diagnosis: 'Acute Bronchitis',
+                        icd10_code: 'J20.9',
+                        cpt_code: '99213',
+                        confidence_scores: {
+                            icd10: 0.92,
+                            cpt: 0.88
+                        },
+                        supporting_evidence: [
+                            'persistent cough for 2 weeks',
+                            'fever of 101°F',
+                            'crackles in lower right lung'
+                        ]
+                    }
+                );
+                
+                document.getElementById('aiResult').style.display = 'block';
+                
+                setTimeout(() => {
+                    // Validate codes against database
+                    logApiCall(
+                        'GET',
+                        '/api/v1/codes/validate?icd10=J20.9&cpt=99213',
+                        'Validate codes against Cloud SQL CPT/ICD database',
+                        null,
+                        {
+                            icd10_valid: true,
+                            cpt_valid: true,
+                            compatible: true,
+                            warnings: []
+                        }
+                    );
+                    
+                    updateStepStatus('step4', 'complete');
+                    currentStep = 5;
+                    updateProgress();
+                    
+                    // Step 5: HITL Gate 2
+                    updateStepStatus('step5', 'review');
+                    document.getElementById('hitl2').style.display = 'block';
+                    document.getElementById('step5').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 2000);
+                
+            } else if (gateNumber === 2) {
+                // HITL Gate 2: Approve medical codes
+                logApiCall(
+                    'POST',
+                    '/api/v1/hitl/codes/approve',
+                    'Certified medical coder validates CPT/ICD codes',
+                    {
+                        claim_id: 'CLM-2025-10-30-001',
+                        reviewer_id: 'coder_789',
+                        icd10_approved: 'J20.9',
+                        cpt_approved: '99213',
+                        notes: 'Codes appropriate for documented diagnosis'
+                    },
+                    {
+                        status: 'approved',
+                        next_stage: 'edi_generation'
+                    }
+                );
+                
+                updateStepStatus('step5', 'complete');
+                currentStep = 6;
+                updateProgress();
+                
+                // Step 6: EDI Generation - Healthcare API
+                updateStepStatus('step6', 'processing');
+                
+                logApiCall(
+                    'POST',
+                    '/api/v1/fhir/create-claim',
+                    'Healthcare API creates FHIR Claim resource',
+                    {
+                        patient_id: 'PAT-2025-001',
+                        provider_id: 'PRV-12345',
+                        diagnosis_code: 'J20.9',
+                        procedure_code: '99213',
+                        service_date: '2025-10-30'
+                    },
+                    {
+                        fhir_claim_id: 'Claim/clm-fhir-001',
+                        resourceType: 'Claim',
+                        status: 'active'
+                    }
+                );
+                
+                setTimeout(() => {
+                    logApiCall(
+                        'POST',
+                        '/api/v1/edi/generate-837',
+                        'Generate EDI 837 Professional claim format',
+                        {
+                            fhir_claim_id: 'Claim/clm-fhir-001',
+                            format: '837P',
+                            payer_id: 'PAYER-001'
+                        },
+                        {
+                            edi_file_id: 'edi_837_20251030_001',
+                            gcs_path: 'gs://clinic-claims/2025/10/837_001.txt',
+                            segments_count: 42
+                        }
+                    );
+                    
+                    document.getElementById('ediResult').style.display = 'block';
+                    
+                    updateStepStatus('step6', 'complete');
+                    currentStep = 7;
+                    updateProgress();
+                    
+                    // Step 7: HITL Gate 3
+                    updateStepStatus('step7', 'review');
+                    document.getElementById('hitl3').style.display = 'block';
+                    document.getElementById('step7').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 1500);
+                
+            } else if (gateNumber === 3) {
+                // HITL Gate 3: Final billing approval
+                logApiCall(
+                    'POST',
+                    '/api/v1/hitl/billing/approve',
+                    'Billing specialist performs final compliance review',
+                    {
+                        claim_id: 'CLM-2025-10-30-001',
+                        reviewer_id: 'billing_456',
+                        compliance_check: 'passed',
+                        approved_for_submission: true
+                    },
+                    {
+                        status: 'approved',
+                        next_stage: 'external_submission'
+                    }
+                );
+                
+                updateStepStatus('step7', 'complete');
+                currentStep = 8;
+                updateProgress();
+                
+                // Step 8: Submission
+                updateStepStatus('step8', 'processing');
+                
+                // Publish to Pub/Sub
+                logApiCall(
+                    'POST',
+                    '/api/v1/pubsub/publish',
+                    'Publish claim approved event to Pub/Sub topic',
+                    {
+                        topic: 'claims-approved',
+                        message: {
+                            claim_id: 'CLM-2025-10-30-001',
+                            status: 'approved',
+                            timestamp: new Date().toISOString()
+                        }
+                    },
+                    {
+                        message_id: 'msg_pub123',
+                        published: true
+                    }
+                );
+                
+                setTimeout(() => {
+                    // Submit to clearinghouse
+                    logApiCall(
+                        'POST',
+                        '/api/v1/clearinghouse/submit',
+                        'Submit EDI 837 to external clearinghouse',
+                        {
+                            edi_file_id: 'edi_837_20251030_001',
+                            clearinghouse: 'Availity',
+                            payer_id: 'PAYER-001'
+                        },
+                        {
+                            submission_id: 'SUB-2025-10-30-001',
+                            tracking_id: 'CLM-2025-10-30-001',
+                            status: 'submitted',
+                            estimated_response: '24-48 hours'
+                        }
+                    );
+                    
+                    // Store in BigQuery for analytics
+                    logApiCall(
+                        'POST',
+                        '/api/v1/analytics/store',
+                        'Store claim data in BigQuery for analytics',
+                        {
+                            claim_id: 'CLM-2025-10-30-001',
+                            dataset: 'claims_analytics',
+                            table: 'processed_claims'
+                        },
+                        {
+                            rows_inserted: 1,
+                            job_id: 'bq_job_789'
+                        }
+                    );
+                    
+                    updateStepStatus('step8', 'complete');
+                    document.getElementById('submissionResult').style.display = 'block';
+                    document.getElementById('step8').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    setTimeout(() => {
+                        alert('🎉 Demo Complete!\n\nClaim successfully processed through all 3 HITL gates and submitted to clearinghouse.\n\nCheck the API Call Tracker to see all backend routes that were called!\n\nTotal API calls made: ' + apiCallCounter);
+                    }, 500);
+                }, 2000);
+            }
+        }
+        
+        function updateStepStatus(stepId, status) {
+            const step = document.getElementById(stepId);
+            const statusSpan = step.querySelector('.step-status');
+            
+            statusSpan.classList.remove('status-pending', 'status-processing', 'status-review', 'status-complete');
+            
+            if (status === 'processing') {
+                statusSpan.classList.add('status-processing');
+                statusSpan.textContent = statusSpan.textContent.replace(/Step \d+:/, 'Step ' + currentStep + ': ⏳');
+            } else if (status === 'review') {
+                statusSpan.classList.add('status-review');
+                statusSpan.textContent = statusSpan.textContent.replace(/Step \d+:/, 'Step ' + currentStep + ': 👁️ REVIEW REQUIRED');
+            } else if (status === 'complete') {
+                statusSpan.classList.add('status-complete');
+                statusSpan.textContent = statusSpan.textContent.replace(/Step \d+:.*/, 'Step ' + (currentStep - 1) + ': ✓ Complete');
+            }
+        }
+    </script>
+</body>
+</html>
