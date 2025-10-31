@@ -42,9 +42,19 @@
     
     <div class="container">
         <div class="header">
-            <h1>RevClear AI Medical System</h1>
-            <p>AI-Powered Medical Billing That Learns to Reduce Claim Denials</p>
-            <p style="font-size: 0.95rem; margin-top: 0.5rem; opacity: 0.9;">Automated Processing for PT, Mental Health & SLP Practices</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <div class="pulse-dot"></div>
+                <h1 style="margin: 0;">RevClear AI Medical System</h1>
+                <div class="pulse-dot"></div>
+            </div>
+            <p style="font-size: 1.125rem; font-weight: 500;">
+                <span class="gradient-text">AI-Powered Medical Billing</span> That Learns to Reduce Claim Denials
+            </p>
+            <div class="specialty-badges">
+                <span class="specialty-badge">🧠 Mental Health</span>
+                <span class="specialty-badge">🏃 Physical Therapy</span>
+                <span class="specialty-badge">💬 Speech-Language</span>
+            </div>
         </div>
         
         <div class="tabs">
@@ -263,20 +273,6 @@ flowchart TB
                         <span class="step-status status-pending">Step 4: AI Analysis</span>
                         <h3>🤖 Vertex AI: Code Extraction</h3>
                         <p><span class="loading-text">AI extracts diagnosis and suggests CPT/ICD codes</span></p>
-                        
-                        <!-- AI Confidence Score -->
-                        <div id="aiConfidence" style="display:none; margin: 1rem 0;">
-                            <div style="background: linear-gradient(135deg, #D1FAE5 0%, white 100%); padding: 1rem 1.5rem; border-radius: 0.75rem; border-left: 4px solid var(--success); box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 2.5rem;">🎯</div>
-                                <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                                        <strong style="color: var(--success); font-size: 1.5rem;">94%</strong>
-                                        <span style="background: var(--success); color: white; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700;">HIGH CONFIDENCE</span>
-                                    </div>
-                                    <p style="color: var(--slate-600); font-size: 0.9rem; margin: 0;">Based on analysis of 1,247 similar cases with Acute Bronchitis diagnosis</p>
-                                </div>
-                            </div>
-                        </div>
                         
                         <div id="aiResult" style="display:none;">
                             <strong style="color: var(--primary); font-size: 1.1rem; display: block; margin-bottom: 0.5rem;">✨ Extracted Information:</strong>
@@ -763,9 +759,41 @@ flowchart TB
         </div>
         
         <div class="footer">
-            <p><strong>RevClear AI Medical System</strong></p>
-            <p>Automated Medical Billing for PT, Mental Health & SLP Practices</p>
-            <p style="margin-top: 1rem; color: var(--slate-500); font-size: 0.875rem;">© 2025 RevClear. All rights reserved. | HIPAA Compliant | Powered by Google Cloud</p>
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem;">
+                        <span class="gradient-text">RevClear AI</span> Medical System
+                    </h3>
+                    <p style="margin: 0; color: var(--slate-600);">Automated Medical Billing for PT, Mental Health & SLP Practices</p>
+                </div>
+                
+                <div class="footer-tech">
+                    <div class="tech-badge">
+                        <span class="tech-icon">🤖</span>
+                        <span>Vertex AI</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">☁️</span>
+                        <span>Google Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">🔒</span>
+                        <span>HIPAA Compliant</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">📊</span>
+                        <span>BigQuery ML</span>
+                    </div>
+                </div>
+                
+                <div class="footer-bottom">
+                    <p>© 2025 RevClear. All rights reserved.</p>
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>All Systems Operational</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     

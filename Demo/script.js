@@ -197,7 +197,7 @@
                     // Step 3: HITL Gate 1
                     updateStepStatus('step3', 'review');
                     document.getElementById('hitl1').style.display = 'block';
-                    document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Removed auto-scroll - let user review at their own pace
                 }, 3000);
             }, 2500);
         }
@@ -264,7 +264,6 @@
                     }
                 );
 
-                document.getElementById('aiConfidence').style.display = 'block';
                 document.getElementById('aiResult').style.display = 'block';
 
                 setTimeout(() => {
@@ -289,7 +288,7 @@
                     // Step 5: HITL Gate 2
                     updateStepStatus('step5', 'review');
                     document.getElementById('hitl2').style.display = 'block';
-                    document.getElementById('step5').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Removed auto-scroll - let user review at their own pace
                 }, 3000);
 
             } else if (gateNumber === 2) {
@@ -373,7 +372,7 @@
                     // Step 7: HITL Gate 3
                     updateStepStatus('step7', 'review');
                     document.getElementById('hitl3').style.display = 'block';
-                    document.getElementById('step7').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Removed auto-scroll - let user review at their own pace
                 }, 2500);
 
             } else if (gateNumber === 3) {
@@ -468,11 +467,11 @@
 
                     updateStepStatus('step8', 'complete');
                     document.getElementById('submissionResult').style.display = 'block';
-                    document.getElementById('step8').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Removed auto-scroll - let user review results at their own pace
 
                     setTimeout(() => {
                         document.getElementById('metricsCard').style.display = 'block';
-                        document.getElementById('metricsCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Removed auto-scroll for metrics card
                     }, 1500);
 
                     setTimeout(() => {
