@@ -198,8 +198,8 @@
                     updateStepStatus('step3', 'review');
                     document.getElementById('hitl1').style.display = 'block';
                     document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 2000);
-            }, 1500);
+                }, 3000);
+            }, 2500);
         }
 
         function approveGate(gateNumber) {
@@ -278,7 +278,7 @@
                     updateStepStatus('step5', 'review');
                     document.getElementById('hitl2').style.display = 'block';
                     document.getElementById('step5').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 2000);
+                }, 3000);
 
             } else if (gateNumber === 2) {
                 // HITL Gate 2: Approve medical codes
@@ -351,7 +351,7 @@
                     updateStepStatus('step7', 'review');
                     document.getElementById('hitl3').style.display = 'block';
                     document.getElementById('step7').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 1500);
+                }, 2500);
 
             } else if (gateNumber === 3) {
                 // HITL Gate 3: Final billing approval
@@ -438,8 +438,8 @@
 
                     setTimeout(() => {
                         alert('🎉 Demo Complete!\n\nClaim successfully processed through all 3 HITL gates and submitted to clearinghouse.\n\nCheck the API Call Tracker to see all backend routes that were called!\n\nTotal API calls made: ' + apiCallCounter);
-                    }, 500);
-                }, 2000);
+                    }, 1000);
+                }, 3000);
             }
         }
 
