@@ -204,6 +204,17 @@
 
         function approveGate(gateNumber) {
             if (gateNumber === 1) {
+                // Show learning feedback
+                const hitl1 = document.getElementById('hitl1');
+                const button = event.target;
+                button.innerHTML = '✓ Approved! AI Learning...';
+                button.style.background = 'var(--success)';
+                button.disabled = true;
+                
+                setTimeout(() => {
+                    hitl1.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Approved</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 System learning from your approval to improve future transcriptions</p></div>';
+                }, 500);
+                
                 // HITL Gate 1: Approve transcription
                 logApiCall(
                     'POST',
@@ -253,6 +264,7 @@
                     }
                 );
 
+                document.getElementById('aiConfidence').style.display = 'block';
                 document.getElementById('aiResult').style.display = 'block';
 
                 setTimeout(() => {
@@ -281,6 +293,17 @@
                 }, 3000);
 
             } else if (gateNumber === 2) {
+                // Show learning feedback
+                const hitl2 = document.getElementById('hitl2');
+                const button = event.target;
+                button.innerHTML = '✓ Approved! AI Learning...';
+                button.style.background = 'var(--success)';
+                button.disabled = true;
+                
+                setTimeout(() => {
+                    hitl2.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Codes Validated</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 AI model updated with your validation to improve future code suggestions</p></div>';
+                }, 500);
+                
                 // HITL Gate 2: Approve medical codes
                 logApiCall(
                     'POST',
@@ -354,6 +377,17 @@
                 }, 2500);
 
             } else if (gateNumber === 3) {
+                // Show learning feedback
+                const hitl3 = document.getElementById('hitl3');
+                const button = event.target;
+                button.innerHTML = '✓ Approved! AI Learning...';
+                button.style.background = 'var(--success)';
+                button.disabled = true;
+                
+                setTimeout(() => {
+                    hitl3.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Ready for Submission</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 Final approval recorded. System optimizing submission process based on historical success rates</p></div>';
+                }, 500);
+                
                 // HITL Gate 3: Final billing approval
                 logApiCall(
                     'POST',
@@ -437,8 +471,13 @@
                     document.getElementById('step8').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                     setTimeout(() => {
+                        document.getElementById('metricsCard').style.display = 'block';
+                        document.getElementById('metricsCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 1500);
+
+                    setTimeout(() => {
                         alert('🎉 Demo Complete!\n\nClaim successfully processed through all 3 HITL gates and submitted to clearinghouse.\n\nCheck the API Call Tracker to see all backend routes that were called!\n\nTotal API calls made: ' + apiCallCounter);
-                    }, 1000);
+                    }, 3000);
                 }, 3000);
             }
         }
