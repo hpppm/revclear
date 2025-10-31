@@ -246,7 +246,7 @@ flowchart TB
                         <p>Generate standardized FHIR resources and EDI 837 claim</p>
                         <div id="ediResult" style="display:none;">
                             <code>ISA*00* *00* *ZZ*SENDER *ZZ*RECEIVER *...</code>
-                            <p style="margin-top:10px;"><em>EDI 837 Professional claim format generated</em></p>
+                            <p style="margin-block-start:10px;"><em>EDI 837 Professional claim format generated</em></p>
                         </div>
                     </div>
                     
@@ -287,13 +287,13 @@ flowchart TB
                     <h3>🔐 Authentication & Authorization</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/login</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Authenticate clinician with SSO + MFA. Returns JWT token.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Authenticate clinician with SSO + MFA. Returns JWT token.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/refresh</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Refresh expired JWT token.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Refresh expired JWT token.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/logout</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Invalidate session and revoke token.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Invalidate session and revoke token.</p>
                     </div>
                 </div>
                 
@@ -301,13 +301,13 @@ flowchart TB
                     <h3>📁 File Upload & Storage</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/claims/upload</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Upload audio file to Cloud Storage. Returns GCS path and upload_id.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Upload audio file to Cloud Storage. Returns GCS path and upload_id.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Check upload status and retrieve metadata.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Check upload status and retrieve metadata.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-delete">DELETE</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Delete uploaded file (with audit log).</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Delete uploaded file (with audit log).</p>
                     </div>
                 </div>
                 
@@ -315,13 +315,13 @@ flowchart TB
                     <h3>🎤 Speech-to-Text Processing</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/start</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Trigger Google Speech-to-Text API for audio transcription.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Trigger Google Speech-to-Text API for audio transcription.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/transcription/{job_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Poll transcription job status and retrieve result.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Poll transcription job status and retrieve result.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/{job_id}/cancel</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Cancel ongoing transcription job.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Cancel ongoing transcription job.</p>
                     </div>
                 </div>
                 
@@ -329,13 +329,13 @@ flowchart TB
                     <h3>🔍 HITL Gate 1: Transcription Review</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/transcription/approve</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Medical professional approves transcription accuracy.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Medical professional approves transcription accuracy.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/transcription/reject</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Request corrections or re-transcription.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Request corrections or re-transcription.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-put">PUT</span> <strong>/api/v1/hitl/transcription/{job_id}/edit</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Edit transcription text with version tracking.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Edit transcription text with version tracking.</p>
                     </div>
                 </div>
                 
@@ -343,13 +343,13 @@ flowchart TB
                     <h3>🤖 AI Code Extraction (Vertex AI)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/extract-codes</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Vertex AI analyzes transcription and suggests CPT/ICD codes.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Vertex AI analyzes transcription and suggests CPT/ICD codes.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/ai/suggestions/{claim_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Retrieve AI-generated code suggestions with confidence scores.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Retrieve AI-generated code suggestions with confidence scores.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/feedback</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Submit feedback to improve AI model (reinforcement learning).</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Submit feedback to improve AI model (reinforcement learning).</p>
                     </div>
                 </div>
                 
@@ -357,13 +357,13 @@ flowchart TB
                     <h3>💾 Code Validation (Cloud SQL)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/validate</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Validate CPT/ICD codes against reference database.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Validate CPT/ICD codes against reference database.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/search</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Search for CPT/ICD codes by keyword or description.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Search for CPT/ICD codes by keyword or description.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/compatibility</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Check if CPT and ICD codes are compatible for billing.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Check if CPT and ICD codes are compatible for billing.</p>
                     </div>
                 </div>
                 
@@ -371,13 +371,13 @@ flowchart TB
                     <h3>🔍 HITL Gate 2: Medical Coding Review</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/codes/approve</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Certified coder approves CPT/ICD code selection.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Certified coder approves CPT/ICD code selection.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-put">PUT</span> <strong>/api/v1/hitl/codes/modify</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Coder modifies codes with justification notes.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Coder modifies codes with justification notes.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/codes/reject</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Reject codes and send back to AI for re-analysis.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Reject codes and send back to AI for re-analysis.</p>
                     </div>
                 </div>
                 
@@ -385,16 +385,16 @@ flowchart TB
                     <h3>🏥 Healthcare API (FHIR & EDI)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/fhir/create-claim</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Create FHIR Claim resource in Healthcare API.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Create FHIR Claim resource in Healthcare API.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/fhir/claim/{claim_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Retrieve FHIR Claim resource.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Retrieve FHIR Claim resource.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/edi/generate-837</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Generate EDI 837 Professional claim format from FHIR data.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Generate EDI 837 Professional claim format from FHIR data.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/edi/{edi_file_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Download generated EDI 837 file.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Download generated EDI 837 file.</p>
                     </div>
                 </div>
                 
@@ -402,13 +402,13 @@ flowchart TB
                     <h3>🔍 HITL Gate 3: Final Billing Review</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/approve</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Billing specialist approves claim for submission.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Billing specialist approves claim for submission.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/hold</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Place claim on hold for additional review.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Place claim on hold for additional review.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/reject</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Reject claim and send back for corrections.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Reject claim and send back for corrections.</p>
                     </div>
                 </div>
                 
@@ -416,10 +416,10 @@ flowchart TB
                     <h3>📡 Event Publishing (Pub/Sub)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/pubsub/publish</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Publish claim events to Pub/Sub topics for async processing.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Publish claim events to Pub/Sub topics for async processing.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/pubsub/topics</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">List available Pub/Sub topics.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">List available Pub/Sub topics.</p>
                     </div>
                 </div>
                 
@@ -427,13 +427,13 @@ flowchart TB
                     <h3>🚀 External Submission</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/clearinghouse/submit</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Submit EDI 837 to external clearinghouse (Availity, Change Healthcare, etc.).</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Submit EDI 837 to external clearinghouse (Availity, Change Healthcare, etc.).</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/clearinghouse/status/{submission_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Check submission status and payer response.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Check submission status and payer response.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/clearinghouse/acknowledgment/{submission_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Retrieve 997/999 functional acknowledgment.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Retrieve 997/999 functional acknowledgment.</p>
                     </div>
                 </div>
                 
@@ -441,13 +441,13 @@ flowchart TB
                     <h3>📊 Analytics (BigQuery)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/analytics/store</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Store claim data in BigQuery for analytics and reporting.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Store claim data in BigQuery for analytics and reporting.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/reports</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Generate reports: denial rates, revenue, turnaround time.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Generate reports: denial rates, revenue, turnaround time.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/metrics</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Real-time metrics dashboard data.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Real-time metrics dashboard data.</p>
                     </div>
                 </div>
                 
@@ -455,19 +455,19 @@ flowchart TB
                     <h3>🔐 Audit & Compliance</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/audit/logs</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Query Cloud Audit Logs for compliance reporting.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Query Cloud Audit Logs for compliance reporting.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/audit/access/{resource_id}</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Track who accessed specific patient/claim data.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Track who accessed specific patient/claim data.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/audit/event</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Log custom audit events for HIPAA compliance.</p>
+                        <p style="margin-inline-start: 70px; color: #5f6368;">Log custom audit events for HIPAA compliance.</p>
                     </div>
                 </div>
                 
                 <div class="alert alert-info">
                     <strong>💡 API Architecture Notes:</strong>
-                    <ul style="margin: 10px 0; padding-left: 20px;">
+                    <ul style="margin: 10px 0; padding-inline-start: 20px;">
                         <li><strong>Base URL:</strong> <code>https://api.revclear.health</code> (hosted on Cloud Run)</li>
                         <li><strong>Authentication:</strong> JWT Bearer tokens in Authorization header</li>
                         <li><strong>Rate Limiting:</strong> 1000 requests/minute per user</li>
@@ -572,7 +572,7 @@ flowchart TB
                         <li><strong>Gate 2:</strong> CPT/ICD code validation by certified medical coder</li>
                         <li><strong>Gate 3:</strong> Final billing compliance review before submission</li>
                     </ul>
-                    <p style="margin-top:10px;"><em>HITL gates prevent automated errors and ensure regulatory compliance</em></p>
+                    <p style="margin-block-start:10px;"><em>HITL gates prevent automated errors and ensure regulatory compliance</em></p>
                 </div>
                 
                 <div class="workflow-step">
