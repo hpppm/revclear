@@ -123,34 +123,41 @@
                 '/api/v1/auth/login',
                 'Authenticate clinician with SSO + MFA',
                 {
-                    email: 'dr.smith@clinic.com',
+                    email: 'pt.johnson@rehabclinic.com',
                     mfa_code: '123456'
                 },
                 {
                     success: true,
                     token: 'eyJhbGc...',
                     user_id: 'usr_12345',
-                    role: 'clinician'
+                    role: 'physical_therapist'
                 }
             );
 
             updateStepStatus('step1', 'processing');
+            
+            // Scroll to step 1
+            document.getElementById('step1').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             setTimeout(() => {
+                // Remove loading state after authentication completes
+                startBtn.classList.remove('is-loading');
+                startBtn.innerHTML = '✓ Started';
+                startBtn.style.background = 'var(--success)';
                 // Upload audio file
                 logApiCall(
                     'POST',
                     '/api/v1/claims/upload',
                     'Upload audio file to Cloud Storage',
                     {
-                        patient_id: 'PAT-2025-001',
-                        file_name: 'consultation_20251030.mp3',
-                        file_size: '2.4 MB',
-                        session_type: 'initial_consultation'
+                        patient_id: 'PAT-2025-042',
+                        file_name: 'pt_session_20251030.mp3',
+                        file_size: '3.1 MB',
+                        session_type: 'physical_therapy_evaluation'
                     },
                     {
                         upload_id: 'upl_789xyz',
-                        gcs_path: 'gs://clinic-audio/2025/10/consultation_20251030.mp3',
+                        gcs_path: 'gs://clinic-audio/2025/10/pt_session_20251030.mp3',
                         status: 'uploaded'
                     }
                 );
@@ -161,6 +168,9 @@
 
                 // Step 2: Transcription - Call Speech-to-Text API
                 updateStepStatus('step2', 'processing');
+                
+                // Scroll to step 2
+                document.getElementById('step2').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 logApiCall(
                     'POST',
@@ -190,9 +200,9 @@
                         {
                             job_id: 'trans_456abc',
                             status: 'completed',
-                            text: 'Patient presents with persistent cough...', 
+                            text: 'Patient with lower back pain following work injury. Limited range of motion in lumbar spine. Performed initial evaluation...', 
                             confidence: 0.94,
-                            word_count: 47
+                            word_count: 89
                         }
                     );
 
@@ -203,7 +213,9 @@
                     // Step 3: HITL Gate 1
                     updateStepStatus('step3', 'review');
                     document.getElementById('hitl1').style.display = 'block';
-                    // Removed auto-scroll - let user review at their own pace
+                    
+                    // Scroll to HITL Gate 1
+                    document.getElementById('step3').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 3000);
             }, 2500);
         }
@@ -243,11 +255,11 @@
                         'Send validation feedback to Vertex AI training pipeline',
                         {
                             job_id: 'trans_456abc',
-                            audio_file: 'gs://clinic-audio/2025/10/consultation_20251030.mp3',
-                            transcription: 'Patient presents with persistent cough for two weeks...',
+                            audio_file: 'gs://clinic-audio/2025/10/pt_session_20251030.mp3',
+                            transcription: 'Patient presents with chronic lower back pain following work-related injury 6 weeks ago. Reports pain level 7/10, worse with forward flexion and prolonged sitting. Limited range of motion in lumbar spine: flexion 40 degrees (normal 60-90), extension 15 degrees (normal 25-30). Performed initial evaluation including strength testing, gait analysis, and postural assessment. Plan: Begin therapeutic exercises focusing on core stabilization, manual therapy for lumbar mobilization, and modalities including heat and electrical stimulation. Goal: Reduce pain to 3/10 and improve functional mobility within 4 weeks.',
                             validation: {
                                 approved: true,
-                                accuracy_score: 0.98,
+                                accuracy_score: 0.96,
                                 corrections_made: 0,
                                 reviewer_confidence: 'high'
                             },
@@ -271,6 +283,9 @@
 
                 // Step 4: AI Analysis - Call Vertex AI
                 updateStepStatus('step4', 'processing');
+                
+                // Scroll to step 4
+                document.getElementById('step4').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 logApiCall(
                     'POST',
@@ -279,20 +294,21 @@
                     {
                         transcription_id: 'trans_456abc',
                         model: 'medical-coder-v2',
-                        patient_history_id: 'PAT-2025-001'
+                        patient_history_id: 'PAT-2025-042'
                     },
                     {
-                        diagnosis: 'Acute Bronchitis',
-                        icd10_code: 'J20.9',
-                        cpt_code: '99213',
+                        diagnosis: 'Chronic Low Back Pain',
+                        icd10_code: 'M54.5',
+                        cpt_code: '97161',
                         confidence_scores: {
-                            icd10: 0.92,
-                            cpt: 0.88
+                            icd10: 0.94,
+                            cpt: 0.91
                         },
                         supporting_evidence: [
-                            'persistent cough for 2 weeks',
-                            'fever of 101°F',
-                            'crackles in lower right lung'
+                            'lower back pain following work injury',
+                            'pain level 7/10',
+                            'limited range of motion lumbar spine',
+                            'initial physical therapy evaluation'
                         ]
                     }
                 );
@@ -303,7 +319,7 @@
                     // Validate codes against database
                     logApiCall(
                         'GET',
-                        '/api/v1/codes/validate?icd10=J20.9&cpt=99213',
+                        '/api/v1/codes/validate?icd10=M54.5&cpt=97161',
                         'Validate codes against Cloud SQL CPT/ICD database',
                         null,
                         {
@@ -321,15 +337,18 @@
                     // Step 5: HITL Gate 2
                     updateStepStatus('step5', 'review');
                     document.getElementById('hitl2').style.display = 'block';
-                    // Removed auto-scroll - let user review at their own pace
+                    
+                    // Scroll to HITL Gate 2
+                    document.getElementById('step5').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 3000);
 
             } else if (gateNumber === 2) {
                 // Show learning feedback
                 const hitl2 = document.getElementById('hitl2');
                 const button = event.target;
-                button.innerHTML = '✓ Approved! AI Learning...';
-                button.style.background = 'var(--success)';
+                
+                // Tip 41: Add loading state to button
+                button.classList.add('is-loading');
                 button.disabled = true;
                 
                 // HITL Gate 2: Approve medical codes
@@ -340,9 +359,9 @@
                     {
                         claim_id: 'CLM-2025-10-30-001',
                         reviewer_id: 'coder_789',
-                        icd10_approved: 'J20.9',
-                        cpt_approved: '99213',
-                        notes: 'Codes appropriate for documented diagnosis'
+                        icd10_approved: 'M54.5',
+                        cpt_approved: '97161',
+                        notes: 'Codes appropriate for PT evaluation with work-related injury'
                     },
                     {
                         status: 'approved',
@@ -358,16 +377,16 @@
                         'Send code validation feedback to Vertex AI for model improvement',
                         {
                             claim_id: 'CLM-2025-10-30-001',
-                            transcription_text: 'Patient presents with persistent cough...',
+                            transcription_text: 'Patient presents with chronic lower back pain...',
                             ai_suggested_codes: {
-                                icd10: 'J20.9',
-                                cpt: '99213',
-                                confidence_icd10: 0.92,
-                                confidence_cpt: 0.88
+                                icd10: 'M54.5',
+                                cpt: '97161',
+                                confidence_icd10: 0.94,
+                                confidence_cpt: 0.91
                             },
                             coder_approved_codes: {
-                                icd10: 'J20.9',
-                                cpt: '99213',
+                                icd10: 'M54.5',
+                                cpt: '97161',
                                 modifications: []
                             },
                             validation: {
@@ -396,16 +415,19 @@
 
                 // Step 6: EDI Generation - Healthcare API
                 updateStepStatus('step6', 'processing');
+                
+                // Scroll to step 6
+                document.getElementById('step6').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 logApiCall(
                     'POST',
                     '/api/v1/fhir/create-claim',
                     'Healthcare API creates FHIR Claim resource',
                     {
-                        patient_id: 'PAT-2025-001',
+                        patient_id: 'PAT-2025-042',
                         provider_id: 'PRV-12345',
-                        diagnosis_code: 'J20.9',
-                        procedure_code: '99213',
+                        diagnosis_code: 'M54.5',
+                        procedure_code: '97161',
                         service_date: '2025-10-30'
                     },
                     {
@@ -441,7 +463,9 @@
                     // Step 7: HITL Gate 3
                     updateStepStatus('step7', 'review');
                     document.getElementById('hitl3').style.display = 'block';
-                    // Removed auto-scroll - let user review at their own pace
+                    
+                    // Scroll to HITL Gate 3
+                    document.getElementById('step7').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 2500);
 
             } else if (gateNumber === 3) {
@@ -479,11 +503,12 @@
                         {
                             claim_id: 'CLM-2025-10-30-001',
                             claim_metadata: {
-                                diagnosis: 'J20.9',
-                                procedure: '99213',
-                                payer_id: 'PAYER-001',
-                                patient_age: 45,
-                                service_date: '2025-10-30'
+                                diagnosis: 'M54.5',
+                                procedure: '97161',
+                                payer_id: 'WORKCOMP-001',
+                                patient_age: 42,
+                                service_date: '2025-10-30',
+                                specialty: 'physical_therapy'
                             },
                             approval_metrics: {
                                 transcription_accuracy: 0.98,
@@ -515,6 +540,9 @@
 
                 // Step 8: Submission
                 updateStepStatus('step8', 'processing');
+                
+                // Scroll to step 8
+                document.getElementById('step8').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                 // Publish to Pub/Sub
                 logApiCall(
@@ -572,11 +600,14 @@
 
                     updateStepStatus('step8', 'complete');
                     document.getElementById('submissionResult').style.display = 'block';
-                    // Removed auto-scroll - let user review results at their own pace
 
                     setTimeout(() => {
                         document.getElementById('metricsCard').style.display = 'block';
-                        // Removed auto-scroll for metrics card
+                        
+                        // Scroll to metrics card
+                        setTimeout(() => {
+                            document.getElementById('metricsCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300);
                     }, 1500);
 
                     setTimeout(() => {

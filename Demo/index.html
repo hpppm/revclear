@@ -251,7 +251,7 @@ flowchart TB
                         <div id="transcriptionResult" style="display:none;">
                             <strong style="color: var(--primary); font-size: 1.1rem; display: block; margin-bottom: 0.75rem;">✨ Transcription Complete:</strong>
                             <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); line-height: 1.7; color: var(--slate-900);">
-                                Patient presents with persistent cough for 2 weeks, fever of 101°F, and chest congestion. Physical examination reveals crackles in lower right lung. Diagnosed with acute bronchitis. Prescribed azithromycin 250mg and recommended rest.
+                                Patient presents with chronic lower back pain following work-related injury 6 weeks ago. Reports pain level 7/10, worse with forward flexion and prolonged sitting. Limited range of motion in lumbar spine: flexion 40 degrees (normal 60-90), extension 15 degrees (normal 25-30). Performed initial evaluation including strength testing, gait analysis, and postural assessment. Plan: Begin therapeutic exercises focusing on core stabilization, manual therapy for lumbar mobilization, and modalities including heat and electrical stimulation.
                             </div>
                         </div>
                     </div>
@@ -263,6 +263,15 @@ flowchart TB
                         <div class="hitl-section" id="hitl1" style="display:none;">
                             <h4>Review and Correct Transcription</h4>
                             <p>Medical professional reviews the AI-generated transcription for accuracy</p>
+                            
+                            <div class="hitl-content">
+                                <strong style="color: var(--warning); margin-bottom: 0.5rem; display: block;">📋 Transcribed Text:</strong>
+                                Patient presents with <span class="hitl-highlight">chronic lower back pain</span> following <span class="hitl-highlight">work-related injury 6 weeks ago</span>. Reports <span class="hitl-highlight">pain level 7/10</span>, worse with forward flexion and prolonged sitting. <span class="hitl-highlight">Limited range of motion in lumbar spine</span>: flexion 40 degrees (normal 60-90), extension 15 degrees (normal 25-30). Performed <span class="hitl-highlight">initial evaluation</span> including strength testing, gait analysis, and postural assessment. Plan: Begin therapeutic exercises focusing on <span class="hitl-highlight">core stabilization</span>, manual therapy for lumbar mobilization, and modalities including heat and electrical stimulation.
+                                <div style="margin-top: 1rem; padding: 0.75rem; background: #F0FDF4; border-radius: 0.5rem; color: #065F46; font-size: 0.875rem;">
+                                    ✓ Confidence: 96% | Word Count: 89 | Duration: 4:12
+                                </div>
+                            </div>
+                            
                             <button class="btn btn-success icon-button" onclick="approveGate(1)" aria-label="Approve transcription and continue">
                                 <span class="icon-label">✓ Approve Transcription</span>
                             </button>
@@ -308,8 +317,27 @@ flowchart TB
                         <div class="hitl-section" id="hitl2" style="display:none;">
                             <h4>Medical Coder Review</h4>
                             <p>Certified medical coder validates the CPT and ICD codes against clinical documentation</p>
-                            <button class="btn btn-success" onclick="approveGate(2)">✓ Approve Codes</button>
-                            <button class="btn btn-warning" onclick="alert('In production, coder could modify codes here')">✎ Modify Codes</button>
+                            
+                            <div class="hitl-content">
+                                <strong style="color: var(--warning); margin-bottom: 0.5rem; display: block;">🏥 AI-Suggested Codes:</strong>
+                                <div style="display: grid; gap: 0.75rem; margin-top: 0.75rem;">
+                                    <div style="padding: 0.75rem; background: #F0FDF4; border-radius: 0.5rem;">
+                                        <span class="hitl-highlight">ICD-10: M54.5</span> - Low back pain
+                                        <div style="font-size: 0.875rem; color: #065F46; margin-top: 0.25rem;">✓ Confidence: 94% | Matches: Work injury, chronic pain, lumbar spine</div>
+                                    </div>
+                                    <div style="padding: 0.75rem; background: #F0FDF4; border-radius: 0.5rem;">
+                                        <span class="hitl-highlight">CPT: 97161</span> - Physical therapy evaluation, low complexity
+                                        <div style="font-size: 0.875rem; color: #065F46; margin-top: 0.25rem;">✓ Confidence: 91% | Appropriate for initial PT eval</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-success icon-button" onclick="approveGate(2)" aria-label="Approve medical codes">
+                                <span class="icon-label">✓ Approve Codes</span>
+                            </button>
+                            <button class="btn btn-warning icon-button" onclick="alert('In production, coder could modify codes here')" aria-label="Modify medical codes">
+                                <span class="icon-label">✎ Modify Codes</span>
+                            </button>
                         </div>
                     </div>
                     
@@ -334,8 +362,34 @@ flowchart TB
                         <div class="hitl-section" id="hitl3" style="display:none;">
                             <h4>Final Compliance Check</h4>
                             <p>Billing specialist performs final review before submission to clearinghouse</p>
-                            <button class="btn btn-success" onclick="approveGate(3)">✓ Approve for Submission</button>
-                            <button class="btn btn-warning" onclick="alert('In production, would send back for revision')">✎ Request Changes</button>
+                            
+                            <div class="hitl-content">
+                                <strong style="color: var(--warning); margin-bottom: 0.5rem; display: block;">📋 Claim Summary for Review:</strong>
+                                <div style="display: grid; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.95rem;">
+                                    <div style="padding: 0.5rem; background: #F8FAFC; border-radius: 0.375rem;">
+                                        <strong>Patient:</strong> <span class="hitl-highlight">PAT-2025-042</span>
+                                    </div>
+                                    <div style="padding: 0.5rem; background: #F8FAFC; border-radius: 0.375rem;">
+                                        <strong>Diagnosis:</strong> <span class="hitl-highlight">M54.5 - Low Back Pain</span>
+                                    </div>
+                                    <div style="padding: 0.5rem; background: #F8FAFC; border-radius: 0.375rem;">
+                                        <strong>Procedure:</strong> <span class="hitl-highlight">97161 - PT Evaluation</span>
+                                    </div>
+                                    <div style="padding: 0.5rem; background: #F8FAFC; border-radius: 0.375rem;">
+                                        <strong>Expected Reimbursement:</strong> <span class="hitl-highlight">$135.00</span>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 1rem; padding: 0.75rem; background: #F0FDF4; border-radius: 0.5rem; color: #065F46; font-size: 0.875rem;">
+                                    ✓ Compliance Check: Passed | Denial Risk: Low (3%) | Work Comp: Verified
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-success icon-button" onclick="approveGate(3)" aria-label="Approve claim for submission">
+                                <span class="icon-label">✓ Approve for Submission</span>
+                            </button>
+                            <button class="btn btn-warning icon-button" onclick="alert('In production, would send back for revision')" aria-label="Request changes to claim">
+                                <span class="icon-label">✎ Request Changes</span>
+                            </button>
                         </div>
                     </div>
                     
