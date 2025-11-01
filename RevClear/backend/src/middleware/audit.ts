@@ -1,8 +1,26 @@
 import { Request, Response, NextFunction } from "express";
-import { promises as fs } from "fs";
-import path from "path";
+import { Logging } from "@google-cloud/logging";
 
-const AUDIT_LOG_FILE = path.join(__dirname, '../../audit.log');
+// Initialize Cloud Logging client
+const logging = new Logging({
+  projectId: process.env.GCP_PROJECT_ID,
+});
+
+// Create a log with HIPAA-compliant audit trail settings
+const log = logging.log('revclear-audit');
+
+// Define severity levels for Cloud Logging
+const SEVERITY = {
+  DEFAULT: 'DEFAULT',
+  DEBUG: 'DEBUG',
+  INFO: 'INFO',
+  NOTICE: 'NOTICE',
+  WARNING: 'WARNING',
+  ERROR: 'ERROR',
+  CRITICAL: 'CRITICAL',
+  ALERT: 'ALERT',
+  EMERGENCY: 'EMERGENCY',
+};
 
 export async function auditLogger(req: Request, res: Response, next: NextFunction) {
   const start = process.hrtime.bigint();
@@ -11,7 +29,8 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
     const end = process.hrtime.bigint();
     const duration = Number(end - start) / 1_000_000; // duration in ms
 
-    const entry = {
+    // Prepare audit entry with HIPAA-required fields
+    const auditEntry = {
       timestamp: new Date().toISOString(),
       user: req.user?.uid || "anonymous",
       method: req.method,
@@ -20,25 +39,52 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
       userAgent: req.headers['user-agent'],
       statusCode: res.statusCode,
       durationMs: duration.toFixed(2),
-      // Add more details as needed, e.g., request body (careful with PHI)
+      // Additional HIPAA audit fields
+      action: `${req.method} ${req.url}`,
+      outcome: res.statusCode < 400 ? 'success' : 'failure',
+      sessionId: req.headers['x-session-id'] || null,
     };
 
-    const logMessage = JSON.stringify(entry);
-
-    // Log to console for local development
-    console.log(`[AUDIT] ${logMessage}`);
-
-    // Append to local audit file
-    try {
-      await fs.appendFile(AUDIT_LOG_FILE, logMessage + '\n');
-    } catch (error) {
-      console.error('Failed to write to audit log file:', error);
+    // Determine severity based on status code
+    let severity = SEVERITY.INFO;
+    if (res.statusCode >= 500) {
+      severity = SEVERITY.ERROR;
+    } else if (res.statusCode >= 400) {
+      severity = SEVERITY.WARNING;
+    } else if (res.statusCode >= 200 && res.statusCode < 300) {
+      severity = SEVERITY.INFO;
     }
 
-    // TODO: Integrate with Cloud Logging for production deployments
-    // if (process.env.NODE_ENV === 'production') {
-    //   sendToCloudLogging(entry);
-    // }
+    // Log to console for local development
+    console.log(`[AUDIT] ${JSON.stringify(auditEntry)}`);
+
+    // Write to Cloud Logging
+    try {
+      const metadata = {
+        severity: severity,
+        resource: {
+          type: 'cloud_run_revision',
+          labels: {
+            service_name: 'revclear-backend',
+            revision_name: process.env.K_REVISION || 'local',
+            location: process.env.GCP_REGION || 'us-central1',
+          },
+        },
+        labels: {
+          environment: process.env.NODE_ENV || 'development',
+          userId: auditEntry.user,
+          httpMethod: req.method,
+          httpStatusCode: res.statusCode.toString(),
+        },
+      };
+
+      const entry = log.entry(metadata, auditEntry);
+      await log.write(entry);
+    } catch (error) {
+      console.error('Failed to write to Cloud Logging:', error);
+      // Don't fail the request if logging fails, but alert monitoring
+      // In production, you might want to send this to a dead letter queue
+    }
   });
 
   next();
