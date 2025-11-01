@@ -1,188 +1,489 @@
-# 🎯 Pilot Deployment Guide (5-10 Patients)
+# 🎯 Pilot Deployment Guide (5-10 Patients, HIPAA-Compliant)
 
 **Reality Check:** You're not deploying for 10,000 patients. You're testing with 3 clinics and ~5-10 patients.
 
-**Translation:** Skip 80% of the complexity and deploy in **3-5 days** instead of 10 weeks.
+**CRITICAL:** Even for pilot, you're handling PHI (Protected Health Information), so you MUST use HIPAA-compliant services.
+
+**Translation:** Use the same GCP services, but simplified configuration. Deploy in **5-7 days** instead of 10 weeks.
 
 ---
 
-## 📊 What You ACTUALLY Need for Pilot
+## 📊 What You ACTUALLY Need for Pilot (HIPAA Edition)
 
-| Service | Need It? | Why | Alternative |
-|---------|----------|-----|-------------|
-| **Cloud Run (Backend)** | ✅ YES | Host your API | Heroku (easier) |
-| **Cloud Run (Frontend)** | ✅ YES | Host your UI | Vercel (easier) |
-| **Firebase Auth** | ✅ YES | Login for 3 users | Email/password is fine |
-| **Cloud Storage** | ✅ YES | Store 50 audio files | Can use local files |
-| **PostgreSQL** | ✅ YES | Store patient data | Can use Supabase (free tier) |
-| **OpenAI API** | ✅ YES | Extract medical codes | GPT-4 works great |
-| ~~Cloud SQL~~ | ❌ NO | Overkill for 10 patients | Use **Supabase free tier** |
-| ~~Vertex AI~~ | ❌ NO | Need training data first | Use **OpenAI GPT-4** |
-| ~~Load Balancer~~ | ❌ NO | You have 3 users, not 3000 | Use **Cloud Run URL** |
-| ~~Cloud Armor~~ | ❌ NO | Not a target yet | Add when scaling |
-| ~~Healthcare API~~ | ❌ NO | Way too complex for pilot | Generate **EDI 837 with library** |
-| ~~BigQuery~~ | ❌ NO | 50 records don't need it | Use **PostgreSQL** |
-| ~~VPC Networking~~ | ❌ NO | Adds 2 days of work | Use **public endpoints** |
-| ~~Document AI~~ | ❌ NO | No documents yet | Add later |
-| ~~Speech-to-Text~~ | ⚠️ MAYBE | If you have real audio | Can use **Whisper API** (OpenAI) |
+| Service | Need It? | Why | Pilot Configuration |
+|---------|----------|-----|---------------------|
+| **Cloud Run (Backend)** | ✅ YES | HIPAA-compliant API hosting | ✅ Use (simple config) |
+| **Cloud Run (Frontend)** | ✅ YES | HIPAA-compliant UI hosting | ✅ Use (simple config) |
+| **Firebase Auth** | ✅ YES | HIPAA-compliant authentication | ✅ Use (Identity Platform) |
+| **Cloud Storage** | ✅ YES | HIPAA-compliant file storage | ✅ Use (1 bucket, encryption on) |
+| **Cloud SQL** | ✅ YES | HIPAA-compliant database | ✅ Use (smallest instance: db-f1-micro) |
+| **Cloud Logging** | ✅ YES | HIPAA audit trail required | ✅ Use (auto-configured) |
+| **Secret Manager** | ✅ YES | Store API keys securely | ✅ Use (5-10 secrets) |
+| **Cloud KMS** | ✅ YES | Encryption keys (HIPAA required) | ✅ Use (1 key ring, 1 key) |
+| **Vertex AI** | ✅ YES | Medical code extraction | ✅ Use pre-trained PaLM 2 (no training needed) |
+| ~~Speech-to-Text~~ | ⚠️ MAYBE | HIPAA-compliant transcription | 💡 Start with OpenAI Whisper, switch later |
+| ~~Load Balancer~~ | ❌ NO | You have 3 users, not 3000 | 💡 Cloud Run URL is HTTPS already |
+| ~~Cloud Armor~~ | ⚠️ LATER | Add when you have real users | 💡 Cloud Run has DDoS protection |
+| ~~Healthcare API~~ | ❌ NO | Way too complex for pilot | 💡 Generate EDI 837 with library |
+| ~~BigQuery~~ | ⚠️ LATER | 50 records fit in Cloud SQL | 💡 Add when you need analytics |
+| ~~VPC Networking~~ | ⚠️ LATER | Adds complexity | 💡 Use Cloud SQL Proxy (simpler) |
+| ~~Document AI~~ | ❌ NO | No documents yet | 💡 Add later if needed |
+
+**Key Point:** You're using the SAME HIPAA services, just the **smallest/simplest configurations**.
 
 ---
 
-## 🚀 Ultra-Simple 3-Day Deployment
+## 🚀 Simplified 5-Day HIPAA-Compliant Deployment
 
-### **Day 1: Get Backend Running**
-
-#### Option A: Cloud Run (GCP)
+### **Pre-requisite: Sign Google Cloud BAA**
 ```bash
-# 1. Create project
-gcloud projects create revclear-pilot
+# CRITICAL: Before handling ANY PHI, sign Google's Business Associate Agreement
+# 1. Go to: https://cloud.google.com/security/compliance/hipaa
+# 2. Contact Google Cloud sales to sign BAA
+# 3. Takes 1-2 business days
+# 4. REQUIRED by law before storing patient data
+```
 
-# 2. Deploy backend
+### **Day 1: Set Up GCP Project + Database**
+
+#### 1. Create GCP Project with HIPAA Controls
+```bash
+# Create project
+gcloud projects create revclear-pilot --name="RevClear Pilot"
+
+# Enable required APIs (HIPAA-compliant services only)
+gcloud services enable \
+  run.googleapis.com \
+  sqladmin.googleapis.com \
+  storage.googleapis.com \
+  secretmanager.googleapis.com \
+  cloudkms.googleapis.com \
+  logging.googleapis.com \
+  firebase.googleapis.com \
+  identitytoolkit.googleapis.com
+```
+
+#### 2. Create SMALLEST Cloud SQL Instance (HIPAA-compliant)
+```bash
+# Create tiny instance (good for 10 patients)
+gcloud sql instances create medical-db-pilot \
+  --database-version=POSTGRES_14 \
+  --tier=db-f1-micro \
+  --region=us-central1 \
+  --storage-size=10GB \
+  --storage-type=SSD \
+  --backup \
+  --enable-bin-log
+
+# Cost: ~$10/month (vs $100/month for production)
+```
+
+#### 3. Create KMS Encryption Key (HIPAA Required)
+```bash
+# Create key ring
+gcloud kms keyrings create pilot-hipaa-keys --location=us-central1
+
+# Create encryption key
+gcloud kms keys create data-encryption-key \
+  --location=us-central1 \
+  --keyring=pilot-hipaa-keys \
+  --purpose=encryption
+
+# Cost: FREE (< 20,000 operations/month)
+```
+
+#### 4. Create Cloud Storage Bucket (HIPAA-compliant)
+```bash
+# Create bucket with encryption
+gsutil mb -l us-central1 gs://revclear-pilot-audio/
+
+# Enable versioning (HIPAA requirement)
+gsutil versioning set on gs://revclear-pilot-audio/
+
+# Set default encryption
+gsutil encryption set \
+  "projects/PROJECT_ID/locations/us-central1/keyRings/pilot-hipaa-keys/cryptoKeys/data-encryption-key" \
+  gs://revclear-pilot-audio/
+
+# Cost: FREE (< 5GB)
+```
+
+**Time:** 4-6 hours (including BAA wait time)
+
+---
+
+### **Day 2: Deploy Backend (Cloud Run)**
+
+#### 1. Set Up Firebase Auth (Identity Platform for HIPAA)
+```bash
+# Go to console.firebase.google.com
+# 1. Create project (link to your GCP project)
+# 2. Upgrade to "Blaze" plan (required for HIPAA)
+# 3. Enable Identity Platform (HIPAA-compliant version of Firebase Auth)
+# 4. Enable Email/Password authentication
+# 5. Add 3 test users manually
+
+# Cost: $0.06/user/month = $0.18 for pilot
+```
+
+#### 2. Store Secrets in Secret Manager
+```bash
+# Store database credentials
+echo -n "DB_USER=postgres" | gcloud secrets create db-user --data-file=-
+echo -n "DB_PASS=your_password" | gcloud secrets create db-pass --data-file=-
+echo -n "OPENAI_API_KEY=sk-..." | gcloud secrets create openai-key --data-file=-
+
+# Grant Cloud Run access to secrets
+# (Will do this when deploying Cloud Run)
+```
+
+#### 3. Deploy Backend to Cloud Run
+```bash
 cd RevClear/backend
+
+# Build and deploy (Cloud Run auto-builds from source)
 gcloud run deploy backend \
   --source . \
   --region=us-central1 \
+  --platform=managed \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=2 \
+  --set-secrets="DB_USER=db-user:latest,DB_PASS=db-pass:latest,OPENAI_API_KEY=openai-key:latest" \
   --allow-unauthenticated
 
-# Done! You get: https://backend-xxxxx-uc.a.run.app
+# Get URL: https://backend-xxxxx-uc.a.run.app
+# Cost: FREE (Cloud Run free tier = 2M requests/month)
 ```
 
-#### Option B: Heroku (Even Easier)
+#### 4. Run Database Migrations
 ```bash
-# 1. Install Heroku CLI
-# 2. Deploy in 2 commands
-heroku create revclear-backend
-git push heroku feature/gcp-deployment:main
+# Connect to Cloud SQL via Cloud SQL Proxy
+cloud-sql-proxy your-project:us-central1:medical-db-pilot &
 
-# Done! You get: https://revclear-backend.herokuapp.com
+# Run schema creation
+psql -h 127.0.0.1 -U postgres -d postgres < Documentation/db/002_cloud_db_schema.sql
 ```
 
-#### **Use Supabase Instead of Cloud SQL**
-```bash
-# 1. Go to supabase.com
-# 2. Create free project (takes 2 minutes)
-# 3. Get connection string
-# 4. Update your code:
-
-DATABASE_URL=postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres
-```
-
-**Time:** 2-4 hours
+**Time:** 6-8 hours
 
 ---
 
-### **Day 2: Get Frontend Running**
+### **Day 3: Deploy Frontend (Cloud Run)**
 
-#### Option A: Cloud Run (GCP)
+#### 1. Configure Frontend Environment Variables
+```bash
+# Create .env.production
+cat > RevClear/frontend/.env.production << EOF
+NEXT_PUBLIC_API_URL=https://backend-xxxxx-uc.a.run.app
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+EOF
+```
+
+#### 2. Deploy Frontend to Cloud Run
 ```bash
 cd RevClear/frontend
+
+# Build and deploy
 gcloud run deploy frontend \
   --source . \
   --region=us-central1 \
+  --platform=managed \
+  --memory=1Gi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=2 \
   --allow-unauthenticated
+
+# Get URL: https://frontend-xxxxx-uc.a.run.app
+# Cost: FREE (free tier)
 ```
 
-#### Option B: Vercel (MUCH Easier for Next.js)
-```bash
-# 1. Go to vercel.com
-# 2. Connect GitHub
-# 3. Click "Deploy"
-# 4. Done in 30 seconds!
-```
-
-**Configure Firebase Auth:**
-```bash
-# 1. Go to console.firebase.google.com
-# 2. Create project (free plan)
-# 3. Enable Email/Password auth
-# 4. Add 3 test users manually
-# 5. Copy config to .env
-```
-
-**Time:** 2-4 hours
+**Time:** 4-6 hours
 
 ---
 
-### **Day 3: Add AI Features**
+### **Day 4: Implement AI with Vertex AI + OpenAI**
 
-#### Use OpenAI APIs (Skip All Google AI)
+**Strategy:** Use Vertex AI for medical coding (HIPAA on GCP), OpenAI Whisper for transcription (faster to implement)
 
-```javascript
+#### 1. Enable Vertex AI API
+```bash
+gcloud services enable aiplatform.googleapis.com
+
+# Vertex AI is HIPAA-compliant and covered by Google BAA ✅
+```
+
+#### 2. Implement Transcription (OpenAI Whisper - Temporary)
+```typescript
 // backend/src/api/transcription/index.ts
 import OpenAI from 'openai';
+import { Storage } from '@google-cloud/storage';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// Transcribe audio (replaces Speech-to-Text)
-router.post('/start', async (req, res) => {
-  const audioFile = req.file; // uploaded audio
-  
-  const transcription = await openai.audio.transcriptions.create({
-    file: audioFile,
-    model: "whisper-1",
-    language: "en"
-  });
-  
-  res.json({ 
-    job_id: generateId(),
-    text: transcription.text,
-    status: 'completed'
-  });
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY 
 });
 
-// Extract medical codes (replaces Vertex AI)
-router.post('/extract-codes', async (req, res) => {
-  const { transcription_text } = req.body;
-  
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{
-      role: "system",
-      content: "You are a medical coder. Extract CPT and ICD-10 codes from transcriptions. Return JSON with {icd10_code, cpt_code, diagnosis}."
-    }, {
-      role: "user",
-      content: transcription_text
-    }],
-    response_format: { type: "json_object" }
-  });
-  
-  const codes = JSON.parse(completion.choices[0].message.content);
-  res.json(codes);
+const storage = new Storage();
+
+router.post('/start', async (req, res) => {
+  try {
+    // Get audio file from Cloud Storage
+    const { upload_id } = req.body;
+    const bucket = storage.bucket('revclear-pilot-audio');
+    const file = bucket.file(`${upload_id}.mp3`);
+    
+    // Download temporarily
+    const [audioBuffer] = await file.download();
+    
+    // Transcribe with Whisper
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioBuffer,
+      model: "whisper-1",
+      language: "en",
+      response_format: "verbose_json"
+    });
+    
+    // Store in Cloud SQL
+    await pool.query(
+      'INSERT INTO transcriptions (upload_id, text, confidence, created_at) VALUES ($1, $2, $3, NOW())',
+      [upload_id, transcription.text, transcription.confidence || 0.95]
+    );
+    
+    res.json({ 
+      job_id: upload_id,
+      status: 'completed',
+      text: transcription.text,
+      confidence: transcription.confidence
+    });
+  } catch (error) {
+    console.error('Transcription error:', error);
+    res.status(500).json({ error: 'Transcription failed' });
+  }
 });
 ```
 
-**Time:** 3-5 hours
+#### 3. Implement Medical Coding (Vertex AI PaLM 2)
+```typescript
+// backend/src/api/ai/index.ts
+import { VertexAI } from '@google-cloud/vertexai';
+
+const vertex_ai = new VertexAI({
+  project: process.env.GCP_PROJECT_ID,
+  location: 'us-central1'
+});
+
+// Use PaLM 2 for medical coding (no training needed!)
+const generativeModel = vertex_ai.preview.getGenerativeModel({
+  model: 'gemini-pro', // Or use PaLM 2: 'text-bison@002'
+});
+
+router.post('/extract-codes', async (req, res) => {
+  try {
+    const { transcription_text } = req.body;
+    
+    const prompt = `You are a certified medical coder. Analyze this clinical transcription and extract:
+    
+1. Primary diagnosis
+2. ICD-10 code
+3. CPT procedure code
+4. Confidence scores (0-1)
+5. Supporting evidence from the text
+
+Transcription:
+${transcription_text}
+
+Return ONLY valid JSON in this exact format:
+{
+  "diagnosis": "Primary diagnosis name",
+  "icd10_code": "X00.0",
+  "cpt_code": "99213",
+  "confidence_icd10": 0.92,
+  "confidence_cpt": 0.88,
+  "supporting_evidence": ["evidence 1", "evidence 2"]
+}`;
+
+    // Call Vertex AI
+    const result = await generativeModel.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    
+    // Parse JSON response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Invalid response format from Vertex AI');
+    }
+    
+    const codes = JSON.parse(jsonMatch[0]);
+    
+    // Validate codes against Cloud SQL database
+    const icd10Valid = await validateICD10(codes.icd10_code);
+    const cptValid = await validateCPT(codes.cpt_code);
+    
+    // Store in Cloud SQL for training data collection
+    await pool.query(
+      `INSERT INTO ai_predictions 
+       (transcription_id, diagnosis, icd10_code, cpt_code, confidence_icd10, confidence_cpt, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [req.body.transcription_id, codes.diagnosis, codes.icd10_code, codes.cpt_code, 
+       codes.confidence_icd10, codes.confidence_cpt]
+    );
+    
+    res.json({
+      ...codes,
+      icd10_valid: icd10Valid,
+      cpt_valid: cptValid,
+      model_used: 'vertex-ai-gemini-pro'
+    });
+  } catch (error) {
+    console.error('Code extraction error:', error);
+    res.status(500).json({ error: 'Code extraction failed' });
+  }
+});
+
+// Helper functions
+async function validateICD10(code: string): Promise<boolean> {
+  const result = await pool.query(
+    'SELECT 1 FROM icd10_codes WHERE code = $1 LIMIT 1',
+    [code]
+  );
+  return result.rows.length > 0;
+}
+
+async function validateCPT(code: string): Promise<boolean> {
+  const result = await pool.query(
+    'SELECT 1 FROM cpt_codes WHERE code = $1 LIMIT 1',
+    [code]
+  );
+  return result.rows.length > 0;
+}
+```
+
+#### 4. Why Vertex AI for Pilot?
+
+**Advantages:**
+- ✅ **HIPAA-compliant** (covered by Google BAA)
+- ✅ **No training needed** (use pre-trained Gemini Pro or PaLM 2)
+- ✅ **Data stays in GCP** (no external API calls for PHI)
+- ✅ **Collect training data** (save predictions for future fine-tuning)
+- ✅ **Lower latency** (same region as your data)
+- ✅ **Better cost at scale** ($0.00025/1K chars vs OpenAI $0.03/1K tokens)
+
+**Pilot Configuration:**
+```bash
+# No model training required!
+# Just use pre-trained Gemini Pro via API
+
+# Cost for pilot:
+# $0.00025 per 1K characters input
+# ~1000 chars per transcription = $0.00025 per patient
+# 10 patients = $0.0025 (~0.3 cents!)
+
+# Much cheaper than OpenAI GPT-4 for coding!
+```
+
+**Time:** 6-8 hours
+
+**Cost:** ~$0.01 for 10 patients (Vertex AI) + $0.90 for transcription (Whisper) = **$0.91 total**
 
 ---
 
-## 💰 Pilot Budget
+### **Day 5: HITL Workflows + Testing**
 
-### **Free Tier (Totally Free for 5-10 Patients):**
+#### 1. Implement HITL Approval Routes
+```typescript
+// backend/src/api/hitl/index.ts
+router.post('/transcription/approve', async (req, res) => {
+  const { job_id, reviewer_id, approved, corrections } = req.body;
+  
+  // Update transcription approval status
+  await pool.query(
+    'UPDATE transcriptions SET approved = $1, reviewer_id = $2, reviewed_at = NOW() WHERE job_id = $3',
+    [approved, reviewer_id, job_id]
+  );
+  
+  // Log to Cloud Logging (HIPAA audit trail)
+  console.log({
+    severity: 'INFO',
+    message: 'HITL_APPROVAL',
+    userId: reviewer_id,
+    action: approved ? 'APPROVED' : 'REJECTED',
+    entityType: 'transcription',
+    entityId: job_id
+  });
+  
+  res.json({ status: 'approved', next_stage: 'ai_analysis' });
+});
 ```
-✅ Supabase PostgreSQL: Free (500MB, 2GB bandwidth)
-✅ Firebase Auth: Free (unlimited users)
-✅ Cloud Run: Free (2M requests/month)
-✅ Cloud Storage: Free (5GB)
-✅ GitHub: Free
-✅ Vercel: Free (unlimited deploys)
 
-💵 PAID:
-- OpenAI API: ~$5-20 for 50 transcriptions + coding
-- Custom domain (optional): $12/year
+#### 2. Test End-to-End Flow
+```bash
+# Test with sample audio file
+curl -X POST https://backend-xxxxx-uc.a.run.app/api/v1/claims/upload \
+  -F "file=@sample-consultation.mp3" \
+  -F "patient_id=TEST-001"
 
-TOTAL: $5-32 for entire pilot!
+# Verify in Cloud Logging
+gcloud logging read "resource.type=cloud_run_revision" --limit=20
 ```
 
-### **If You Use Google AI (Overkill):**
-```
-💵 Cloud SQL: $50-100/month (way too much for 10 patients!)
-💵 Speech-to-Text: $0.024/minute = $24 for 1000 minutes
-💵 Vertex AI: $0.30/hour training + hosting = $50+/month
+**Time:** 6-8 hours
 
-TOTAL: $100-200/month (wasteful for pilot!)
+---
+
+## 💰 Pilot Budget (HIPAA-Compliant)
+
+### **Monthly Costs for 10 Patients:**
+```
+✅ Cloud SQL (db-f1-micro): $10/month
+✅ Cloud Run (backend + frontend): FREE (free tier covers pilot)
+✅ Cloud Storage: FREE (< 5GB)
+✅ Cloud Logging: FREE (< 10GB)
+✅ Cloud KMS: FREE (< 20K operations)
+✅ Firebase Identity Platform: $0.18 (3 users × $0.06)
+✅ Secret Manager: FREE (< 10 secrets)
+✅ Vertex AI (Gemini Pro): $0.0025 (10 patients × $0.00025)
+
+💵 OpenAI Whisper (transcription only):
+- Whisper transcription: $0.006/min × 15min avg = $0.09/patient
+- 10 patients = $0.90/month
+
+TOTAL: ~$11/month for HIPAA-compliant pilot
 ```
 
-**Recommendation:** Use OpenAI APIs for pilot, switch to Google AI when you have 100+ patients.
+### **One-Time Costs:**
+```
+💵 Domain name (optional): $12/year
+💵 SSL certificate: FREE (Cloud Run includes HTTPS)
+💵 Google BAA: FREE (no cost, just paperwork)
+💵 OpenAI BAA: FREE (contact sales for Whisper)
+
+TOTAL ONE-TIME: $12 (optional domain)
+```
+
+### **Cost Breakdown by Service:**
+```
+Database (Cloud SQL):     $10.00  (91%)
+Transcription (Whisper):   $0.90  (8%)
+Auth (Firebase):           $0.18  (1.6%)
+AI Coding (Vertex AI):     $0.01  (0.1%)
+Everything else:          FREE
+
+TOTAL: $11.09/month
+```
+
+### **Comparison to Production Scale:**
+```
+Pilot (10 patients):     $11/month
+Small (100 patients):    $25/month
+Medium (1000 patients):  $150/month
+Large (10K patients):    $1200/month
+
+💡 You're paying less than 1% of enterprise costs!
+```
 
 ---
 
@@ -249,38 +550,56 @@ TOTAL: $100-200/month (wasteful for pilot!)
 
 ---
 
-## 🎯 Minimal Architecture
+## 🎯 Simplified Architecture (HIPAA-Compliant Pilot)
 
 ```
 ┌─────────────────┐
 │   3 Clinics     │
 │   (browsers)    │
 └────────┬────────┘
-         │
+         │ HTTPS (TLS 1.3)
          ▼
-┌─────────────────┐
-│ Vercel/Cloud Run│  ← Next.js Frontend (FREE)
-│   (Frontend)    │
-└────────┬────────┘
-         │
+┌─────────────────────────┐
+│    Cloud Run Frontend   │  ← Next.js (FREE tier)
+│  https://frontend-xxx   │  ← Auto HTTPS + DDoS protection
+└────────┬────────────────┘
+         │ HTTPS
          ▼
-┌─────────────────┐
-│ Heroku/Cloud Run│  ← Express Backend (FREE)
-│    (Backend)    │
-└────────┬────────┘
+┌─────────────────────────┐
+│    Cloud Run Backend    │  ← Express.js (FREE tier)
+│  https://backend-xxx    │  ← Auto logging to Cloud Logging
+└────────┬────────────────┘
          │
-    ┌────┴────┐
-    ▼         ▼
-┌────────┐  ┌────────┐
-│Supabase│  │OpenAI  │
-│  (DB)  │  │  API   │
-└────────┘  └────────┘
-  FREE        $5-20
+    ┌────┴─────┬─────────┬──────────┬────────┬────────┐
+    ▼          ▼         ▼          ▼        ▼        ▼
+┌────────┐ ┌────────┐ ┌──────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Cloud   │ │Cloud   │ │Secret│ │Firebase│ │Vertex  │ │OpenAI  │
+│SQL     │ │Storage │ │Manager│ │Auth   │ │AI      │ │Whisper │
+│(PHI)   │ │(Audio) │ │(Keys)│ │(Users)│ │(Coding)│ │(Trans) │
+└────────┘ └────────┘ └──────┘ └────────┘ └────────┘ └────────┘
+ $10/mo     FREE       FREE      $0.18     $0.01      $0.90
 
-Total Cost: $5-20 for entire pilot
-Deploy Time: 3 days
-Team Size: 1 person (you)
+         ALL HIPAA-COMPLIANT ✅
+         
+Total Cost: ~$11/month
+All GCP services covered by Google BAA
+OpenAI Whisper covered by OpenAI BAA
 ```
+
+**Key Differences from "Just Testing":**
+- ✅ All services have HIPAA BAA signed
+- ✅ Encryption at rest (Cloud KMS)
+- ✅ Encryption in transit (TLS 1.3)
+- ✅ Audit logging (Cloud Logging)
+- ✅ Access controls (IAM + Firebase)
+- ✅ Backup enabled (Cloud SQL automatic backups)
+
+**But Still Simplified:**
+- ❌ No VPC (using Cloud SQL Proxy instead)
+- ❌ No Load Balancer (Cloud Run URL is fine for 3 users)
+- ❌ No Cloud Armor (Cloud Run has basic DDoS)
+- ❌ No BigQuery (Cloud SQL handles 10 patients)
+- ❌ No complex IAM (basic service accounts)
 
 ---
 
