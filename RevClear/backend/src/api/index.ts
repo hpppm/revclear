@@ -12,6 +12,7 @@ import mlRoutes from "./ml";
 import codesRoutes from "./codes";
 import fhirRoutes from "./fhir";
 import ediRoutes from "./edi";
+import eraRoutes from "./era";
 import pubsubRoutes from "./pubsub";
 import clearinghouseRoutes from "./clearinghouse";
 import analyticsRoutes from "./analytics";
@@ -39,6 +40,7 @@ export function registerRoutes(app: Express) {
   // Healthcare standards routes
   app.use("/api/v1/fhir", fhirRoutes);
   app.use("/api/v1/edi", ediRoutes);
+  app.use("/api/v1/era", eraRoutes);  // 835 ERA denial feedback
   
   // Integration routes
   app.use("/api/v1/pubsub", pubsubRoutes);

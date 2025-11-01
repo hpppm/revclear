@@ -79,64 +79,170 @@ resource "google_project_iam_audit_config" "hipaa_audit_config" {
   }
 }
 
-# Log Sink for Long-term Storage (7 years HIPAA requirement)
-resource "google_logging_project_sink" "audit_log_sink" {
-  name        = "hipaa-audit-logs-${var.environment}"
-  destination = "storage.googleapis.com/${google_storage_bucket.audit_logs.name}"
+# ==============================================================================
+# Audit Logs (7-Year Retention for HIPAA Compliance)
+# ==============================================================================
+# HIPAA § 164.312(b) requires audit logs for ALL PHI access for 7 years
+# This is separate from operational logs (90 days)
+
+# Log Sink for HIPAA Audit Logs (PHI access events only)
+resource "google_logging_project_sink" "hipaa_audit_logs" {
+  name        = "hipaa-audit-logs-7yr-${var.environment}"
+  destination = "storage.googleapis.com/${google_storage_bucket.hipaa_audit_logs.name}"
   
+  # Only capture audit logs related to PHI access
   filter = <<-EOT
-    logName:"cloudaudit.googleapis.com" OR
-    logName:"data_access" OR
-    logName:"activity"
+    protoPayload.serviceName="cloudaudit.googleapis.com" AND (
+      protoPayload.methodName:"storage.objects" OR
+      protoPayload.methodName:"cloudsql.instances" OR
+      protoPayload.methodName:"bigquery.tables" OR
+      protoPayload.methodName:"healthcare" OR
+      resource.labels.service_name="run.googleapis.com"
+    ) AND (
+      protoPayload.authenticationInfo.principalEmail!="" OR
+      protoPayload.authenticationInfo.serviceAccountEmail!=""
+    )
   EOT
   
   unique_writer_identity = true
 }
 
-# Audit Logs Storage Bucket (7-year retention)
-resource "google_storage_bucket" "audit_logs" {
-  name          = "${var.project_id}-audit-logs-${var.environment}"
+# HIPAA Audit Logs Storage Bucket (7-year retention)
+resource "google_storage_bucket" "hipaa_audit_logs" {
+  name          = "${var.project_id}-hipaa-audit-logs-${var.environment}"
   location      = var.region
-  force_destroy = false
+  force_destroy = false  # Prevent accidental deletion
   
   uniform_bucket_level_access = true
   
   versioning {
-    enabled = true
+    enabled = true  # Protect against accidental overwrites
   }
   
   encryption {
     default_kms_key_name = google_kms_crypto_key.audit_encryption.id
   }
   
+  # Storage class transitions (cost optimization)
   lifecycle_rule {
     condition {
-      age = 2555  # 7 years in days (HIPAA requirement)
+      age = 30  # After 30 days
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"  # $0.01/GB/month
+    }
+  }
+  
+  lifecycle_rule {
+    condition {
+      age = 365  # After 1 year
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "COLDLINE"  # $0.004/GB/month
+    }
+  }
+  
+  lifecycle_rule {
+    condition {
+      age = 1825  # After 5 years
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "ARCHIVE"  # $0.0012/GB/month
+    }
+  }
+  
+  # HIPAA requirement: 7-year retention
+  lifecycle_rule {
+    condition {
+      age = 2555  # 7 years in days
     }
     action {
       type = "Delete"
     }
   }
+
+  # Additional protection: Retention policy prevents deletion before 7 years
+  retention_policy {
+    retention_period = 220752000  # 7 years in seconds (2555 days * 86400)
+    is_locked        = var.lock_audit_retention  # Set to true in production
+  }
+
+  labels = {
+    purpose      = "hipaa_audit_logs"
+    retention    = "7_years"
+    phi_category = "access_logs"
+    compliance   = "hipaa"
+  }
+}
+
+# Grant log writer access to HIPAA audit bucket
+resource "google_storage_bucket_iam_member" "hipaa_audit_log_writer" {
+  bucket = google_storage_bucket.hipaa_audit_logs.name
+  role   = "roles/storage.objectCreator"
+  member = google_logging_project_sink.hipaa_audit_logs.writer_identity
+}
+
+# ==============================================================================
+# Operational Logs (90-Day Retention)
+# ==============================================================================
+# Application logs, error logs, performance metrics (non-PHI)
+
+# Log Sink for Operational Logs
+resource "google_logging_project_sink" "operational_logs" {
+  name        = "operational-logs-90d-${var.environment}"
+  destination = "storage.googleapis.com/${google_storage_bucket.operational_logs.name}"
   
-  lifecycle_rule {
-    condition {
-      age = 30
-    }
-    action {
-      type          = "SetStorageClass"
-      storage_class = "NEARLINE"
-    }
+  # Application logs, errors, performance (exclude audit logs)
+  filter = <<-EOT
+    (
+      resource.type="cloud_run_revision" OR
+      resource.type="cloud_sql_database" OR
+      resource.type="bigquery_resource"
+    ) AND NOT (
+      protoPayload.serviceName="cloudaudit.googleapis.com"
+    )
+  EOT
+  
+  unique_writer_identity = true
+}
+
+# Operational Logs Storage Bucket (90-day retention)
+resource "google_storage_bucket" "operational_logs" {
+  name          = "${var.project_id}-operational-logs-${var.environment}"
+  location      = var.region
+  force_destroy = true  # Can be deleted safely
+  
+  uniform_bucket_level_access = true
+  
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.audit_encryption.id
   }
   
+  # Keep in STANDARD storage (frequently accessed)
   lifecycle_rule {
     condition {
-      age = 365
+      age = 90  # Delete after 90 days
     }
     action {
-      type          = "SetStorageClass"
-      storage_class = "COLDLINE"
+      type = "Delete"
     }
   }
+
+  labels = {
+    purpose      = "operational_logs"
+    retention    = "90_days"
+    phi_category = "none"
+  }
+}
+
+# Grant log writer access to operational logs bucket
+resource "google_storage_bucket_iam_member" "operational_log_writer" {
+  bucket = google_storage_bucket.operational_logs.name
+  role   = "roles/storage.objectCreator"
+  member = google_logging_project_sink.operational_logs.writer_identity
 }
 
 # Grant log writer access to audit bucket
@@ -276,26 +382,44 @@ variable "enable_security_command_center" {
   default     = false
 }
 
-# Outputs
-output "audit_log_bucket" {
-  description = "Bucket for HIPAA audit logs (7-year retention)"
-  value       = google_storage_bucket.audit_logs.name
+variable "lock_audit_retention" {
+  description = "Lock 7-year retention policy (cannot be unlocked once set). Set to true in production."
+  type        = bool
+  default     = false
 }
 
-output "audit_log_sink_writer" {
-  description = "Service account for audit log writer"
-  value       = google_logging_project_sink.audit_log_sink.writer_identity
+# Outputs
+output "hipaa_audit_log_bucket" {
+  description = "Bucket for HIPAA audit logs (7-year retention)"
+  value       = google_storage_bucket.hipaa_audit_logs.name
+}
+
+output "operational_log_bucket" {
+  description = "Bucket for operational logs (90-day retention)"
+  value       = google_storage_bucket.operational_logs.name
+}
+
+output "hipaa_audit_log_sink_writer" {
+  description = "Service account for HIPAA audit log writer"
+  value       = google_logging_project_sink.hipaa_audit_logs.writer_identity
+}
+
+output "operational_log_sink_writer" {
+  description = "Service account for operational log writer"
+  value       = google_logging_project_sink.operational_logs.writer_identity
 }
 
 output "hipaa_compliance_status" {
   description = "HIPAA compliance configuration status"
   value = {
-    audit_logging_enabled        = true
-    encryption_at_rest_enabled  = true
+    audit_logging_enabled         = true
+    hipaa_audit_retention_years   = 7
+    operational_log_retention_days = 90
+    encryption_at_rest_enabled    = true
     encryption_in_transit_enabled = true
-    log_retention_years         = 7
-    key_rotation_days           = 90
-    dlp_scanning_enabled        = true
-    security_monitoring_enabled = var.enable_security_command_center
+    key_rotation_days             = 90
+    dlp_scanning_enabled          = true
+    security_monitoring_enabled   = var.enable_security_command_center
+    retention_policy_locked       = var.lock_audit_retention
   }
 }

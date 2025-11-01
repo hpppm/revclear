@@ -265,7 +265,7 @@ flowchart TB
 | **VPC** | Network isolation | Private subnets |
 | **Cloud NAT** | Outbound internet | No public IPs on VMs |
 | **Firewall Rules** | Access control | Deny by default |
-| **VPC Service Controls** | Data perimeter | Prevent data exfiltration |
+| **VPC Service Controls (VPCSC)** | PHI data perimeter | Security perimeter blocks data exfiltration |
 | **Private Service Connect** | Cloud SQL access | No public endpoints |
 
 **Security Posture:**
@@ -273,8 +273,45 @@ flowchart TB
 - ✅ Private connectivity only
 - ✅ Egress control (Cloud NAT)
 - ✅ Ingress restricted (Load Balancer only)
+- ✅ **VPC-SC perimeter protects all PHI-containing services**
 
-**Terraform:** `terraform/networking.tf`
+**VPC Service Controls Implementation:**
+
+RevClear uses VPC Service Controls to create a security perimeter around all GCP services that process Protected Health Information (PHI). This prevents accidental or malicious data exfiltration.
+
+**Protected Services** (inside security perimeter):
+1. 🪣 **Cloud Storage** - Audio files, ERA files, documents
+2. 🗄️ **Cloud SQL** - Patient records, claims data
+3. 📊 **BigQuery** - Analytics, ML training data
+4. 🔐 **Secret Manager** - API keys, DB passwords
+5. 🤖 **Vertex AI** - Coding models (fine-tuned on PHI)
+6. 📝 **Cloud Logging** - Audit logs containing PHI
+
+**Access Requirements** (who can access perimeter):
+- ✅ US-only access (geo-restriction for HIPAA compliance)
+- ✅ Corporate network OR BeyondCorp-managed devices
+- ✅ Authorized service accounts only
+
+**Security Benefits:**
+- 🚫 Blocks `gsutil cp` to external buckets
+- 🚫 Prevents copying Cloud SQL data outside perimeter
+- 🚫 Stops BigQuery export to unauthorized projects
+- 🚫 Denies access from non-US regions
+- ✅ Allows legitimate API calls within perimeter
+- ✅ Permits egress to external services (OpenAI, clearinghouses)
+
+**Monitoring:**
+- Real-time alerts for VPC-SC violation attempts
+- Cloud Logging captures all blocked requests
+- PagerDuty notifications for security team
+- Monthly audit of access patterns
+
+**Deployment Strategy:**
+1. **Phase 1 (Pilot)**: Dry-run mode (logs violations, doesn't block)
+2. **Phase 2 (Production)**: Enforced mode after 2-week validation period
+3. **Phase 3 (Hardening)**: Tighten access levels based on usage patterns
+
+**Terraform:** `terraform/networking.tf`, `terraform/vpc-service-controls.tf`
 
 ---
 
