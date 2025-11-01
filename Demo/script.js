@@ -108,6 +108,12 @@
         }
 
         function startDemo() {
+            const startBtn = event.target;
+            
+            // Tip 41: Add loading state to button
+            startBtn.classList.add('is-loading');
+            startBtn.disabled = true;
+            
             currentStep = 1;
             updateProgress();
 
@@ -207,8 +213,9 @@
                 // Show learning feedback
                 const hitl1 = document.getElementById('hitl1');
                 const button = event.target;
-                button.innerHTML = '✓ Approved! AI Learning...';
-                button.style.background = 'var(--success)';
+                
+                // Tip 41: Add loading state to button
+                button.classList.add('is-loading');
                 button.disabled = true;
                 
                 // HITL Gate 1: Approve transcription
@@ -254,7 +261,8 @@
                         }
                     );
                     
-                    hitl1.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Approved</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 System learning from your approval to improve future transcriptions</p></div>';
+                    // Tip 13: Use success-message class for positive feedback
+                    hitl1.innerHTML = '<div class="success-message"><strong>Approved</strong><p style="color: #065F46; margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 System learning from your approval to improve future transcriptions</p></div>';
                 }, 500);
 
                 updateStepStatus('step3', 'complete');
@@ -378,7 +386,8 @@
                         }
                     );
                     
-                    hitl2.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Codes Validated</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 AI model updated with your validation to improve future code suggestions</p></div>';
+                    // Tip 13: Use success-message class for positive feedback
+                    hitl2.innerHTML = '<div class="success-message"><strong>Codes Validated</strong><p style="color: #065F46; margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 AI model updated with your validation to improve future code suggestions</p></div>';
                 }, 500);
 
                 updateStepStatus('step5', 'complete');
@@ -439,8 +448,9 @@
                 // Show learning feedback
                 const hitl3 = document.getElementById('hitl3');
                 const button = event.target;
-                button.innerHTML = '✓ Approved! AI Learning...';
-                button.style.background = 'var(--success)';
+                
+                // Tip 41: Add loading state to button
+                button.classList.add('is-loading');
                 button.disabled = true;
                 
                 // HITL Gate 3: Final billing approval
@@ -495,7 +505,8 @@
                         }
                     );
                     
-                    hitl3.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Ready for Submission</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 Final approval recorded. System optimizing submission process based on historical success rates</p></div>';
+                    // Tip 13: Use success-message class for positive feedback
+                    hitl3.innerHTML = '<div class="success-message"><strong>Ready for Submission</strong><p style="color: #065F46; margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 Final approval recorded. System optimizing submission process based on historical success rates</p></div>';
                 }, 500);
 
                 updateStepStatus('step7', 'complete');

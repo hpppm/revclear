@@ -263,8 +263,12 @@ flowchart TB
                         <div class="hitl-section" id="hitl1" style="display:none;">
                             <h4>Review and Correct Transcription</h4>
                             <p>Medical professional reviews the AI-generated transcription for accuracy</p>
-                            <button class="btn btn-success" onclick="approveGate(1)">✓ Approve Transcription</button>
-                            <button class="btn btn-warning" onclick="alert('In production, this would allow editing the transcription')">✎ Request Corrections</button>
+                            <button class="btn btn-success icon-button" onclick="approveGate(1)" aria-label="Approve transcription and continue">
+                                <span class="icon-label">✓ Approve Transcription</span>
+                            </button>
+                            <button class="btn btn-warning icon-button" onclick="alert('In production, this would allow editing the transcription')" aria-label="Request corrections to transcription">
+                                <span class="icon-label">✎ Request Corrections</span>
+                            </button>
                         </div>
                     </div>
                     
