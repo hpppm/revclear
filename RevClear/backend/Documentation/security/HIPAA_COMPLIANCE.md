@@ -168,7 +168,51 @@ All users and services authenticate via Firebase Auth and IAM.
 | **Cloud Run SA**      | Invokes Cloud SQL, Cloud Functions, Logging |
 | **Cloud Function SA** | Writes to Cloud SQL and Logging only        |
 
-#### Create Role and Bind Permissions
+#### 5.1 Automated IAM Security Hardening
+
+**IMPLEMENTED:** IAM Recommender Response Playbook for automatic permission management
+
+The system uses Google Cloud's IAM Recommender to automatically identify and remove excess permissions, ensuring least-privilege access per HIPAA §164.308(a)(3) and §164.308(a)(4).
+
+**Key Features:**
+- **Automatic Detection**: Scans for permissions unused for 90+ days
+- **Over-Provisioning Alerts**: Identifies service accounts with excessive permissions
+- **Automated Remediation**: Removes unused permissions via Security Command Center playbooks
+- **Audit Trail**: All changes logged to BigQuery `iam_audit_analytics.permission_removals`
+
+**Implementation:**
+```bash
+# Custom IAM role created with Terraform:
+# - terraform/iam-recommender.tf
+# - Service Account: iam-recommender-playbook@PROJECT_ID.iam.gserviceaccount.com
+# - Permissions: resourcemanager.organizations.setIamPolicy + recommender APIs
+
+# Enable in Security Command Center:
+# 1. Go to: Security Command Center > Response > Playbooks
+# 2. Search: "IAM Recommender Response"
+# 3. Enable playbook and configure Workload Identity
+# 4. Set remediation_mode to "Automatic" (optional)
+```
+
+**Monitoring:**
+- **Pub/Sub Topic**: `iam-permission-changes` (real-time notifications)
+- **BigQuery Analytics**: `iam_audit_analytics.permission_removals` (historical analysis)
+- **Cloud Logging Sink**: `iam-permission-removals` (audit trail)
+
+**Compliance Mapping:**
+- HIPAA §164.308(a)(3) - Workforce Clearance Procedures
+- HIPAA §164.308(a)(4) - Information Access Management
+- HIPAA §164.312(a)(1) - Unique User Identification
+- HIPAA §164.308(a)(1)(ii)(D) - Information System Activity Review
+
+**Security Benefits:**
+- ✅ Reduces attack surface by removing unused permissions
+- ✅ Prevents privilege creep over time
+- ✅ Enforces least-privilege access automatically
+- ✅ Provides audit trail for compliance reviews
+- ✅ Alerts on suspicious permission usage patterns
+
+#### 5.2 Create Role and Bind Permissions
 
 1.  **Create service accounts:**
 
@@ -176,6 +220,8 @@ All users and services authenticate via Firebase Auth and IAM.
         gcloud iam service-accounts create api-backend --display-name="Cloud Run Backend"
 
     gcloud iam service-accounts create ai-functions --display-name="AI Cloud Functions"
+    
+    gcloud iam service-accounts create iam-recommender-playbook --display-name="IAM Recommender Automation"
 
     ```
 
