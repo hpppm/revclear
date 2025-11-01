@@ -211,10 +211,6 @@
                 button.style.background = 'var(--success)';
                 button.disabled = true;
                 
-                setTimeout(() => {
-                    hitl1.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Approved</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 System learning from your approval to improve future transcriptions</p></div>';
-                }, 500);
-                
                 // HITL Gate 1: Approve transcription
                 logApiCall(
                     'POST',
@@ -231,6 +227,35 @@
                         next_stage: 'ai_analysis'
                     }
                 );
+                
+                setTimeout(() => {
+                    // Send feedback to ML training pipeline
+                    logApiCall(
+                        'POST',
+                        '/api/v1/ml/feedback/transcription',
+                        'Send validation feedback to Vertex AI training pipeline',
+                        {
+                            job_id: 'trans_456abc',
+                            audio_file: 'gs://clinic-audio/2025/10/consultation_20251030.mp3',
+                            transcription: 'Patient presents with persistent cough for two weeks...',
+                            validation: {
+                                approved: true,
+                                accuracy_score: 0.98,
+                                corrections_made: 0,
+                                reviewer_confidence: 'high'
+                            },
+                            training_label: 'positive'
+                        },
+                        {
+                            feedback_id: 'fb_trans_001',
+                            stored_in_bigquery: 'ml_training.transcription_feedback',
+                            model_retrain_triggered: false,
+                            training_queue_position: 47
+                        }
+                    );
+                    
+                    hitl1.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Approved</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 System learning from your approval to improve future transcriptions</p></div>';
+                }, 500);
 
                 updateStepStatus('step3', 'complete');
                 currentStep = 4;
@@ -299,10 +324,6 @@
                 button.style.background = 'var(--success)';
                 button.disabled = true;
                 
-                setTimeout(() => {
-                    hitl2.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Codes Validated</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 AI model updated with your validation to improve future code suggestions</p></div>';
-                }, 500);
-                
                 // HITL Gate 2: Approve medical codes
                 logApiCall(
                     'POST',
@@ -320,6 +341,45 @@
                         next_stage: 'edi_generation'
                     }
                 );
+                
+                setTimeout(() => {
+                    // Send code validation feedback to ML training
+                    logApiCall(
+                        'POST',
+                        '/api/v1/ml/feedback/coding',
+                        'Send code validation feedback to Vertex AI for model improvement',
+                        {
+                            claim_id: 'CLM-2025-10-30-001',
+                            transcription_text: 'Patient presents with persistent cough...',
+                            ai_suggested_codes: {
+                                icd10: 'J20.9',
+                                cpt: '99213',
+                                confidence_icd10: 0.92,
+                                confidence_cpt: 0.88
+                            },
+                            coder_approved_codes: {
+                                icd10: 'J20.9',
+                                cpt: '99213',
+                                modifications: []
+                            },
+                            validation: {
+                                icd10_match: true,
+                                cpt_match: true,
+                                training_label: 'correct',
+                                coder_confidence: 'high'
+                            }
+                        },
+                        {
+                            feedback_id: 'fb_code_001',
+                            stored_in_bigquery: 'ml_training.coding_feedback',
+                            model_accuracy_updated: true,
+                            current_model_accuracy: 0.89,
+                            training_queue_position: 23
+                        }
+                    );
+                    
+                    hitl2.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Codes Validated</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 AI model updated with your validation to improve future code suggestions</p></div>';
+                }, 500);
 
                 updateStepStatus('step5', 'complete');
                 currentStep = 6;
@@ -383,10 +443,6 @@
                 button.style.background = 'var(--success)';
                 button.disabled = true;
                 
-                setTimeout(() => {
-                    hitl3.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Ready for Submission</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 Final approval recorded. System optimizing submission process based on historical success rates</p></div>';
-                }, 500);
-                
                 // HITL Gate 3: Final billing approval
                 logApiCall(
                     'POST',
@@ -403,6 +459,44 @@
                         next_stage: 'external_submission'
                     }
                 );
+                
+                setTimeout(() => {
+                    // Send approval analytics to improve submission success prediction
+                    logApiCall(
+                        'POST',
+                        '/api/v1/ml/feedback/submission-analytics',
+                        'Update ML model with approval patterns for denial prediction',
+                        {
+                            claim_id: 'CLM-2025-10-30-001',
+                            claim_metadata: {
+                                diagnosis: 'J20.9',
+                                procedure: '99213',
+                                payer_id: 'PAYER-001',
+                                patient_age: 45,
+                                service_date: '2025-10-30'
+                            },
+                            approval_metrics: {
+                                transcription_accuracy: 0.98,
+                                coding_confidence: 0.92,
+                                compliance_score: 1.0,
+                                time_to_approve: '4.5 minutes'
+                            },
+                            training_features: {
+                                expected_approval_rate: 0.95,
+                                historical_payer_approval: 0.93,
+                                similar_claims_approved: 127
+                            }
+                        },
+                        {
+                            feedback_id: 'fb_approval_001',
+                            stored_in_bigquery: 'ml_training.approval_analytics',
+                            denial_prediction_model_updated: true,
+                            predicted_approval_probability: 0.96
+                        }
+                    );
+                    
+                    hitl3.innerHTML = '<div style="background: var(--success-light); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);"><strong style="color: var(--success);">✓ Ready for Submission</strong><p style="color: var(--slate-600); margin: 0.5rem 0 0 0; font-size: 0.9rem;">🧠 Final approval recorded. System optimizing submission process based on historical success rates</p></div>';
+                }, 500);
 
                 updateStepStatus('step7', 'complete');
                 currentStep = 8;
