@@ -28,17 +28,28 @@ The demo shows:
 revclear/
 ├── .github/                 # GitHub Actions workflows
 │   └── workflows/           
-│       └── deploy-demo.yml  # Auto-deploys demo to Pages
+│       └── deploy-demo.yml  # Auto-deploys demo to Pages on every push
 ├── Demo/                    # Interactive web demo (what you see online)
-├── ai-mcp-server/           # AI tools (8 tools: code certification, 
-│                            #   security analysis, HIPAA compliance)
-├── future-docs/             # Advanced docs for later (API, deployment, 
-│                            #   security - add back as features are built)
-└── RevClear/                # Main application code
-    ├── PROJECT_STANDARDS.md # Coding standards for everyone
-    ├── backend/             # Server code (Node.js + Express)
-    └── frontend/            # Web app (Next.js + React)
+│                            # Live at: https://hpppm.github.io/revclear/
+├── ai-mcp-server/           # AI development tools (8 specialized tools)
+│                            # Code certification, security analysis, HIPAA checks
+├── future-docs/             # Advanced documentation stored for later
+│                            # API docs, deployment guides, security docs
+│                            # Add back as features are built (not before!)
+└── RevClear/                # Main application code (backend + frontend)
+    ├── PROJECT_STANDARDS.md # Team coding standards (naming, style, rules)
+    ├── backend/             # Server API (Node.js + Express + TypeScript)
+    │                        # Handles auth, database, API endpoints
+    │                        # Runs on port 8080
+    └── frontend/            # Web application (Next.js 16 + React 19)
+                             # User interface and pages
+                             # Runs on port 3000
 ```
+
+**Key Files at Root:**
+- **README.md** - Project overview and quick links (start here for overview)
+- **TEAM_GUIDE.md** - This file! How we work together
+- **GETTING_STARTED.md** - Setup instructions when you're ready to code
 
 ## Working Together
 
@@ -97,11 +108,83 @@ Just visit: https://hpppm.github.io/revclear/
 - **Found a bug?** Let everyone know so we can fix it together
 - **Have an idea?** Share it! We're building this together
 
-## Important Files
+## Important Files & Folders
 
-- `RevClear/backend/src/` - All server logic and APIs
-- `RevClear/frontend/src/` - All web app pages and components
-- `Demo/` - The public-facing demo website
+### Root Level Documentation
+- **README.md** - Project overview, features, and quick start guide
+- **TEAM_GUIDE.md** - This file! Team workflow and collaboration rules
+- **GETTING_STARTED.md** - Detailed setup instructions for backend and frontend
+
+### Backend (`RevClear/backend/`)
+- **src/index.ts** - Main server entry point, starts Express server on port 8080
+- **src/api/** - All API route handlers (patients, encounters, claims, auth)
+- **src/middleware/** - Authentication, audit logging, security middleware
+- **Documentation/** - Backend API documentation and architecture guides
+- **package.json** - Backend dependencies (Express, Firebase Admin, TypeScript, etc.)
+- **.env** - Environment variables (DATABASE_URL, FIREBASE_KEY, etc.) - **DO NOT COMMIT!**
+
+### Frontend (`RevClear/frontend/`)
+- **src/app/** - Next.js pages and routes (using App Router)
+- **src/components/** - Reusable React components (buttons, forms, layouts)
+- **src/lib/** - Utility functions and API client for backend communication
+- **package.json** - Frontend dependencies (Next.js 16, React 19, TailwindCSS)
+- **.env.local** - Frontend environment variables (API_URL, etc.) - **DO NOT COMMIT!**
+
+### Demo (`Demo/`)
+- **index.html** - Main demo page with interactive claims flow
+- **script.js** - Demo logic and animations
+- **style.css** - Demo styling
+- **Live at**: https://hpppm.github.io/revclear/ (auto-deploys on push to main)
+
+### AI Tools (`ai-mcp-server/`)
+- **index.js** - MCP server with 8 AI-powered development tools
+- **real-test.js** - Integration tests (GitHub API, Notion API, all tools)
+- **README.md** - Complete documentation of all 8 tools and usage examples
+- **Tools**: Code certification, security analysis, HIPAA compliance, implementation guides
+
+### Future Documentation (`future-docs/`)
+- **README.md** - Explains when to add each doc back to root
+- **API.md** - Complete API reference (42 endpoints) - add when API is built
+- **DEPLOYMENT.md** - Deployment guides (local, GCP, GitHub Pages) - add when deploying
+- **SECURITY.md** - HIPAA compliance and security architecture - add when handling real data
+- **Plus 6 more files** - All ready to use when needed!
+
+---
+
+## 📋 Quick Reference Card
+
+### Ports & URLs
+- **Backend API**: http://localhost:8080
+- **Frontend App**: http://localhost:3000
+- **Live Demo**: https://hpppm.github.io/revclear/
+
+### Key Commands
+```bash
+# Get latest code
+git pull origin main
+
+# Run backend
+cd RevClear/backend && npm run dev
+
+# Run frontend  
+cd RevClear/frontend && npm run dev
+
+# Save your work
+git add . && git commit -m "Your message" && git push origin main
+```
+
+### Who Owns What
+- **Backend** (`RevClear/backend/`) → Rasmus (ask before editing)
+- **Frontend** (`RevClear/frontend/`) → Narni (ask before editing)
+- **Demo** (`Demo/`) → Aseel (anyone can suggest changes)
+- **Docs** (Root `.md` files) → Aseel (anyone can suggest changes)
+
+### Important Notes
+- ⚠️ **Never commit .env files** (they contain secrets!)
+- ⚠️ **Always pull before you start coding** (avoid conflicts)
+- ⚠️ **Test your code before pushing** (keep main branch stable)
+- ✅ **Backend runs on port 8080** (not 3001!)
+- ✅ **Demo auto-deploys on every push to main**
 
 ---
 
