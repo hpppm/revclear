@@ -26,10 +26,18 @@ The demo shows:
 ### Step 3: Understand the Project Structure
 ```
 revclear/
-├── Demo/              # Interactive web demo (what you see online)
-└── RevClear/          # Main application code
-    ├── backend/       # Server code (Node.js + Express)
-    └── frontend/      # Web app (Next.js + React)
+├── .github/                 # GitHub Actions workflows
+│   └── workflows/           
+│       └── deploy-demo.yml  # Auto-deploys demo to Pages
+├── Demo/                    # Interactive web demo (what you see online)
+├── ai-mcp-server/           # AI tools (8 tools: code certification, 
+│                            #   security analysis, HIPAA compliance)
+├── future-docs/             # Advanced docs for later (API, deployment, 
+│                            #   security - add back as features are built)
+└── RevClear/                # Main application code
+    ├── PROJECT_STANDARDS.md # Coding standards for everyone
+    ├── backend/             # Server code (Node.js + Express)
+    └── frontend/            # Web app (Next.js + React)
 ```
 
 ## Working Together
@@ -70,7 +78,7 @@ cd RevClear/backend
 npm install
 npm run dev
 ```
-Server runs on: http://localhost:3001
+Server runs on: http://localhost:8080
 
 ### Running the Frontend (Web App)
 ```bash
