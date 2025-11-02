@@ -1,0 +1,67 @@
+# CODEOWNERS - Branch and Directory Ownership
+
+# This file defines who owns what in the repository
+# Owners are automatically requested for review when someone creates a PR
+
+# =============================================================================
+# BRANCH OWNERSHIP
+# =============================================================================
+
+# feature/gcp-deployment branch - EXCLUSIVE ownership
+# DO NOT TOUCH without explicit permission from @hpppm
+# This branch contains production GCP infrastructure and deployment configs
+
+# =============================================================================
+# MAIN BRANCH - TEAM AREAS
+# =============================================================================
+
+# Default owners for everything in main branch
+* @hpppm
+
+# Backend - Primary owner: Rasmus
+/RevClear/backend/ @rallenalle68
+/RevClear/backend/src/ @rallenalle68
+/RevClear/backend/Documentation/ @rallenalle68
+
+# Frontend - Primary owner: Narni
+/RevClear/frontend/ @hpppm
+/RevClear/frontend/src/ @hpppm
+
+# Demo - Owner: Aseel
+/Demo/ @hpppm
+
+# Documentation (Root) - Owner: Aseel
+/*.md @hpppm
+/.github/ @hpppm
+
+# AI MCP Server - Owner: Aseel
+/ai-mcp-server/ @hpppm
+
+# =============================================================================
+# PROTECTED AREAS - REQUIRE OWNER APPROVAL
+# =============================================================================
+
+# Branch strategy documentation - Must be approved by Aseel
+/.github/BRANCH_STRATEGY.md @hpppm
+/.github/CODEOWNERS @hpppm
+
+# GCP Deployment files (if they appear in main) - Owner: Aseel
+/terraform/ @hpppm
+/deploy.sh @hpppm
+/deploy.ps1 @hpppm
+*HIPAA* @hpppm
+*GCP* @hpppm
+
+# =============================================================================
+# NOTES
+# =============================================================================
+# 
+# - @hpppm = Aseel (Repository Owner, GCP Infrastructure)
+# - @rallenalle68 = Rasmus (Backend Developer)
+# - Team members: Request review before touching others' areas
+# 
+# feature/gcp-deployment branch: EXCLUSIVE to @hpppm
+# - Contains: Terraform, GCP configs, deployment scripts, HIPAA docs
+# - Status: 35 commits, production-ready
+# - DO NOT create PRs or push to this branch without permission
+#

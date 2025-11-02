@@ -12,10 +12,17 @@
 - **Purpose**: Production GCP HIPAA deployment infrastructure
 - **Content**: Complete Terraform configs, deployment scripts, compliance docs
 - **Status**: Ready for production deployment (35 commits, fully validated)
+- **Owner**: @hpppm (Aseel) - **DO NOT TOUCH WITHOUT PERMISSION**
+- **Access**: Read-only for team members, write access only for owner
 
 ## 🚫 DO NOT MERGE
 
 **`feature/gcp-deployment` MUST NOT be merged into `main`**
+
+**⚠️ OWNERSHIP WARNING:**
+- **`feature/gcp-deployment` is EXCLUSIVELY owned by @hpppm (Aseel)**
+- **Team members: DO NOT push to, modify, or create PRs against this branch**
+- **Any changes require explicit permission from @hpppm**
 
 **Reasons:**
 1. ✅ Contains production infrastructure (Terraform, GCP configs)
