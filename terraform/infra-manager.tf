@@ -8,35 +8,33 @@ module "im-workspace" {
   project_id             = var.project_id
   deployment_id          = "revclear-${var.environment}"
   im_deployment_repo_uri = "https://github.com/hpppm/revclear"
-  im_deployment_ref      = "main"  # Deploy from main branch
+  im_deployment_ref      = "main" # Deploy from main branch
 
   # GitHub App Installation
   # Get this from: https://github.com/settings/installations
   github_app_installation_id = var.github_app_installation_id
-  
+
   # GitHub Personal Access Token
   # Create at: https://github.com/settings/tokens
   # Permissions needed: repo, read:user (and read:org if in organization)
   github_personal_access_token = var.github_personal_access_token
-  
-  # Optional: Customize triggers
-  trigger_identity_pool_id       = null
-  trigger_identity_provider_id   = null
-  infra_manager_sa_roles         = []
+
+  # Optional: Customize service account roles
+  infra_manager_sa_roles = []
 }
 
 # Variables for GitHub integration
 variable "github_app_installation_id" {
   description = "GitHub App Installation ID for Cloud Build"
   type        = string
-  default     = ""  # Set this after installing Cloud Build GitHub App
+  default     = "" # Set this after installing Cloud Build GitHub App
 }
 
 variable "github_personal_access_token" {
   description = "GitHub Personal Access Token (will be stored in Secret Manager)"
   type        = string
   sensitive   = true
-  default     = ""  # Set this from your GitHub account
+  default     = "" # Set this from your GitHub account
 }
 
 # Outputs

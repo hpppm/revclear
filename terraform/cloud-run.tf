@@ -5,36 +5,36 @@
 resource "google_cloud_run_service" "api" {
   name     = "revclear-api-${var.environment}"
   location = var.region
-  
+
   template {
     spec {
       containers {
         image = "gcr.io/${var.project_id}/revclear-api:latest"
-        
+
         ports {
           container_port = 8080
         }
-        
+
         env {
           name  = "ENVIRONMENT"
           value = var.environment
         }
-        
+
         env {
           name  = "PROJECT_ID"
           value = var.project_id
         }
-        
+
         env {
-          name = "DB_CONNECTION_NAME"
+          name  = "DB_CONNECTION_NAME"
           value = google_sql_database_instance.revclear_db.connection_name
         }
-        
+
         env {
-          name = "DB_USER"
+          name  = "DB_USER"
           value = google_sql_user.app_user.name
         }
-        
+
         env {
           name = "DB_PASSWORD"
           value_from {
@@ -44,17 +44,17 @@ resource "google_cloud_run_service" "api" {
             }
           }
         }
-        
+
         env {
           name  = "AUDIO_BUCKET"
           value = google_storage_bucket.audio_files.name
         }
-        
+
         env {
           name  = "EDI_BUCKET"
           value = google_storage_bucket.edi_files.name
         }
-        
+
         resources {
           limits = {
             cpu    = "2"
@@ -62,28 +62,28 @@ resource "google_cloud_run_service" "api" {
           }
         }
       }
-      
+
       service_account_name = google_service_account.api_service_account.email
-      
+
       timeout_seconds = 300
     }
-    
+
     metadata {
       annotations = {
-        "autoscaling.knative.dev/maxScale"         = "100"
-        "autoscaling.knative.dev/minScale"         = var.environment == "prod" ? "1" : "0"
-        "run.googleapis.com/vpc-access-connector"  = google_vpc_access_connector.connector.name
-        "run.googleapis.com/vpc-access-egress"     = "private-ranges-only"
-        "run.googleapis.com/cloudsql-instances"    = google_sql_database_instance.revclear_db.connection_name
+        "autoscaling.knative.dev/maxScale"        = "100"
+        "autoscaling.knative.dev/minScale"        = var.environment == "prod" ? "1" : "0"
+        "run.googleapis.com/vpc-access-connector" = google_vpc_access_connector.connector.name
+        "run.googleapis.com/vpc-access-egress"    = "private-ranges-only"
+        "run.googleapis.com/cloudsql-instances"   = google_sql_database_instance.revclear_db.connection_name
       }
     }
   }
-  
+
   traffic {
     percent         = 100
     latest_revision = true
   }
-  
+
   depends_on = [
     google_project_service.required_apis,
     google_vpc_access_connector.connector
@@ -94,21 +94,21 @@ resource "google_cloud_run_service" "api" {
 resource "google_cloud_run_service" "frontend" {
   name     = "revclear-frontend-${var.environment}"
   location = var.region
-  
+
   template {
     spec {
       containers {
         image = "gcr.io/${var.project_id}/revclear-frontend:latest"
-        
+
         ports {
           container_port = 8080
         }
-        
+
         env {
           name  = "API_URL"
           value = google_cloud_run_service.api.status[0].url
         }
-        
+
         resources {
           limits = {
             cpu    = "1"
@@ -116,10 +116,10 @@ resource "google_cloud_run_service" "frontend" {
           }
         }
       }
-      
+
       service_account_name = google_service_account.frontend_service_account.email
     }
-    
+
     metadata {
       annotations = {
         "autoscaling.knative.dev/maxScale" = "50"
@@ -127,12 +127,12 @@ resource "google_cloud_run_service" "frontend" {
       }
     }
   }
-  
+
   traffic {
     percent         = 100
     latest_revision = true
   }
-  
+
   depends_on = [google_project_service.required_apis]
 }
 

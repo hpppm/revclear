@@ -6,18 +6,18 @@ resource "google_bigquery_dataset" "claims_analytics" {
   friendly_name = "RevClear Claims Analytics"
   description   = "Claims processing data for analytics and ML training"
   location      = "US"
-  
+
   default_table_expiration_ms = 7889400000000 # 7 years in milliseconds
-  
+
   default_encryption_configuration {
     kms_key_name = google_kms_crypto_key.audio_encryption.id
   }
-  
+
   access {
     role          = "OWNER"
     user_by_email = data.google_project.project.number
   }
-  
+
   depends_on = [google_project_service.required_apis]
 }
 
@@ -25,14 +25,14 @@ resource "google_bigquery_dataset" "claims_analytics" {
 resource "google_bigquery_table" "processed_claims" {
   dataset_id = google_bigquery_dataset.claims_analytics.dataset_id
   table_id   = "processed_claims"
-  
+
   time_partitioning {
     type  = "DAY"
     field = "submission_date"
   }
-  
+
   clustering = ["status", "specialty", "payer_id"]
-  
+
   schema = jsonencode([
     {
       name = "claim_id"
@@ -96,12 +96,12 @@ resource "google_bigquery_table" "processed_claims" {
 resource "google_bigquery_table" "audit_logs" {
   dataset_id = google_bigquery_dataset.claims_analytics.dataset_id
   table_id   = "audit_logs"
-  
+
   time_partitioning {
     type  = "DAY"
     field = "event_timestamp"
   }
-  
+
   schema = jsonencode([
     {
       name = "event_id"
@@ -147,7 +147,7 @@ resource "google_bigquery_dataset" "ml_models" {
   friendly_name = "ML Models and Training Data"
   description   = "BigQuery ML models for claim prediction"
   location      = "US"
-  
+
   depends_on = [google_project_service.required_apis]
 }
 

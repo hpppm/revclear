@@ -61,7 +61,7 @@ resource "google_access_context_manager_access_level" "corporate_network" {
   basic {
     # Allow access from corporate IP ranges
     conditions {
-      ip_subnetworks = var.corporate_ip_ranges  # e.g., ["203.0.113.0/24"]
+      ip_subnetworks = var.corporate_ip_ranges # e.g., ["203.0.113.0/24"]
     }
   }
 }
@@ -107,13 +107,13 @@ resource "google_access_context_manager_access_level" "revclear_combined" {
   title  = "RevClear Combined Access Requirements"
 
   basic {
-    combining_function = "AND"  # All conditions must be met
+    combining_function = "AND" # All conditions must be met
 
     conditions {
       # Corporate network OR authorized device
       members = [
         "user:admin@revclear.com",
-        "serviceAccount:${google_service_account.backend_service.email}"
+        "serviceAccount:${google_service_account.api_service_account.email}"
       ]
     }
 
@@ -139,17 +139,17 @@ resource "google_access_context_manager_service_perimeter" "revclear_phi_perimet
   # Projects within this perimeter
   status {
     resources = [
-      "projects/${data.google_project.current.number}"
+      "projects/${data.google_project.project.number}"
     ]
 
     # Services allowed within the perimeter
     restricted_services = [
-      "storage.googleapis.com",        # Cloud Storage (audio, ERA files)
-      "sqladmin.googleapis.com",       # Cloud SQL (patient data)
-      "bigquery.googleapis.com",       # BigQuery (analytics)
-      "secretmanager.googleapis.com",  # Secret Manager (credentials)
-      "aiplatform.googleapis.com",     # Vertex AI (ML models)
-      "logging.googleapis.com",        # Cloud Logging (audit logs)
+      "storage.googleapis.com",       # Cloud Storage (audio, ERA files)
+      "sqladmin.googleapis.com",      # Cloud SQL (patient data)
+      "bigquery.googleapis.com",      # BigQuery (analytics)
+      "secretmanager.googleapis.com", # Secret Manager (credentials)
+      "aiplatform.googleapis.com",    # Vertex AI (ML models)
+      "logging.googleapis.com",       # Cloud Logging (audit logs)
     ]
 
     # Access levels required to breach the perimeter
@@ -190,7 +190,7 @@ resource "google_access_context_manager_service_perimeter" "revclear_phi_perimet
 
       # Allow these operations
       ingress_to {
-        resources = ["*"]  # All resources in perimeter
+        resources = ["*"] # All resources in perimeter
 
         operations {
           service_name = "storage.googleapis.com"
@@ -218,17 +218,17 @@ resource "google_access_context_manager_service_perimeter" "revclear_phi_perimet
 
         # Allow egress from these identities
         identities = [
-          "serviceAccount:${google_service_account.backend_service.email}",
-          "serviceAccount:${google_service_account.retraining_function.email}"
+          "serviceAccount:${google_service_account.api_service_account.email}",
+          # Additional service accounts can be added as needed
         ]
       }
 
       # Allow egress to these external services
       egress_to {
-        resources = ["*"]  # Allow calls to external APIs
+        resources = ["*"] # Allow calls to external APIs
 
         operations {
-          service_name = "*"  # All services (for OpenAI API, clearinghouse, etc.)
+          service_name = "*" # All services (for OpenAI API, clearinghouse, etc.)
         }
       }
     }
@@ -242,29 +242,32 @@ resource "google_access_context_manager_service_perimeter" "revclear_phi_perimet
 # 4. Service Perimeter - Dry Run (for testing)
 # ==============================================================================
 # Before fully enforcing VPC-SC, test with dry run mode to identify issues
+# Note: The dry run resource configuration may need adjustment based on the 
+# google provider version being used. This can be uncommented and configured
+# when ready to test VPC Service Controls.
 
-resource "google_access_context_manager_service_perimeter_dry_run_resource" "dry_run" {
-  count = var.vpc_sc_dry_run_mode ? 1 : 0
-
-  perimeter_name = google_access_context_manager_service_perimeter.revclear_phi_perimeter.name
-
-  spec {
-    resources = [
-      "projects/${data.google_project.current.number}"
-    ]
-
-    restricted_services = [
-      "storage.googleapis.com",
-      "sqladmin.googleapis.com",
-      "bigquery.googleapis.com"
-    ]
-
-    # More permissive access levels for testing
-    access_levels = [
-      google_access_context_manager_access_level.us_only.name
-    ]
-  }
-}
+# resource "google_access_context_manager_service_perimeter_dry_run_resource" "dry_run" {
+#   count = var.vpc_sc_dry_run_mode ? 1 : 0
+# 
+#   perimeter_name = google_access_context_manager_service_perimeter.revclear_phi_perimeter.name
+# 
+#   spec {
+#     resources = [
+#       "projects/${data.google_project.project.number}"
+#     ]
+# 
+#     restricted_services = [
+#       "storage.googleapis.com",
+#       "sqladmin.googleapis.com",
+#       "bigquery.googleapis.com"
+#     ]
+# 
+#     # More permissive access levels for testing
+#     access_levels = [
+#       google_access_context_manager_access_level.us_only.name
+#     ]
+#   }
+# }
 
 # ==============================================================================
 # 5. Monitoring & Alerts
@@ -407,13 +410,13 @@ variable "existing_access_policy_name" {
 variable "corporate_ip_ranges" {
   description = "List of corporate IP ranges allowed to access perimeter (CIDR notation)"
   type        = list(string)
-  default     = []  # Add your office IPs: ["203.0.113.0/24"]
+  default     = [] # Add your office IPs: ["203.0.113.0/24"]
 }
 
 variable "vpc_sc_dry_run_mode" {
   description = "Run VPC-SC in dry run mode (logs violations but doesn't block)"
   type        = bool
-  default     = true  # Start with true, set to false after testing
+  default     = true # Start with true, set to false after testing
 }
 
 variable "pagerduty_security_key" {

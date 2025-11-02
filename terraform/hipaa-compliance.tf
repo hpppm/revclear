@@ -11,9 +11,9 @@ resource "google_project_service" "hipaa_apis" {
     "monitoring.googleapis.com",
     "cloudaudit.googleapis.com",
     "securitycenter.googleapis.com",
-    "dlp.googleapis.com"  # Sensitive Data Protection (DLP)
+    "dlp.googleapis.com" # Sensitive Data Protection (DLP)
   ])
-  
+
   service            = each.key
   disable_on_destroy = false
 }
@@ -24,7 +24,7 @@ resource "google_project_service" "hipaa_apis" {
 resource "google_project_organization_policy" "require_os_login" {
   project    = var.project_id
   constraint = "compute.requireOsLogin"
-  
+
   boolean_policy {
     enforced = true
   }
@@ -33,7 +33,7 @@ resource "google_project_organization_policy" "require_os_login" {
 resource "google_project_organization_policy" "disable_serial_port" {
   project    = var.project_id
   constraint = "compute.disableSerialPortAccess"
-  
+
   boolean_policy {
     enforced = true
   }
@@ -42,7 +42,7 @@ resource "google_project_organization_policy" "disable_serial_port" {
 resource "google_project_organization_policy" "require_shielded_vm" {
   project    = var.project_id
   constraint = "compute.requireShieldedVm"
-  
+
   boolean_policy {
     enforced = true
   }
@@ -51,7 +51,7 @@ resource "google_project_organization_policy" "require_shielded_vm" {
 resource "google_project_organization_policy" "restrict_public_ip" {
   project    = var.project_id
   constraint = "compute.vmExternalIpAccess"
-  
+
   list_policy {
     deny {
       all = true
@@ -65,15 +65,15 @@ resource "google_project_organization_policy" "restrict_public_ip" {
 resource "google_project_iam_audit_config" "hipaa_audit_config" {
   project = var.project_id
   service = "allServices"
-  
+
   audit_log_config {
     log_type = "ADMIN_READ"
   }
-  
+
   audit_log_config {
     log_type = "DATA_READ"
   }
-  
+
   audit_log_config {
     log_type = "DATA_WRITE"
   }
@@ -89,7 +89,7 @@ resource "google_project_iam_audit_config" "hipaa_audit_config" {
 resource "google_logging_project_sink" "hipaa_audit_logs" {
   name        = "hipaa-audit-logs-7yr-${var.environment}"
   destination = "storage.googleapis.com/${google_storage_bucket.hipaa_audit_logs.name}"
-  
+
   # Only capture audit logs related to PHI access
   filter = <<-EOT
     protoPayload.serviceName="cloudaudit.googleapis.com" AND (
@@ -103,7 +103,7 @@ resource "google_logging_project_sink" "hipaa_audit_logs" {
       protoPayload.authenticationInfo.serviceAccountEmail!=""
     )
   EOT
-  
+
   unique_writer_identity = true
 }
 
@@ -111,53 +111,53 @@ resource "google_logging_project_sink" "hipaa_audit_logs" {
 resource "google_storage_bucket" "hipaa_audit_logs" {
   name          = "${var.project_id}-hipaa-audit-logs-${var.environment}"
   location      = var.region
-  force_destroy = false  # Prevent accidental deletion
-  
+  force_destroy = false # Prevent accidental deletion
+
   uniform_bucket_level_access = true
-  
+
   versioning {
-    enabled = true  # Protect against accidental overwrites
+    enabled = true # Protect against accidental overwrites
   }
-  
+
   encryption {
     default_kms_key_name = google_kms_crypto_key.audit_encryption.id
   }
-  
+
   # Storage class transitions (cost optimization)
   lifecycle_rule {
     condition {
-      age = 30  # After 30 days
+      age = 30 # After 30 days
     }
     action {
       type          = "SetStorageClass"
-      storage_class = "NEARLINE"  # $0.01/GB/month
+      storage_class = "NEARLINE" # $0.01/GB/month
     }
   }
-  
+
   lifecycle_rule {
     condition {
-      age = 365  # After 1 year
+      age = 365 # After 1 year
     }
     action {
       type          = "SetStorageClass"
-      storage_class = "COLDLINE"  # $0.004/GB/month
+      storage_class = "COLDLINE" # $0.004/GB/month
     }
   }
-  
+
   lifecycle_rule {
     condition {
-      age = 1825  # After 5 years
+      age = 1825 # After 5 years
     }
     action {
       type          = "SetStorageClass"
-      storage_class = "ARCHIVE"  # $0.0012/GB/month
+      storage_class = "ARCHIVE" # $0.0012/GB/month
     }
   }
-  
+
   # HIPAA requirement: 7-year retention
   lifecycle_rule {
     condition {
-      age = 2555  # 7 years in days
+      age = 2555 # 7 years in days
     }
     action {
       type = "Delete"
@@ -166,8 +166,8 @@ resource "google_storage_bucket" "hipaa_audit_logs" {
 
   # Additional protection: Retention policy prevents deletion before 7 years
   retention_policy {
-    retention_period = 220752000  # 7 years in seconds (2555 days * 86400)
-    is_locked        = var.lock_audit_retention  # Set to true in production
+    retention_period = 220752000                # 7 years in seconds (2555 days * 86400)
+    is_locked        = var.lock_audit_retention # Set to true in production
   }
 
   labels = {
@@ -194,7 +194,7 @@ resource "google_storage_bucket_iam_member" "hipaa_audit_log_writer" {
 resource "google_logging_project_sink" "operational_logs" {
   name        = "operational-logs-90d-${var.environment}"
   destination = "storage.googleapis.com/${google_storage_bucket.operational_logs.name}"
-  
+
   # Application logs, errors, performance (exclude audit logs)
   filter = <<-EOT
     (
@@ -205,7 +205,7 @@ resource "google_logging_project_sink" "operational_logs" {
       protoPayload.serviceName="cloudaudit.googleapis.com"
     )
   EOT
-  
+
   unique_writer_identity = true
 }
 
@@ -213,18 +213,18 @@ resource "google_logging_project_sink" "operational_logs" {
 resource "google_storage_bucket" "operational_logs" {
   name          = "${var.project_id}-operational-logs-${var.environment}"
   location      = var.region
-  force_destroy = true  # Can be deleted safely
-  
+  force_destroy = true # Can be deleted safely
+
   uniform_bucket_level_access = true
-  
+
   encryption {
     default_kms_key_name = google_kms_crypto_key.audit_encryption.id
   }
-  
+
   # Keep in STANDARD storage (frequently accessed)
   lifecycle_rule {
     condition {
-      age = 90  # Delete after 90 days
+      age = 90 # Delete after 90 days
     }
     action {
       type = "Delete"
@@ -245,19 +245,12 @@ resource "google_storage_bucket_iam_member" "operational_log_writer" {
   member = google_logging_project_sink.operational_logs.writer_identity
 }
 
-# Grant log writer access to audit bucket
-resource "google_storage_bucket_iam_member" "audit_log_writer" {
-  bucket = google_storage_bucket.audit_logs.name
-  role   = "roles/storage.objectCreator"
-  member = google_logging_project_sink.audit_log_sink.writer_identity
-}
-
 # Encryption Key for Audit Logs
 resource "google_kms_crypto_key" "audit_encryption" {
   name            = "audit-log-encryption-key"
   key_ring        = google_kms_key_ring.revclear.id
-  rotation_period = "7776000s"  # 90 days
-  
+  rotation_period = "7776000s" # 90 days
+
   lifecycle {
     prevent_destroy = true
   }
@@ -269,7 +262,7 @@ resource "google_kms_crypto_key" "audit_encryption" {
 resource "google_access_context_manager_access_policy" "hipaa_policy" {
   parent = "organizations/${data.google_project.project.org_id}"
   title  = "revclear-hipaa-policy-${var.environment}"
-  
+
   count = var.enable_vpc_service_controls ? 1 : 0
 }
 
@@ -279,32 +272,32 @@ resource "google_scc_notification_config" "hipaa_security_notifications" {
   organization = data.google_project.project.org_id
   description  = "HIPAA security alerts for potential breaches"
   pubsub_topic = google_pubsub_topic.security_alerts.id
-  
+
   streaming_config {
     filter = "severity=\"HIGH\" OR severity=\"CRITICAL\""
   }
-  
+
   count = var.enable_security_command_center ? 1 : 0
 }
 
 # Pub/Sub Topic for Security Alerts
 resource "google_pubsub_topic" "security_alerts" {
   name = "security-alerts-${var.environment}"
-  
-  message_retention_duration = "604800s"  # 7 days
+
+  message_retention_duration = "604800s" # 7 days
 }
 
 # Sensitive Data Protection (DLP) Job Trigger
 # Scans for PHI in Cloud Storage
 resource "google_data_loss_prevention_job_trigger" "phi_detection" {
   parent = "projects/${var.project_id}"
-  
+
   triggers {
     schedule {
-      recurrence_period_duration = "86400s"  # Daily
+      recurrence_period_duration = "86400s" # Daily
     }
   }
-  
+
   inspect_job {
     storage_config {
       cloud_storage_options {
@@ -313,7 +306,7 @@ resource "google_data_loss_prevention_job_trigger" "phi_detection" {
         }
       }
     }
-    
+
     inspect_config {
       info_types {
         name = "PERSON_NAME"
@@ -333,9 +326,9 @@ resource "google_data_loss_prevention_job_trigger" "phi_detection" {
       info_types {
         name = "MEDICAL_RECORD_NUMBER"
       }
-      
+
       min_likelihood = "POSSIBLE"
-      
+
       rule_set {
         info_types {
           name = "PERSON_NAME"
@@ -355,7 +348,7 @@ resource "google_data_loss_prevention_job_trigger" "phi_detection" {
         }
       }
     }
-    
+
     actions {
       pub_sub {
         topic = google_pubsub_topic.dlp_findings.id
@@ -412,14 +405,14 @@ output "operational_log_sink_writer" {
 output "hipaa_compliance_status" {
   description = "HIPAA compliance configuration status"
   value = {
-    audit_logging_enabled         = true
-    hipaa_audit_retention_years   = 7
+    audit_logging_enabled          = true
+    hipaa_audit_retention_years    = 7
     operational_log_retention_days = 90
-    encryption_at_rest_enabled    = true
-    encryption_in_transit_enabled = true
-    key_rotation_days             = 90
-    dlp_scanning_enabled          = true
-    security_monitoring_enabled   = var.enable_security_command_center
-    retention_policy_locked       = var.lock_audit_retention
+    encryption_at_rest_enabled     = true
+    encryption_in_transit_enabled  = true
+    key_rotation_days              = 90
+    dlp_scanning_enabled           = true
+    security_monitoring_enabled    = var.enable_security_command_center
+    retention_policy_locked        = var.lock_audit_retention
   }
 }

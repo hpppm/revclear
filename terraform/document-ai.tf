@@ -94,9 +94,7 @@ resource "google_storage_bucket" "documents_inbox" {
   }
 
   # Uniform bucket-level access
-  uniform_bucket_level_access {
-    enabled = true
-  }
+  uniform_bucket_level_access = true
 
   # Versioning for audit trail
   versioning {
@@ -140,9 +138,7 @@ resource "google_storage_bucket" "documents_processed" {
     }
   }
 
-  uniform_bucket_level_access {
-    enabled = true
-  }
+  uniform_bucket_level_access = true
 
   versioning {
     enabled = true
@@ -219,8 +215,8 @@ data "google_storage_project_service_account" "gcs_account" {
 }
 
 resource "google_pubsub_topic_iam_binding" "gcs_publisher" {
-  topic   = google_pubsub_topic.document_uploaded.id
-  role    = "roles/pubsub.publisher"
+  topic = google_pubsub_topic.document_uploaded.id
+  role  = "roles/pubsub.publisher"
   members = [
     "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
   ]

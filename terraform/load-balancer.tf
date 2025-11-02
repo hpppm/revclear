@@ -442,7 +442,7 @@ output "load_balancer_url" {
 
 output "ssl_certificate_status" {
   description = "SSL certificate provisioning status"
-  value       = google_compute_managed_ssl_certificate.lb_cert.managed[0].status
+  value       = google_compute_managed_ssl_certificate.lb_cert.id
 }
 
 output "cloud_armor_policy" {

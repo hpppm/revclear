@@ -3,14 +3,14 @@
 
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     google = {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
   }
-  
+
   # Store state in GCS bucket (create this manually first)
   backend "gcs" {
     bucket = "revclear-terraform-state"
@@ -56,8 +56,8 @@ resource "google_project_service" "required_apis" {
     "speech.googleapis.com",
     "aiplatform.googleapis.com",
     "healthcare.googleapis.com",
-    "documentai.googleapis.com",        # NEW: Document AI for OCR and data extraction
-    "dlp.googleapis.com",                # NEW: Data Loss Prevention (DLP)
+    "documentai.googleapis.com", # NEW: Document AI for OCR and data extraction
+    "dlp.googleapis.com",        # NEW: Data Loss Prevention (DLP)
     "sql-component.googleapis.com",
     "sqladmin.googleapis.com",
     "storage-api.googleapis.com",
@@ -71,10 +71,10 @@ resource "google_project_service" "required_apis" {
     "cloudscheduler.googleapis.com",
     "firebase.googleapis.com",
     "identitytoolkit.googleapis.com",
-    "iap.googleapis.com",                # NEW: Identity-Aware Proxy
-    "cloudarmor.googleapis.com"          # NEW: Cloud Armor WAF
+    "iap.googleapis.com",       # NEW: Identity-Aware Proxy
+    "cloudarmor.googleapis.com" # NEW: Cloud Armor WAF
   ])
-  
+
   service            = each.key
   disable_on_destroy = false
 }

@@ -4,7 +4,7 @@
 resource "google_compute_network" "revclear_vpc" {
   name                    = "revclear-vpc-${var.environment}"
   auto_create_subnetworks = false
-  
+
   depends_on = [google_project_service.required_apis]
 }
 
@@ -13,13 +13,13 @@ resource "google_compute_subnetwork" "private_subnet" {
   ip_cidr_range = "10.0.0.0/24"
   region        = var.region
   network       = google_compute_network.revclear_vpc.id
-  
+
   private_ip_google_access = true
-  
+
   log_config {
     aggregation_interval = "INTERVAL_5_SEC"
     flow_sampling        = 0.5
-    metadata            = "INCLUDE_ALL_METADATA"
+    metadata             = "INCLUDE_ALL_METADATA"
   }
 }
 
@@ -51,7 +51,7 @@ resource "google_compute_router_nat" "nat" {
   region                             = google_compute_router.router.region
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-  
+
   log_config {
     enable = true
     filter = "ERRORS_ONLY"
@@ -62,33 +62,33 @@ resource "google_compute_router_nat" "nat" {
 resource "google_compute_firewall" "allow_internal" {
   name    = "revclear-allow-internal-${var.environment}"
   network = google_compute_network.revclear_vpc.name
-  
+
   allow {
     protocol = "tcp"
     ports    = ["0-65535"]
   }
-  
+
   allow {
     protocol = "udp"
     ports    = ["0-65535"]
   }
-  
+
   allow {
     protocol = "icmp"
   }
-  
+
   source_ranges = ["10.0.0.0/24"]
 }
 
 resource "google_compute_firewall" "allow_https" {
   name    = "revclear-allow-https-${var.environment}"
   network = google_compute_network.revclear_vpc.name
-  
+
   allow {
     protocol = "tcp"
     ports    = ["443"]
   }
-  
+
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["https-server"]
 }
@@ -99,7 +99,7 @@ resource "google_vpc_access_connector" "connector" {
   region        = var.region
   network       = google_compute_network.revclear_vpc.name
   ip_cidr_range = "10.8.0.0/28"
-  
+
   depends_on = [google_project_service.required_apis]
 }
 
