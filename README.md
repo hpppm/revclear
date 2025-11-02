@@ -84,10 +84,32 @@ gcloud builds submit --config RevClear/backend/cloudbuild.yaml
 
 ## 📚 Documentation
 
-- [Team Guide](TEAM_GUIDE.md) - Collaboration workflow
-- [MCP Setup](MCP_SETUP.md) - AI tools integration
-- [Notion Bridge](NOTION_GITHUB_BRIDGE.md) - Documentation sync
-- [ChatGPT Context](CHATGPT_CONTEXT.md) - AI assistant context
+### 🎯 Getting Started
+- **[Getting Started Guide](GETTING_STARTED.md)** - Quick setup for backend and frontend
+- **[Developer Guide](DEVELOPER_GUIDE.md)** - Complete development workflow and best practices
+- **[MCP Guide](MCP_GUIDE.md)** - AI-powered tools setup and usage (3 MCP servers)
+
+### 🔧 Technical Documentation
+- **[API Reference](API.md)** - Quick API endpoint reference
+- **[Security & HIPAA](SECURITY.md)** - Complete security architecture and HIPAA compliance
+- **[Deployment Guide](DEPLOYMENT.md)** - Local dev, GitHub Pages, and GCP Cloud Run deployment
+
+### 🏗️ Architecture
+- **[Backend Architecture](RevClear/backend/ARCHITECTURE.md)** - GCP services, deployment, security model
+- **[Frontend Architecture](RevClear/frontend/ARCHITECTURE.md)** - Next.js structure, authentication, API integration
+- **[Full API Routes](RevClear/backend/Documentation/routes/API_ROUTES.md)** - Complete API documentation
+
+### 🎨 Demo & Use Cases
+- **[Demo Guide](Demo/README.md)** - Academic overview and demo walkthrough
+
+### 👥 Team Collaboration
+- **[Team Guide](TEAM_GUIDE.md)** - Collaboration workflow and git practices
+- **[Notion Bridge](NOTION_GITHUB_BRIDGE.md)** - Documentation sync between Notion and GitHub
+- **[ChatGPT Context](CHATGPT_CONTEXT.md)** - AI assistant context for development
+
+### 📋 Additional Resources
+- **Backend Documentation**: [`RevClear/backend/Documentation/`](RevClear/backend/Documentation/) - Detailed backend docs (routes, security, tools)
+- **AI MCP Server**: [`ai-mcp-server/`](ai-mcp-server/) - 8 AI-powered development tools
 
 ## 🔒 Security
 
