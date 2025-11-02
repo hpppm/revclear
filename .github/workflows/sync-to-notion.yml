@@ -1,0 +1,31 @@
+name: Sync Documentation to Notion
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.md'
+      - 'Demo/**'
+  workflow_dispatch:
+
+jobs:
+  sync-to-notion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync README to Notion
+        uses: instantish/notion-github-action@v1
+        with:
+          notion-token: ${{ secrets.NOTION_TOKEN }}
+          notion-database-id: ${{ secrets.NOTION_DATABASE_ID }}
+          action: 'sync'
+          
+      - name: Create summary
+        run: |
+          echo "### Documentation Synced to Notion ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Updated files:" >> $GITHUB_STEP_SUMMARY
+          git diff --name-only HEAD~1 HEAD | grep ".md" >> $GITHUB_STEP_SUMMARY || echo "No markdown files changed"
