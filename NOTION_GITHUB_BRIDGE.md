@@ -3,6 +3,8 @@
 ## Overview
 This guide connects Notion (project docs) → ChatGPT (AI assistant) → GitHub (code) so all your tools stay synced.
 
+**Status**: ✅ GitHub Secrets configured! Notion sync is ready.
+
 ## Notion Setup
 
 ### 1. Create Notion Integration
