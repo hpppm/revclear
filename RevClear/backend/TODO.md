@@ -1,5 +1,22 @@
 # Backend Setup TODO List (Firebase Auth + Supabase DB/Storage)
 
+⚠️ **STATUS: INCOMPLETE - NOT READY TO RUN YET**
+
+The backend skeleton exists but is missing several route files. Rasmus needs to create these before the server will start.
+
+**Missing Files (Required):**
+- `src/api/auth/index.ts` - Authentication routes
+- `src/api/encounters/index.ts` - Encounter/SOAP notes routes
+- `src/api/ai/index.ts` - AI processing routes
+- `src/api/claims/index.ts` - Claims management routes
+- `src/api/feedback/index.ts` - Feedback routes
+- `src/api/notifications/index.ts` - Notification routes
+
+**Existing Files:**
+- ✅ `src/api/patients/index.ts` - Patient routes (already created)
+
+---
+
 This document outlines the steps to set up and run the backend, utilizing Firebase for authentication and Supabase for database and storage.
 
 ## 1. Navigate to the Backend Directory
@@ -58,10 +75,19 @@ DB_HOST=localhost # Or your Supabase database host
 
 ## 4. Run the Development Server
 
-Start the backend server:
+⚠️ **NOTE: Server will not start until missing route files are created!**
+
+Once all route files are created, start the backend server:
 
 ```bash
 npm run dev
 ```
 
-The server should now be running, configured for Firebase Authentication and ready to interact with your Supabase database and storage.
+The server should run on **http://localhost:8080**, configured for Firebase Authentication and ready to interact with your Supabase database and storage.
+
+**Current Error:**
+```
+Error: Cannot find module './auth'
+```
+
+**Solution:** Create the missing route files listed at the top of this document before attempting to run the server.

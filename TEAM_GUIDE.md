@@ -84,12 +84,19 @@ Tell the team in chat what you changed so we're all on the same page.
 ## Common Tasks
 
 ### Running the Backend (Server)
+
+⚠️ **NOT READY YET** - Backend is missing route files and won't start.
+
+Once Rasmus creates the missing route files:
 ```bash
 cd RevClear/backend
 npm install
 npm run dev
 ```
-Server runs on: http://localhost:8080
+Server will run on: http://localhost:8080
+
+**What's missing:** auth, encounters, ai, claims, feedback, and notifications routes  
+**See:** `RevClear/backend/TODO.md` for details
 
 ### Running the Frontend (Web App)
 ```bash

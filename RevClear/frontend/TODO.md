@@ -1,5 +1,7 @@
 # Frontend Setup TODO List
 
+⚠️ **NOTE:** Backend is not ready yet, so API calls will fail until Rasmus completes the backend routes.
+
 This document outlines the steps to set up and run the frontend application locally.
 
 ## 1. Navigate to the Frontend Directory
@@ -29,12 +31,12 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project-id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-firebase-storage-bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-firebase-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-firebase-app-id
-NEXT_PUBLIC_BACKEND_URL=http://localhost:3001 # Or your deployed backend URL
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8080 # Or your deployed backend URL
 ```
 
 *   **Firebase Credentials:** Obtain these from your Firebase project settings.
 *   **Supabase Credentials:** Obtain these from your Supabase project settings.
-*   **Backend URL:** Set this to the URL where your backend API is running (e.g., `http://localhost:3001` for local development, or your deployed Cloud Run URL).
+*   **Backend URL:** Set this to `http://localhost:8080` for local development. **NOTE: Backend must be running first!** See `RevClear/backend/TODO.md` for backend setup status.
 
 ## 4. Run the Development Server
 
