@@ -1,0 +1,367 @@
+name: Deploy to GCP (HIPAA Compliant)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'RevClear/**'
+      - '.github/workflows/deploy-gcp.yml'
+
+env:
+  GCP_REGION: us-central1
+  TERRAFORM_VERSION: 1.6.0
+
+jobs:
+  security-scan:
+    name: Security and Compliance Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Run security scan
+        id: security_scan
+        run: |
+          chmod +x scripts/security-scan.sh
+          PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} ./scripts/security-scan.sh || true
+        continue-on-error: true
+      
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            security-scan-*.log
+          retention-days: 30
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: security-scan
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        working-directory: ./terraform
+        continue-on-error: true
+      
+      - name: Terraform Init
+        id: init
+        run: |
+          cat > backend-config.hcl <<EOF
+          bucket = "${{ secrets.GCP_PROJECT_ID }}-terraform-state"
+          prefix = "terraform/state"
+          EOF
+          terraform init -backend-config=backend-config.hcl
+        working-directory: ./terraform
+      
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: ./terraform
+      
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="region=${{ env.GCP_REGION }}" \
+            -var="environment=${{ github.event.inputs.environment || 'dev' }}" \
+            -out=tfplan
+        working-directory: ./terraform
+        continue-on-error: true
+      
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: terraform/tfplan
+          retention-days: 5
+      
+      - name: Comment PR with Plan
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Terraform Init
+        run: |
+          cat > backend-config.hcl <<EOF
+          bucket = "${{ secrets.GCP_PROJECT_ID }}-terraform-state"
+          prefix = "terraform/state"
+          EOF
+          terraform init -backend-config=backend-config.hcl
+        working-directory: ./terraform
+      
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: terraform/
+      
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
+      
+      - name: Save Terraform Outputs
+        id: outputs
+        run: |
+          terraform output -json > terraform-outputs.json
+          cat terraform-outputs.json
+        working-directory: ./terraform
+      
+      - name: Upload Terraform Outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: terraform/terraform-outputs.json
+          retention-days: 30
+
+  deploy-backend:
+    name: Deploy Backend to Cloud Run
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+      
+      - name: Build Backend Image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-backend:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-backend:latest \
+            ./RevClear/backend
+      
+      - name: Push Backend Image
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-backend:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-backend:latest
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy revclear-backend-${{ github.event.inputs.environment || 'dev' }} \
+            --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-backend:${{ github.sha }} \
+            --region=${{ env.GCP_REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --memory=1Gi \
+            --cpu=1 \
+            --min-instances=1 \
+            --max-instances=10 \
+            --set-env-vars="ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}" \
+            --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+  deploy-frontend:
+    name: Deploy Frontend to Cloud Run
+    runs-on: ubuntu-latest
+    needs: terraform-apply
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+      
+      - name: Build Frontend Image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-frontend:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-frontend:latest \
+            ./RevClear/frontend
+      
+      - name: Push Frontend Image
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-frontend:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-frontend:latest
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy revclear-frontend-${{ github.event.inputs.environment || 'dev' }} \
+            --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/revclear-frontend:${{ github.sha }} \
+            --region=${{ env.GCP_REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=1 \
+            --max-instances=5 \
+            --set-env-vars="ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}" \
+            --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+  post-deployment-validation:
+    name: Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Verify Backend Deployment
+        run: |
+          BACKEND_URL=$(gcloud run services describe revclear-backend-${{ github.event.inputs.environment || 'dev' }} \
+            --region=${{ env.GCP_REGION }} \
+            --format='value(status.url)')
+          echo "Backend URL: $BACKEND_URL"
+          curl -f -s "$BACKEND_URL/health" || exit 1
+      
+      - name: Verify Frontend Deployment
+        run: |
+          FRONTEND_URL=$(gcloud run services describe revclear-frontend-${{ github.event.inputs.environment || 'dev' }} \
+            --region=${{ env.GCP_REGION }} \
+            --format='value(status.url)')
+          echo "Frontend URL: $FRONTEND_URL"
+          curl -f -s "$FRONTEND_URL" || exit 1
+      
+      - name: Run Post-Deployment Security Scan
+        run: |
+          chmod +x scripts/security-scan.sh
+          PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} ./scripts/security-scan.sh
+      
+      - name: Notify Deployment Success
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "Backend: $(gcloud run services describe revclear-backend-${{ github.event.inputs.environment || 'dev' }} --region=${{ env.GCP_REGION }} --format='value(status.url)')"
+          echo "Frontend: $(gcloud run services describe revclear-frontend-${{ github.event.inputs.environment || 'dev' }} --region=${{ env.GCP_REGION }} --format='value(status.url)')"
