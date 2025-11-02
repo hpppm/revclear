@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/gcp-deployment
   workflow_dispatch:
 
 permissions:
