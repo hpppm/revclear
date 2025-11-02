@@ -33,6 +33,11 @@ revclear/
 - npm or yarn
 - GCP account (for production deployment)
 
+### Ports & URLs
+- **Backend API**: http://localhost:8080
+- **Frontend App**: http://localhost:3000
+- **Live Demo**: https://hpppm.github.io/revclear/
+
 ### Local Development
 
 ```bash
@@ -76,17 +81,19 @@ Automatically deploys to: https://hpppm.github.io/revclear/
 gcloud builds submit --config RevClear/backend/cloudbuild.yaml
 ```
 
-## 👥 Team
+## 👥 Team & Ownership
 
 - **Security Lead**: Repository Owner
-- **Backend**: Rasmus
-- **Frontend**: Nerni
+- **Backend** (`RevClear/backend/`): Rasmus (ask before editing)
+- **Frontend** (`RevClear/frontend/`): Narni (ask before editing)
+- **Demo** (`Demo/`): Aseel (anyone can suggest changes)
+- **Documentation** (Root `.md` files): Aseel (anyone can suggest changes)
 
 ## 📚 Documentation
 
-### 🚀 Week 1 Essentials (What You Need NOW)
-- **[Team Guide](TEAM_GUIDE.md)** - How we work together (git workflow, roles, communication)
-- **[Getting Started](GETTING_STARTED.md)** - Setup instructions when code exists
+### 🚀 Start Here
+- **[Team Guide](TEAM_GUIDE.md)** ⭐ - **Read this first!** How we work together (git workflow, roles, communication, and collaboration rules)
+- **[Getting Started](GETTING_STARTED.md)** - Detailed setup instructions for backend and frontend
 - **[Demo Guide](Demo/README.md)** - Check out our working demo!
 
 ### 📁 Future Documentation
@@ -109,7 +116,38 @@ Private repository - All rights reserved
 
 ## 🤝 Contributing
 
-This is a team project. Please follow the [Team Guide](TEAM_GUIDE.md) for contribution workflow.
+This is a team project. Follow these essential practices:
+
+### Critical Team Practices
+- **Pull before you push** - Always get the latest code first to avoid conflicts
+- **Write clear commit messages** - Help teammates understand what changed
+- **Test your code** - Make sure it works before pushing
+- **Ask for help** - We're a team! If you're stuck, reach out
+
+### Git Workflow
+```bash
+# 1. Get latest code before starting
+git pull origin main
+
+# 2. Make your changes
+# Edit files, add features, fix bugs
+
+# 3. Save your work
+git add .
+git commit -m "Describe what you did"
+git push origin main
+
+# 4. Let the team know in chat what you changed
+```
+
+### Important Notes
+- ⚠️ **Never commit .env files** (they contain secrets!)
+- ⚠️ **Always pull before you start coding** (avoid conflicts)
+- ⚠️ **Test your code before pushing** (keep main branch stable)
+- ✅ **Backend runs on port 8080** (not 3001!)
+- ✅ **Demo auto-deploys on every push to main**
+
+**For detailed instructions and more information, see the [Team Guide](TEAM_GUIDE.md).**
 
 ## 📞 Support
 
