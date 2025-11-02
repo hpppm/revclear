@@ -266,7 +266,7 @@ create_state_bucket() {
       {
         "action": {"type": "Delete"},
         "condition": {
-          "numNewerVersions": 3
+          "numNewerVersions": 10
         }
       }
     ]

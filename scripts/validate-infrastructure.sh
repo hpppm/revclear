@@ -195,33 +195,39 @@ fi
 # Test 5: Cloud KMS
 print_header "Test Suite 5: Encryption Key Management"
 
-# Check for keyrings in primary region
-if gcloud kms keyrings list --location="$REGION" --format="value(name)" 2>/dev/null | grep -q .; then
-    for keyring in $(gcloud kms keyrings list --location="$REGION" --format="value(name)"); do
-        keyring_name=$(basename "$keyring")
-        test_pass "KMS keyring '$keyring_name' exists in $REGION"
-        
-        # Check keys in keyring
-        key_count=$(gcloud kms keys list --location="$REGION" --keyring="$keyring_name" --format="value(name)" 2>/dev/null | wc -l)
-        if [ "$key_count" -gt 0 ]; then
-            test_pass "Keyring '$keyring_name' has $key_count key(s)"
+# Check for keyrings in primary region and global location
+keyring_found=false
+for location in "$REGION" "global" "us"; do
+    if gcloud kms keyrings list --location="$location" --format="value(name)" 2>/dev/null | grep -q .; then
+        keyring_found=true
+        for keyring in $(gcloud kms keyrings list --location="$location" --format="value(name)"); do
+            keyring_name=$(basename "$keyring")
+            test_pass "KMS keyring '$keyring_name' exists in $location"
             
-            # Check key rotation
-            for key in $(gcloud kms keys list --location="$REGION" --keyring="$keyring_name" --format="value(name)"); do
-                key_name=$(basename "$key")
-                rotation=$(gcloud kms keys describe "$key_name" --location="$REGION" --keyring="$keyring_name" --format="value(rotationPeriod)" 2>/dev/null)
-                if [ -n "$rotation" ]; then
-                    test_pass "Key '$key_name' has automatic rotation configured"
-                else
-                    test_info "Key '$key_name' does not have automatic rotation (consider enabling)"
-                fi
-            done
-        else
-            test_fail "Keyring '$keyring_name'" "No keys found"
-        fi
-    done
-else
-    test_fail "Cloud KMS" "No keyrings found in $REGION (required for HIPAA encryption)"
+            # Check keys in keyring
+            key_count=$(gcloud kms keys list --location="$location" --keyring="$keyring_name" --format="value(name)" 2>/dev/null | wc -l)
+            if [ "$key_count" -gt 0 ]; then
+                test_pass "Keyring '$keyring_name' has $key_count key(s)"
+                
+                # Check key rotation
+                for key in $(gcloud kms keys list --location="$location" --keyring="$keyring_name" --format="value(name)"); do
+                    key_name=$(basename "$key")
+                    rotation=$(gcloud kms keys describe "$key_name" --location="$location" --keyring="$keyring_name" --format="value(rotationPeriod)" 2>/dev/null)
+                    if [ -n "$rotation" ]; then
+                        test_pass "Key '$key_name' has automatic rotation configured"
+                    else
+                        test_info "Key '$key_name' does not have automatic rotation (consider enabling)"
+                    fi
+                done
+            else
+                test_fail "Keyring '$keyring_name'" "No keys found"
+            fi
+        done
+    fi
+done
+
+if [ "$keyring_found" = false ]; then
+    test_fail "Cloud KMS" "No keyrings found (required for HIPAA encryption)"
 fi
 
 # Test 6: Audit Logging

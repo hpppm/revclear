@@ -166,19 +166,19 @@ cat > /tmp/budget.json <<EOF
   },
   "thresholdRules": [
     {
-      "thresholdPercent": $(echo "scale=2; $ALERT_THRESHOLD_1 / 100" | bc),
+      "thresholdPercent": 0.$(printf "%02d" $ALERT_THRESHOLD_1),
       "spendBasis": "CURRENT_SPEND"
     },
     {
-      "thresholdPercent": $(echo "scale=2; $ALERT_THRESHOLD_2 / 100" | bc),
+      "thresholdPercent": 0.$(printf "%02d" $ALERT_THRESHOLD_2),
       "spendBasis": "CURRENT_SPEND"
     },
     {
-      "thresholdPercent": $(echo "scale=2; $ALERT_THRESHOLD_3 / 100" | bc),
+      "thresholdPercent": 0.$(printf "%02d" $ALERT_THRESHOLD_3),
       "spendBasis": "CURRENT_SPEND"
     },
     {
-      "thresholdPercent": $(echo "scale=2; $ALERT_THRESHOLD_4 / 100" | bc),
+      "thresholdPercent": 1.00,
       "spendBasis": "CURRENT_SPEND"
     }
   ],

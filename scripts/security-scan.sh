@@ -187,19 +187,26 @@ fi
 # Check 7: Cloud KMS Keys
 print_header "7. Key Management (HIPAA § 164.312(a)(2)(iv))"
 
-if gcloud kms keyrings list --location=global --format="value(name)" 2>/dev/null | grep -q .; then
-    keyring_count=$(gcloud kms keyrings list --location=global --format="value(name)" 2>/dev/null | wc -l)
-    check_pass "Cloud KMS keyrings found: $keyring_count"
-    
-    # Check key rotation
-    for keyring in $(gcloud kms keyrings list --location=global --format="value(name)" 2>/dev/null); do
-        keyring_name=$(basename "$keyring")
-        key_count=$(gcloud kms keys list --location=global --keyring="$keyring_name" --format="value(name)" 2>/dev/null | wc -l || echo "0")
-        if [ "$key_count" -gt 0 ]; then
-            check_pass "Keyring '$keyring_name' has $key_count key(s)"
-        fi
-    done
-else
+# Check for keyrings in multiple locations
+keyring_found=false
+for location in "global" "us" "us-central1"; do
+    if gcloud kms keyrings list --location="$location" --format="value(name)" 2>/dev/null | grep -q .; then
+        keyring_found=true
+        keyring_count=$(gcloud kms keyrings list --location="$location" --format="value(name)" 2>/dev/null | wc -l)
+        check_pass "Cloud KMS keyrings found in $location: $keyring_count"
+        
+        # Check key rotation
+        for keyring in $(gcloud kms keyrings list --location="$location" --format="value(name)" 2>/dev/null); do
+            keyring_name=$(basename "$keyring")
+            key_count=$(gcloud kms keys list --location="$location" --keyring="$keyring_name" --format="value(name)" 2>/dev/null | wc -l || echo "0")
+            if [ "$key_count" -gt 0 ]; then
+                check_pass "Keyring '$keyring_name' has $key_count key(s)"
+            fi
+        done
+    fi
+done
+
+if [ "$keyring_found" = false ]; then
     check_fail "KMS Keys" "No Cloud KMS keys found - required for HIPAA encryption"
 fi
 
