@@ -9,7 +9,8 @@ set -e  # Exit on error
 set -u  # Exit on undefined variable
 
 # Configuration with defaults
-PROJECT_ID="${1:-revclear-prod}"  # Change this to your project ID
+# IMPORTANT: Change 'your-project-id' to your actual GCP project ID
+PROJECT_ID="${1:-your-project-id}"  # Change this to your project ID
 REGION="${2:-us-central1}"
 ENVIRONMENT="${3:-prod}"
 

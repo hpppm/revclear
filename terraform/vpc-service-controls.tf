@@ -217,9 +217,12 @@ resource "google_access_context_manager_service_perimeter" "revclear_phi_perimet
         identity_type = "ANY_SERVICE_ACCOUNT"
 
         # Allow egress from these identities
+        # Note: backend_service and retraining_function service accounts were removed
+        # as they don't exist in the current configuration. Add them back when those
+        # services are implemented. For now, only api_service_account is configured.
         identities = [
           "serviceAccount:${google_service_account.api_service_account.email}",
-          # Additional service accounts can be added as needed
+          # Additional service accounts can be added here as they are created
         ]
       }
 

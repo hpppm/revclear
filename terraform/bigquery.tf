@@ -13,9 +13,10 @@ resource "google_bigquery_dataset" "claims_analytics" {
     kms_key_name = google_kms_crypto_key.audio_encryption.id
   }
 
+  # Default access control - project owners have OWNER role
   access {
     role          = "OWNER"
-    user_by_email = data.google_project.project.number
+    special_group = "projectOwners"
   }
 
   depends_on = [google_project_service.required_apis]
