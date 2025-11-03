@@ -53,32 +53,117 @@ revclear/
 
 ## Working Together
 
-### Making Changes (Simple Version)
+### Branch Workflow (Keeps Everyone Safe! 🛡️)
 
-**1. Before you start coding:**
+With 4 people, we use branches to avoid stepping on each other's toes.
+
+#### **Rule:** One Task = One Branch
+
+**Small fixes (< 1 hour):** You can work on main if needed  
+**Real work (> 1 hour):** ALWAYS use a branch ✅
+
+---
+
+### Step-by-Step: Making Changes
+
+#### **1. Start Your Task**
 ```bash
+# Get latest code
+git checkout main
 git pull origin main
+
+# Create your branch (use your name + what you're doing)
+git checkout -b feature/yourname-task
+
+# Examples:
+# git checkout -b feature/rasmus-login-api
+# git checkout -b feature/narni-dashboard-page
+# git checkout -b feature/aseel-fix-button
 ```
-This gets the latest code from everyone.
 
-**2. Make your changes:**
-Edit files, add features, fix bugs - do your magic! ✨
-
-**3. Save your work:**
+#### **2. Work on Your Task**
 ```bash
+# Make changes to files...
+
+# Save progress (you can do this multiple times!)
 git add .
-git commit -m "Describe what you did"
-git push origin main
+git commit -m "describe what you did"
+git push origin feature/yourname-task
 ```
 
-**4. Let everyone know:**
-Tell the team in chat what you changed so we're all on the same page.
+You can commit and push as many times as you want on your branch - it's YOUR space! 🎨
+
+#### **3. When You're Done**
+```bash
+# Push your final changes
+git add .
+git commit -m "finished the feature"
+git push origin feature/yourname-task
+
+# Then go to GitHub:
+# 1. Click "Compare & pull request"
+# 2. Ask someone to review it
+# 3. After approval, click "Merge pull request"
+# 4. Delete the branch on GitHub
+```
+
+#### **4. Clean Up & Start Next Task**
+```bash
+# Switch back to main
+git checkout main
+
+# Get latest (includes your merged work!)
+git pull origin main
+
+# Delete your old branch locally
+git branch -D feature/yourname-oldtask
+
+# Ready for next task!
+git checkout -b feature/yourname-newtask
+```
+
+---
+
+### Quick Commands Cheat Sheet
+
+```bash
+# START new task
+git checkout main; git pull; git checkout -b feature/name-task
+
+# SAVE progress (do this often!)
+git add .; git commit -m "message"; git push
+
+# AFTER merge, clean up
+git checkout main; git pull; git branch -D feature/name-oldtask
+```
+
+---
+
+### Branch Naming Examples
+
+Use format: `feature/yourname-whatyoudo`
+
+**Good examples:**
+- `feature/rasmus-user-auth`
+- `feature/narni-claims-page`
+- `feature/aseel-fix-styling`
+- `feature/john-api-endpoint`
+
+**Bad examples:**
+- `feature/stuff` ❌ (not clear)
+- `rasmus` ❌ (no feature/ prefix)
+- `feature/big-changes` ❌ (not specific)
+
+---
 
 ### Tips for Happy Collaboration
 
-- **Pull before you push** - Always get the latest code first to avoid conflicts
+- **Use branches for all real work** - Keeps main stable and avoids conflicts
+- **Merge within 1-3 days** - Don't let branches get old
+- **Pull main every morning** - Stay up to date with team changes
 - **Write clear commit messages** - Help teammates understand what changed
-- **Test your code** - Make sure it works before pushing
+- **Test your code** - Make sure it works before creating PR
+- **Review each other's PRs** - Catch bugs early, learn from each other
 - **Ask for help** - We're a team! If you're stuck, reach out
 
 ## Common Tasks
@@ -167,17 +252,20 @@ Just visit: https://hpppm.github.io/revclear/
 
 ### Key Commands
 ```bash
-# Get latest code
-git pull origin main
+# START new task
+git checkout main && git pull && git checkout -b feature/name-task
+
+# SAVE progress
+git add . && git commit -m "Your message" && git push
+
+# AFTER your PR is merged
+git checkout main && git pull && git branch -D feature/name-oldtask
 
 # Run backend
 cd RevClear/backend && npm run dev
 
 # Run frontend  
 cd RevClear/frontend && npm run dev
-
-# Save your work
-git add . && git commit -m "Your message" && git push origin main
 ```
 
 ### Who Owns What
@@ -188,10 +276,12 @@ git add . && git commit -m "Your message" && git push origin main
 
 ### Important Notes
 - ⚠️ **Never commit .env files** (they contain secrets!)
-- ⚠️ **Always pull before you start coding** (avoid conflicts)
-- ⚠️ **Test your code before pushing** (keep main branch stable)
+- ⚠️ **Always use branches for real work** (keeps main stable!)
+- ⚠️ **Merge PRs within 1-3 days** (don't let branches get old)
+- ⚠️ **Pull main every morning** (stay in sync with team)
 - ✅ **Backend runs on port 8080** (not 3001!)
 - ✅ **Demo auto-deploys on every push to main**
+- ✅ **Delete branches after merging** (keep repo clean)
 
 ---
 

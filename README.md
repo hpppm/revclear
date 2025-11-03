@@ -126,23 +126,37 @@ This is a team project. Follow these essential practices:
 
 ### Git Workflow
 ```bash
-# 1. Get latest code before starting
+# 1. Start new task (create branch)
+git checkout main
 git pull origin main
+git checkout -b feature/yourname-task
 
-# 2. Make your changes
-# Edit files, add features, fix bugs
-
-# 3. Save your work
+# 2. Make your changes and save progress
 git add .
 git commit -m "Describe what you did"
-git push origin main
+git push origin feature/yourname-task
 
-# 4. Let the team know in chat what you changed
+# 3. Create Pull Request on GitHub
+# - Ask teammate to review
+# - Merge after approval
+
+# 4. Clean up after merge
+git checkout main
+git pull origin main
+git branch -D feature/yourname-oldtask
+```
+
+**Quick Commands:**
+```bash
+# START: git checkout main && git pull && git checkout -b feature/name-task
+# SAVE: git add . && git commit -m "message" && git push
+# DONE: git checkout main && git pull && git branch -D feature/name-oldtask
 ```
 
 ### Important Notes
 - ⚠️ **Never commit .env files** (they contain secrets!)
-- ⚠️ **Always pull before you start coding** (avoid conflicts)
+- ⚠️ **Always use branches for real work** (keeps main stable!)
+- ⚠️ **Merge PRs within 1-3 days** (don't let branches get old)
 - ⚠️ **Test your code before pushing** (keep main branch stable)
 - ✅ **Backend runs on port 8080** (not 3001!)
 - ✅ **Demo auto-deploys on every push to main**
