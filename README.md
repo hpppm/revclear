@@ -36,7 +36,8 @@ revclear/
 ### Ports & URLs
 - **Backend API**: http://localhost:8080
 - **Frontend App**: http://localhost:3000
-- **Live Demo**: https://hpppm.github.io/revclear/
+- **Demo Page**: http://localhost:8080 (when running local server in Demo folder)
+- **Live Demo**: https://hpppm.github.io/revclear/Demo/index.html
 
 ### Local Development
 

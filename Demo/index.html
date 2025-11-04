@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="no-js" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RevClear AI Medical Billing System - Demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RevClear - AI Medical Billing Platform</title>
+    <meta name="description" content="RevClear AI Medical System - Automated medical billing for PT, Mental Health & SLP practices. Speech-to-Claim in minutes with HIPAA compliance.">
+    <meta name="theme-color" content="#667eea">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="RevClear AI Medical System">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Automated medical billing with AI - Speech-to-Claim in minutes">
+    
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <!-- API Call Tracker Toggle Button -->
@@ -26,13 +39,79 @@
         </div>
     </div>
     
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal" style="display: none;">
+        <div class="auth-modal-content">
+            <span class="auth-modal-close" onclick="closeAuthModal()">&times;</span>
+            <div class="auth-modal-header">
+                <h2 id="authModalTitle">🔐 Sign In</h2>
+                <p id="authModalSubtitle">Access RevClear AI Medical Billing System</p>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form" style="display: block;">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" required placeholder="clinician@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required placeholder="Enter your password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+            </form>
+            
+            <!-- Signup Form -->
+            <form id="signupForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <input type="text" id="signupName" required placeholder="Dr. Jane Smith">
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email Address</label>
+                    <input type="email" id="signupEmail" required placeholder="clinician@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" required placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label for="signupSpecialty">Specialty</label>
+                    <select id="signupSpecialty" required>
+                        <option value="">Select your specialty</option>
+                        <option value="physical-therapy">Physical Therapy</option>
+                        <option value="mental-health">Mental Health</option>
+                        <option value="speech-language">Speech-Language Pathology</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+            </form>
+        </div>
+    </div>
+    
     <div class="container">
         <div class="header">
-            <h1>🏥 RevClear AI Medical Billing System</h1>
-            <p>Google Cloud Architecture - Interactive Demo</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <div class="pulse-dot"></div>
+                <h1 style="margin: 0;">RevClear AI Medical System</h1>
+                <div class="pulse-dot"></div>
+            </div>
+            <p style="font-size: 1.125rem; font-weight: 500;">
+                <span class="gradient-text">AI-Powered Medical Billing</span> That Learns to Reduce Claim Denials
+            </p>
+            <div class="specialty-badges">
+                <span class="specialty-badge">🧠 Mental Health</span>
+                <span class="specialty-badge">🏃 Physical Therapy</span>
+                <span class="specialty-badge">💬 Speech-Language</span>
+            </div>
             <div style="margin-top: 15px;" id="authNav">
-                <a href="login.html" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</a>
-                <a href="signup.html" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</a>
+                <button onclick="openAuthModal('login')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</button>
+                <button onclick="openAuthModal('signup')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</button>
             </div>
         </div>
         
@@ -631,103 +710,44 @@ flowchart TB
         </div>
         
         <div class="footer">
-            <p>🏥 RevClear AI Medical Billing System | Google Cloud Platform Architecture Demo</p>
-            <p>© 2025 | Built for demonstration purposes</p>
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem;">
+                        <span class="gradient-text">RevClear AI</span> Medical System
+                    </h3>
+                    <p style="margin: 0; color: var(--slate-600);">Automated Medical Billing for PT, Mental Health & SLP Practices</p>
+                </div>
+                
+                <div class="footer-tech">
+                    <div class="tech-badge">
+                        <span class="tech-icon">🤖</span>
+                        <span>Vertex AI</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">☁️</span>
+                        <span>Google Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">🔒</span>
+                        <span>HIPAA Compliant</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">📊</span>
+                        <span>BigQuery ML</span>
+                    </div>
+                </div>
+                
+                <div class="footer-bottom">
+                    <p>© 2025 RevClear. All rights reserved.</p>
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>All Systems Operational</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <script src="script.js"></script>
-    <script>
-        // Check if user is logged in and update UI
-        window.addEventListener('load', () => {
-            const userSession = sessionStorage.getItem('user');
-            if (userSession) {
-                try {
-                    const user = JSON.parse(userSession);
-                    const authNav = document.getElementById('authNav');
-                    
-                    // Replace login/signup buttons with welcome message and logout
-                    authNav.innerHTML = `
-                        <span style="color: white; margin: 0 10px; display: inline-block;">
-                            👋 Welcome, <strong>${user.email.split('@')[0]}</strong>
-                        </span>
-                        <button onclick="handleLogout()" style="color: white; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; border: none; cursor: pointer; transition: all 0.3s; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                            🚪 Logout
-                        </button>
-                    `;
-                    
-                    // Show a welcome notification
-                    showWelcomeNotification(user);
-                } catch (e) {
-                    console.error('Error parsing user session:', e);
-                }
-            }
-        });
-        
-        function showWelcomeNotification(user) {
-            // Create welcome notification
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, #34a853, #0f9d58);
-                color: white;
-                padding: 15px 30px;
-                border-radius: 10px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 9999;
-                font-weight: 600;
-                animation: slideDown 0.5s ease;
-            `;
-            notification.textContent = `✅ Successfully logged in as ${user.email}`;
-            document.body.appendChild(notification);
-            
-            // Add CSS animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes slideDown {
-                    from { top: -100px; opacity: 0; }
-                    to { top: 20px; opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Remove notification after 4 seconds
-            setTimeout(() => {
-                notification.style.animation = 'slideDown 0.5s ease reverse';
-                setTimeout(() => notification.remove(), 500);
-            }, 4000);
-        }
-        
-        function handleLogout() {
-            if (confirm('Are you sure you want to logout?')) {
-                sessionStorage.removeItem('user');
-                
-                // Show logout message
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: #5f6368;
-                    color: white;
-                    padding: 15px 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    z-index: 9999;
-                    font-weight: 600;
-                `;
-                notification.textContent = '👋 Logged out successfully';
-                document.body.appendChild(notification);
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        }
-    </script>
 </body>
 </html>

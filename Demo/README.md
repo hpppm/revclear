@@ -50,24 +50,15 @@ Visit: https://hpppm.github.io/revclear/
 ### Demo Pages
 
 1. **Main Demo (index.html)**
-   - 4 Interactive tabs with full system overview
+   - 5 Interactive tabs with full system overview
+   - Modern UI with gradient text and animated elements
+   - **Integrated authentication modal** (Login/Signup)
    - Architecture diagrams and workflow simulation
-   - API endpoint documentation
-   - Security and compliance information
+   - Real-time API call tracker
+   - Sticky header navigation
+   - Modern footer with tech badges
 
-2. **Signup Page (signup.html)** ✨ NEW
-   - Clinician account creation form
-   - Password strength validation
-   - Real-time input validation
-   - Responsive design matching main demo
-
-3. **Login Page (login.html)** ✨ NEW
-   - Secure authentication interface
-   - Demo mode with pre-filled credentials
-   - Session management
-   - "Remember me" functionality
-
-### 4 Interactive Tabs (Main Demo)
+### 5 Interactive Tabs (Main Demo)
 
 1. **Architecture Diagram**
    - Full system architecture (Mermaid.js)
