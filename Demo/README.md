@@ -47,7 +47,27 @@ Visit: https://hpppm.github.io/revclear/
 
 ## 📊 What's Included
 
-### 4 Interactive Tabs
+### Demo Pages
+
+1. **Main Demo (index.html)**
+   - 4 Interactive tabs with full system overview
+   - Architecture diagrams and workflow simulation
+   - API endpoint documentation
+   - Security and compliance information
+
+2. **Signup Page (signup.html)** ✨ NEW
+   - Clinician account creation form
+   - Password strength validation
+   - Real-time input validation
+   - Responsive design matching main demo
+
+3. **Login Page (login.html)** ✨ NEW
+   - Secure authentication interface
+   - Demo mode with pre-filled credentials
+   - Session management
+   - "Remember me" functionality
+
+### 4 Interactive Tabs (Main Demo)
 
 1. **Architecture Diagram**
    - Full system architecture (Mermaid.js)
@@ -59,17 +79,19 @@ Visit: https://hpppm.github.io/revclear/
    - 3 Human-in-the-Loop (HITL) validation gates
    - Progress tracking (0% → 100%)
    - Realistic medical data examples
+   - Real-time API call tracker
 
-3. **Components**
+3. **API Routes**
+   - Complete RESTful API documentation
+   - 40+ endpoint specifications
+   - Request/response examples
+   - Authentication flow details
+
+4. **Components & Security**
    - Detailed explanation of each GCP service
    - Service groupings by layer
-   - Integration points
-
-4. **Security & Compliance**
-   - HIPAA technical safeguards
-   - Encryption and access controls
-   - Audit and monitoring
-   - Compliance checklist
+   - HIPAA compliance checklist
+   - Security controls overview
 
 ---
 
@@ -239,6 +261,25 @@ Simple drag-and-drop deployment
 
 ### Step-by-Step Guide
 
+#### Option 1: Full User Journey (Recommended)
+1. **Sign Up** (signup.html)
+   - Navigate to signup page
+   - Fill out clinician registration form
+   - Experience password validation
+   - Get redirected to login
+
+2. **Log In** (login.html)
+   - Use demo credentials (pre-filled)
+   - Experience authentication flow
+   - Get redirected to main demo
+
+3. **Explore Main Demo** (index.html)
+   - View Architecture diagram
+   - Run interactive workflow
+   - Track API calls in real-time
+   - Review security features
+
+#### Option 2: Direct Demo Access
 1. **View Architecture** (Tab 1)
    - Review Mermaid diagram
    - Understand component relationships
@@ -249,17 +290,22 @@ Simple drag-and-drop deployment
    - Watch automated steps
    - Approve at each HITL gate
    - See realistic medical data
+   - Monitor API calls (top-right tracker)
 
-3. **Explore Components** (Tab 3)
-   - Review 6 service categories
-   - Understand each GCP service role
+3. **Explore API Routes** (Tab 3)
+   - Browse 40+ endpoints
+   - See authentication flow
+   - Review request/response formats
 
-4. **Check Compliance** (Tab 4)
-   - Review HIPAA safeguards
-   - See security controls
-   - Understand audit capabilities
+4. **Check Components & Security** (Tab 4)
+   - Review GCP service details
+   - See HIPAA safeguards
+   - Understand security controls
+   - Review audit capabilities
 
-**Total Time**: ~10-15 minutes for full walkthrough
+**Total Time**: 
+- Quick demo: ~5 minutes (direct access)
+- Full journey: ~10-15 minutes (with signup/login)
 
 ---
 
@@ -304,13 +350,25 @@ Before deploying for real use:
 
 ## 🤝 Contributing
 
-Enhancement ideas:
+### Recent Enhancements ✅
+- ✅ Added clinician signup page with validation
+- ✅ Added secure login page with demo mode
+- ✅ Integrated authentication flow
+- ✅ Added navigation links between pages
+- ✅ Password strength requirements
+- ✅ Real-time form validation
+
+### Future Enhancement Ideas
 - [ ] Add more workflow steps (denial management, status tracking)
+- [ ] Implement actual Firebase/Supabase authentication
+- [ ] Add patient dashboard mockup
 - [ ] Improve mobile responsiveness
-- [ ] Add dark mode
+- [ ] Add dark mode toggle
 - [ ] Create video walkthrough
 - [ ] Add accessibility features (ARIA labels)
 - [ ] Translate to other languages
+- [ ] Add forgot password flow
+- [ ] Implement 2FA/MFA demo
 
 ---
 

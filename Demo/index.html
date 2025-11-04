@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HIPAA AI Medical Claims System - Demo</title>
+    <title>RevClear AI Medical Billing System - Demo</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -28,8 +28,12 @@
     
     <div class="container">
         <div class="header">
-            <h1>🏥 HIPAA AI Medical Claims System</h1>
+            <h1>🏥 RevClear AI Medical Billing System</h1>
             <p>Google Cloud Architecture - Interactive Demo</p>
+            <div style="margin-top: 15px;" id="authNav">
+                <a href="login.html" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</a>
+                <a href="signup.html" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</a>
+            </div>
         </div>
         
         <div class="tabs">
@@ -627,11 +631,103 @@ flowchart TB
         </div>
         
         <div class="footer">
-            <p>🏥 HIPAA AI Medical Claims System | Google Cloud Platform Architecture Demo</p>
+            <p>🏥 RevClear AI Medical Billing System | Google Cloud Platform Architecture Demo</p>
             <p>© 2025 | Built for demonstration purposes</p>
         </div>
     </div>
     
     <script src="script.js"></script>
+    <script>
+        // Check if user is logged in and update UI
+        window.addEventListener('load', () => {
+            const userSession = sessionStorage.getItem('user');
+            if (userSession) {
+                try {
+                    const user = JSON.parse(userSession);
+                    const authNav = document.getElementById('authNav');
+                    
+                    // Replace login/signup buttons with welcome message and logout
+                    authNav.innerHTML = `
+                        <span style="color: white; margin: 0 10px; display: inline-block;">
+                            👋 Welcome, <strong>${user.email.split('@')[0]}</strong>
+                        </span>
+                        <button onclick="handleLogout()" style="color: white; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; border: none; cursor: pointer; transition: all 0.3s; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            🚪 Logout
+                        </button>
+                    `;
+                    
+                    // Show a welcome notification
+                    showWelcomeNotification(user);
+                } catch (e) {
+                    console.error('Error parsing user session:', e);
+                }
+            }
+        });
+        
+        function showWelcomeNotification(user) {
+            // Create welcome notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #34a853, #0f9d58);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 9999;
+                font-weight: 600;
+                animation: slideDown 0.5s ease;
+            `;
+            notification.textContent = `✅ Successfully logged in as ${user.email}`;
+            document.body.appendChild(notification);
+            
+            // Add CSS animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideDown {
+                    from { top: -100px; opacity: 0; }
+                    to { top: 20px; opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Remove notification after 4 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideDown 0.5s ease reverse';
+                setTimeout(() => notification.remove(), 500);
+            }, 4000);
+        }
+        
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('user');
+                
+                // Show logout message
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #5f6368;
+                    color: white;
+                    padding: 15px 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    z-index: 9999;
+                    font-weight: 600;
+                `;
+                notification.textContent = '👋 Logged out successfully';
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        }
+    </script>
 </body>
 </html>
