@@ -1,0 +1,175 @@
+# RevClear AWS CLI Commands
+# Copy and paste these commands to set up AWS services manually
+
+# ============================================
+# CONFIGURATION
+# ============================================
+$PROJECT_NAME = "revclear"
+$REGION = "us-east-1"
+$ENVIRONMENT = "production"
+*
+# ============================================
+# 1. CREATE RDS POSTGRESQL DATABASE
+# ============================================
+Write-Host "Creating RDS PostgreSQL Database..." -ForegroundColor Green
+
+aws rds create-db-instance `
+    --db-instance-identifier revclear-db `
+    --db-instance-class db.t3.micro `
+    --engine postgres `
+    --engine-version 15.3 `
+    --master-username revclear_admin `
+    --master-user-password "ChangeThisPassword123!" `
+    --allocated-storage 20 `
+    --storage-type gp3 `
+    --storage-encrypted `
+    --publicly-accessible `
+    --backup-retention-period 7 `
+    --region us-east-1 `
+    --tags Key=Project,Value=revclear Key=Environment,Value=production
+
+# Wait for database to be available (5-10 minutes)
+Write-Host "Waiting for database... (this takes 5-10 minutes)" -ForegroundColor Yellow
+aws rds wait db-instance-available --db-instance-identifier revclear-db
+
+# Get database endpoint
+aws rds describe-db-instances --db-instance-identifier revclear-db --query 'DBInstances[0].Endpoint.Address' --output text
+
+# ============================================
+# 2. CREATE S3 BUCKET
+# ============================================
+Write-Host "Creating S3 Bucket..." -ForegroundColor Green
+
+aws s3api create-bucket `
+    --bucket revclear-storage-production `
+    --region us-east-1
+
+# Enable versioning
+aws s3api put-bucket-versioning `
+    --bucket revclear-storage-production `
+    --versioning-configuration Status=Enabled
+
+# Enable encryption
+aws s3api put-bucket-encryption `
+    --bucket revclear-storage-production `
+    --server-side-encryption-configuration '{\"Rules\":[{\"ApplyServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"AES256\"}}]}'
+
+# Block public access
+aws s3api put-public-access-block `
+    --bucket revclear-storage-production `
+    --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+# ============================================
+# 3. CREATE COGNITO USER POOL
+# ============================================
+Write-Host "Creating Cognito User Pool..." -ForegroundColor Green
+
+# Create user pool
+$userPoolId = aws cognito-idp create-user-pool `
+    --pool-name revclear-users `
+    --policies "PasswordPolicy={MinimumLength=8,RequireUppercase=true,RequireLowercase=true,RequireNumbers=true,RequireSymbols=false}" `
+    --auto-verified-attributes email `
+    --username-attributes email `
+    --region us-east-1 `
+    --query 'UserPool.Id' `
+    --output text
+
+Write-Host "User Pool ID: $userPoolId" -ForegroundColor Cyan
+
+# Create user pool client
+$clientId = aws cognito-idp create-user-pool-client `
+    --user-pool-id $userPoolId `
+    --client-name revclear-client `
+    --no-generate-secret `
+    --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH `
+    --region us-east-1 `
+    --query 'UserPoolClient.ClientId' `
+    --output text
+
+Write-Host "Client ID: $clientId" -ForegroundColor Cyan
+
+# ============================================
+# 4. CREATE CLOUDWATCH LOG GROUP
+# ============================================
+Write-Host "Creating CloudWatch Log Group..." -ForegroundColor Green
+
+aws logs create-log-group `
+    --log-group-name /aws/revclear/production `
+    --region us-east-1
+
+aws logs put-retention-policy `
+    --log-group-name /aws/revclear/production `
+    --retention-in-days 30 `
+    --region us-east-1
+
+# ============================================
+# 5. CREATE SECRETS MANAGER SECRET
+# ============================================
+Write-Host "Creating Secrets Manager secret..." -ForegroundColor Green
+
+# First, get the database endpoint (wait if not ready)
+$dbEndpoint = aws rds describe-db-instances --db-instance-identifier revclear-db --query 'DBInstances[0].Endpoint.Address' --output text
+
+aws secretsmanager create-secret `
+    --name revclear/database/credentials `
+    --description "Database credentials for RevClear" `
+    --secret-string "{\"username\":\"revclear_admin\",\"password\":\"ChangeThisPassword123!\",\"engine\":\"postgres\",\"host\":\"$dbEndpoint\",\"port\":5432,\"dbname\":\"revclear_db\"}" `
+    --region us-east-1
+
+# ============================================
+# 6. CREATE ECR REPOSITORY
+# ============================================
+Write-Host "Creating ECR repository..." -ForegroundColor Green
+
+aws ecr create-repository `
+    --repository-name revclear-backend `
+    --region us-east-1 `
+    --image-scanning-configuration scanOnPush=true `
+    --encryption-configuration encryptionType=AES256
+
+# ============================================
+# VERIFICATION COMMANDS
+# ============================================
+Write-Host "`nVerifying resources..." -ForegroundColor Yellow
+
+# Check RDS
+Write-Host "`nRDS Status:" -ForegroundColor Cyan
+aws rds describe-db-instances --db-instance-identifier revclear-db --query 'DBInstances[0].[DBInstanceStatus,Endpoint.Address]' --output table
+
+# Check S3
+Write-Host "`nS3 Bucket:" -ForegroundColor Cyan
+aws s3 ls | Select-String "revclear-storage"
+
+# Check Cognito
+Write-Host "`nCognito User Pool:" -ForegroundColor Cyan
+aws cognito-idp list-user-pools --max-results 10 --query "UserPools[?Name=='revclear-users']" --output table
+
+# Check CloudWatch
+Write-Host "`nCloudWatch Log Group:" -ForegroundColor Cyan
+aws logs describe-log-groups --log-group-name-prefix /aws/revclear --query 'logGroups[*].[logGroupName,retentionInDays]' --output table
+
+# Check Secrets Manager
+Write-Host "`nSecrets Manager:" -ForegroundColor Cyan
+aws secretsmanager list-secrets --query "SecretList[?Name=='revclear/database/credentials'].[Name,Description]" --output table
+
+# Check ECR
+Write-Host "`nECR Repository:" -ForegroundColor Cyan
+aws ecr describe-repositories --repository-names revclear-backend --query 'repositories[0].[repositoryName,repositoryUri]' --output table
+
+# ============================================
+# SAVE THESE VALUES
+# ============================================
+Write-Host "`n============================================" -ForegroundColor Yellow
+Write-Host "SAVE THESE VALUES TO YOUR .env FILE" -ForegroundColor Yellow
+Write-Host "============================================" -ForegroundColor Yellow
+Write-Host "AWS_REGION=us-east-1"
+Write-Host "AWS_USER_POOL_ID=$userPoolId"
+Write-Host "AWS_CLIENT_ID=$clientId"
+Write-Host "AWS_S3_BUCKET=revclear-storage-production"
+Write-Host "DB_HOST=$dbEndpoint"
+Write-Host "DB_PORT=5432"
+Write-Host "DB_NAME=revclear_db"
+Write-Host "DB_USER=revclear_admin"
+Write-Host "DB_PASSWORD=ChangeThisPassword123!"
+Write-Host "AWS_SECRET_NAME=revclear/database/credentials"
+Write-Host "============================================`n" -ForegroundColor Yellow
