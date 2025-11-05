@@ -1,283 +1,283 @@
-name:AWSDeployment
+name: AWS Deployment
 
 on:
-push:
-branches:
--test-aws
--aws-migration
-pull_request:
-branches:
--test-aws
--aws-migration
-workflow_dispatch:
-inputs:
-environment:
-description:'Deploymentenvironment'
-required:true
-default:'test'
-type:choice
-options:
--test
--staging
--production
+  push:
+    branches:
+      - test-aws
+      - aws-migration
+  pull_request:
+    branches:
+      - test-aws
+      - aws-migration
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - staging
+          - production
 
 jobs:
-aws-setup:
-runs-on:ubuntu-latest
-steps:
--name:Checkoutcode
-uses:actions/checkout@v4
+  aws-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
--name:ConfigureAWSCredentials
-uses:aws-actions/configure-aws-credentials@v4
-with:
-aws-access-key-id:${{secrets.AWS_ACCESS_KEY_ID}}
-aws-secret-access-key:${{secrets.AWS_SECRET_ACCESS_KEY}}
-aws-region:${{secrets.AWS_REGION||'us-east-1'}}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
--name:VerifyAWSConnection
-run:|
-echo"TestingAWSconnection..."
-awsstsget-caller-identity
-echo"G£àSuccessfullyconnectedtoAWS!"
+      - name: Verify AWS Connection
+        run: |
+          echo "Testing AWS connection..."
+          aws sts get-caller-identity
+          echo "Successfully connected to AWS!"
 
--name:CheckAWSServices
-run:|
-echo"CheckingAWSservices..."
+      - name: Check AWS Services
+        run: |
+          echo "Checking AWS services..."
+          
+          # Check RDS instances
+          echo "RDS Databases:"
+          aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier,DBInstanceStatus,Endpoint.Address]' --output table || echo "No RDS instances found"
+          
+          # Check Cognito User Pools
+          echo "Cognito User Pools:"
+          aws cognito-idp list-user-pools --max-results 10 --query 'UserPools[*].[Name,Id]' --output table || echo "No user pools found"
+          
+          # Check S3 Buckets
+          echo "S3 Buckets:"
+          aws s3 ls || echo "No S3 buckets found"
+          
+          # Check Secrets Manager
+          echo "Secrets Manager:"
+          aws secretsmanager list-secrets --query 'SecretList[*].[Name,ARN]' --output table || echo "No secrets found"
 
-#CheckRDSinstances
-echo"RDSDatabases:"
-awsrdsdescribe-db-instances--query'DBInstances[*].[DBInstanceIdentifier,DBInstanceStatus,Endpoint.Address]'--outputtable||echo"NoRDSinstancesfound"
+  deploy-backend:
+    needs: aws-setup
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./RevClear/backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#CheckCognitoUserPools
-echo"CognitoUserPools:"
-awscognito-idplist-user-pools--max-results10--query'UserPools[*].[Name,Id]'--outputtable||echo"Nouserpoolsfound"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: RevClear/backend/package.json
 
-#CheckS3Buckets
-echo"S3Buckets:"
-awss3ls||echo"NoS3bucketsfound"
+      - name: Install dependencies
+        run: npm ci
 
-#CheckSecretsManager
-echo"SecretsManager:"
-awssecretsmanagerlist-secrets--query'SecretList[*].[Name,ARN]'--outputtable||echo"Nosecretsfound"
+      - name: Build backend
+        run: npm run build || echo "No build script defined"
 
-deploy-backend:
-needs:aws-setup
-runs-on:ubuntu-latest
-defaults:
-run:
-working-directory:./RevClear/backend
-steps:
--name:Checkoutcode
-uses:actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
--name:SetupNode.js
-uses:actions/setup-node@v4
-with:
-node-version:'20'
-cache:'npm'
-cache-dependency-path:RevClear/backend/package.json
+      - name: Get DB credentials from AWS Secrets Manager
+        id: get-secrets
+        run: |
+          # Check if RDS secret exists
+          if aws secretsmanager describe-secret --secret-id revclear-rds-credentials 2>/dev/null; then
+            echo "âœ… RDS credentials found in Secrets Manager"
+            SECRET=$(aws secretsmanager get-secret-value --secret-id revclear-rds-credentials --query SecretString --output text)
+            echo "DB_HOST=$(echo $SECRET | jq -r .host)" >> $GITHUB_ENV
+            echo "DB_PORT=$(echo $SECRET | jq -r .port)" >> $GITHUB_ENV
+            echo "DB_NAME=$(echo $SECRET | jq -r .dbname)" >> $GITHUB_ENV
+            echo "DB_USER=$(echo $SECRET | jq -r .username)" >> $GITHUB_ENV
+            echo "DB_PASSWORD=$(echo $SECRET | jq -r .password)" >> $GITHUB_ENV
+            echo "::set-output name=rds-exists::true"
+          else
+            echo "âš ï¸ RDS not created yet. Run create-aws-resources workflow first."
+            echo "::set-output name=rds-exists::false"
+          fi
 
--name:Installdependencies
-run:npmci
+      - name: Deploy database schema
+        if: steps.get-secrets.outputs.rds-exists == 'true'
+        run: |
+          echo "ðŸ“¦ Deploying database schema..."
+          # Install PostgreSQL client
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          
+          # Deploy schema (002_cloud_db_schema.sql)
+          if [ -f "RevClear/backend/Documentation/db/002_cloud_db_schema.sql" ]; then
+            PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f RevClear/backend/Documentation/db/002_cloud_db_schema.sql || echo "Schema already exists"
+            echo "âœ… Schema deployed"
+          fi
+          
+          # Load sample data (003, 004, 005)
+          for file in RevClear/backend/Documentation/db/003_*.sql RevClear/backend/Documentation/db/004_*.sql RevClear/backend/Documentation/db/005_*.sql; do
+            if [ -f "$file" ]; then
+              echo "Loading $file..."
+              PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f "$file" || echo "Data already loaded"
+            fi
+          done
+          
+          echo "âœ… Database deployment complete"
 
--name:Buildbackend
-run:npmrunbuild||echo"Nobuildscriptdefined"
+      - name: Test AWS SDK connection
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
+          node -e "
+          const { CognitoIdentityProviderClient, ListUserPoolsCommand } = require('@aws-sdk/client-cognito-identity-provider');
+          const client = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION });
+          client.send(new ListUserPoolsCommand({ MaxResults: 1 }))
+            .then(() => console.log('âœ… AWS SDK connection successful'))
+            .catch(err => console.log('AWS SDK test:', err.message));
+          " || echo "AWS SDK test complete"
 
--name:ConfigureAWSCredentials
-uses:aws-actions/configure-aws-credentials@v4
-with:
-aws-access-key-id:${{secrets.AWS_ACCESS_KEY_ID}}
-aws-secret-access-key:${{secrets.AWS_SECRET_ACCESS_KEY}}
-aws-region:${{secrets.AWS_REGION||'us-east-1'}}
+      - name: Create deployment summary
+        run: |
+          echo "### Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… Dependencies installed" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… AWS credentials configured" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… Build completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
 
--name:GetDBcredentialsfromAWSSecretsManager
-id:get-secrets
-run:|
-#CheckifRDSsecretexists
-ifawssecretsmanagerdescribe-secret--secret-idrevclear-rds-credentials2>/dev/null;then
-echo"G£àRDScredentialsfoundinSecretsManager"
-SECRET=$(awssecretsmanagerget-secret-value--secret-idrevclear-rds-credentials--querySecretString--outputtext)
-echo"DB_HOST=$(echo$SECRET|jq-r.host)">>$GITHUB_ENV
-echo"DB_PORT=$(echo$SECRET|jq-r.port)">>$GITHUB_ENV
-echo"DB_NAME=$(echo$SECRET|jq-r.dbname)">>$GITHUB_ENV
-echo"DB_USER=$(echo$SECRET|jq-r.username)">>$GITHUB_ENV
-echo"DB_PASSWORD=$(echo$SECRET|jq-r.password)">>$GITHUB_ENV
-echo"::set-outputname=rds-exists::true"
-else
-echo"GÜán+ÅRDSnotcreatedyet.Runcreate-aws-resourcesworkflowfirst."
-echo"::set-outputname=rds-exists::false"
-fi
+  deploy-frontend:
+    needs: aws-setup
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./RevClear/frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
--name:Deploydatabaseschema
-if:steps.get-secrets.outputs.rds-exists=='true'
-run:|
-echo"=ƒôªDeployingdatabaseschema..."
-#InstallPostgreSQLclient
-sudoapt-getupdate&&sudoapt-getinstall-ypostgresql-client
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: RevClear/frontend/package.json
 
-#Deployschema(002_cloud_db_schema.sql)
-if[-f"RevClear/backend/Documentation/db/002_cloud_db_schema.sql"];then
-PGPASSWORD=$DB_PASSWORDpsql-h$DB_HOST-U$DB_USER-d$DB_NAME-fRevClear/backend/Documentation/db/002_cloud_db_schema.sql||echo"Schemaalreadyexists"
-echo"G£àSchemadeployed"
-fi
+      - name: Install dependencies
+        run: npm ci
 
-#Loadsampledata(003,004,005)
-forfileinRevClear/backend/Documentation/db/003_*.sqlRevClear/backend/Documentation/db/004_*.sqlRevClear/backend/Documentation/db/005_*.sql;do
-if[-f"$file"];then
-echo"Loading$file..."
-PGPASSWORD=$DB_PASSWORDpsql-h$DB_HOST-U$DB_USER-d$DB_NAME-f"$file"||echo"Dataalreadyloaded"
-fi
-done
+      - name: Build frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
+        run: npm run build || echo "âš ï¸ Build failed, but continuing..."
+        continue-on-error: true
 
-echo"G£àDatabasedeploymentcomplete"
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
--name:TestAWSSDKconnection
-env:
-AWS_REGION:${{secrets.AWS_REGION||'us-east-1'}}
-run:|
-node-e"
-const{CognitoIdentityProviderClient,ListUserPoolsCommand}=require('@aws-sdk/client-cognito-identity-provider');
-constclient=newCognitoIdentityProviderClient({region:process.env.AWS_REGION});
-client.send(newListUserPoolsCommand({MaxResults:1}))
-.then(()=>console.log('G£àAWSSDKconnectionsuccessful'))
-.catch(err=>console.log('AWSSDKtest:',err.message));
-"||echo"AWSSDKtestcomplete"
+      - name: Get S3 bucket name and deploy
+        run: |
+          # Get S3 bucket name from AWS
+          BUCKET=$(aws s3 ls | grep revclear-frontend | awk '{print $3}')
+          
+          if [ ! -z "$BUCKET" ]; then
+            echo "âœ… Found S3 bucket: $BUCKET"
+            echo "ðŸ“¦ Deploying frontend to S3..."
+            
+            # Sync Next.js build output to S3
+            aws s3 sync out s3://$BUCKET/ --delete || \
+            aws s3 sync .next s3://$BUCKET/_next --delete
+            
+            # Set cache-control headers for static assets
+            aws s3 cp s3://$BUCKET/_next/static s3://$BUCKET/_next/static \
+              --recursive --metadata-directive REPLACE \
+              --cache-control "public, max-age=31536000, immutable" || echo "Cache headers skipped"
+            
+            echo "âœ… Frontend deployed to: http://$BUCKET.s3-website-us-east-1.amazonaws.com"
+          else
+            echo "âš ï¸ S3 frontend bucket not created yet. Run create-aws-resources workflow first."
+          fi
 
--name:Createdeploymentsummary
-run:|
-echo"###BackendDeploymentSummary">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-echo"-G£àDependenciesinstalled">>$GITHUB_STEP_SUMMARY
-echo"-G£àAWScredentialsconfigured">>$GITHUB_STEP_SUMMARY
-echo"-G£àBuildcompleted">>$GITHUB_STEP_SUMMARY
-echo"-Branch:${{github.ref_name}}">>$GITHUB_STEP_SUMMARY
-echo"-Commit:${{github.sha}}">>$GITHUB_STEP_SUMMARY
+      - name: Create deployment summary
+        run: |
+          echo "### Frontend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… Dependencies installed" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… Build completed" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
 
-deploy-frontend:
-needs:aws-setup
-runs-on:ubuntu-latest
-defaults:
-run:
-working-directory:./RevClear/frontend
-steps:
--name:Checkoutcode
-uses:actions/checkout@v4
+  aws-cli-scripts:
+    needs: aws-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
--name:SetupNode.js
-uses:actions/setup-node@v4
-with:
-node-version:'20'
-cache:'npm'
-cache-dependency-path:RevClear/frontend/package.json
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
--name:Installdependencies
-run:npmci
+      - name: Test AWS CLI Connection
+        run: |
+          echo "Testing AWS CLI connection..."
+          aws sts get-caller-identity
+          echo "âœ… Successfully connected to AWS!"
 
--name:Buildfrontend
-env:
-NEXT_PUBLIC_API_URL:${{secrets.NEXT_PUBLIC_API_URL||'http://localhost:3001'}}
-run:npmrunbuild||echo"GÜán+ÅBuildfailed,butcontinuing..."
-continue-on-error:true
+      - name: Run AWS Setup Script
+        working-directory: ./RevClear/backend
+        run: |
+          if [ -f "aws-services.sh" ]; then
+            echo "Running AWS setup script..."
+            chmod +x aws-services.sh
+            # ./aws-services.sh
+            echo "âœ… Setup script ready"
+          else
+            echo "â„¹ï¸ No setup script found"
+          fi
 
--name:ConfigureAWSCredentials
-uses:aws-actions/configure-aws-credentials@v4
-with:
-aws-access-key-id:${{secrets.AWS_ACCESS_KEY_ID}}
-aws-secret-access-key:${{secrets.AWS_SECRET_ACCESS_KEY}}
-aws-region:${{secrets.AWS_REGION||'us-east-1'}}
+      - name: List Cognito Users
+        env:
+          AWS_USER_POOL_ID: ${{ secrets.AWS_USER_POOL_ID }}
+        run: |
+          if [ ! -z "$AWS_USER_POOL_ID" ]; then
+            echo "Listing Cognito users in pool: $AWS_USER_POOL_ID"
+            aws cognito-idp list-users --user-pool-id "$AWS_USER_POOL_ID" --limit 10 \
+              --query 'Users[*].[Username,UserStatus]' --output table || echo "Could not list users"
+          else
+            echo "â„¹ï¸ AWS_USER_POOL_ID not configured"
+          fi
 
--name:GetS3bucketnameanddeploy
-run:|
-#GetS3bucketnamefromAWS
-BUCKET=$(awss3ls|greprevclear-frontend|awk'{print$3}')
+      - name: List S3 Buckets
+        run: |
+          echo "Listing S3 buckets..."
+          aws s3 ls || echo "No S3 buckets or no access"
 
-if[!-z"$BUCKET"];then
-echo"G£àFoundS3bucket:$BUCKET"
-echo"=ƒôªDeployingfrontendtoS3..."
+      - name: List RDS Instances
+        run: |
+          echo "Listing RDS instances..."
+          aws rds describe-db-instances \
+            --query 'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus]' \
+            --output table || echo "No RDS instances or no access"
 
-#SyncNext.jsbuildoutputtoS3
-awss3syncouts3://$BUCKET/--delete||\
-awss3sync.nexts3://$BUCKET/_next--delete
-
-#Setcache-controlheadersforstaticassets
-awss3cps3://$BUCKET/_next/statics3://$BUCKET/_next/static\
---recursive--metadata-directiveREPLACE\
---cache-control"public,max-age=31536000,immutable"||echo"Cacheheadersskipped"
-
-echo"G£àFrontenddeployedto:http://$BUCKET.s3-website-us-east-1.amazonaws.com"
-else
-echo"GÜán+ÅS3frontendbucketnotcreatedyet.Runcreate-aws-resourcesworkflowfirst."
-fi
-
--name:Createdeploymentsummary
-run:|
-echo"###FrontendDeploymentSummary">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-echo"-G£àDependenciesinstalled">>$GITHUB_STEP_SUMMARY
-echo"-G£àBuildcompleted">>$GITHUB_STEP_SUMMARY
-echo"-Branch:${{github.ref_name}}">>$GITHUB_STEP_SUMMARY
-
-aws-cli-scripts:
-needs:aws-setup
-runs-on:ubuntu-latest
-steps:
--name:Checkoutcode
-uses:actions/checkout@v4
-
--name:ConfigureAWSCredentials
-uses:aws-actions/configure-aws-credentials@v4
-with:
-aws-access-key-id:${{secrets.AWS_ACCESS_KEY_ID}}
-aws-secret-access-key:${{secrets.AWS_SECRET_ACCESS_KEY}}
-aws-region:${{secrets.AWS_REGION||'us-east-1'}}
-
--name:TestAWSCLIConnection
-run:|
-echo"TestingAWSCLIconnection..."
-awsstsget-caller-identity
-echo"G£àSuccessfullyconnectedtoAWS!"
-
--name:RunAWSSetupScript
-working-directory:./RevClear/backend
-run:|
-if[-f"aws-services.sh"];then
-echo"RunningAWSsetupscript..."
-chmod+xaws-services.sh
-#./aws-services.sh
-echo"G£àSetupscriptready"
-else
-echo"Gä¦n+ÅNosetupscriptfound"
-fi
-
--name:ListCognitoUsers
-env:
-AWS_USER_POOL_ID:${{secrets.AWS_USER_POOL_ID}}
-run:|
-if[!-z"$AWS_USER_POOL_ID"];then
-echo"ListingCognitousersinpool:$AWS_USER_POOL_ID"
-awscognito-idplist-users--user-pool-id"$AWS_USER_POOL_ID"--limit10\
---query'Users[*].[Username,UserStatus]'--outputtable||echo"Couldnotlistusers"
-else
-echo"Gä¦n+ÅAWS_USER_POOL_IDnotconfigured"
-fi
-
--name:ListS3Buckets
-run:|
-echo"ListingS3buckets..."
-awss3ls||echo"NoS3bucketsornoaccess"
-
--name:ListRDSInstances
-run:|
-echo"ListingRDSinstances..."
-awsrdsdescribe-db-instances\
---query'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus]'\
---outputtable||echo"NoRDSinstancesornoaccess"
-
--name:Createsummary
-run:|
-echo"###AWSCLIIntegration">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-echo"-G£àAWSCLIconnectionverified">>$GITHUB_STEP_SUMMARY
-echo"-G£àAWSresourceschecked">>$GITHUB_STEP_SUMMARY
-echo"-G£àScriptsreadytorun">>$GITHUB_STEP_SUMMARY
+      - name: Create summary
+        run: |
+          echo "### AWS CLI Integration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… AWS CLI connection verified" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… AWS resources checked" >> $GITHUB_STEP_SUMMARY
+          echo "- âœ… Scripts ready to run" >> $GITHUB_STEP_SUMMARY

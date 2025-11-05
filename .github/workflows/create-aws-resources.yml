@@ -1,117 +1,117 @@
-name:CreateAWSResources
+name: Create AWS Resources
 
 on:
-workflow_dispatch:
-inputs:
-action:
-description:'Actiontoperform'
-required:true
-default:'create'
-type:choice
-options:
--create
--list
--destroy
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'create'
+        type: choice
+        options:
+          - create
+          - list
+          - destroy
 
 jobs:
-manage-aws-resources:
-runs-on:ubuntu-latest
-steps:
--name:Checkoutcode
-uses:actions/checkout@v4
+  manage-aws-resources:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
--name:ConfigureAWSCredentials
-uses:aws-actions/configure-aws-credentials@v4
-with:
-aws-access-key-id:${{secrets.AWS_ACCESS_KEY_ID}}
-aws-secret-access-key:${{secrets.AWS_SECRET_ACCESS_KEY}}
-aws-region:${{secrets.AWS_REGION||'us-east-1'}}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
--name:VerifyAWSConnection
-run:|
-echo"TestingAWSconnection..."
-awsstsget-caller-identity
-echo"G£àConnectedtoAWS"
+      - name: Verify AWS Connection
+        run: |
+          echo "Testing AWS connection..."
+          aws sts get-caller-identity
+          echo "âœ… Connected to AWS"
 
--name:CreateAWSResources
-if:github.event.inputs.action=='create'
-run:|
-cdRevClear/backend
-chmod+xcreate-aws-resources.sh
-./create-aws-resources.sh
-env:
-AWS_REGION:${{secrets.AWS_REGION||'us-east-1'}}
+      - name: Create AWS Resources
+        if: github.event.inputs.action == 'create'
+        run: |
+          cd RevClear/backend
+          chmod +x create-aws-resources.sh
+          ./create-aws-resources.sh
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
--name:ListAWSResources
-if:github.event.inputs.action=='list'
-run:|
-echo"=========================================="
-echo"=ƒôïCurrentAWSResources"
-echo"=========================================="
-echo""
+      - name: List AWS Resources
+        if: github.event.inputs.action == 'list'
+        run: |
+          echo "=========================================="
+          echo "ðŸ“‹ Current AWS Resources"
+          echo "=========================================="
+          echo ""
+          
+          echo "ðŸ‘¥ Cognito User Pools:"
+          aws cognito-idp list-user-pools --max-results 20 --query 'UserPools[*].[Name,Id]' --output table
+          echo ""
+          
+          echo "ðŸ“¦ S3 Buckets:"
+          aws s3 ls
+          echo ""
+          
+          echo "ðŸ—„ï¸  RDS Instances:"
+          aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus,Endpoint.Address]' --output table
+          echo ""
+          
+          echo "ðŸ” Secrets Manager:"
+          aws secretsmanager list-secrets --query 'SecretList[*].[Name,ARN]' --output table
+          echo ""
+          
+          echo "ðŸ“Š CloudWatch Log Groups:"
+          aws logs describe-log-groups --query 'logGroups[*].logGroupName' --output table
+          echo ""
 
-echo"=ƒæÑCognitoUserPools:"
-awscognito-idplist-user-pools--max-results20--query'UserPools[*].[Name,Id]'--outputtable
-echo""
+      - name: Get Database Credentials
+        if: github.event.inputs.action == 'create'
+        run: |
+          echo "=========================================="
+          echo "ðŸ” Retrieving Database Credentials"
+          echo "=========================================="
+          
+          SECRET_NAME="revclear/test/database"
+          
+          if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" 2>/dev/null; then
+            echo "âœ… Database credentials stored in: $SECRET_NAME"
+            echo ""
+            echo "To retrieve credentials:"
+            echo "aws secretsmanager get-secret-value --secret-id $SECRET_NAME --query SecretString --output text"
+          else
+            echo "â„¹ï¸  Secret not found: $SECRET_NAME"
+          fi
 
-echo"=ƒôªS3Buckets:"
-awss3ls
-echo""
-
-echo"=ƒùän+ÅRDSInstances:"
-awsrdsdescribe-db-instances--query'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus,Endpoint.Address]'--outputtable
-echo""
-
-echo"=ƒöÉSecretsManager:"
-awssecretsmanagerlist-secrets--query'SecretList[*].[Name,ARN]'--outputtable
-echo""
-
-echo"=ƒôèCloudWatchLogGroups:"
-awslogsdescribe-log-groups--query'logGroups[*].logGroupName'--outputtable
-echo""
-
--name:GetDatabaseCredentials
-if:github.event.inputs.action=='create'
-run:|
-echo"=========================================="
-echo"=ƒöÉRetrievingDatabaseCredentials"
-echo"=========================================="
-
-SECRET_NAME="revclear/test/database"
-
-ifawssecretsmanagerdescribe-secret--secret-id"$SECRET_NAME"2>/dev/null;then
-echo"G£àDatabasecredentialsstoredin:$SECRET_NAME"
-echo""
-echo"Toretrievecredentials:"
-echo"awssecretsmanagerget-secret-value--secret-id$SECRET_NAME--querySecretString--outputtext"
-else
-echo"Gä¦n+ÅSecretnotfound:$SECRET_NAME"
-fi
-
--name:CreateSummary
-run:|
-echo"###AWSResourcesManagement">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-echo"**Action:**${{github.event.inputs.action}}">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-
-if["${{github.event.inputs.action}}"=="create"];then
-echo"G£àAWSresourcescreatedsuccessfully!">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-echo"**ResourcesCreated:**">>$GITHUB_STEP_SUMMARY
-echo"-=ƒæÑCognitoUserPool">>$GITHUB_STEP_SUMMARY
-echo"-=ƒôªS3Buckets(storage+frontend)">>$GITHUB_STEP_SUMMARY
-echo"-=ƒùän+ÅRDSPostgreSQLDatabase">>$GITHUB_STEP_SUMMARY
-echo"-=ƒöÉSecretsManager">>$GITHUB_STEP_SUMMARY
-echo"-=ƒôèCloudWatchLogGroups">>$GITHUB_STEP_SUMMARY
-echo"">>$GITHUB_STEP_SUMMARY
-echo"**=ƒÆ¦AllresourcesareFREETIER!**">>$GITHUB_STEP_SUMMARY
-elif["${{github.event.inputs.action}}"=="list"];then
-echo"G£àAWSresourceslistedsuccessfully!">>$GITHUB_STEP_SUMMARY
-fi
-
-echo"">>$GITHUB_STEP_SUMMARY
-echo"**NextSteps:**">>$GITHUB_STEP_SUMMARY
-echo"1.Checkthejoblogsforresourcedetails">>$GITHUB_STEP_SUMMARY
-echo"2.AddanynewsecretstoGitHubSecrets">>$GITHUB_STEP_SUMMARY
-echo"3.Updateyourapplicationconfiguration">>$GITHUB_STEP_SUMMARY
+      - name: Create Summary
+        run: |
+          echo "### AWS Resources Management" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action:** ${{ github.event.inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.action }}" == "create" ]; then
+            echo "âœ… AWS resources created successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Resources Created:**" >> $GITHUB_STEP_SUMMARY
+            echo "- ðŸ‘¥ Cognito User Pool" >> $GITHUB_STEP_SUMMARY
+            echo "- ðŸ“¦ S3 Buckets (storage + frontend)" >> $GITHUB_STEP_SUMMARY
+            echo "- ðŸ—„ï¸ RDS PostgreSQL Database" >> $GITHUB_STEP_SUMMARY
+            echo "- ðŸ” Secrets Manager" >> $GITHUB_STEP_SUMMARY
+            echo "- ðŸ“Š CloudWatch Log Groups" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**ðŸ’° All resources are FREE TIER!**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.event.inputs.action }}" == "list" ]; then
+            echo "âœ… AWS resources listed successfully!" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check the job logs for resource details" >> $GITHUB_STEP_SUMMARY
+          echo "2. Add any new secrets to GitHub Secrets" >> $GITHUB_STEP_SUMMARY
+          echo "3. Update your application configuration" >> $GITHUB_STEP_SUMMARY
