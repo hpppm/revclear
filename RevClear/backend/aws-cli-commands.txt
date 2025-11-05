@@ -7,7 +7,7 @@
 $PROJECT_NAME = "revclear"
 $REGION = "us-east-1"
 $ENVIRONMENT = "production"
-
+*
 # ============================================
 # 1. CREATE RDS POSTGRESQL DATABASE
 # ============================================
