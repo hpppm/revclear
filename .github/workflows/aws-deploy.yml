@@ -39,7 +39,7 @@ aws-region:${{secrets.AWS_REGION||'us-east-1'}}
 run:|
 echo"TestingAWSconnection..."
 awsstsget-caller-identity
-echo"âœ…SuccessfullyconnectedtoAWS!"
+echo"G£àSuccessfullyconnectedtoAWS!"
 
 -name:CheckAWSServices
 run:|
@@ -96,7 +96,7 @@ id:get-secrets
 run:|
 #CheckifRDSsecretexists
 ifawssecretsmanagerdescribe-secret--secret-idrevclear-rds-credentials2>/dev/null;then
-echo"âœ…RDScredentialsfoundinSecretsManager"
+echo"G£àRDScredentialsfoundinSecretsManager"
 SECRET=$(awssecretsmanagerget-secret-value--secret-idrevclear-rds-credentials--querySecretString--outputtext)
 echo"DB_HOST=$(echo$SECRET|jq-r.host)">>$GITHUB_ENV
 echo"DB_PORT=$(echo$SECRET|jq-r.port)">>$GITHUB_ENV
@@ -105,21 +105,21 @@ echo"DB_USER=$(echo$SECRET|jq-r.username)">>$GITHUB_ENV
 echo"DB_PASSWORD=$(echo$SECRET|jq-r.password)">>$GITHUB_ENV
 echo"::set-outputname=rds-exists::true"
 else
-echo"âš ï¸RDSnotcreatedyet.Runcreate-aws-resourcesworkflowfirst."
+echo"GÜán+ÅRDSnotcreatedyet.Runcreate-aws-resourcesworkflowfirst."
 echo"::set-outputname=rds-exists::false"
 fi
 
 -name:Deploydatabaseschema
 if:steps.get-secrets.outputs.rds-exists=='true'
 run:|
-echo"ðŸ“¦Deployingdatabaseschema..."
+echo"=ƒôªDeployingdatabaseschema..."
 #InstallPostgreSQLclient
 sudoapt-getupdate&&sudoapt-getinstall-ypostgresql-client
 
 #Deployschema(002_cloud_db_schema.sql)
 if[-f"RevClear/backend/Documentation/db/002_cloud_db_schema.sql"];then
 PGPASSWORD=$DB_PASSWORDpsql-h$DB_HOST-U$DB_USER-d$DB_NAME-fRevClear/backend/Documentation/db/002_cloud_db_schema.sql||echo"Schemaalreadyexists"
-echo"âœ…Schemadeployed"
+echo"G£àSchemadeployed"
 fi
 
 #Loadsampledata(003,004,005)
@@ -130,7 +130,7 @@ PGPASSWORD=$DB_PASSWORDpsql-h$DB_HOST-U$DB_USER-d$DB_NAME-f"$file"||echo"Dataalr
 fi
 done
 
-echo"âœ…Databasedeploymentcomplete"
+echo"G£àDatabasedeploymentcomplete"
 
 -name:TestAWSSDKconnection
 env:
@@ -140,7 +140,7 @@ node-e"
 const{CognitoIdentityProviderClient,ListUserPoolsCommand}=require('@aws-sdk/client-cognito-identity-provider');
 constclient=newCognitoIdentityProviderClient({region:process.env.AWS_REGION});
 client.send(newListUserPoolsCommand({MaxResults:1}))
-.then(()=>console.log('âœ…AWSSDKconnectionsuccessful'))
+.then(()=>console.log('G£àAWSSDKconnectionsuccessful'))
 .catch(err=>console.log('AWSSDKtest:',err.message));
 "||echo"AWSSDKtestcomplete"
 
@@ -148,9 +148,9 @@ client.send(newListUserPoolsCommand({MaxResults:1}))
 run:|
 echo"###BackendDeploymentSummary">>$GITHUB_STEP_SUMMARY
 echo"">>$GITHUB_STEP_SUMMARY
-echo"-âœ…Dependenciesinstalled">>$GITHUB_STEP_SUMMARY
-echo"-âœ…AWScredentialsconfigured">>$GITHUB_STEP_SUMMARY
-echo"-âœ…Buildcompleted">>$GITHUB_STEP_SUMMARY
+echo"-G£àDependenciesinstalled">>$GITHUB_STEP_SUMMARY
+echo"-G£àAWScredentialsconfigured">>$GITHUB_STEP_SUMMARY
+echo"-G£àBuildcompleted">>$GITHUB_STEP_SUMMARY
 echo"-Branch:${{github.ref_name}}">>$GITHUB_STEP_SUMMARY
 echo"-Commit:${{github.sha}}">>$GITHUB_STEP_SUMMARY
 
@@ -177,7 +177,7 @@ run:npmci
 -name:Buildfrontend
 env:
 NEXT_PUBLIC_API_URL:${{secrets.NEXT_PUBLIC_API_URL||'http://localhost:3001'}}
-run:npmrunbuild||echo"âš ï¸Buildfailed,butcontinuing..."
+run:npmrunbuild||echo"GÜán+ÅBuildfailed,butcontinuing..."
 continue-on-error:true
 
 -name:ConfigureAWSCredentials
@@ -193,8 +193,8 @@ run:|
 BUCKET=$(awss3ls|greprevclear-frontend|awk'{print$3}')
 
 if[!-z"$BUCKET"];then
-echo"âœ…FoundS3bucket:$BUCKET"
-echo"ðŸ“¦DeployingfrontendtoS3..."
+echo"G£àFoundS3bucket:$BUCKET"
+echo"=ƒôªDeployingfrontendtoS3..."
 
 #SyncNext.jsbuildoutputtoS3
 awss3syncouts3://$BUCKET/--delete||\
@@ -205,17 +205,17 @@ awss3cps3://$BUCKET/_next/statics3://$BUCKET/_next/static\
 --recursive--metadata-directiveREPLACE\
 --cache-control"public,max-age=31536000,immutable"||echo"Cacheheadersskipped"
 
-echo"âœ…Frontenddeployedto:http://$BUCKET.s3-website-us-east-1.amazonaws.com"
+echo"G£àFrontenddeployedto:http://$BUCKET.s3-website-us-east-1.amazonaws.com"
 else
-echo"âš ï¸S3frontendbucketnotcreatedyet.Runcreate-aws-resourcesworkflowfirst."
+echo"GÜán+ÅS3frontendbucketnotcreatedyet.Runcreate-aws-resourcesworkflowfirst."
 fi
 
 -name:Createdeploymentsummary
 run:|
 echo"###FrontendDeploymentSummary">>$GITHUB_STEP_SUMMARY
 echo"">>$GITHUB_STEP_SUMMARY
-echo"-âœ…Dependenciesinstalled">>$GITHUB_STEP_SUMMARY
-echo"-âœ…Buildcompleted">>$GITHUB_STEP_SUMMARY
+echo"-G£àDependenciesinstalled">>$GITHUB_STEP_SUMMARY
+echo"-G£àBuildcompleted">>$GITHUB_STEP_SUMMARY
 echo"-Branch:${{github.ref_name}}">>$GITHUB_STEP_SUMMARY
 
 aws-cli-scripts:
@@ -236,7 +236,7 @@ aws-region:${{secrets.AWS_REGION||'us-east-1'}}
 run:|
 echo"TestingAWSCLIconnection..."
 awsstsget-caller-identity
-echo"âœ…SuccessfullyconnectedtoAWS!"
+echo"G£àSuccessfullyconnectedtoAWS!"
 
 -name:RunAWSSetupScript
 working-directory:./RevClear/backend
@@ -245,9 +245,9 @@ if[-f"aws-services.sh"];then
 echo"RunningAWSsetupscript..."
 chmod+xaws-services.sh
 #./aws-services.sh
-echo"âœ…Setupscriptready"
+echo"G£àSetupscriptready"
 else
-echo"â„¹ï¸Nosetupscriptfound"
+echo"Gä¦n+ÅNosetupscriptfound"
 fi
 
 -name:ListCognitoUsers
@@ -259,7 +259,7 @@ echo"ListingCognitousersinpool:$AWS_USER_POOL_ID"
 awscognito-idplist-users--user-pool-id"$AWS_USER_POOL_ID"--limit10\
 --query'Users[*].[Username,UserStatus]'--outputtable||echo"Couldnotlistusers"
 else
-echo"â„¹ï¸AWS_USER_POOL_IDnotconfigured"
+echo"Gä¦n+ÅAWS_USER_POOL_IDnotconfigured"
 fi
 
 -name:ListS3Buckets
@@ -278,6 +278,6 @@ awsrdsdescribe-db-instances\
 run:|
 echo"###AWSCLIIntegration">>$GITHUB_STEP_SUMMARY
 echo"">>$GITHUB_STEP_SUMMARY
-echo"-âœ…AWSCLIconnectionverified">>$GITHUB_STEP_SUMMARY
-echo"-âœ…AWSresourceschecked">>$GITHUB_STEP_SUMMARY
-echo"-âœ…Scriptsreadytorun">>$GITHUB_STEP_SUMMARY
+echo"-G£àAWSCLIconnectionverified">>$GITHUB_STEP_SUMMARY
+echo"-G£àAWSresourceschecked">>$GITHUB_STEP_SUMMARY
+echo"-G£àScriptsreadytorun">>$GITHUB_STEP_SUMMARY

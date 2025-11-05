@@ -31,7 +31,7 @@ aws-region:${{secrets.AWS_REGION||'us-east-1'}}
 run:|
 echo"TestingAWSconnection..."
 awsstsget-caller-identity
-echo"âœ…ConnectedtoAWS"
+echo"G£àConnectedtoAWS"
 
 -name:CreateAWSResources
 if:github.event.inputs.action=='create'
@@ -46,27 +46,27 @@ AWS_REGION:${{secrets.AWS_REGION||'us-east-1'}}
 if:github.event.inputs.action=='list'
 run:|
 echo"=========================================="
-echo"ðŸ“‹CurrentAWSResources"
+echo"=ƒôïCurrentAWSResources"
 echo"=========================================="
 echo""
 
-echo"ðŸ‘¥CognitoUserPools:"
+echo"=ƒæÑCognitoUserPools:"
 awscognito-idplist-user-pools--max-results20--query'UserPools[*].[Name,Id]'--outputtable
 echo""
 
-echo"ðŸ“¦S3Buckets:"
+echo"=ƒôªS3Buckets:"
 awss3ls
 echo""
 
-echo"ðŸ—„ï¸RDSInstances:"
+echo"=ƒùän+ÅRDSInstances:"
 awsrdsdescribe-db-instances--query'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus,Endpoint.Address]'--outputtable
 echo""
 
-echo"ðŸ”SecretsManager:"
+echo"=ƒöÉSecretsManager:"
 awssecretsmanagerlist-secrets--query'SecretList[*].[Name,ARN]'--outputtable
 echo""
 
-echo"ðŸ“ŠCloudWatchLogGroups:"
+echo"=ƒôèCloudWatchLogGroups:"
 awslogsdescribe-log-groups--query'logGroups[*].logGroupName'--outputtable
 echo""
 
@@ -74,18 +74,18 @@ echo""
 if:github.event.inputs.action=='create'
 run:|
 echo"=========================================="
-echo"ðŸ”RetrievingDatabaseCredentials"
+echo"=ƒöÉRetrievingDatabaseCredentials"
 echo"=========================================="
 
 SECRET_NAME="revclear/test/database"
 
 ifawssecretsmanagerdescribe-secret--secret-id"$SECRET_NAME"2>/dev/null;then
-echo"âœ…Databasecredentialsstoredin:$SECRET_NAME"
+echo"G£àDatabasecredentialsstoredin:$SECRET_NAME"
 echo""
 echo"Toretrievecredentials:"
 echo"awssecretsmanagerget-secret-value--secret-id$SECRET_NAME--querySecretString--outputtext"
 else
-echo"â„¹ï¸Secretnotfound:$SECRET_NAME"
+echo"Gä¦n+ÅSecretnotfound:$SECRET_NAME"
 fi
 
 -name:CreateSummary
@@ -96,18 +96,18 @@ echo"**Action:**${{github.event.inputs.action}}">>$GITHUB_STEP_SUMMARY
 echo"">>$GITHUB_STEP_SUMMARY
 
 if["${{github.event.inputs.action}}"=="create"];then
-echo"âœ…AWSresourcescreatedsuccessfully!">>$GITHUB_STEP_SUMMARY
+echo"G£àAWSresourcescreatedsuccessfully!">>$GITHUB_STEP_SUMMARY
 echo"">>$GITHUB_STEP_SUMMARY
 echo"**ResourcesCreated:**">>$GITHUB_STEP_SUMMARY
-echo"-ðŸ‘¥CognitoUserPool">>$GITHUB_STEP_SUMMARY
-echo"-ðŸ“¦S3Buckets(storage+frontend)">>$GITHUB_STEP_SUMMARY
-echo"-ðŸ—„ï¸RDSPostgreSQLDatabase">>$GITHUB_STEP_SUMMARY
-echo"-ðŸ”SecretsManager">>$GITHUB_STEP_SUMMARY
-echo"-ðŸ“ŠCloudWatchLogGroups">>$GITHUB_STEP_SUMMARY
+echo"-=ƒæÑCognitoUserPool">>$GITHUB_STEP_SUMMARY
+echo"-=ƒôªS3Buckets(storage+frontend)">>$GITHUB_STEP_SUMMARY
+echo"-=ƒùän+ÅRDSPostgreSQLDatabase">>$GITHUB_STEP_SUMMARY
+echo"-=ƒöÉSecretsManager">>$GITHUB_STEP_SUMMARY
+echo"-=ƒôèCloudWatchLogGroups">>$GITHUB_STEP_SUMMARY
 echo"">>$GITHUB_STEP_SUMMARY
-echo"**ðŸ’°AllresourcesareFREETIER!**">>$GITHUB_STEP_SUMMARY
+echo"**=ƒÆ¦AllresourcesareFREETIER!**">>$GITHUB_STEP_SUMMARY
 elif["${{github.event.inputs.action}}"=="list"];then
-echo"âœ…AWSresourceslistedsuccessfully!">>$GITHUB_STEP_SUMMARY
+echo"G£àAWSresourceslistedsuccessfully!">>$GITHUB_STEP_SUMMARY
 fi
 
 echo"">>$GITHUB_STEP_SUMMARY
