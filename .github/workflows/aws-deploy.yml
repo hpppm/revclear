@@ -175,9 +175,9 @@ jobs:
           echo "- ✅ Build completed" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
 
-  powershell-scripts:
+  aws-cli-scripts:
     needs: aws-setup
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -189,81 +189,52 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
-      - name: Install AWS Tools for PowerShell
-        shell: powershell
+      - name: Test AWS CLI Connection
         run: |
-          Write-Host "Installing AWS Tools for PowerShell..."
-          try {
-            Install-Module -Name AWS.Tools.Common -Force -AllowClobber -ErrorAction Stop
-            Install-Module -Name AWS.Tools.RDS -Force -AllowClobber -ErrorAction Stop
-            Install-Module -Name AWS.Tools.CognitoIdentityProvider -Force -AllowClobber -ErrorAction Stop
-            Install-Module -Name AWS.Tools.S3 -Force -AllowClobber -ErrorAction Stop
-            Install-Module -Name AWS.Tools.SecretsManager -Force -AllowClobber -ErrorAction Stop
-            Write-Host "✅ AWS Tools installed"
-          } catch {
-            Write-Host "⚠️ Some modules may have failed: $_"
-          }
+          echo "Testing AWS CLI connection..."
+          aws sts get-caller-identity
+          echo "✅ Successfully connected to AWS!"
 
-      - name: Test PowerShell AWS Connection
-        shell: powershell
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-        run: |
-          Write-Host "Testing AWS connection from PowerShell..."
-          
-          # Set credentials
-          $accessKey = $env:AWS_ACCESS_KEY_ID
-          $secretKey = $env:AWS_SECRET_ACCESS_KEY
-          $region = $env:AWS_REGION
-          
-          # Test connection
-          try {
-            $caller = Get-STSCallerIdentity
-            Write-Host "✅ Successfully connected to AWS!"
-            Write-Host "Account: $($caller.Account)"
-            Write-Host "User ARN: $($caller.Arn)"
-          } catch {
-            Write-Host "❌ Failed to connect: $_"
-            exit 1
-          }
-
-      - name: Run PowerShell AWS Setup Script
-        shell: powershell
+      - name: Run AWS Setup Script
         working-directory: ./RevClear/backend
         run: |
-          if (Test-Path "aws-setup-budget.ps1") {
-            Write-Host "Running AWS setup script..."
-            # .\aws-setup-budget.ps1
-            Write-Host "✅ Setup script executed"
-          } else {
-            Write-Host "ℹ️ No setup script found"
-          }
+          if [ -f "aws-services.sh" ]; then
+            echo "Running AWS setup script..."
+            chmod +x aws-services.sh
+            # ./aws-services.sh
+            echo "✅ Setup script ready"
+          else
+            echo "ℹ️ No setup script found"
+          fi
 
       - name: List Cognito Users
-        shell: powershell
         env:
           AWS_USER_POOL_ID: ${{ secrets.AWS_USER_POOL_ID }}
         run: |
-          if ($env:AWS_USER_POOL_ID) {
-            Write-Host "Listing Cognito users in pool: $env:AWS_USER_POOL_ID"
-            try {
-              $users = Get-CGIPUserList -UserPoolId $env:AWS_USER_POOL_ID -Limit 10
-              Write-Host "Found $($users.Count) users"
-              $users | ForEach-Object { Write-Host "- $($_.Username) ($($_.UserStatus))" }
-            } catch {
-              Write-Host "Could not list users: $_"
-            }
-          } else {
-            Write-Host "ℹ️ AWS_USER_POOL_ID not configured"
-          }
+          if [ ! -z "$AWS_USER_POOL_ID" ]; then
+            echo "Listing Cognito users in pool: $AWS_USER_POOL_ID"
+            aws cognito-idp list-users --user-pool-id "$AWS_USER_POOL_ID" --limit 10 \
+              --query 'Users[*].[Username,UserStatus]' --output table || echo "Could not list users"
+          else
+            echo "ℹ️ AWS_USER_POOL_ID not configured"
+          fi
 
-      - name: Create PowerShell summary
-        shell: powershell
+      - name: List S3 Buckets
         run: |
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "### PowerShell AWS Integration"
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ""
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- ✅ AWS Tools for PowerShell installed"
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- ✅ AWS connection verified"
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- ✅ PowerShell scripts ready"
+          echo "Listing S3 buckets..."
+          aws s3 ls || echo "No S3 buckets or no access"
+
+      - name: List RDS Instances
+        run: |
+          echo "Listing RDS instances..."
+          aws rds describe-db-instances \
+            --query 'DBInstances[*].[DBInstanceIdentifier,Engine,DBInstanceStatus]' \
+            --output table || echo "No RDS instances or no access"
+
+      - name: Create summary
+        run: |
+          echo "### AWS CLI Integration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ AWS CLI connection verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ AWS resources checked" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Scripts ready to run" >> $GITHUB_STEP_SUMMARY
