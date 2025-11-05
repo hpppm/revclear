@@ -1,8 +1,9 @@
--- Physical Therapy CPT Codes and Synthetic Patient Data
+-- PART 1: PHYSICAL THERAPY
+-- Physical Therapy CPT Codes and 5 Sample Patients
 -- RevClear Healthcare Management System
 
 -- ============================================
--- 1. CPT CODES FOR PHYSICAL THERAPY
+-- PHYSICAL THERAPY CPT CODES
 -- ============================================
 
 -- Insert Physical Therapy CPT Codes
@@ -32,10 +33,10 @@ ON CONFLICT (code) DO UPDATE SET
     base_rate = EXCLUDED.base_rate;
 
 -- ============================================
--- 2. SYNTHETIC PATIENT DATA
+-- PHYSICAL THERAPY PATIENTS (5 PATIENTS)
 -- ============================================
 
--- Patient 1: Edward Martinez
+-- PT Patient 1: Edward Martinez
 INSERT INTO patients (
     first_name, last_name, date_of_birth, gender, email, phone,
     address_line1, city, state, zip_code,
@@ -54,7 +55,7 @@ INSERT INTO patients (
     'Active', NOW() - INTERVAL '6 months'
 );
 
--- Patient 2: Mary Johnson
+-- PT Patient 2: Mary Johnson
 INSERT INTO patients (
     first_name, last_name, date_of_birth, gender, email, phone,
     address_line1, city, state, zip_code,
@@ -73,7 +74,7 @@ INSERT INTO patients (
     'Active', NOW() - INTERVAL '3 months'
 );
 
--- Patient 3: Jacob Williams
+-- PT Patient 3: Jacob Williams
 INSERT INTO patients (
     first_name, last_name, date_of_birth, gender, email, phone,
     address_line1, city, state, zip_code,
@@ -92,7 +93,7 @@ INSERT INTO patients (
     'Active', NOW() - INTERVAL '6 weeks'
 );
 
--- Patient 4: Sarah Chen
+-- PT Patient 4: Sarah Chen
 INSERT INTO patients (
     first_name, last_name, date_of_birth, gender, email, phone,
     address_line1, city, state, zip_code,
@@ -111,7 +112,7 @@ INSERT INTO patients (
     'Active', NOW() - INTERVAL '2 months'
 );
 
--- Patient 5: Michael Davis
+-- PT Patient 5: Michael Davis
 INSERT INTO patients (
     first_name, last_name, date_of_birth, gender, email, phone,
     address_line1, city, state, zip_code,
@@ -131,7 +132,7 @@ INSERT INTO patients (
 );
 
 -- ============================================
--- 3. TREATMENT APPOINTMENTS FOR PATIENTS
+-- PHYSICAL THERAPY APPOINTMENTS
 -- ============================================
 
 -- Edward Martinez - Lower back pain therapy sessions
@@ -206,7 +207,7 @@ SELECT
 FROM patients p WHERE p.first_name = 'Michael' AND p.last_name = 'Davis';
 
 -- ============================================
--- 4. BILLING RECORDS WITH CPT CODES
+-- PHYSICAL THERAPY BILLING RECORDS
 -- ============================================
 
 -- Edward Martinez - Session 1 (Initial Evaluation + Therapeutic Exercise)
