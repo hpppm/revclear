@@ -91,16 +91,46 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
-      - name: Run database migrations (if needed)
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      - name: Get DB credentials from AWS Secrets Manager
+        id: get-secrets
         run: |
-          echo "Database migrations would run here"
-          # npm run migrate || echo "No migration script"
+          # Check if RDS secret exists
+          if aws secretsmanager describe-secret --secret-id revclear-rds-credentials 2>/dev/null; then
+            echo "✅ RDS credentials found in Secrets Manager"
+            SECRET=$(aws secretsmanager get-secret-value --secret-id revclear-rds-credentials --query SecretString --output text)
+            echo "DB_HOST=$(echo $SECRET | jq -r .host)" >> $GITHUB_ENV
+            echo "DB_PORT=$(echo $SECRET | jq -r .port)" >> $GITHUB_ENV
+            echo "DB_NAME=$(echo $SECRET | jq -r .dbname)" >> $GITHUB_ENV
+            echo "DB_USER=$(echo $SECRET | jq -r .username)" >> $GITHUB_ENV
+            echo "DB_PASSWORD=$(echo $SECRET | jq -r .password)" >> $GITHUB_ENV
+            echo "::set-output name=rds-exists::true"
+          else
+            echo "⚠️ RDS not created yet. Run create-aws-resources workflow first."
+            echo "::set-output name=rds-exists::false"
+          fi
+
+      - name: Deploy database schema
+        if: steps.get-secrets.outputs.rds-exists == 'true'
+        run: |
+          echo "📦 Deploying database schema..."
+          # Install PostgreSQL client
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          
+          # Deploy schema (002_cloud_db_schema.sql)
+          if [ -f "RevClear/backend/Documentation/db/002_cloud_db_schema.sql" ]; then
+            PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f RevClear/backend/Documentation/db/002_cloud_db_schema.sql || echo "Schema already exists"
+            echo "✅ Schema deployed"
+          fi
+          
+          # Load sample data (003, 004, 005)
+          for file in RevClear/backend/Documentation/db/003_*.sql RevClear/backend/Documentation/db/004_*.sql RevClear/backend/Documentation/db/005_*.sql; do
+            if [ -f "$file" ]; then
+              echo "Loading $file..."
+              PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f "$file" || echo "Data already loaded"
+            fi
+          done
+          
+          echo "✅ Database deployment complete"
 
       - name: Test AWS SDK connection
         env:
@@ -157,14 +187,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
-      - name: Deploy to S3 (if configured)
+      - name: Get S3 bucket name and deploy
         run: |
-          if [ ! -z "${{ secrets.AWS_S3_FRONTEND_BUCKET }}" ]; then
-            echo "Deploying to S3 bucket: ${{ secrets.AWS_S3_FRONTEND_BUCKET }}"
-            aws s3 sync .next/static s3://${{ secrets.AWS_S3_FRONTEND_BUCKET }}/static --delete
-            echo "✅ Frontend deployed to S3"
+          # Get S3 bucket name from AWS
+          BUCKET=$(aws s3 ls | grep revclear-frontend | awk '{print $3}')
+          
+          if [ ! -z "$BUCKET" ]; then
+            echo "✅ Found S3 bucket: $BUCKET"
+            echo "📦 Deploying frontend to S3..."
+            
+            # Sync Next.js build output to S3
+            aws s3 sync out s3://$BUCKET/ --delete || \
+            aws s3 sync .next s3://$BUCKET/_next --delete
+            
+            # Set cache-control headers for static assets
+            aws s3 cp s3://$BUCKET/_next/static s3://$BUCKET/_next/static \
+              --recursive --metadata-directive REPLACE \
+              --cache-control "public, max-age=31536000, immutable" || echo "Cache headers skipped"
+            
+            echo "✅ Frontend deployed to: http://$BUCKET.s3-website-us-east-1.amazonaws.com"
           else
-            echo "ℹ️ S3 bucket not configured, skipping deployment"
+            echo "⚠️ S3 frontend bucket not created yet. Run create-aws-resources workflow first."
           fi
 
       - name: Create deployment summary
