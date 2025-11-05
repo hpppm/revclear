@@ -460,3 +460,184 @@
                 statusSpan.textContent = statusSpan.textContent.replace(/Step \d+:.*/, 'Step ' + (currentStep - 1) + ': ✓ Complete');
             }
         }
+
+        // Auth Modal Functions
+        function openAuthModal(type) {
+            const modal = document.getElementById('authModal');
+            modal.style.display = 'block';
+            switchAuthTab(type);
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            modal.style.display = 'none';
+        }
+
+        function switchAuthTab(type) {
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const tabs = document.querySelectorAll('.auth-tab');
+            const title = document.getElementById('authModalTitle');
+            const subtitle = document.getElementById('authModalSubtitle');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            if (type === 'login') {
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                tabs[0].classList.add('active');
+                title.textContent = '🔐 Sign In';
+                subtitle.textContent = 'Access RevClear AI Medical Billing System';
+            } else {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                tabs[1].classList.add('active');
+                title.textContent = '✍️ Create Account';
+                subtitle.textContent = 'Join RevClear AI Medical Billing System';
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('authModal');
+            if (event.target === modal) {
+                closeAuthModal();
+            }
+        }
+
+        // Handle Login Form Submit
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            // Simulate login (in real app, this would call backend API)
+            const user = {
+                email: email,
+                name: email.split('@')[0],
+                loginTime: new Date().toISOString()
+            };
+
+            // Store in session
+            sessionStorage.setItem('user', JSON.stringify(user));
+
+            // Close modal
+            closeAuthModal();
+
+            // Show welcome notification
+            showNotification(`✅ Successfully logged in as ${user.email}`, 'success');
+
+            // Update UI
+            updateAuthUI(user);
+        });
+
+        // Handle Signup Form Submit
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const specialty = document.getElementById('signupSpecialty').value;
+
+            // Simulate signup (in real app, this would call backend API)
+            const user = {
+                email: email,
+                name: name,
+                specialty: specialty,
+                signupTime: new Date().toISOString()
+            };
+
+            // Store in session
+            sessionStorage.setItem('user', JSON.stringify(user));
+
+            // Close modal
+            closeAuthModal();
+
+            // Show welcome notification
+            showNotification(`🎉 Account created successfully! Welcome, ${name}!`, 'success');
+
+            // Update UI
+            updateAuthUI(user);
+        });
+
+        // Update auth nav when user logs in
+        function updateAuthUI(user) {
+            const authNav = document.getElementById('authNav');
+            authNav.innerHTML = `
+                <span style="color: white; margin: 0 10px; display: inline-block;">
+                    👋 Welcome, <strong>${user.name}</strong>
+                </span>
+                <button onclick="handleLogout()" style="color: white; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; border: none; cursor: pointer; transition: all 0.3s; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    🚪 Logout
+                </button>
+            `;
+        }
+
+        // Handle logout
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('user');
+                showNotification('👋 Logged out successfully', 'info');
+                
+                // Restore auth buttons
+                const authNav = document.getElementById('authNav');
+                authNav.innerHTML = `
+                    <button onclick="openAuthModal('login')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</button>
+                    <button onclick="openAuthModal('signup')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</button>
+                `;
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${type === 'success' ? 'linear-gradient(135deg, #34a853, #0f9d58)' : '#5f6368'};
+                color: white;
+                padding: 15px 30px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 9999;
+                font-weight: 600;
+                animation: slideDown 0.5s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Add CSS animation
+            if (!document.getElementById('notificationStyles')) {
+                const style = document.createElement('style');
+                style.id = 'notificationStyles';
+                style.textContent = `
+                    @keyframes slideDown {
+                        from { transform: translate(-50%, -50px); opacity: 0; }
+                        to { transform: translate(-50%, 0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Remove notification after 4 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideDown 0.5s ease reverse';
+                setTimeout(() => notification.remove(), 500);
+            }, 4000);
+        }
+
+        // Check if user is already logged in on page load
+        window.addEventListener('load', () => {
+            const userSession = sessionStorage.getItem('user');
+            if (userSession) {
+                try {
+                    const user = JSON.parse(userSession);
+                    updateAuthUI(user);
+                } catch (e) {
+                    sessionStorage.removeItem('user');
+                }
+            }
+        });
