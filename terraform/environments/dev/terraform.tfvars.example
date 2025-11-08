@@ -1,0 +1,51 @@
+# RevClear Development Environment Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+# General
+environment  = "dev"
+aws_region   = "us-east-1"
+project_name = "revclear"
+
+# Networking
+vpc_cidr                = "10.0.0.0/16"
+availability_zones      = ["us-east-1a", "us-east-1b"]
+public_subnet_cidrs     = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs    = ["10.0.11.0/24", "10.0.12.0/24"]
+database_subnet_cidrs   = ["10.0.21.0/24", "10.0.22.0/24"]
+
+# Compute (Reduced for dev)
+fargate_cpu      = 256   # 0.25 vCPU
+fargate_memory   = 512   # 512 MB
+app_count        = 1     # Single task
+container_image  = "nginx:latest"  # Replace with your ECR image
+
+# Database (Smaller instance for dev)
+db_instance_class          = "db.t3.small"
+db_allocated_storage       = 20    # GB
+db_backup_retention_period = 3     # days
+db_multi_az                = false # Single AZ for cost savings
+
+# Storage
+s3_versioning_enabled     = true
+s3_lifecycle_glacier_days = 30  # Faster archival for dev
+
+# Security (Relaxed for dev)
+enable_waf                   = false  # Disable WAF to save costs
+enable_shield                = false
+cognito_mfa_configuration    = "OFF" # Disable MFA for easier dev testing
+cloudwatch_log_retention_days = 7    # 1 week retention
+enable_cloudtrail            = false # Disable for cost savings
+
+# AI Services
+transcribe_language_code = "en-US"
+bedrock_model_id         = "anthropic.claude-3-sonnet-20240229-v1:0"
+
+# SSL Certificate (optional in dev)
+ssl_certificate_arn = "" # Leave empty to use HTTP in dev
+
+# Additional Tags
+additional_tags = {
+  Team        = "Development"
+  CostCenter  = "Engineering"
+  Terraform   = "true"
+}

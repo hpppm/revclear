@@ -1,0 +1,63 @@
+# RevClear Production Environment Configuration
+# Copy this file to terraform.tfvars and fill in your values
+# IMPORTANT: Never commit the actual terraform.tfvars file with secrets!
+
+# General
+environment  = "prod"
+aws_region   = "us-east-1"
+project_name = "revclear"
+
+# Networking (Full 3 AZ deployment)
+vpc_cidr                = "10.0.0.0/16"
+availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+public_subnet_cidrs     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+private_subnet_cidrs    = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+database_subnet_cidrs   = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
+
+# Compute (Production capacity)
+fargate_cpu      = 1024  # 1 vCPU
+fargate_memory   = 2048  # 2 GB
+app_count        = 3     # Multiple tasks for high availability
+container_image  = "YOUR_ECR_REPO/revclear-api:latest"  # Replace with your ECR image
+
+# Database (Production-grade)
+db_instance_class          = "db.t3.medium"  # Or larger for production
+db_allocated_storage       = 100    # GB (adjust based on needs)
+db_backup_retention_period = 30     # 30 days for production
+db_multi_az                = true   # High availability
+
+# Storage
+s3_versioning_enabled     = true
+s3_lifecycle_glacier_days = 90  # Archive after 90 days
+
+# Security (Production hardening)
+enable_waf                   = true   # Enable WAF protection
+enable_shield                = false  # AWS Shield Advanced (expensive, enable if needed)
+cognito_mfa_configuration    = "ON"   # Enforce MFA for all users
+cloudwatch_log_retention_days = 2555 # 7 years for HIPAA compliance
+enable_cloudtrail            = true   # Required for HIPAA audit
+
+# Access Control (Restrict to specific IPs in production)
+allowed_cidr_blocks = [
+  "0.0.0.0/0"  # CHANGE THIS! Restrict to your office/VPN IPs
+]
+
+# AI Services
+transcribe_language_code = "en-US"
+bedrock_model_id         = "anthropic.claude-3-sonnet-20240229-v1:0"
+
+# SSL Certificate (Required for production)
+ssl_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"  # Replace with your ACM certificate ARN
+
+# Database credentials (use Secrets Manager in production)
+db_username = "revclear_admin"  # Change in production
+# db_password is stored in AWS Secrets Manager (created automatically)
+
+# Additional Tags
+additional_tags = {
+  Team        = "Production"
+  CostCenter  = "Operations"
+  Compliance  = "HIPAA"
+  Terraform   = "true"
+  Backup      = "Daily"
+}
