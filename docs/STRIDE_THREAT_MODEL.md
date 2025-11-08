@@ -101,178 +101,172 @@ flowchart TB
 | **S2: API Endpoint Spoofing** | ⚡ API Gateway | Attacker spoofs API endpoints to intercept data | 🟡 **Medium** - Data interception | ✅ **API Gateway authorizers**<br>✅ **JWT token validation**<br>✅ **HTTPS only** (TLS 1.3)<br>✅ **Request signing** |
 | **S3: Insurance Payer Spoofing** | 📤 Claim Submission | Attacker impersonates insurance payer to receive claim data | 🟡 **Medium** - PHI disclosure | ✅ **Mutual TLS** for payer integration<br>✅ **API key authentication**<br>✅ **IP whitelisting** for known payers |
 
----
+**Primary Mitigations:**
+- ✅ KMS key xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx for all encryption
+- ✅ CloudTrail audit logging with validation
+- ✅ IAM role with minimal required permissions
+- 🔄 Future: Cognito User Pools with MFA
 
-### **T - Tampering (Data Integrity Threats)** 🔧
+### **T** - Tampering Threats (Data Modification)
 
-| Threat | Affected Components | Threat Description | Impact | Mitigation |
-|--------|-------------------|-------------------|---------|------------|
-| **T1: Patient Data Tampering** | 👥 Patient Management, 🗄️ Patients DB | Attacker modifies patient demographics or insurance info | 🔴 **Critical** - Claim fraud, patient harm | ✅ **DynamoDB transactional writes**<br>✅ **Field-level encryption**<br>✅ **Change tracking** with audit logs<br>✅ **Business rule validation** |
-| **T2: Encounter Recording Tampering** | 🎙️ Encounter Recording, 📦 S3 Storage | Attacker modifies clinical notes or audio files | 🔴 **Critical** - Medical record integrity | ✅ **S3 versioning** + **MFA delete**<br>✅ **File hash validation** (SHA-256)<br>✅ **Immutable logs** (WORM storage)<br>✅ **Digital signatures** for clinical data |
-| **T3: AI Processing Tampering** | 🤖 AI Pipeline, 🎙️ Transcribe, 🤖 Bedrock | Attacker modifies AI processing results or prompts | 🟡 **Medium** - Incorrect coding | ✅ **Prompt validation**<br>✅ **Output verification** rules<br>✅ **AI service access controls**<br>✅ **Human-in-the-loop validation** |
-| **T4: Claim Data Tampering** | 📄 Claim Generation, 🗄️ Claims DB | Attacker modifies CPT/ICD codes or claim amounts | 🔴 **Critical** - Financial fraud | ✅ **Three-gate validation**<br>✅ **EDI format validation**<br>✅ **Amount range checks**<br>✅ **Code compliance verification** |
+| Threat | Affected Component | Impact | Likelihood | Mitigation | Status |
+|--------|-------------------|--------|------------|------------|---------|
+| **S3 Object Modification** | Audio files, patient data | **High** (Altered medical records) | Low | SSE-KMS encryption, versioning, access logging | ✅ Implemented |
+| **DynamoDB Record Tampering** | Patient demographics, encounter data | **Critical** (Medical fraud, PHI alteration) | Low | Point-in-time recovery, immutable audit logs | ✅ Implemented |
+| **In-transit Data Modification** | API communications | **High** (Man-in-the-middle attacks) | Medium | TLS 1.3, certificate pinning, HSTS | 🔄 Planned |
+| **Configuration Tampering** | Amplify build settings, environment variables | **Medium** (Service disruption) | Low | Infrastructure as code, automated validation | ✅ Implemented |
 
----
+**Primary Mitigations:**
+- ✅ AES-256 encryption at rest via KMS
+- ✅ CloudTrail immutable audit trails
+- ✅ S3 versioning and cross-region replication
+- ✅ DynamoDB point-in-time recovery
 
-### **R - Repudiation (Audit/Logging Threats)** 🚫
+### **R** - Repudiation Threats (Denial of Actions)
 
-| Threat | Affected Components | Threat Description | Impact | Mitigation |
-|--------|-------------------|-------------------|---------|------------|
-| **R1: Action Denial** | ⚙️ All processes, 📊 Audit Logs | User denies performing actions (data access, modifications) | 🟢 **Low** - Compliance issues | ✅ **CloudTrail logging** (7-year retention)<br>✅ **Immutable audit logs**<br>✅ **User session tracking**<br>✅ **Digital signatures** on critical actions |
-| **R2: Log Tampering** | 📊 Audit Logs, 📊 CloudWatch | Attacker modifies or deletes audit logs | 🟡 **Medium** - Compliance violations | ✅ **Log encryption** at rest<br>✅ **Log forwarding** to separate account<br>✅ **Write-once storage** for logs<br>✅ **Log integrity checks** |
+| Threat | Affected Component | Impact | Likelihood | Mitigation | Status |
+|--------|-------------------|--------|------------|------------|---------|
+| **Action Denial** | User actions, system events | **Medium** (Audit gaps, compliance violations) | Low | CloudTrail comprehensive logging, user attribution | ✅ Implemented |
+| **PHI Access Without Trace** | Database queries, file access | **High** (HIPAA violations) | Low | Detailed audit logs, access monitoring, alerting | ✅ Implemented |
+| **System Changes Unlogged** | Configuration modifications | **Medium** (Security incidents) | Low | CloudTrail configuration changes, automated alerts | ✅ Implemented |
+| **Billing Record Alterations** | Future claim submissions | **High** (Financial fraud) | Low | Immutable audit trails, change tracking | 🔄 Planned |
 
----
+**Primary Mitigations:**
+- ✅ CloudTrail with 7-year retention
+- ✅ Multi-region trail with log validation
+- ✅ S3 access logging to arevclear-logs bucket
+- ✅ IAM access logging and monitoring
 
-### **I - Information Disclosure (Confidentiality Threats)** 👁️
+### **I** - Information Disclosure Threats (Data Exposure)
 
-| Threat | Affected Components | Threat Description | Impact | Mitigation |
-|--------|-------------------|-------------------|---------|------------|
-| **I1: PHI Data Exposure** | 🗄️ All databases, 📦 S3, ⚡ API responses | Unauthorized access to patient health information | 🔴 **Critical** - HIPAA violation, legal liability | ✅ **KMS encryption** for all data<br>✅ **Column-level encryption** for sensitive fields<br>✅ **Data masking** in logs<br>✅ **Access controls** (least privilege) |
-| **I2: Audio File Exposure** | 📦 S3 Storage, 🎙️ Encounter Recording | Unauthorized access to clinical session recordings | 🔴 **Critical** - Patient privacy violation | ✅ **S3 encryption** (SSE-KMS)<br>✅ **Presigned URL expiration** (15 min)<br>✅ **Access logging** for all S3 requests<br>✅ **VPC endpoint** for S3 access |
-| **I3: API Data Leakage** | ⚡ API Gateway, ⚙️ all endpoints | Sensitive data in API responses or headers | 🟡 **Medium** - Data exposure | ✅ **Response filtering** (no PHI in responses)<br>✅ **API rate limiting**<br>✅ **Input/output validation**<br>✅ **CORS policies** |
-| **I4: Database Query Exposure** | 🗄️ DynamoDB queries | Database queries revealing PHI in logs | 🟢 **Low** - Information leakage | ✅ **Query parameter encryption**<br>✅ **No PHI in CloudWatch logs**<br>✅ **Secure parameter passing** |
+| Threat | Affected Component | Impact | Likelihood | Mitigation | Status |
+|--------|-------------------|--------|------------|------------|---------|
+| **PHI Data Exposure** | DynamoDB patient tables | **Critical** (HIPAA violations, identity theft) | Low | KMS encryption, VPC isolation, access controls | ✅ Implemented |
+| **S3 Bucket Exposure** | Audio files, medical documents | **Critical** (PHI breach, medical privacy) | Low | Private buckets, SSE-KMS, no public access | ✅ Implemented |
+| **Log Data Exposure** | CloudTrail logs, CloudWatch logs | **High** (System compromise evidence) | Low | Encrypted storage, access controls, log aggregation | ✅ Implemented |
+| **Configuration Exposure** | Environment variables, API keys | **High** (System compromise) | Low | Secrets Manager, encrypted parameters | ✅ Implemented |
 
----
+**Primary Mitigations:**
+- ✅ KMS key xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx for all data encryption
+- ✅ S3 buckets with SSE-KMS encryption
+- ✅ DynamoDB with encryption at rest
+- ✅ VPC network isolation
+- ✅ No public internet access to data stores
 
-### **D - Denial of Service (Availability Threats)** ⛔
+### **D** - Denial of Service Threats (Availability)
 
-| Threat | Affected Components | Threat Description | Impact | Mitigation |
-|--------|-------------------|-------------------|---------|------------|
-| **D1: API Gateway Overload** | ⚡ API Gateway, ⚙️ all endpoints | Attacker floods API with requests to crash service | 🟡 **Medium** - Service disruption | ✅ **AWS WAF** with rate limiting<br>✅ **API throttling** (100 req/min per user)<br>✅ **CloudFront caching**<br>✅ **Auto-scaling** Lambda functions |
-| **D2: Database Exhaustion** | 🗄️ DynamoDB tables | Attacker exhausts database capacity or read/write units | 🟡 **Medium** - Service unavailability | ✅ **Provisioned capacity** with auto-scaling<br>✅ **Query optimization**<br>✅ **Read/write throttling**<br>✅ **Database backup** (point-in-time recovery) |
-| **D3: Storage Exhaustion** | 📦 S3 buckets | Attacker fills storage with large uploads | 🟢 **Low** - Storage issues | ✅ **S3 lifecycle policies**<br>✅ **Upload size limits** (100MB max)<br>✅ **File type validation**<br>✅ **Storage monitoring** alerts |
-| **D4: AI Service Abuse** | 🎙️ Transcribe, 🤖 Bedrock | Attacker exhausts AI service quotas | 🟢 **Low** - Cost issues | ✅ **Service quotas** and limits<br>✅ **Usage monitoring**<br>✅ **Cost alerts**<br>✅ **Request validation** |
+| Threat | Affected Component | Impact | Likelihood | Mitigation | Status |
+|--------|-------------------|--------|------------|------------|---------|
+| **Amplify Application DDoS** | Frontend hosting | **Medium** (Service unavailability) | Medium | AWS Shield, WAF, CloudFront protection | 🔄 Planned |
+| **DynamoDB Table Overload** | Patient database queries | **High** (System slowdown) | Low | Auto-scaling, read replicas, throttling | ✅ Implemented |
+| **S3 Bucket Abuse** | File storage operations | **Medium** (Storage costs, performance) | Low | Request throttling, cost monitoring, alerts | ✅ Implemented |
+| **API Rate Limiting Bypass** | Future API Gateway | **Medium** (Resource exhaustion) | Low | Rate limiting, throttling, monitoring | 🔄 Planned |
 
----
+**Primary Mitigations:**
+- ✅ DynamoDB auto-scaling enabled
+- ✅ S3 intelligent tiering for cost optimization
+- ✅ CloudWatch monitoring and alerting
+- 🔄 Future: CloudFront + WAF for DDoS protection
 
-### **E - Elevation of Privilege (Authorization Threats)** 🛡️
+### **E** - Elevation of Privilege Threats (Access Rights)
 
-| Threat | Affected Components | Threat Description | Impact | Mitigation |
-|--------|-------------------|-------------------|---------|------------|
-| **E1: Role Escalation** | 🔐 User Authentication, 👥 Patient Management | Standard user gains admin privileges | 🔴 **Critical** - Full system compromise | ✅ **IAM role-based access**<br>✅ **Principle of least privilege**<br>✅ **Role separation** (admin vs. clinician)<br>✅ **Privileged action logging** |
-| **E2: Cross-Tenant Access** | 👥 Patient Management | User accesses data from other clinics/organizations | 🔴 **Critical** - Multi-tenant data breach | ✅ **Tenant isolation** at data layer<br>✅ **Data partitioning** by organization<br>✅ **Access control lists** per tenant<br>✅ **Regular access audits** |
-| **E3: Service Account Abuse** | ☁️ AWS services, ⚡ Lambda | Compromised service account gains elevated access | 🟡 **Medium** - Infrastructure compromise | ✅ **Service account rotation** (90 days)<br>✅ **Minimal service permissions**<br>✅ **Service account monitoring**<br>✅ **Temporary credentials** only |
+| Threat | Affected Component | Impact | Likelihood | Mitigation | Status |
+|--------|-------------------|--------|------------|------------|---------|
+| **IAM Privilege Escalation** | AmplifyServiceRole permissions | **Critical** (Full AWS account access) | Low | Least privilege principle, regular audits | ✅ Implemented |
+| **Role Assumption Attacks** | Cross-service access | **High** (Data access expansion) | Low | Service-specific roles, session limits | ✅ Implemented |
+| **Clinician Role Abuse** | Future user roles in application | **Medium** (Unauthorized PHI access) | Low | RBAC, audit logging, session monitoring | 🔄 Planned |
+| **Configuration Privilege Abuse** | Amplify build/deploy permissions | **Medium** (Malicious deployments) | Low | Code signing, review processes, monitoring | ✅ Implemented |
 
----
-
-## 🛡️ Mitigation Implementation Status
-
-### ✅ **Implemented Controls**
-
-| Control | Status | Implementation |
-|---------|--------|----------------|
-| **Authentication** | ✅ Complete | AWS Cognito with MFA enabled |
-| **Encryption at Rest** | ✅ Complete | KMS encryption for DynamoDB and S3 |
-| **Encryption in Transit** | ✅ Complete | TLS 1.3 enforced for all communications |
-| **Audit Logging** | ✅ Complete | CloudTrail with 7-year retention |
-| **Network Security** | ✅ Complete | VPC with private subnets, security groups |
-| **Access Control** | ✅ Complete | IAM roles with least privilege |
-
-### ⚠️ **Planned Controls**
-
-| Control | Status | Timeline |
-|---------|--------|----------|
-| **WAF Rules** | 🟡 In Progress | Phase 1 deployment |
-| **API Throttling** | 🟡 In Progress | Phase 1 deployment |
-| **Advanced Monitoring** | 🟡 Planned | Phase 2 |
-| **SIEM Integration** | 🟡 Planned | Phase 3 |
-
-### ❌ **Additional Recommendations**
-
-| Control | Priority | Recommendation |
-|---------|----------|----------------|
-| **Data Loss Prevention (DLP)** | 🟡 Medium | Implement AWS Macie for sensitive data discovery |
-| **Security Information and Event Management (SIEM)** | 🟡 Medium | AWS Security Hub or third-party SIEM |
-| **Penetration Testing** | 🔴 High | Annual third-party penetration testing |
-| **Vulnerability Scanning** | 🟡 Medium | Regular AWS Inspector scans |
-| **Employee Security Training** | 🟡 Medium | HIPAA security awareness training |
+**Primary Mitigations:**
+- ✅ IAM role with specific, limited permissions
+- ✅ CloudTrail monitoring of all IAM activities
+- ✅ Regular permission audits and reviews
+- ✅ Principle of least privilege implementation
 
 ---
 
-## 📊 Risk Assessment Matrix
+## Critical Security Controls Implementation
 
-| Likelihood/Impact | Low | Medium | High |
-|-------------------|-----|--------|------|
-| **High** | | D1, D2 | E1, E2, I1, I2, T1, T2, T4, S1 |
-| **Medium** | R1, R2, D3, D4 | I3, I4, T3, S2, S3 | |
-| **Low** | | | |
+### **Implemented Controls** ✅
 
-**Critical Risks Requiring Immediate Attention**:
-1. **E1: Role Escalation** - Implement strict IAM controls
-2. **E2: Cross-Tenant Access** - Enforce tenant isolation
-3. **I1: PHI Data Exposure** - Ensure encryption everywhere
-4. **T1: Patient Data Tampering** - Implement change tracking
-5. **S1: User Impersonation** - Enforce MFA for all users
+#### **Encryption & Key Management**
+- **AWS KMS Key**: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (AES-256)
+- **Data at Rest**: All S3 buckets and DynamoDB tables encrypted
+- **Key Rotation**: Automatic KMS key rotation enabled
+- **Access Control**: KMS key policies restrict access to authorized services
 
----
+#### **Audit & Monitoring**
+- **CloudTrail**: RevClearTrail with multi-region, log validation enabled
+- **Retention**: 7-year HIPAA-compliant audit log retention
+- **S3 Logging**: All bucket access logged to arevclear-logs
+- **Real-time Alerts**: CloudWatch alarms for security events
 
-## 🔐 Security Principles Incorporated
+#### **Access Control**
+- **IAM Role**: AmplifyServiceRole with minimal required permissions
+- **Service Isolation**: No direct internet access to databases
+- **Network Security**: VPC-based architecture (planned)
+- **Authentication**: Future Cognito integration with MFA
 
-### **1. Defense in Depth** 🛡️
-- **Multiple security layers** (Network, Application, Data, Monitoring)
-- **Redundant controls** at each level
-- **Compromise containment** between layers
+#### **Data Protection**
+- **PHI Handling**: All patient data encrypted and access-controlled
+- **Backup Security**: Encrypted backups with cross-region replication
+- **Data Lifecycle**: Automated deletion policies for temporary data
+- **Compliance**: AWS Business Associate Agreement (BAA) coverage
 
-### **2. Least Privilege** 👥
-- **IAM roles** with minimal required permissions
-- **Service account restrictions**
-- **Time-limited access** for privileged operations
+### **Planned Controls** 🔄
 
-### **3. Fail Securely** 🔒
-- **Default deny** for unknown requests
-- **Secure defaults** for all configurations
-- **Automatic lockout** on suspicious activity
+#### **Authentication & Authorization**
+- **AWS Cognito**: User pools with MFA and biometric support
+- **JWT Tokens**: Secure session management with expiration
+- **Role-Based Access**: Clinician, Admin, Billing specialist roles
+- **Session Management**: Automatic logout, concurrent session limits
 
-### **4. Separation of Duties** 👨‍💼
-- **Different roles** for different functions
-- **Multi-person approval** for critical changes
-- **Segregated environments** (dev, staging, prod)
+#### **Network Security**
+- **API Gateway**: Rate limiting, request validation, authentication
+- **AWS WAF**: Web application firewall with OWASP rules
+- **CloudFront**: Global CDN with security headers
+- **VPC Endpoints**: Private connectivity to AWS services
 
-### **5. Complete Mediation** ✅
-- **Every access** is validated and logged
-- **No trusted paths** for privileged operations
-- **Continuous monitoring** of all system interactions
-
----
-
-## 📋 Compliance Alignment
-
-### **HIPAA Security Rule Compliance** 🏥
-
-| HIPAA Requirement | Implementation | Status |
-|-------------------|----------------|--------|
-| **Access Controls** | IAM roles, Cognito MFA | ✅ Complete |
-| **Audit Controls** | CloudTrail, 7-year logs | ✅ Complete |
-| **Integrity** | DynamoDB transactions, S3 versioning | ✅ Complete |
-| **Person or Entity Authentication** | Cognito with MFA | ✅ Complete |
-| **Transmission Security** | TLS 1.3, VPC endpoints | ✅ Complete |
-| **Encryption** | KMS encryption at rest and in transit | ✅ Complete |
-
-### **Additional Compliance**
-- **SOC 2 Type II**: Security controls in place
-- **PCI DSS**: Not applicable (no credit card data)
-- **GDPR**: Data protection measures implemented
-- **CCPA**: Consumer privacy controls in place
+#### **Application Security**
+- **Input Validation**: Comprehensive client and server-side validation
+- **SQL Injection Prevention**: Parameterized queries, ORM usage
+- **XSS Protection**: Content Security Policy, input sanitization
+- **CSRF Protection**: Token-based request validation
 
 ---
 
-## 🚀 Incident Response Plan
+## Risk Assessment Matrix
 
-### **Detection** 🔍
-1. **Real-time monitoring** via CloudWatch
-2. **Security Hub** for threat detection
-3. **Log analysis** for suspicious patterns
-4. **User behavior analytics** for anomaly detection
+| Threat Category | Overall Risk | Mitigation Status | Priority |
+|----------------|--------------|-------------------|----------|
+| **Spoofing** | Medium | High (Implemented + Planned) | High |
+| **Tampering** | Low | High (Implemented) | Medium |
+| **Repudiation** | Low | High (Implemented) | Medium |
+| **Information Disclosure** | Low | High (Implemented) | High |
+| **Denial of Service** | Medium | Medium (Implemented + Planned) | Medium |
+| **Elevation of Privilege** | Low | High (Implemented) | High |
 
-### **Response** ⚡
-1. **Immediate isolation** of affected systems
-2. **Preservation of evidence** (logs, memory dumps)
-3. **Notification** of security team and stakeholders
-4. **Containment** of threat scope
+---
 
-### **Recovery** 🔄
-1. **System restoration** from clean backups
-2. **Security patching** of identified vulnerabilities
+## Security Principles Implementation
+
+### **Defense in Depth**
+✅ **Multiple Security Layers**: Network, application, data, and monitoring
+✅ **Encryption Everywhere**: Data at rest, in transit, and in use
+✅ **Access Controls**: Least privilege, need-to-know basis
+✅ **Monitoring**: Comprehensive logging and alerting
+
+### **Zero Trust Architecture**
+✅ **Never Trust, Always Verify**: All access requests authenticated and authorized
+✅ **Micro-Segmentation**: Service isolation and network segmentation
+✅ **Continuous Monitoring**: Real-time security event detection
+✅ **Automated Response**: Security incident response automation
+
+### **Compliance Framework**
+✅ **HIPAA Security Rule**: Administrative, physical, and technical safeguards
+✅ **HITRUST CSF**: Comprehensive security framework alignment
+✅ **NIST Cybersecurity Framework**: Identify, Protect, Detect, Respond, Recover
+✅ **AWS Well-Architected**: Security pillar best practices
 3. **Access credential rotation**
 4. **Post-incident analysis** and lessons learned
 

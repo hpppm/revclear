@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RevClear - AI Medical Billing Platform</title>
+    <meta name="description" content="RevClear AI Medical System - Automated medical billing for PT, Mental Health & SLP practices. Speech-to-Claim in minutes with HIPAA compliance.">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- Enhanced Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+    <!-- Enhanced Meta Tags -->
+    <meta property="og:title" content="RevClear - AI Medical Billing Platform">
+    <meta property="og:description" content="Transform healthcare billing with AI - Speech-to-Claim in minutes">
+    <meta property="og:image" content="https://hpppm.github.io/revclear/preview.jpg">
+    <meta property="og:url" content="https://hpppm.github.io/revclear/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="RevClear - AI Medical Billing">
+    <meta name="twitter:description" content="HIPAA-compliant medical claims processing with AI">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- Loading Animation Styles -->
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            animation: backgroundShift 3s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .loading-logo {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            animation: heartbeat 1.5s ease-in-out infinite;
+            color: white;
+            text-shadow: 0 0 30px rgba(255,255,255,0.5);
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-left: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 2rem;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            animation: fadeInOut 2s ease-in-out infinite;
+        }
+
+        .loading-subtitle {
+            font-size: 1rem;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        .loading-progress {
+            width: 250px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin-top: 2rem;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .loading-progress-fill {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            animation: progressFill 3s ease-out;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        @keyframes progressFill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Smooth transitions for theme switching */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Loading Screen -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-logo">
+            <i class="fas fa-heartbeat"></i>
+        </div>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Initializing RevClear...</div>
+        <div class="loading-progress">
+            <div class="loading-progress-fill"></div>
+        </div>
+        <div class="loading-subtitle">Loading AI Medical Billing Platform</div>
+    </div>
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <!-- Enhanced API Call Tracker Toggle -->
+    <div class="floating-controls">
+        <button class="api-toggle-btn animate__animated animate__bounceIn" onclick="toggleApiTracker()">
+            <i class="fas fa-network-wired"></i>
+            <span>API Tracker</span>
+            <span class="badge pulse" id="apiCallCount">0</span>
+            <i class="fas fa-chevron-right toggle-icon"></i>
+        </button>
+
+        <button class="help-toggle-btn" onclick="toggleHelp()" title="Help & Shortcuts">
+            <i class="fas fa-question-circle"></i>
+        </button>
+    </div>
+
+    <!-- Help Panel -->
+    <div class="help-panel" id="helpPanel" style="display: none;">
+        <div class="help-header">
+            <h3><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h3>
+            <button class="help-close" onclick="toggleHelp()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="help-content">
+            <div class="shortcut-group">
+                <h4>Navigation</h4>
+                <div class="shortcut">
+                    <kbd>1-5</kbd> <span>Switch tabs</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>T</kbd> <span>Toggle theme</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>A</kbd> <span>Toggle API tracker</span>
+                </div>
+            </div>
+            <div class="shortcut-group">
+                <h4>Demo Controls</h4>
+                <div class="shortcut">
+                    <kbd>Space</kbd> <span>Start/Resume demo</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>R</kbd> <span>Reset demo</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Esc</kbd> <span>Close modals</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced API Tracker Panel -->
+    <div class="api-tracker animate__animated animate__slideInRight" id="apiTracker">
+        <div class="api-tracker-header">
+            <div class="tracker-title">
+                <i class="fas fa-server"></i>
+                <h3>API Call Monitor</h3>
+                <span class="tracker-subtitle">Real-time backend interactions</span>
+            </div>
+            <div class="tracker-controls">
+                <button class="tracker-btn" onclick="clearApiCalls()" title="Clear all calls">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="tracker-btn" onclick="exportApiLog()" title="Export log">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="api-tracker-close" onclick="toggleApiTracker()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="api-tracker-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="apiTotalCalls">0</span>
+                <span class="stat-label">Total Calls</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="apiSuccessRate">100%</span>
+                <span class="stat-label">Success Rate</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="apiAvgResponse">0ms</span>
+                <span class="stat-label">Avg Response</span>
+            </div>
+        </div>
+        <div class="api-tracker-body" id="apiTrackerBody">
+            <div class="api-empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No API calls yet</p>
+                <small>Start the demo to see backend interactions</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Auth Modal -->
+    <div id="authModal" class="auth-modal" style="display: none;">
+        <div class="auth-modal-content animate__animated animate__zoomIn">
+            <div class="auth-modal-close" onclick="closeAuthModal()">
+                <i class="fas fa-times"></i>
+            </div>
+            <div class="auth-modal-header">
+                <div class="modal-icon">
+                    <i class="fas fa-shield-alt" id="modalIcon"></i>
+                </div>
+                <h2 id="authModalTitle">Secure Access</h2>
+                <p id="authModalSubtitle">Access RevClear AI Medical Billing System</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </button>
+                <button class="auth-tab" onclick="switchAuthTab('signup')">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Sign Up</span>
+                </button>
+            </div>
+
+            <!-- Enhanced Login Form -->
+            <form id="loginForm" class="auth-form" style="display: block;">
+                <div class="form-group">
+                    <label for="loginEmail">
+                        <i class="fas fa-envelope"></i>
+                        Email Address
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="email" id="loginEmail" required placeholder="clinician@example.com" autocomplete="email">
+                        <div class="input-icon">
+                            <i class="fas fa-check-circle valid-icon"></i>
+                            <i class="fas fa-exclamation-triangle error-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">
+                        <i class="fas fa-lock"></i>
+                        Password
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="password" id="loginPassword" required placeholder="Enter your password" autocomplete="current-password">
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="rememberMe">
+                        <span class="checkmark"></span>
+                        Remember me
+                    </label>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Secure Login</span>
+                    <div class="btn-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
+            </form>
+
+            <!-- Enhanced Signup Form -->
+            <form id="signupForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label for="signupName">
+                        <i class="fas fa-user-md"></i>
+                        Full Name
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="text" id="signupName" required placeholder="Dr. Jane Smith" autocomplete="name">
+                        <div class="input-icon">
+                            <i class="fas fa-user valid-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">
+                        <i class="fas fa-envelope"></i>
+                        Professional Email
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="email" id="signupEmail" required placeholder="clinician@clinic.com" autocomplete="email">
+                        <div class="input-icon">
+                            <i class="fas fa-check valid-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">
+                        <i class="fas fa-shield-alt"></i>
+                        Secure Password
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="password" id="signupPassword" required placeholder="Create a secure password">
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-meter">
+                            <div class="strength-fill" id="passwordStrength"></div>
+                        </div>
+                        <span class="strength-text" id="strengthText">Password strength</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signupSpecialty">
+                        <i class="fas fa-stethoscope"></i>
+                        Specialty
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="signupSpecialty" required>
+                            <option value="">Choose your specialty</option>
+                            <option value="physical-therapy">🏃 Physical Therapy</option>
+                            <option value="mental-health">🧠 Mental Health</option>
+                            <option value="speech-language">💬 Speech-Language Pathology</option>
+                            <option value="other">🏥 Other Healthcare</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="termsAgree" required>
+                        <span class="checkmark"></span>
+                        I agree to the <a href="#" class="link">Terms of Service</a> & <a href="#" class="link">Privacy Policy</a>
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Create Secure Account</span>
+                    <div class="btn-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>🔒 Your data is protected with enterprise-grade security</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <div class="pulse-dot"></div>
+                <h1 style="margin: 0;">RevClear AI Medical System</h1>
+                <div class="pulse-dot"></div>
+            </div>
+            <p style="font-size: 1.125rem; font-weight: 500;">
+                <span class="gradient-text">AI-Powered Medical Billing</span> That Learns to Reduce Claim Denials
+            </p>
+            <div class="specialty-badges">
+                <span class="specialty-badge">🧠 Mental Health</span>
+                <span class="specialty-badge">🏃 Physical Therapy</span>
+                <span class="specialty-badge">💬 Speech-Language</span>
+            </div>
+            <div style="margin-top: 15px;" id="authNav">
+                <button onclick="openAuthModal('login')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</button>
+                <button onclick="openAuthModal('signup')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</button>
+            </div>
+
+            <!-- Deployment Status Banner -->
+            <div style="margin-top: 20px; padding: 12px 20px; background: rgba(52, 168, 83, 0.1); border: 1px solid rgba(52, 168, 83, 0.3); border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span style="color: #34a853; font-size: 20px;">✅</span>
+                    <span style="color: white; font-weight: 600;">Phase 1 Deployed:</span>
+                    <span style="color: rgba(255,255,255,0.9);">DynamoDB • S3 • KMS • CloudTrail</span>
+                    <span style="color: rgba(255,255,255,0.6);">|</span>
+                    <a href="https://github.com/hpppm/revclear" target="_blank" style="color: #4285f4; text-decoration: none; font-weight: 500;">View on GitHub →</a>
+                </div>
+                <div style="text-align: center; margin-top: 8px; color: rgba(255,255,255,0.7); font-size: 14px;">
+                    <strong>Coming Soon:</strong> Cognito Auth • API Gateway • Lambda • AI Services (Transcribe + Bedrock)
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('architecture')">📊 Architecture</button>
+            <button class="tab" onclick="showTab('demo')">🚀 Interactive Demo</button>
+            <button class="tab" onclick="showTab('api')">🔌 API Routes</button>
+            <button class="tab" onclick="showTab('components')">🔧 Components</button>
+            <button class="tab" onclick="showTab('security')">🔒 Security & Compliance</button>
+        </div>
+
+        <div class="content">
+            <!-- Architecture Tab -->
+            <div id="architecture" class="tab-content active">
+                <h2>System Architecture Diagram</h2>
+                <div class="alert alert-info">
+                    <strong>ℹ️ About this Architecture:</strong> This diagram shows a complete HIPAA-compliant medical claims processing system built on AWS (Amazon Web Services) with three Human-in-the-Loop (HITL) validation gates to ensure accuracy and compliance.
+                </div>
+
+                <div class="diagram-container">
+                    <pre class="mermaid">
+---
+config:
+  theme: base
+  themeVariables: {'primaryColor': '#6366f1', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#4f46e5', 'lineColor': '#64748b', 'secondaryColor': '#10b981', 'tertiaryColor': '#f59e0b', 'background': '#ffffff', 'mainBkgColor': '#ffffff', 'secondBkgColor': '#f8fafc', 'border1': '#e2e8f0', 'border2': '#cbd5e1'}
+---
+
+flowchart TB
+    %% Entry Point
+    U["👤 Clinician<br/><small>SSO + MFA Auth</small>"] --> LB["Load Balancer<br/><small>HTTPS + SSL</small>"]
+
+    LB --> WAF["AWS WAF & Shield<br/><small>DDoS + Threat Protection</small>"]
+
+    %% Main Application
+    WAF --> APP["Claims Application<br/><small>AWS Fargate - Auto Scaling</small>"]
+
+    %% Storage Access
+    APP --> S3["Amazon S3<br/><small>Audio Files + Documents</small>"]
+    APP --> SM["AWS Secrets Manager<br/><small>DB Credentials</small>"]
+
+    %% Speech Processing
+    S3 --> STT["Amazon Transcribe<br/><small>Audio Transcription</small>"]
+
+    %% HITL Gate 1
+    STT --> H1["🔍 HITL Gate 1<br/><small>Transcription Review</small><br/><small>Human Validation</small>"]
+
+    %% AI Processing
+    H1 --> AI["Amazon SageMaker<br/><small>Extract Diagnosis</small><br/><small>Suggest CPT/ICD Codes</small>"]
+
+    %% HITL Gate 2
+    AI --> H2["🔍 HITL Gate 2<br/><small>CPT Code Validation</small><br/><small>Medical Coder Review</small>"]
+
+    %% Database Validation
+    H2 --> SQL["Amazon DynamoDB<br/><small>Patient Records</small><br/><small>Encrypted Storage</small>"]
+
+    %% Healthcare API
+    SQL --> HCA["AWS HealthLake<br/><small>FHIR Resources</small><br/><small>Generate EDI 837</small>"]
+
+    %% HITL Gate 3
+    HCA --> H3["🔍 HITL Gate 3<br/><small>EDI 837 Final Review</small><br/><small>Billing Validation</small>"]
+
+    %% Event System
+    H3 --> PS["Amazon SNS/SQS<br/><small>Claim Events</small>"]
+    PS --> BQ["Amazon Redshift<br/><small>Analytics Warehouse</small><br/><small>Claims Data</small>"]
+
+    %% External Submission
+    H3 --> OUT["✅ External Clearinghouse<br/><small>Claim Submission</small>"]
+
+    %% Security Layer
+    KMS["🔒 AWS KMS<br/><small>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</small><br/><small>AES-256 Encryption</small>"]
+    VPC["🌐 Amazon VPC<br/><small>Private Connectivity</small><br/><small>Traffic Isolation</small>"]
+    MON["📊 Amazon CloudWatch<br/><small>Service Health</small><br/><small>Audit Logs</small>"]
+
+    KMS -.-> S3
+    KMS -.-> SQL
+    KMS -.-> BQ
+    VPC -.-> APP
+
+    %% Styling
+    classDef main fill:#6366f1,stroke:#4f46e5,stroke-width:2px,color:#fff
+    classDef gate fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#000
+    classDef ai fill:#a855f7,stroke:#7c3aed,stroke-width:2px,color:#fff
+    classDef data fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    classDef sec fill:#ef4444,stroke:#c5221f,stroke-width:2px,color:#fff
+
+    class U,LB,WAF,APP,STT,HCA,OUT main
+    class H1,H2,H3 gate
+    class AI ai
+    class S3,SM,SQL,PS,BQ data
+    class KMS,VPC,MON sec
+                    </pre>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>🔐 Security Features</h4>
+                        <ul>
+                            <li>KMS Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</li>
+                            <li>AES-256 encryption for all data</li>
+                            <li>AWS WAF & Shield protection</li>
+                            <li>Amazon VPC network isolation</li>
+                            <li>CloudTrail audit logging</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>🤖 AI Components</h4>
+                        <ul>
+                            <li>Amazon Transcribe</li>
+                            <li>Amazon SageMaker</li>
+                            <li>CPT/ICD Code Extraction</li>
+                            <li>FHIR Resource Generation</li>
+                            <li>EDI 837 Creation</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>✅ HITL Gates</h4>
+                        <ul>
+                            <li>Gate 1: Transcription Review</li>
+                            <li>Gate 2: Code Validation</li>
+                            <li>Gate 3: EDI Final Review</li>
+                            <li>Human Validation Required</li>
+                            <li>Quality Assurance</li>
+                        </ul>
+                    </div>
+                    <div class="info-card">
+                        <h4>💾 Data Storage</h4>
+                        <ul>
+                            <li>4 S3 Buckets (arevclear, arevclear-raw, arevclear-exports, arevclear-logs)</li>
+                            <li>3 DynamoDB Tables (physical_therapy_patients, speech_therapy_patients, mental_health_patients)</li>
+                            <li>Amazon Redshift Analytics</li>
+                            <li>AWS Secrets Manager</li>
+                            <li>AWS HealthLake (FHIR)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Demo Tab -->
+            <div id="demo" class="tab-content">
+                <h2>Interactive Workflow Demo</h2>
+                <div class="alert alert-warning">
+                    <strong>⚠️ Demo Mode:</strong> This is a simulated workflow for demonstration purposes. No actual patient data is processed.
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>💡 Tip:</strong> Click the "📡 API Calls" button in the top-right corner to see all backend routes being called in real-time!
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar">0%</div>
+                </div>
+
+                <div class="demo-section">
+                    <!-- Step 1 -->
+                    <div class="workflow-step" id="step1">
+                        <span class="step-status status-pending">Step 1: Upload</span>
+                        <h3>📁 Audio Upload & Authentication</h3>
+                        <p>Clinician uploads audio recording of patient consultation</p>
+                        <button class="btn btn-primary" onclick="startDemo()">Start Demo</button>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="workflow-step" id="step2">
+                        <span class="step-status status-pending">Step 2: Transcription</span>
+                        <h3>🎤 Speech-to-Text Processing</h3>
+                        <p>Amazon Transcribe transcribes the audio</p>
+                        <div id="transcriptionResult" style="display:none;">
+                            <textarea rows="4" readonly>Patient presents with persistent cough for 2 weeks, fever of 101°F, and chest congestion. Physical examination reveals crackles in lower right lung. Diagnosed with acute bronchitis. Prescribed azithromycin 250mg and recommended rest.</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 - HITL Gate 1 -->
+                    <div class="workflow-step gate" id="step3">
+                        <span class="step-status status-pending">Step 3: HITL Gate 1</span>
+                        <h3>🔍 Human Review: Transcription Validation</h3>
+                        <div class="hitl-section" id="hitl1" style="display:none;">
+                            <h4>Review and Correct Transcription</h4>
+                            <p>Medical professional reviews the AI-generated transcription for accuracy</p>
+                            <button class="btn btn-success" onclick="approveGate(1)">✓ Approve Transcription</button>
+                            <button class="btn btn-warning" onclick="alert('In production, this would allow editing the transcription')">✎ Request Corrections</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="workflow-step" id="step4">
+                        <span class="step-status status-pending">Step 4: AI Analysis</span>
+                        <h3>🤖 Amazon SageMaker: Code Extraction</h3>
+                        <p>AI extracts diagnosis and suggests CPT/ICD codes</p>
+                        <div id="aiResult" style="display:none;">
+                            <strong>Extracted Information:</strong>
+                            <ul>
+                                <li><strong>Diagnosis:</strong> Acute Bronchitis</li>
+                                <li><strong>ICD-10 Code:</strong> J20.9</li>
+                                <li><strong>CPT Code:</strong> 99213 (Office visit, established patient)</li>
+                                <li><strong>Treatment:</strong> Azithromycin 250mg</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 - HITL Gate 2 -->
+                    <div class="workflow-step gate" id="step5">
+                        <span class="step-status status-pending">Step 5: HITL Gate 2</span>
+                        <h3>🔍 Human Review: Medical Coding Validation</h3>
+                        <div class="hitl-section" id="hitl2" style="display:none;">
+                            <h4>Medical Coder Review</h4>
+                            <p>Certified medical coder validates the CPT and ICD codes against clinical documentation</p>
+                            <button class="btn btn-success" onclick="approveGate(2)">✓ Approve Codes</button>
+                            <button class="btn btn-warning" onclick="alert('In production, coder could modify codes here')">✎ Modify Codes</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 6 -->
+                    <div class="workflow-step" id="step6">
+                        <span class="step-status status-pending">Step 6: EDI Generation</span>
+                        <h3>📄 AWS HealthLake: FHIR & EDI 837</h3>
+                        <p>Generate standardized FHIR resources and EDI 837 claim</p>
+                        <div id="ediResult" style="display:none;">
+                            <code>ISA*00* *00* *ZZ*SENDER *ZZ*RECEIVER *...</code>
+                            <p style="margin-top:10px;"><em>EDI 837 Professional claim format generated</em></p>
+                        </div>
+                    </div>
+
+                    <!-- Step 7 - HITL Gate 3 -->
+                    <div class="workflow-step gate" id="step7">
+                        <span class="step-status status-pending">Step 7: HITL Gate 3</span>
+                        <h3>🔍 Human Review: Final Billing Validation</h3>
+                        <div class="hitl-section" id="hitl3" style="display:none;">
+                            <h4>Final Compliance Check</h4>
+                            <p>Billing specialist performs final review before submission to clearinghouse</p>
+                            <button class="btn btn-success" onclick="approveGate(3)">✓ Approve for Submission</button>
+                            <button class="btn btn-warning" onclick="alert('In production, would send back for revision')">✎ Request Changes</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 8 -->
+                    <div class="workflow-step" id="step8">
+                        <span class="step-status status-pending">Step 8: Submission</span>
+                        <h3>✅ External Clearinghouse Submission</h3>
+                        <p>Claim submitted to external clearinghouse for payer processing</p>
+                        <div id="submissionResult" style="display:none;">
+                            <p style="color:#34a853;font-weight:600;">✓ Claim successfully submitted!</p>
+                            <p>Tracking ID: CLM-2025-10-30-001</p>
+                            <p>Data stored in Amazon Redshift for analytics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Routes Tab -->
+            <div id="api" class="tab-content">
+                <h2>🔌 Backend API Routes</h2>
+                <div class="alert alert-info">
+                    <strong>ℹ️ Production API Endpoints:</strong> These are the RESTful API routes that would be called in a production deployment on AWS Fargate.
+                </div>
+
+                <div class="workflow-step">
+                    <h3>🔐 Authentication & Authorization</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/login</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Authenticate clinician with SSO + MFA. Returns JWT token.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/refresh</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Refresh expired JWT token.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/logout</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Invalidate session and revoke token.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>📁 File Upload & Storage</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/claims/upload</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Upload audio file to Amazon S3. Returns S3 path and upload_id.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Check upload status and retrieve metadata.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-delete">DELETE</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Delete uploaded file (with audit log).</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>🎤 Speech-to-Text Processing</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/start</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Trigger Amazon Transcribe for audio transcription.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/transcription/{job_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Poll transcription job status and retrieve result.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/{job_id}/cancel</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Cancel ongoing transcription job.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step gate">
+                    <h3>🔍 HITL Gate 1: Transcription Review</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/transcription/approve</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Medical professional approves transcription accuracy.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/transcription/reject</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Request corrections or re-transcription.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-put">PUT</span> <strong>/api/v1/hitl/transcription/{job_id}/edit</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Edit transcription text with version tracking.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>🤖 AI Code Extraction (Amazon SageMaker)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/extract-codes</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Amazon SageMaker analyzes transcription and suggests CPT/ICD codes.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/ai/suggestions/{claim_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Retrieve AI-generated code suggestions with confidence scores.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/feedback</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Submit feedback to improve AI model (reinforcement learning).</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>💾 Code Validation (DynamoDB)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/validate</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Validate CPT/ICD codes against reference database.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/search</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Search for CPT/ICD codes by keyword or description.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/compatibility</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Check if CPT and ICD codes are compatible for billing.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step gate">
+                    <h3>🔍 HITL Gate 2: Medical Coding Review</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/codes/approve</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Certified coder approves CPT/ICD code selection.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-put">PUT</span> <strong>/api/v1/hitl/codes/modify</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Coder modifies codes with justification notes.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/codes/reject</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Reject codes and send back to AI for re-analysis.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>🏥 AWS HealthLake (FHIR & EDI)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/fhir/create-claim</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Create FHIR Claim resource in AWS HealthLake.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/fhir/claim/{claim_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Retrieve FHIR Claim resource.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/edi/generate-837</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Generate EDI 837 Professional claim format from FHIR data.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/edi/{edi_file_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Download generated EDI 837 file.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step gate">
+                    <h3>🔍 HITL Gate 3: Final Billing Review</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/approve</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Billing specialist approves claim for submission.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/hold</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Place claim on hold for additional review.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/hitl/billing/reject</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Reject claim and send back for corrections.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>📡 Event Publishing (SNS/SQS)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/pubsub/publish</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Publish claim events to SNS/SQS topics for async processing.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/pubsub/topics</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">List available SNS/SQS topics.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>🚀 External Submission</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/clearinghouse/submit</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Submit EDI 837 to external clearinghouse (Availity, Change Healthcare, etc.).</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/clearinghouse/status/{submission_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Check submission status and payer response.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/clearinghouse/acknowledgment/{submission_id}</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Retrieve 997/999 functional acknowledgment.</p>
+                    </div>
+                </div>
+
+                <div class="workflow-step">
+                    <h3>📊 Analytics (Amazon Redshift)</h3>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+                        <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/analytics/store</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Store claim data in Amazon Redshift for analytics and reporting.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/dashboard</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Get practice performance metrics and claim processing statistics.</p>
+
+                        <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/export</strong></div>
+                        <p style="margin-left: 70px; color: #5f6368;">Export analytics data to CSV/PDF for reporting.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Components Tab -->
+            <div id="components" class="tab-content">
+                <h2>🔧 System Components</h2>
+                <div class="alert alert-info">
+                    <strong>ℹ️ Component Overview:</strong> Detailed breakdown of all system components, technologies, and integration points.
+                </div>
+
+                <div class="component-grid">
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-cloud"></i>
+                            <h4>AWS Infrastructure</h4>
+                        </div>
+                        <ul>
+                            <li><strong>Amplify:</strong> Current frontend hosting (app2100)</li>
+                            <li><strong>API Gateway:</strong> RESTful API management (planned)</li>
+                            <li><strong>Lambda:</strong> Serverless compute functions (planned)</li>
+                            <li><strong>VPC:</strong> Network isolation</li>
+                            <li><strong>CloudFront:</strong> Global CDN (planned)</li>
+                        </ul>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-brain"></i>
+                            <h4>AI/ML Services</h4>
+                        </div>
+                        <ul>
+                            <li><strong>Amazon Transcribe:</strong> Medical speech-to-text (planned)</li>
+                            <li><strong>Amazon Bedrock:</strong> AI/ML for SOAP notes and codes (planned)</li>
+                            <li><strong>Custom Models:</strong> Medical coding algorithms (planned)</li>
+                            <li><strong>Model Training:</strong> Continuous learning pipeline (planned)</li>
+                        </ul>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-shield-alt"></i>
+                            <h4>Security Layer</h4>
+                        </div>
+                        <ul>
+                            <li><strong>AWS KMS:</strong> Key xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</li>
+                            <li><strong>AWS Cognito:</strong> User authentication (planned)</li>
+                            <li><strong>AWS WAF:</strong> Web application firewall</li>
+                            <li><strong>CloudTrail:</strong> Audit logging</li>
+                            <li><strong>Secrets Manager:</strong> Credential storage</li>
+                        </ul>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-database"></i>
+                            <h4>Data Layer</h4>
+                        </div>
+                        <ul>
+                            <li><strong>DynamoDB:</strong> 3 tables (PT, MH, SLP patients)</li>
+                            <li><strong>Amazon S3:</strong> 4 buckets (main, raw, exports, logs)</li>
+                            <li><strong>Amazon Redshift:</strong> Analytics warehouse (planned)</li>
+                            <li><strong>AWS HealthLake:</strong> FHIR data store (planned)</li>
+                            <li><strong>ElastiCache:</strong> Session caching (planned)</li>
+                        </ul>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-users"></i>
+                            <h4>HITL Components</h4>
+                        </div>
+                        <ul>
+                            <li><strong>Gate 1:</strong> Transcription validation</li>
+                            <li><strong>Gate 2:</strong> Medical coding review</li>
+                            <li><strong>Gate 3:</strong> Final billing compliance check</li>
+                            <li><strong>Review Queue:</strong> Priority-based routing</li>
+                            <li><strong>Quality Metrics:</strong> Accuracy tracking</li>
+                        </ul>
+                    </div>
+
+                    <div class="component-card">
+                        <div class="component-header">
+                            <i class="fas fa-chart-line"></i>
+                            <h4>Monitoring & Analytics</h4>
+                        </div>
+                        <ul>
+                            <li><strong>CloudWatch:</strong> Real-time monitoring</li>
+                            <li><strong>CloudWatch Logs:</strong> Centralized logging</li>
+                            <li><strong>X-Ray:</strong> Performance tracing (planned)</li>
+                            <li><strong>QuickSight:</strong> Business intelligence (planned)</li>
+                            <li><strong>Custom Dashboards:</strong> Practice metrics (planned)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div id="security" class="tab-content">
+                <h2>🔒 Security & Compliance</h2>
+                <div class="alert alert-info">
+                    <strong>ℹ️ Security Overview:</strong> Enterprise-grade security controls ensuring HIPAA compliance and patient data protection.
+                </div>
+
+                <div class="security-grid">
+                    <div class="security-card">
+                        <h4>HIPAA Compliance</h4>
+                        <ul>
+                            <li>✅ AWS Business Associate Agreement (BAA)</li>
+                            <li>✅ KMS Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</li>
+                            <li>✅ AES-256 encryption for all stored data</li>
+                            <li>✅ PHI encryption at rest and in transit</li>
+                            <li>✅ Audit logging via CloudTrail</li>
+                        </ul>
+                    </div>
+
+                    <div class="security-card">
+                        <h4>Data Protection</h4>
+                        <ul>
+                            <li>🔐 AWS KMS Encryption</li>
+                            <li>🛡️ TLS 1.3 Encryption</li>
+                            <li>📊 Data Loss Prevention</li>
+                            <li>🔒 Secure Data Disposal</li>
+                            <li>📋 PHI Masking in Logs</li>
+                        </ul>
+                    </div>
+
+                    <div class="security-card">
+                        <h4>Access Control</h4>
+                        <ul>
+                            <li>🔑 AWS Cognito (planned)</li>
+                            <li>👥 Role-Based Access Control</li>
+                            <li>⏱️ Session Management</li>
+                            <li>🚪 Secure Logout Procedures</li>
+                            <li>📋 Access Logging & Monitoring</li>
+                        </ul>
+                    </div>
+
+                    <div class="security-card">
+                        <h4>Network Security</h4>
+                        <ul>
+                            <li>🌐 Amazon VPC Isolation</li>
+                            <li>🔥 AWS WAF & Shield</li>
+                            <li>🚧 Security Groups & NACLs</li>
+                            <li>🌍 DDoS Protection</li>
+                            <li>📡 API Rate Limiting</li>
+                        </ul>
+                    </div>
+
+                    <div class="security-card">
+                        <h4>Monitoring & Audit</h4>
+                        <ul>
+                            <li>📊 CloudWatch Real-time Monitoring</li>
+                            <li>📋 CloudTrail 7-year Audit Logs</li>
+                            <li>🔍 Automated Security Alerts</li>
+                            <li>📈 Compliance Reporting</li>
+                            <li>⚡ Incident Response</li>
+                        </ul>
+                    </div>
+
+                    <div class="security-card">
+                        <h4>Third-party Risk</h4>
+                        <ul>
+                            <li>🤝 Clearinghouse Security Assessments</li>
+                            <li>🔐 Encrypted Data Transmission</li>
+                            <li>📋 Third-party Audit Reviews</li>
+                            <li>🚫 Unauthorized Access Prevention</li>
+                            <li>📞 Incident Notification Procedures</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="security-controls">
+                    <h3>Implemented Security Controls</h3>
+                    <div class="controls-grid">
+                        <div class="control-category">
+                            <h4>🔐 Authentication</h4>
+                            <ul>
+                                <li>AWS Cognito (planned)</li>
+                                <li>Multi-Factor Authentication (planned)</li>
+                                <li>Session Management</li>
+                                <li>Password Policies</li>
+                            </ul>
+                        </div>
+
+                        <div class="control-category">
+                            <h4>🛡️ Authorization</h4>
+                            <ul>
+                                <li>Role-Based Access Control</li>
+                                <li>Principle of Least Privilege</li>
+                                <li>API Rate Limiting</li>
+                                <li>Request Validation</li>
+                            </ul>
+                        </div>
+
+                        <div class="control-category">
+                            <h4>🔒 Data Protection</h4>
+                            <ul>
+                                <li>End-to-End Encryption</li>
+                                <li>Data Classification</li>
+                                <li>PHI Masking in Logs</li>
+                                <li>Secure Data Disposal</li>
+                            </ul>
+                        </div>
+
+                        <div class="control-category">
+                            <h4>📊 Monitoring</h4>
+                            <ul>
+                                <li>Real-time Threat Detection</li>
+                                <li>Automated Incident Response</li>
+                                <li>Compliance Reporting</li>
+                                <li>Performance Monitoring</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="security-certifications">
+                    <h3>Compliance Certifications & Standards</h3>
+                    <div class="cert-grid">
+                        <div class="cert-item">
+                            <div class="cert-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="cert-content">
+                                <h4>HIPAA Security Rule</h4>
+                                <p>Complete compliance with all administrative, physical, and technical safeguards</p>
+                            </div>
+                        </div>
+
+                        <div class="cert-item">
+                            <div class="cert-icon">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <div class="cert-content">
+                                <h4>AWS BAA</h4>
+                                <p>Business Associate Agreement ensuring HIPAA compliance in AWS services</p>
+                            </div>
+                        </div>
+
+                        <div class="cert-item">
+                            <div class="cert-icon">
+                                <i class="fas fa-certificate"></i>
+                            </div>
+                            <div class="cert-content">
+                                <h4>SOC 2 Type II</h4>
+                                <p>Security, availability, and confidentiality controls audited annually</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="Demo/style.css">
+    <script src="Demo/script.js"></script>
+</body>
+</html>
