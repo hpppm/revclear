@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RevClear Test</title>
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+        }
+
+        .loading-text {
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-text">Testing RevClear Loading...</div>
+    </div>
+
+    <h1>RevClear Test Page</h1>
+    <p>This is a simple test to check if the loading overlay works.</p>
+    <button onclick="testLoading()">Test Loading Overlay</button>
+
+    <script>
+        console.log('RevClear Test: Script loaded');
+
+        // Test the loading overlay functionality
+        function testLoading() {
+            console.log('RevClear Test: Testing loading overlay');
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                setTimeout(() => {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        console.log('RevClear Test: Loading overlay hidden');
+                    }, 500);
+                }, 3000);
+            } else {
+                console.error('RevClear Test: Loading overlay not found');
+            }
+        }
+
+        // Auto-test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('RevClear Test: DOM Content Loaded');
+            setTimeout(() => {
+                testLoading();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
