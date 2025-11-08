@@ -1,12 +1,16 @@
 # 🏥 RevClear Demo - HIPAA AI Medical Claims System
 
-Interactive demonstration of RevClear, an AI-powered medical billing MVP built on AWS (Amazon Web Services) with HIPAA compliance.
+Interactive demonstration of RevClear, an AI-powered medical billing platform built on AWS with HIPAA compliance.
+
+**Live Demo**: https://hpppm.github.io/revclear/
 
 ---
 
 ## 🎯 About RevClear
 
-RevClear is an academic project at Gannon University exploring the design and development of an AI-powered medical billing system to improve claim accuracy, reduce denials, and save time for specialized healthcare providers.
+RevClear is a healthcare claims management platform for mental health, physical therapy, and speech-language pathology practices. It automates the billing workflow from clinical documentation to insurance claim submission.
+
+**Current Status**: Phase 1 - Core infrastructure deployed on AWS
 
 ### Project Goals
 - **Improve Accuracy**: AI-powered CPT/ICD code suggestions
