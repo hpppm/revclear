@@ -629,8 +629,19 @@
             }, 4000);
         }
 
-        // Check if user is already logged in on page load
-        window.addEventListener('load', () => {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hide loading screen after 3 seconds
+            setTimeout(() => {
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }, 3000);
+
+            // Check for existing user session
             const userSession = sessionStorage.getItem('user');
             if (userSession) {
                 try {
@@ -640,4 +651,9 @@
                     sessionStorage.removeItem('user');
                 }
             }
+
+            // Show welcome notification
+            setTimeout(() => {
+                showNotification('🎯 Welcome to RevClear! Start by exploring the tabs or begin the interactive demo.', 'info');
+            }, 3500);
         });
