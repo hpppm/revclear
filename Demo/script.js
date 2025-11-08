@@ -135,7 +135,7 @@
                 logApiCall(
                     'POST',
                     '/api/v1/claims/upload',
-                    'Upload audio file to Cloud Storage',
+                    'Upload audio file to Amazon S3',
                     {
                         patient_id: 'PAT-2025-001',
                         file_name: 'consultation_20251030.mp3',
@@ -144,7 +144,7 @@
                     },
                     {
                         upload_id: 'upl_789xyz',
-                        gcs_path: 'gs://clinic-audio/2025/10/consultation_20251030.mp3',
+                        s3_path: 's3://clinic-audio/2025/10/consultation_20251030.mp3',
                         status: 'uploaded'
                     }
                 );
@@ -159,7 +159,7 @@
                 logApiCall(
                     'POST',
                     '/api/v1/transcription/start',
-                    'Trigger Google Speech-to-Text API',
+                    'Trigger Amazon Transcribe',
                     {
                         upload_id: 'upl_789xyz',
                         language: 'en-US',
@@ -225,13 +225,13 @@
                 currentStep = 4;
                 updateProgress();
 
-                // Step 4: AI Analysis - Call Vertex AI
+                // Step 4: AI Analysis - Amazon SageMaker
                 updateStepStatus('step4', 'processing');
 
                 logApiCall(
                     'POST',
                     '/api/v1/ai/extract-codes',
-                    'Vertex AI analyzes transcription and extracts CPT/ICD codes',
+                    'Amazon SageMaker analyzes transcription and extracts CPT/ICD codes',
                     {
                         transcription_id: 'trans_456abc',
                         model: 'medical-coder-v2',
@@ -260,7 +260,7 @@
                     logApiCall(
                         'GET',
                         '/api/v1/codes/validate?icd10=J20.9&cpt=99213',
-                        'Validate codes against Cloud SQL CPT/ICD database',
+                        'Validate codes against Amazon RDS PostgreSQL CPT/ICD database',
                         null,
                         {
                             icd10_valid: true,
@@ -309,7 +309,7 @@
                 logApiCall(
                     'POST',
                     '/api/v1/fhir/create-claim',
-                    'Healthcare API creates FHIR Claim resource',
+                    'AWS HealthLake creates FHIR Claim resource',
                     {
                         patient_id: 'PAT-2025-001',
                         provider_id: 'PRV-12345',
@@ -336,7 +336,7 @@
                         },
                         {
                             edi_file_id: 'edi_837_20251030_001',
-                            gcs_path: 'gs://clinic-claims/2025/10/837_001.txt',
+                            s3_path: 's3://clinic-claims/2025/10/837_001.txt',
                             segments_count: 42
                         }
                     );
@@ -378,11 +378,11 @@
                 // Step 8: Submission
                 updateStepStatus('step8', 'processing');
 
-                // Publish to Pub/Sub
+                // Publish to Amazon SNS/SQS
                 logApiCall(
                     'POST',
                     '/api/v1/pubsub/publish',
-                    'Publish claim approved event to Pub/Sub topic',
+                    'Publish claim approved event to Amazon SNS/SQS',
                     {
                         topic: 'claims-approved',
                         message: {
@@ -416,11 +416,11 @@
                         }
                     );
 
-                    // Store in BigQuery for analytics
+                    // Store in Amazon Redshift for analytics
                     logApiCall(
                         'POST',
                         '/api/v1/analytics/store',
-                        'Store claim data in BigQuery for analytics',
+                        'Store claim data in Amazon Redshift for analytics',
                         {
                             claim_id: 'CLM-2025-10-30-001',
                             dataset: 'claims_analytics',
@@ -428,7 +428,7 @@
                         },
                         {
                             rows_inserted: 1,
-                            job_id: 'bq_job_789'
+                            job_id: 'redshift_job_789'
                         }
                     );
 
