@@ -1,6 +1,6 @@
 # 🏥 RevClear Demo - HIPAA AI Medical Claims System
 
-Interactive demonstration of RevClear, an AI-powered medical billing MVP built on Google Cloud Platform with HIPAA compliance.
+Interactive demonstration of RevClear, an AI-powered medical billing MVP built on AWS (Amazon Web Services) with HIPAA compliance.
 
 ---
 
@@ -97,27 +97,27 @@ Clinician Upload → Speech-to-Text → [HITL Gate 1: Transcription]
 → Clearinghouse Submission
 ```
 
-### GCP Services Used
+### AWS Services Used
 
 #### Security Layer
-- Cloud Armor (DDoS protection)
-- Identity Platform (SSO + MFA)
-- Cloud KMS (encryption keys)
+- AWS WAF & Shield (DDoS protection)
+- Amazon Cognito (SSO + MFA)
+- AWS KMS (encryption keys)
 
 #### Application Layer
-- Cloud Run (serverless containers)
-- Secret Manager (credentials)
-- VPC Network (isolation)
+- AWS Fargate (serverless containers)
+- AWS Secrets Manager (credentials)
+- Amazon VPC (isolation)
 
 #### AI/ML Services
-- Speech-to-Text API
-- Vertex AI (diagnosis extraction)
-- Healthcare API (FHIR/EDI 837)
+- Amazon Transcribe
+- Amazon SageMaker (diagnosis extraction)
+- AWS HealthLake (FHIR/EDI 837)
 
 #### Data Layer
-- Cloud Storage (encrypted audio/docs)
-- Cloud SQL PostgreSQL (CPT/ICD database)
-- BigQuery (analytics)
+- Amazon S3 (encrypted audio/docs)
+- Amazon RDS PostgreSQL (CPT/ICD database)
+- Amazon Redshift (analytics)
 
 ---
 
@@ -142,13 +142,13 @@ Clinician Upload → Speech-to-Text → [HITL Gate 1: Transcription]
 
 ### Security Controls
 
-✅ **Encryption at Rest**: Cloud KMS with customer-managed keys  
+✅ **Encryption at Rest**: AWS KMS with customer-managed keys  
 ✅ **Encryption in Transit**: TLS 1.3  
 ✅ **Access Control**: SSO with MFA, IAM roles, least privilege  
-✅ **Network Security**: VPC isolation, private endpoints  
+✅ **Network Security**: Amazon VPC isolation, private endpoints  
 ✅ **Audit Logging**: Comprehensive logs with 7-year retention  
 ✅ **Key Rotation**: Automatic every 90 days  
-✅ **Business Associate Agreement**: Google Cloud BAA
+✅ **Business Associate Agreement**: AWS BAA
 
 ---
 
@@ -182,12 +182,12 @@ Clinician Upload → Speech-to-Text → [HITL Gate 1: Transcription]
 - No build process required
 
 ### Production Architecture (Planned)
-- **Cloud**: Google Cloud Platform
+- **Cloud**: AWS (Amazon Web Services)
 - **Backend**: Node.js + TypeScript (RevClear/backend/)
 - **Frontend**: Next.js 16 + React 19 (RevClear/frontend/)
-- **Database**: Cloud SQL PostgreSQL + SQLCipher
-- **AI/ML**: Vertex AI, Speech-to-Text API
-- **Integration**: Healthcare API (FHIR/EDI)
+- **Database**: Amazon RDS PostgreSQL + SQLCipher
+- **AI/ML**: Amazon SageMaker, Amazon Transcribe
+- **Integration**: AWS HealthLake (FHIR/EDI)
 
 ---
 
@@ -214,7 +214,7 @@ Clinician Upload → Speech-to-Text → [HITL Gate 1: Transcription]
 - **Institution**: Gannon University
 - **Supervising Instructor**: Dr. Davide Piovesan
 - **Purpose**: Academic project exploring AI-powered healthcare billing
-- **Repository**: https://github.com/hpppm/revclear
+- **Repository**: https://github.com/YOUR_USERNAME/YOUR_REPO
 
 ---
 
@@ -236,11 +236,11 @@ Clinician Upload → Speech-to-Text → [HITL Gate 1: Transcription]
 https://hpppm.github.io/revclear/
 ```
 
-### GCP Cloud Storage (Alternative)
+### AWS S3 (Alternative)
 ```bash
-gsutil mb gs://revclear-demo
-gsutil cp index.html gs://revclear-demo
-gsutil web set -m index.html gs://revclear-demo
+aws s3 mb s3://revclear-demo
+aws s3 cp index.html s3://revclear-demo/
+aws s3 website s3://revclear-demo/ --index-document index.html
 ```
 
 ### Netlify/Vercel (Alternative)
@@ -311,7 +311,7 @@ Simple drag-and-drop deployment
 ### Production Considerations
 Before deploying for real use:
 - [ ] Implement proper authentication (OAuth 2.0, SAML)
-- [ ] Set up actual GCP project with billing
+- [ ] Set up actual AWS account with billing
 - [ ] Configure Business Associate Agreement (BAA)
 - [ ] Perform security assessment and penetration testing
 - [ ] Complete HIPAA compliance audit
@@ -377,8 +377,8 @@ For academic purposes under Gannon University guidelines.
 - **Team Guide**: See [TEAM_GUIDE.md](../TEAM_GUIDE.md)
 
 ### External Resources
-- [Google Cloud Healthcare API](https://cloud.google.com/healthcare-api)
-- [HIPAA Compliance on GCP](https://cloud.google.com/security/compliance/hipaa)
+- [AWS HealthLake](https://aws.amazon.com/healthlake/)
+- [HIPAA Compliance on AWS](https://aws.amazon.com/compliance/hipaa-compliance/)
 - [CPT Codes](https://www.ama-assn.org/practice-management/cpt)
 - [ICD-10 Codes](https://www.cdc.gov/nchs/icd/icd-10-cm.htm)
 
@@ -390,7 +390,7 @@ For questions about the RevClear project, contact the team via Gannon University
 ## 🎉 Credits
 
 - **Mermaid.js**: Beautiful diagram rendering
-- **Google Cloud Platform**: Comprehensive healthcare documentation
+- **AWS (Amazon Web Services)**: Comprehensive healthcare documentation
 - **Gannon University**: Project support
 - **Dr. Davide Piovesan**: Academic supervision
 

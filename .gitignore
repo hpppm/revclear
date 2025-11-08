@@ -1,0 +1,76 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# AWS credentials
+.aws/
+aws-credentials.json
+*credentials*.json
+
+# Firebase service account keys
+*firebase*.json
+*serviceAccount*.json
+
+# Database credentials
+database.config.js
+db-credentials.json
+
+# API keys and tokens
+*api-key*
+*api_key*
+*secret*
+*token*
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# PowerShell scripts with credentials
+*setup*.ps1
+*config*.ps1
+
+# Backup files
+*.bak
+*.backup
+*backup*
+backup-root-files/
+
+# Personal notes
+NOTES.md
+TODO-personal.md

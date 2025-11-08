@@ -58,7 +58,7 @@ git push -u origin test-aws
 
 ## GitHub Secrets to Configure
 
-Go to: https://github.com/hpppm/revclear/settings/secrets/actions
+Go to: https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions
 
 ### Required Secrets:
 - `AWS_ACCESS_KEY_ID` - Your AWS access key
@@ -83,7 +83,7 @@ git push origin test-aws
 ```
 
 ### Method 2: Manual trigger
-1. Go to https://github.com/hpppm/revclear/actions
+1. Go to https://github.com/YOUR_USERNAME/YOUR_REPO/actions
 2. Select "AWS Deployment" workflow
 3. Click "Run workflow"
 4. Select branch: `test-aws`
@@ -91,16 +91,15 @@ git push origin test-aws
 
 ## Viewing Workflow Results
 
-- Actions page: https://github.com/hpppm/revclear/actions
+- Actions page: https://github.com/YOUR_USERNAME/YOUR_REPO/actions
 - Check job logs for detailed output
 - View summary in each workflow run
 
-## Quick Setup Script
+## Quick Setup
 
-Run this script to set up everything:
-```powershell
-.\setup-aws-github.ps1
-```
+Follow the GitHub Actions setup guide:
+- See `.github/GITHUB_AWS_SETUP.md` for detailed instructions
+- Configure secrets in your GitHub repository settings
 
 ## Troubleshooting
 
@@ -123,12 +122,12 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 - `.github/workflows/aws-deploy.yml` - GitHub Actions workflow
 - `.github/GITHUB_AWS_SETUP.md` - Detailed setup guide
-- `setup-aws-github.ps1` - Interactive setup script
 - `QUICK_REFERENCE.md` - This file
+- `.gitignore` - Security and sensitive file exclusions
 
 ## Useful Links
 
-- [GitHub Secrets](https://github.com/hpppm/revclear/settings/secrets/actions)
-- [GitHub Actions](https://github.com/hpppm/revclear/actions)
+- [GitHub Secrets](https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions)
+- [GitHub Actions](https://github.com/YOUR_USERNAME/YOUR_REPO/actions)
 - [AWS IAM Console](https://console.aws.amazon.com/iam/)
 - [AWS Cognito Console](https://console.aws.amazon.com/cognito/)

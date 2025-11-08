@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="no-js" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RevClear AI Medical Billing System - Demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RevClear - AI Medical Billing Platform</title>
+    <meta name="description" content="RevClear AI Medical System - Automated medical billing for PT, Mental Health & SLP practices. Speech-to-Claim in minutes with HIPAA compliance.">
+    <meta name="theme-color" content="#667eea">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="RevClear AI Medical System">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Automated medical billing with AI - Speech-to-Claim in minutes">
+    
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
     <!-- API Call Tracker Toggle Button -->
@@ -83,8 +96,19 @@
     
     <div class="container">
         <div class="header">
-            <h1>🏥 RevClear AI Medical Billing System</h1>
-            <p>Google Cloud Architecture - Interactive Demo</p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <div class="pulse-dot"></div>
+                <h1 style="margin: 0;">RevClear AI Medical System</h1>
+                <div class="pulse-dot"></div>
+            </div>
+            <p style="font-size: 1.125rem; font-weight: 500;">
+                <span class="gradient-text">AI-Powered Medical Billing</span> That Learns to Reduce Claim Denials
+            </p>
+            <div class="specialty-badges">
+                <span class="specialty-badge">🧠 Mental Health</span>
+                <span class="specialty-badge">🏃 Physical Therapy</span>
+                <span class="specialty-badge">💬 Speech-Language</span>
+            </div>
             <div style="margin-top: 15px;" id="authNav">
                 <button onclick="openAuthModal('login')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</button>
                 <button onclick="openAuthModal('signup')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</button>
@@ -104,7 +128,7 @@
             <div id="architecture" class="tab-content active">
                 <h2>System Architecture Diagram</h2>
                 <div class="alert alert-info">
-                    <strong>ℹ️ About this Architecture:</strong> This diagram shows a complete HIPAA-compliant medical claims processing system built on Google Cloud Platform with three Human-in-the-Loop (HITL) validation gates to ensure accuracy and compliance.
+                    <strong>ℹ️ About this Architecture:</strong> This diagram shows a complete HIPAA-compliant medical claims processing system built on AWS (Amazon Web Services) with three Human-in-the-Loop (HITL) validation gates to ensure accuracy and compliance.
                 </div>
                 
                 <div class="diagram-container">
@@ -118,49 +142,49 @@ flowchart TB
     %% Entry Point
     U["👤 Clinician<br/><small>SSO + MFA Auth</small>"] --> LB["Load Balancer<br/><small>HTTPS + SSL</small>"]
     
-    LB --> WAF["Cloud Armor WAF<br/><small>DDoS + Threat Protection</small>"]
+    LB --> WAF["AWS WAF & Shield<br/><small>DDoS + Threat Protection</small>"]
     
     %% Main Application
-    WAF --> APP["Claims Application<br/><small>Cloud Run - Auto Scaling</small>"]
+    WAF --> APP["Claims Application<br/><small>AWS Fargate - Auto Scaling</small>"]
     
     %% Storage Access
-    APP --> GCS["Cloud Storage<br/><small>Audio Files + Documents</small>"]
-    APP --> SM["Secret Manager<br/><small>DB Credentials</small>"]
+    APP --> S3["Amazon S3<br/><small>Audio Files + Documents</small>"]
+    APP --> SM["AWS Secrets Manager<br/><small>DB Credentials</small>"]
     
     %% Speech Processing
-    GCS --> STT["Speech-to-Text API<br/><small>Audio Transcription</small>"]
+    S3 --> STT["Amazon Transcribe<br/><small>Audio Transcription</small>"]
     
     %% HITL Gate 1
     STT --> H1["🔍 HITL Gate 1<br/><small>Transcription Review</small><br/><small>Human Validation</small>"]
     
     %% AI Processing
-    H1 --> AI["Vertex AI<br/><small>Extract Diagnosis</small><br/><small>Suggest CPT/ICD Codes</small>"]
+    H1 --> AI["Amazon SageMaker<br/><small>Extract Diagnosis</small><br/><small>Suggest CPT/ICD Codes</small>"]
     
     %% HITL Gate 2
     AI --> H2["🔍 HITL Gate 2<br/><small>CPT Code Validation</small><br/><small>Medical Coder Review</small>"]
     
     %% Database Validation
-    H2 --> SQL["Cloud SQL PostgreSQL<br/><small>CPT Reference Database</small><br/><small>Patient History</small>"]
+    H2 --> SQL["Amazon RDS PostgreSQL<br/><small>CPT Reference Database</small><br/><small>Patient History</small>"]
     
     %% Healthcare API
-    SQL --> HCA["Healthcare API<br/><small>FHIR Resources</small><br/><small>Generate EDI 837</small>"]
+    SQL --> HCA["AWS HealthLake<br/><small>FHIR Resources</small><br/><small>Generate EDI 837</small>"]
     
     %% HITL Gate 3
     HCA --> H3["🔍 HITL Gate 3<br/><small>EDI 837 Final Review</small><br/><small>Billing Validation</small>"]
     
     %% Event System
-    H3 --> PS["Pub/Sub Topic<br/><small>Claim Events</small>"]
-    PS --> BQ["BigQuery<br/><small>Analytics Warehouse</small><br/><small>Claims Data</small>"]
+    H3 --> PS["Amazon SNS/SQS<br/><small>Claim Events</small>"]
+    PS --> BQ["Amazon Redshift<br/><small>Analytics Warehouse</small><br/><small>Claims Data</small>"]
     
     %% External Submission
     H3 --> OUT["✅ External Clearinghouse<br/><small>Claim Submission</small>"]
     
     %% Security Layer
-    KMS["🔒 Cloud KMS<br/><small>3 Encryption Keys</small><br/><small>GCS, SQL, BigQuery</small>"]
-    VPC["🌐 VPC Network<br/><small>Private Connectivity</small><br/><small>Traffic Isolation</small>"]
-    MON["📊 App Hub + Monitoring<br/><small>Service Health</small><br/><small>Audit Logs</small>"]
+    KMS["🔒 AWS KMS<br/><small>3 Encryption Keys</small><br/><small>S3, RDS, Redshift</small>"]
+    VPC["🌐 Amazon VPC<br/><small>Private Connectivity</small><br/><small>Traffic Isolation</small>"]
+    MON["📊 Amazon CloudWatch<br/><small>Service Health</small><br/><small>Audit Logs</small>"]
     
-    KMS -.-> GCS
+    KMS -.-> S3
     KMS -.-> SQL
     KMS -.-> BQ
     VPC -.-> APP
@@ -175,7 +199,7 @@ flowchart TB
     class U,LB,WAF,APP,STT,HCA,OUT main
     class H1,H2,H3 gate
     class AI ai
-    class GCS,SM,SQL,PS,BQ data
+    class S3,SM,SQL,PS,BQ data
     class KMS,VPC,MON sec
                     </pre>
                 </div>
@@ -185,17 +209,17 @@ flowchart TB
                         <h4>🔐 Security Features</h4>
                         <ul>
                             <li>SSO + MFA Authentication</li>
-                            <li>Cloud Armor WAF</li>
-                            <li>Cloud KMS Encryption</li>
-                            <li>VPC Network Isolation</li>
+                            <li>AWS WAF & Shield</li>
+                            <li>AWS KMS Encryption</li>
+                            <li>Amazon VPC Isolation</li>
                             <li>Audit Logging</li>
                         </ul>
                     </div>
                     <div class="info-card">
                         <h4>🤖 AI Components</h4>
                         <ul>
-                            <li>Speech-to-Text API</li>
-                            <li>Vertex AI Processing</li>
+                            <li>Amazon Transcribe</li>
+                            <li>Amazon SageMaker</li>
                             <li>CPT/ICD Code Extraction</li>
                             <li>FHIR Resource Generation</li>
                             <li>EDI 837 Creation</li>
@@ -214,11 +238,11 @@ flowchart TB
                     <div class="info-card">
                         <h4>💾 Data Storage</h4>
                         <ul>
-                            <li>Cloud Storage (Audio/Docs)</li>
-                            <li>Cloud SQL PostgreSQL</li>
-                            <li>BigQuery Analytics</li>
-                            <li>Secret Manager</li>
-                            <li>Healthcare API (FHIR)</li>
+                            <li>Amazon S3 (Audio/Docs)</li>
+                            <li>Amazon RDS PostgreSQL</li>
+                            <li>Amazon Redshift Analytics</li>
+                            <li>AWS Secrets Manager</li>
+                            <li>AWS HealthLake (FHIR)</li>
                         </ul>
                     </div>
                 </div>
@@ -252,7 +276,7 @@ flowchart TB
                     <div class="workflow-step" id="step2">
                         <span class="step-status status-pending">Step 2: Transcription</span>
                         <h3>🎤 Speech-to-Text Processing</h3>
-                        <p>Google Cloud Speech-to-Text API transcribes the audio</p>
+                        <p>Amazon Transcribe transcribes the audio</p>
                         <div id="transcriptionResult" style="display:none;">
                             <textarea rows="4" readonly>Patient presents with persistent cough for 2 weeks, fever of 101°F, and chest congestion. Physical examination reveals crackles in lower right lung. Diagnosed with acute bronchitis. Prescribed azithromycin 250mg and recommended rest.</textarea>
                         </div>
@@ -273,7 +297,7 @@ flowchart TB
                     <!-- Step 4 -->
                     <div class="workflow-step" id="step4">
                         <span class="step-status status-pending">Step 4: AI Analysis</span>
-                        <h3>🤖 Vertex AI: Code Extraction</h3>
+                        <h3>🤖 Amazon SageMaker: Code Extraction</h3>
                         <p>AI extracts diagnosis and suggests CPT/ICD codes</p>
                         <div id="aiResult" style="display:none;">
                             <strong>Extracted Information:</strong>
@@ -301,7 +325,7 @@ flowchart TB
                     <!-- Step 6 -->
                     <div class="workflow-step" id="step6">
                         <span class="step-status status-pending">Step 6: EDI Generation</span>
-                        <h3>📄 Healthcare API: FHIR & EDI 837</h3>
+                        <h3>📄 AWS HealthLake: FHIR & EDI 837</h3>
                         <p>Generate standardized FHIR resources and EDI 837 claim</p>
                         <div id="ediResult" style="display:none;">
                             <code>ISA*00* *00* *ZZ*SENDER *ZZ*RECEIVER *...</code>
@@ -329,7 +353,7 @@ flowchart TB
                         <div id="submissionResult" style="display:none;">
                             <p style="color:#34a853;font-weight:600;">✓ Claim successfully submitted!</p>
                             <p>Tracking ID: CLM-2025-10-30-001</p>
-                            <p>Data stored in BigQuery for analytics</p>
+                            <p>Data stored in Amazon Redshift for analytics</p>
                         </div>
                     </div>
                 </div>
@@ -339,7 +363,7 @@ flowchart TB
             <div id="api" class="tab-content">
                 <h2>🔌 Backend API Routes</h2>
                 <div class="alert alert-info">
-                    <strong>ℹ️ Production API Endpoints:</strong> These are the RESTful API routes that would be called in a production deployment on Google Cloud Run.
+                    <strong>ℹ️ Production API Endpoints:</strong> These are the RESTful API routes that would be called in a production deployment on AWS Fargate.
                 </div>
                 
                 <div class="workflow-step">
@@ -360,7 +384,7 @@ flowchart TB
                     <h3>📁 File Upload & Storage</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/claims/upload</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Upload audio file to Cloud Storage. Returns GCS path and upload_id.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Upload audio file to Amazon S3. Returns S3 path and upload_id.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/claims/upload/{upload_id}</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Check upload status and retrieve metadata.</p>
@@ -374,7 +398,7 @@ flowchart TB
                     <h3>🎤 Speech-to-Text Processing</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/transcription/start</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Trigger Google Speech-to-Text API for audio transcription.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Trigger Amazon Transcribe for audio transcription.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/transcription/{job_id}</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Poll transcription job status and retrieve result.</p>
@@ -399,10 +423,10 @@ flowchart TB
                 </div>
                 
                 <div class="workflow-step">
-                    <h3>🤖 AI Code Extraction (Vertex AI)</h3>
+                    <h3>🤖 AI Code Extraction (Amazon SageMaker)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/extract-codes</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Vertex AI analyzes transcription and suggests CPT/ICD codes.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Amazon SageMaker analyzes transcription and suggests CPT/ICD codes.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/ai/suggestions/{claim_id}</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Retrieve AI-generated code suggestions with confidence scores.</p>
@@ -413,7 +437,7 @@ flowchart TB
                 </div>
                 
                 <div class="workflow-step">
-                    <h3>💾 Code Validation (Cloud SQL)</h3>
+                    <h3>💾 Code Validation (Amazon RDS)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/validate</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Validate CPT/ICD codes against reference database.</p>
@@ -441,10 +465,10 @@ flowchart TB
                 </div>
                 
                 <div class="workflow-step">
-                    <h3>🏥 Healthcare API (FHIR & EDI)</h3>
+                    <h3>🏥 AWS HealthLake (FHIR & EDI)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/fhir/create-claim</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Create FHIR Claim resource in Healthcare API.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Create FHIR Claim resource in AWS HealthLake.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/fhir/claim/{claim_id}</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Retrieve FHIR Claim resource.</p>
@@ -472,13 +496,13 @@ flowchart TB
                 </div>
                 
                 <div class="workflow-step">
-                    <h3>📡 Event Publishing (Pub/Sub)</h3>
+                    <h3>📡 Event Publishing (SNS/SQS)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/pubsub/publish</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Publish claim events to Pub/Sub topics for async processing.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Publish claim events to SNS/SQS topics for async processing.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/pubsub/topics</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">List available Pub/Sub topics.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">List available SNS/SQS topics.</p>
                     </div>
                 </div>
                 
@@ -497,10 +521,10 @@ flowchart TB
                 </div>
                 
                 <div class="workflow-step">
-                    <h3>📊 Analytics (BigQuery)</h3>
+                    <h3>📊 Analytics (Amazon Redshift)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/analytics/store</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Store claim data in BigQuery for analytics and reporting.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Store claim data in Amazon Redshift for analytics and reporting.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/analytics/reports</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Generate reports: denial rates, revenue, turnaround time.</p>
@@ -514,7 +538,7 @@ flowchart TB
                     <h3>🔐 Audit & Compliance</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/audit/logs</strong></div>
-                        <p style="margin-left: 70px; color: #5f6368;">Query Cloud Audit Logs for compliance reporting.</p>
+                        <p style="margin-left: 70px; color: #5f6368;">Query CloudTrail Logs for compliance reporting.</p>
                         
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/audit/access/{resource_id}</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Track who accessed specific patient/claim data.</p>
@@ -527,60 +551,60 @@ flowchart TB
                 <div class="alert alert-info">
                     <strong>💡 API Architecture Notes:</strong>
                     <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li><strong>Base URL:</strong> <code>https://api.revclear.health</code> (hosted on Cloud Run)</li>
+                        <li><strong>Base URL:</strong> <code>https://api.revclear.health</code> (hosted on AWS Fargate)</li>
                         <li><strong>Authentication:</strong> JWT Bearer tokens in Authorization header</li>
                         <li><strong>Rate Limiting:</strong> 1000 requests/minute per user</li>
                         <li><strong>Versioning:</strong> URL path versioning (v1, v2, etc.)</li>
                         <li><strong>Response Format:</strong> JSON with standard error codes</li>
                         <li><strong>Encryption:</strong> TLS 1.3 for all communications</li>
                         <li><strong>CORS:</strong> Configured for approved frontend origins only</li>
-                        <li><strong>Monitoring:</strong> All endpoints logged to Cloud Logging</li>
+                        <li><strong>Monitoring:</strong> All endpoints logged to CloudWatch Logs</li>
                     </ul>
                 </div>
             </div>
             
             <!-- Components Tab -->
             <div id="components" class="tab-content">
-                <h2>GCP Components Overview</h2>
+                <h2>AWS Components Overview</h2>
                 
                 <div class="workflow-step">
                     <h3>🌐 Frontend & Security Layer</h3>
                     <p><strong>Load Balancer:</strong> HTTPS/SSL termination and traffic distribution</p>
-                    <p><strong>Cloud Armor WAF:</strong> Web Application Firewall with DDoS protection and threat detection</p>
-                    <p><strong>Identity Platform:</strong> SSO and MFA authentication for clinicians</p>
+                    <p><strong>AWS WAF & Shield:</strong> Web Application Firewall with DDoS protection and threat detection</p>
+                    <p><strong>Amazon Cognito:</strong> SSO and MFA authentication for clinicians</p>
                 </div>
                 
                 <div class="workflow-step">
                     <h3>⚙️ Application Layer</h3>
-                    <p><strong>Cloud Run:</strong> Serverless container platform with auto-scaling for the claims application</p>
-                    <p><strong>Secret Manager:</strong> Secure storage for API keys, database credentials, and certificates</p>
-                    <p><strong>VPC Network:</strong> Private network connectivity with traffic isolation</p>
+                    <p><strong>AWS Fargate:</strong> Serverless container platform with auto-scaling for the claims application</p>
+                    <p><strong>AWS Secrets Manager:</strong> Secure storage for API keys, database credentials, and certificates</p>
+                    <p><strong>Amazon VPC:</strong> Private network connectivity with traffic isolation</p>
                 </div>
                 
                 <div class="workflow-step">
                     <h3>🤖 AI/ML Services</h3>
-                    <p><strong>Speech-to-Text API:</strong> Converts audio recordings to text with medical vocabulary support</p>
-                    <p><strong>Vertex AI:</strong> Custom ML models for diagnosis extraction and CPT/ICD code suggestion</p>
-                    <p><strong>Healthcare API:</strong> FHIR-compliant data storage and EDI 837 generation</p>
+                    <p><strong>Amazon Transcribe:</strong> Converts audio recordings to text with medical vocabulary support</p>
+                    <p><strong>Amazon SageMaker:</strong> Custom ML models for diagnosis extraction and CPT/ICD code suggestion</p>
+                    <p><strong>AWS HealthLake:</strong> FHIR-compliant data storage and EDI 837 generation</p>
                 </div>
                 
                 <div class="workflow-step">
                     <h3>💾 Data Layer</h3>
-                    <p><strong>Cloud Storage:</strong> Object storage for audio files and documents (encrypted at rest)</p>
-                    <p><strong>Cloud SQL PostgreSQL:</strong> Relational database for CPT reference data and patient history</p>
-                    <p><strong>BigQuery:</strong> Data warehouse for claims analytics and reporting</p>
+                    <p><strong>Amazon S3:</strong> Object storage for audio files and documents (encrypted at rest)</p>
+                    <p><strong>Amazon RDS PostgreSQL:</strong> Relational database for CPT reference data and patient history</p>
+                    <p><strong>Amazon Redshift:</strong> Data warehouse for claims analytics and reporting</p>
                 </div>
                 
                 <div class="workflow-step">
                     <h3>🔐 Security & Compliance</h3>
-                    <p><strong>Cloud KMS:</strong> Key Management Service with 3 separate encryption keys for GCS, SQL, and BigQuery</p>
-                    <p><strong>Cloud Audit Logs:</strong> Comprehensive logging of all access and changes (HIPAA requirement)</p>
-                    <p><strong>App Hub:</strong> Application monitoring and service health tracking</p>
+                    <p><strong>AWS KMS:</strong> Key Management Service with 3 separate encryption keys for S3, RDS, and Redshift</p>
+                    <p><strong>AWS CloudTrail:</strong> Comprehensive logging of all access and changes (HIPAA requirement)</p>
+                    <p><strong>Amazon CloudWatch:</strong> Application monitoring and service health tracking</p>
                 </div>
                 
                 <div class="workflow-step">
                     <h3>📡 Event & Integration Layer</h3>
-                    <p><strong>Pub/Sub:</strong> Asynchronous messaging for claim events and workflow orchestration</p>
+                    <p><strong>Amazon SNS/SQS:</strong> Asynchronous messaging for claim events and workflow orchestration</p>
                     <p><strong>External Clearinghouse Integration:</strong> Secure API connection for claim submission</p>
                 </div>
             </div>
@@ -596,10 +620,10 @@ flowchart TB
                 <div class="workflow-step">
                     <h3>🔐 Encryption</h3>
                     <ul>
-                        <li><strong>At Rest:</strong> All data encrypted using Cloud KMS with customer-managed keys</li>
+                        <li><strong>At Rest:</strong> All data encrypted using AWS KMS with customer-managed keys</li>
                         <li><strong>In Transit:</strong> TLS 1.3 encryption for all network communication</li>
                         <li><strong>Key Rotation:</strong> Automatic key rotation every 90 days</li>
-                        <li><strong>Separate Keys:</strong> Individual encryption keys for GCS, Cloud SQL, and BigQuery</li>
+                        <li><strong>Separate Keys:</strong> Individual encryption keys for S3, RDS, and Redshift</li>
                     </ul>
                 </div>
                 
@@ -616,9 +640,9 @@ flowchart TB
                 <div class="workflow-step">
                     <h3>📊 Audit & Monitoring</h3>
                     <ul>
-                        <li><strong>Cloud Audit Logs:</strong> Admin activity, data access, and system events logged</li>
+                        <li><strong>AWS CloudTrail:</strong> Admin activity, data access, and system events logged</li>
                         <li><strong>Log Retention:</strong> 7-year retention for HIPAA compliance</li>
-                        <li><strong>Real-time Monitoring:</strong> App Hub tracks service health and anomalies</li>
+                        <li><strong>Real-time Monitoring:</strong> Amazon CloudWatch tracks service health and anomalies</li>
                         <li><strong>Alerting:</strong> Automated alerts for security events and policy violations</li>
                     </ul>
                 </div>
@@ -637,8 +661,8 @@ flowchart TB
                 <div class="workflow-step">
                     <h3>🛡️ Threat Protection</h3>
                     <ul>
-                        <li><strong>Cloud Armor:</strong> DDoS protection and WAF rules</li>
-                        <li><strong>Security Command Center:</strong> Threat detection and vulnerability scanning</li>
+                        <li><strong>AWS WAF & Shield:</strong> DDoS protection and WAF rules</li>
+                        <li><strong>AWS Security Hub:</strong> Threat detection and vulnerability scanning</li>
                         <li><strong>Private Endpoints:</strong> No direct internet exposure for databases</li>
                         <li><strong>Regular Audits:</strong> Automated compliance scanning and manual security reviews</li>
                     </ul>
@@ -660,7 +684,7 @@ flowchart TB
                             <li>Facility Access Controls</li>
                             <li>Workstation Security</li>
                             <li>Device Controls</li>
-                            <li>GCP Data Centers</li>
+                            <li>AWS Data Centers</li>
                         </ul>
                     </div>
                     <div class="info-card">
@@ -675,7 +699,7 @@ flowchart TB
                     <div class="info-card">
                         <h4>✅ Business Associate Agreement</h4>
                         <ul>
-                            <li>Google Cloud BAA</li>
+                            <li>AWS BAA</li>
                             <li>HIPAA Compliance Cert</li>
                             <li>Annual Assessments</li>
                             <li>Breach Notification</li>
@@ -686,103 +710,44 @@ flowchart TB
         </div>
         
         <div class="footer">
-            <p>🏥 RevClear AI Medical Billing System | Google Cloud Platform Architecture Demo</p>
-            <p>© 2025 | Built for demonstration purposes</p>
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem;">
+                        <span class="gradient-text">RevClear AI</span> Medical System
+                    </h3>
+                    <p style="margin: 0; color: var(--slate-600);">Automated Medical Billing for PT, Mental Health & SLP Practices</p>
+                </div>
+                
+                <div class="footer-tech">
+                    <div class="tech-badge">
+                        <span class="tech-icon">🤖</span>
+                        <span>Amazon SageMaker</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">☁️</span>
+                        <span>AWS Cloud</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">🔒</span>
+                        <span>HIPAA Compliant</span>
+                    </div>
+                    <div class="tech-badge">
+                        <span class="tech-icon">📊</span>
+                        <span>Redshift ML</span>
+                    </div>
+                </div>
+                
+                <div class="footer-bottom">
+                    <p>© 2025 RevClear. All rights reserved.</p>
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>All Systems Operational</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <script src="script.js"></script>
-    <script>
-        // Check if user is logged in and update UI
-        window.addEventListener('load', () => {
-            const userSession = sessionStorage.getItem('user');
-            if (userSession) {
-                try {
-                    const user = JSON.parse(userSession);
-                    const authNav = document.getElementById('authNav');
-                    
-                    // Replace login/signup buttons with welcome message and logout
-                    authNav.innerHTML = `
-                        <span style="color: white; margin: 0 10px; display: inline-block;">
-                            👋 Welcome, <strong>${user.email.split('@')[0]}</strong>
-                        </span>
-                        <button onclick="handleLogout()" style="color: white; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; border: none; cursor: pointer; transition: all 0.3s; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                            🚪 Logout
-                        </button>
-                    `;
-                    
-                    // Show a welcome notification
-                    showWelcomeNotification(user);
-                } catch (e) {
-                    console.error('Error parsing user session:', e);
-                }
-            }
-        });
-        
-        function showWelcomeNotification(user) {
-            // Create welcome notification
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, #34a853, #0f9d58);
-                color: white;
-                padding: 15px 30px;
-                border-radius: 10px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 9999;
-                font-weight: 600;
-                animation: slideDown 0.5s ease;
-            `;
-            notification.textContent = `✅ Successfully logged in as ${user.email}`;
-            document.body.appendChild(notification);
-            
-            // Add CSS animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes slideDown {
-                    from { top: -100px; opacity: 0; }
-                    to { top: 20px; opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Remove notification after 4 seconds
-            setTimeout(() => {
-                notification.style.animation = 'slideDown 0.5s ease reverse';
-                setTimeout(() => notification.remove(), 500);
-            }, 4000);
-        }
-        
-        function handleLogout() {
-            if (confirm('Are you sure you want to logout?')) {
-                sessionStorage.removeItem('user');
-                
-                // Show logout message
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: #5f6368;
-                    color: white;
-                    padding: 15px 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    z-index: 9999;
-                    font-weight: 600;
-                `;
-                notification.textContent = '👋 Logged out successfully';
-                document.body.appendChild(notification);
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        }
-    </script>
 </body>
 </html>

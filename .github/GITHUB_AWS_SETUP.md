@@ -13,7 +13,7 @@ This guide will help you connect PowerShell with GitHub Actions for AWS deployme
 ### Required GitHub Secrets
 
 Go to your GitHub repository settings:
-`https://github.com/hpppm/revclear/settings/secrets/actions`
+`https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions`
 
 Add the following secrets by clicking **"New repository secret"**:
 
@@ -88,7 +88,7 @@ git push origin test-aws
 
 ### Option 2: Manual Trigger
 
-1. Go to: `https://github.com/hpppm/revclear/actions`
+1. Go to: `https://github.com/YOUR_USERNAME/YOUR_REPO/actions`
 2. Select **"AWS Deployment"** workflow
 3. Click **"Run workflow"**
 4. Select branch: `test-aws`
@@ -228,9 +228,9 @@ Place your PowerShell scripts in `RevClear/backend/` and they will be accessible
 - [GitHub Secrets Documentation](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [AWS Actions Configure Credentials](https://github.com/aws-actions/configure-aws-credentials)
 - [AWS Tools for PowerShell](https://aws.amazon.com/powershell/)
-- [Your Repository Secrets](https://github.com/hpppm/revclear/settings/secrets/actions)
-- [Your Actions Workflows](https://github.com/hpppm/revclear/actions)
+- [Your Repository Secrets](https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions)
+- [Your Actions Workflows](https://github.com/YOUR_USERNAME/YOUR_REPO/actions)
 
 ---
 
-**Need Help?** Check the workflow logs at: `https://github.com/hpppm/revclear/actions`
+**Need Help?** Check the workflow logs at: `https://github.com/YOUR_USERNAME/YOUR_REPO/actions`
