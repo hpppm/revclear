@@ -23,50 +23,50 @@ Based on the DFD from `docs/ARCHITECTURE_DIAGRAMS.md`, here's the threat model v
 ```mermaid
 flowchart TB
     subgraph "External Entities"
-        C[Clinician]
-        A[Administrator]
-        P[Insurance Payer]
+        C[👨‍⚕️ Clinician]
+        A[👨‍💼 Administrator]
+        P[🏥 Insurance Payer]
     end
     
     subgraph "RevClear System"
         subgraph "Authentication Layer"
-            AUTH[User Authentication]
-            COG[AWS Cognito]
+            AUTH[🔐 User Authentication]
+            COG[🔐 AWS Cognito]
         end
         
         subgraph "Application Layer"
-            PM[Patient Management]
-            ER[Encounter Recording]
-            AI[AI Processing Pipeline]
-            HITL[Human Validation]
-            CG[Claim Generation]
-            CS[Claim Submission]
+            PM[👥 Patient Management]
+            ER[🎙️ Encounter Recording]
+            AI[🤖 AI Processing Pipeline]
+            HITL[👀 Human Validation]
+            CG[📄 Claim Generation]
+            CS[📤 Claim Submission]
         end
         
         subgraph "Data Storage Layer"
-            DB1[(Patients DB)]
-            DB2[(Encounters DB)]
-            DB3[(Claims DB)]
-            S3[Cloud Storage S3]
-            LOGS[Audit Logs]
+            DB1[(🗄️ Patients DB)]
+            DB2[(📦 Cloud Storage S3)]
+            DB3[(🗄️ Encounters DB)]
+            DB4[(🗄️ Claims DB)]
+            LOGS[📊 Audit Logs]
         end
         
         subgraph "External Services"
-            TS[Amazon Transcribe]
-            BR[Amazon Bedrock]
+            TS[🎙️ Amazon Transcribe]
+            BR[🤖 Amazon Bedrock]
         end
     end
     
     %% Threat Indicators
     C -- "🔴 Spoofing" --> AUTH
-    A -- "🔴 Elevation" --> AUTH
+    A -- "🟡 Elevation" --> AUTH
     AUTH -- "🔴 Tampering" --> PM
     PM -- "🔴 Information Disclosure" --> DB1
-    ER -- "🔴 Information Disclosure" --> S3
-    AI -- "🔴 Tampering" --> TS
-    AI -- "🔴 Tampering" --> BR
-    CG -- "🔴 Information Disclosure" --> DB3
-    CS -- "🔴 Denial of Service" --> P
+    ER -- "🔴 Information Disclosure" --> DB2
+    AI -- "🟡 Tampering" --> TS
+    AI -- "🟡 Tampering" --> BR
+    CG -- "🔴 Information Disclosure" --> DB4
+    CS -- "🟡 Denial of Service" --> P
     
     %% Data Flows
     C --> AUTH
@@ -74,13 +74,13 @@ flowchart TB
     AUTH --> PM
     PM --> DB1
     PM --> ER
-    ER --> S3
+    ER --> DB2
     ER --> AI
     AI --> TS
     AI --> BR
     AI --> HITL
     HITL --> CG
-    CG --> DB3
+    CG --> DB4
     CG --> CS
     CS --> P
     PM --> LOGS
@@ -93,65 +93,65 @@ flowchart TB
 
 ## 🎯 STRIDE Analysis by Category
 
-### **S - Spoofing (Identity Threats)**
+### **S - Spoofing (Identity Threats)** 🎭
 
 | Threat | Affected Components | Threat Description | Impact | Mitigation |
 |--------|-------------------|-------------------|---------|------------|
-| **S1: User Impersonation** | Clinician, Administrator | Attacker impersonates legitimate healthcare provider to access PHI | 🔴 **Critical** - Unauthorized PHI access | ✅ **AWS Cognito** with MFA<br>✅ **Password policies** (12+ chars, complexity)<br>✅ **Session timeouts** (30 min)<br>✅ **IP whitelisting** for admin access |
-| **S2: API Endpoint Spoofing** | API Gateway | Attacker spoofs API endpoints to intercept data | 🟡 **Medium** - Data interception | ✅ **API Gateway authorizers**<br>✅ **JWT token validation**<br>✅ **HTTPS only** (TLS 1.3)<br>✅ **Request signing** |
-| **S3: Insurance Payer Spoofing** | Claim Submission | Attacker impersonates insurance payer to receive claim data | 🟡 **Medium** - PHI disclosure | ✅ **Mutual TLS** for payer integration<br>✅ **API key authentication**<br>✅ **IP whitelisting** for known payers |
+| **S1: User Impersonation** | 👨‍⚕️ Clinician, 👨‍💼 Administrator | Attacker impersonates legitimate healthcare provider to access PHI | 🔴 **Critical** - Unauthorized PHI access | ✅ **AWS Cognito** with MFA<br>✅ **Password policies** (12+ chars, complexity)<br>✅ **Session timeouts** (30 min)<br>✅ **IP whitelisting** for admin access |
+| **S2: API Endpoint Spoofing** | ⚡ API Gateway | Attacker spoofs API endpoints to intercept data | 🟡 **Medium** - Data interception | ✅ **API Gateway authorizers**<br>✅ **JWT token validation**<br>✅ **HTTPS only** (TLS 1.3)<br>✅ **Request signing** |
+| **S3: Insurance Payer Spoofing** | 📤 Claim Submission | Attacker impersonates insurance payer to receive claim data | 🟡 **Medium** - PHI disclosure | ✅ **Mutual TLS** for payer integration<br>✅ **API key authentication**<br>✅ **IP whitelisting** for known payers |
 
 ---
 
-### **T - Tampering (Data Integrity Threats)**
+### **T - Tampering (Data Integrity Threats)** 🔧
 
 | Threat | Affected Components | Threat Description | Impact | Mitigation |
 |--------|-------------------|-------------------|---------|------------|
-| **T1: Patient Data Tampering** | Patient Management, Patients DB | Attacker modifies patient demographics or insurance info | 🔴 **Critical** - Claim fraud, patient harm | ✅ **DynamoDB transactional writes**<br>✅ **Field-level encryption**<br>✅ **Change tracking** with audit logs<br>✅ **Business rule validation** |
-| **T2: Encounter Recording Tampering** | Encounter Recording, S3 Storage | Attacker modifies clinical notes or audio files | 🔴 **Critical** - Medical record integrity | ✅ **S3 versioning** + **MFA delete**<br>✅ **File hash validation** (SHA-256)<br>✅ **Immutable logs** (WORM storage)<br>✅ **Digital signatures** for clinical data |
-| **T3: AI Processing Tampering** | AI Pipeline, Transcribe, Bedrock | Attacker modifies AI processing results or prompts | 🟡 **Medium** - Incorrect coding | ✅ **Prompt validation**<br>✅ **Output verification** rules<br>✅ **AI service access controls**<br>✅ **Human-in-the-loop validation** |
-| **T4: Claim Data Tampering** | Claim Generation, Claims DB | Attacker modifies CPT/ICD codes or claim amounts | 🔴 **Critical** - Financial fraud | ✅ **Three-gate validation**<br>✅ **EDI format validation**<br>✅ **Amount range checks**<br>✅ **Code compliance verification** |
+| **T1: Patient Data Tampering** | 👥 Patient Management, 🗄️ Patients DB | Attacker modifies patient demographics or insurance info | 🔴 **Critical** - Claim fraud, patient harm | ✅ **DynamoDB transactional writes**<br>✅ **Field-level encryption**<br>✅ **Change tracking** with audit logs<br>✅ **Business rule validation** |
+| **T2: Encounter Recording Tampering** | 🎙️ Encounter Recording, 📦 S3 Storage | Attacker modifies clinical notes or audio files | 🔴 **Critical** - Medical record integrity | ✅ **S3 versioning** + **MFA delete**<br>✅ **File hash validation** (SHA-256)<br>✅ **Immutable logs** (WORM storage)<br>✅ **Digital signatures** for clinical data |
+| **T3: AI Processing Tampering** | 🤖 AI Pipeline, 🎙️ Transcribe, 🤖 Bedrock | Attacker modifies AI processing results or prompts | 🟡 **Medium** - Incorrect coding | ✅ **Prompt validation**<br>✅ **Output verification** rules<br>✅ **AI service access controls**<br>✅ **Human-in-the-loop validation** |
+| **T4: Claim Data Tampering** | 📄 Claim Generation, 🗄️ Claims DB | Attacker modifies CPT/ICD codes or claim amounts | 🔴 **Critical** - Financial fraud | ✅ **Three-gate validation**<br>✅ **EDI format validation**<br>✅ **Amount range checks**<br>✅ **Code compliance verification** |
 
 ---
 
-### **R - Repudiation (Audit/Logging Threats)**
+### **R - Repudiation (Audit/Logging Threats)** 🚫
 
 | Threat | Affected Components | Threat Description | Impact | Mitigation |
 |--------|-------------------|-------------------|---------|------------|
-| **R1: Action Denial** | All processes, Audit Logs | User denies performing actions (data access, modifications) | 🟢 **Low** - Compliance issues | ✅ **CloudTrail logging** (7-year retention)<br>✅ **Immutable audit logs**<br>✅ **User session tracking**<br>✅ **Digital signatures** on critical actions |
-| **R2: Log Tampering** | Audit Logs, CloudWatch | Attacker modifies or deletes audit logs | 🟡 **Medium** - Compliance violations | ✅ **Log encryption** at rest<br>✅ **Log forwarding** to separate account<br>✅ **Write-once storage** for logs<br>✅ **Log integrity checks** |
+| **R1: Action Denial** | ⚙️ All processes, 📊 Audit Logs | User denies performing actions (data access, modifications) | 🟢 **Low** - Compliance issues | ✅ **CloudTrail logging** (7-year retention)<br>✅ **Immutable audit logs**<br>✅ **User session tracking**<br>✅ **Digital signatures** on critical actions |
+| **R2: Log Tampering** | 📊 Audit Logs, 📊 CloudWatch | Attacker modifies or deletes audit logs | 🟡 **Medium** - Compliance violations | ✅ **Log encryption** at rest<br>✅ **Log forwarding** to separate account<br>✅ **Write-once storage** for logs<br>✅ **Log integrity checks** |
 
 ---
 
-### **I - Information Disclosure (Confidentiality Threats)**
+### **I - Information Disclosure (Confidentiality Threats)** 👁️
 
 | Threat | Affected Components | Threat Description | Impact | Mitigation |
 |--------|-------------------|-------------------|---------|------------|
-| **I1: PHI Data Exposure** | All databases, S3, API responses | Unauthorized access to patient health information | 🔴 **Critical** - HIPAA violation, legal liability | ✅ **KMS encryption** for all data<br>✅ **Column-level encryption** for sensitive fields<br>✅ **Data masking** in logs<br>✅ **Access controls** (least privilege) |
-| **I2: Audio File Exposure** | S3 Storage, Encounter Recording | Unauthorized access to clinical session recordings | 🔴 **Critical** - Patient privacy violation | ✅ **S3 encryption** (SSE-KMS)<br>✅ **Presigned URL expiration** (15 min)<br>✅ **Access logging** for all S3 requests<br>✅ **VPC endpoint** for S3 access |
-| **I3: API Data Leakage** | API Gateway, all endpoints | Sensitive data in API responses or headers | 🟡 **Medium** - Data exposure | ✅ **Response filtering** (no PHI in responses)<br>✅ **API rate limiting**<br>✅ **Input/output validation**<br>✅ **CORS policies** |
-| **I4: Database Query Exposure** | DynamoDB queries | Database queries revealing PHI in logs | 🟢 **Low** - Information leakage | ✅ **Query parameter encryption**<br>✅ **No PHI in CloudWatch logs**<br>✅ **Secure parameter passing** |
+| **I1: PHI Data Exposure** | 🗄️ All databases, 📦 S3, ⚡ API responses | Unauthorized access to patient health information | 🔴 **Critical** - HIPAA violation, legal liability | ✅ **KMS encryption** for all data<br>✅ **Column-level encryption** for sensitive fields<br>✅ **Data masking** in logs<br>✅ **Access controls** (least privilege) |
+| **I2: Audio File Exposure** | 📦 S3 Storage, 🎙️ Encounter Recording | Unauthorized access to clinical session recordings | 🔴 **Critical** - Patient privacy violation | ✅ **S3 encryption** (SSE-KMS)<br>✅ **Presigned URL expiration** (15 min)<br>✅ **Access logging** for all S3 requests<br>✅ **VPC endpoint** for S3 access |
+| **I3: API Data Leakage** | ⚡ API Gateway, ⚙️ all endpoints | Sensitive data in API responses or headers | 🟡 **Medium** - Data exposure | ✅ **Response filtering** (no PHI in responses)<br>✅ **API rate limiting**<br>✅ **Input/output validation**<br>✅ **CORS policies** |
+| **I4: Database Query Exposure** | 🗄️ DynamoDB queries | Database queries revealing PHI in logs | 🟢 **Low** - Information leakage | ✅ **Query parameter encryption**<br>✅ **No PHI in CloudWatch logs**<br>✅ **Secure parameter passing** |
 
 ---
 
-### **D - Denial of Service (Availability Threats)**
+### **D - Denial of Service (Availability Threats)** ⛔
 
 | Threat | Affected Components | Threat Description | Impact | Mitigation |
 |--------|-------------------|-------------------|---------|------------|
-| **D1: API Gateway Overload** | API Gateway, all endpoints | Attacker floods API with requests to crash service | 🟡 **Medium** - Service disruption | ✅ **AWS WAF** with rate limiting<br>✅ **API throttling** (100 req/min per user)<br>✅ **CloudFront caching**<br>✅ **Auto-scaling** Lambda functions |
-| **D2: Database Exhaustion** | DynamoDB tables | Attacker exhausts database capacity or read/write units | 🟡 **Medium** - Service unavailability | ✅ **Provisioned capacity** with auto-scaling<br>✅ **Query optimization**<br>✅ **Read/write throttling**<br>✅ **Database backup** (point-in-time recovery) |
-| **D3: Storage Exhaustion** | S3 buckets | Attacker fills storage with large uploads | 🟢 **Low** - Storage issues | ✅ **S3 lifecycle policies**<br>✅ **Upload size limits** (100MB max)<br>✅ **File type validation**<br>✅ **Storage monitoring** alerts |
-| **D4: AI Service Abuse** | Transcribe, Bedrock | Attacker exhausts AI service quotas | 🟢 **Low** - Cost issues | ✅ **Service quotas** and limits<br>✅ **Usage monitoring**<br>✅ **Cost alerts**<br>✅ **Request validation** |
+| **D1: API Gateway Overload** | ⚡ API Gateway, ⚙️ all endpoints | Attacker floods API with requests to crash service | 🟡 **Medium** - Service disruption | ✅ **AWS WAF** with rate limiting<br>✅ **API throttling** (100 req/min per user)<br>✅ **CloudFront caching**<br>✅ **Auto-scaling** Lambda functions |
+| **D2: Database Exhaustion** | 🗄️ DynamoDB tables | Attacker exhausts database capacity or read/write units | 🟡 **Medium** - Service unavailability | ✅ **Provisioned capacity** with auto-scaling<br>✅ **Query optimization**<br>✅ **Read/write throttling**<br>✅ **Database backup** (point-in-time recovery) |
+| **D3: Storage Exhaustion** | 📦 S3 buckets | Attacker fills storage with large uploads | 🟢 **Low** - Storage issues | ✅ **S3 lifecycle policies**<br>✅ **Upload size limits** (100MB max)<br>✅ **File type validation**<br>✅ **Storage monitoring** alerts |
+| **D4: AI Service Abuse** | 🎙️ Transcribe, 🤖 Bedrock | Attacker exhausts AI service quotas | 🟢 **Low** - Cost issues | ✅ **Service quotas** and limits<br>✅ **Usage monitoring**<br>✅ **Cost alerts**<br>✅ **Request validation** |
 
 ---
 
-### **E - Elevation of Privilege (Authorization Threats)**
+### **E - Elevation of Privilege (Authorization Threats)** 🛡️
 
 | Threat | Affected Components | Threat Description | Impact | Mitigation |
 |--------|-------------------|-------------------|---------|------------|
-| **E1: Role Escalation** | User Authentication, Cognito | Standard user gains admin privileges | 🔴 **Critical** - Full system compromise | ✅ **IAM role-based access**<br>✅ **Principle of least privilege**<br>✅ **Role separation** (admin vs. clinician)<br>✅ **Privileged action logging** |
-| **E2: Cross-Tenant Access** | Patient Management | User accesses data from other clinics/organizations | 🔴 **Critical** - Multi-tenant data breach | ✅ **Tenant isolation** at data layer<br>✅ **Data partitioning** by organization<br>✅ **Access control lists** per tenant<br>✅ **Regular access audits** |
-| **E3: Service Account Abuse** | AWS services, Lambda | Compromised service account gains elevated access | 🟡 **Medium** - Infrastructure compromise | ✅ **Service account rotation** (90 days)<br>✅ **Minimal service permissions**<br>✅ **Service account monitoring**<br>✅ **Temporary credentials** only |
+| **E1: Role Escalation** | 🔐 User Authentication, 👥 Patient Management | Standard user gains admin privileges | 🔴 **Critical** - Full system compromise | ✅ **IAM role-based access**<br>✅ **Principle of least privilege**<br>✅ **Role separation** (admin vs. clinician)<br>✅ **Privileged action logging** |
+| **E2: Cross-Tenant Access** | 👥 Patient Management | User accesses data from other clinics/organizations | 🔴 **Critical** - Multi-tenant data breach | ✅ **Tenant isolation** at data layer<br>✅ **Data partitioning** by organization<br>✅ **Access control lists** per tenant<br>✅ **Regular access audits** |
+| **E3: Service Account Abuse** | ☁️ AWS services, ⚡ Lambda | Compromised service account gains elevated access | 🟡 **Medium** - Infrastructure compromise | ✅ **Service account rotation** (90 days)<br>✅ **Minimal service permissions**<br>✅ **Service account monitoring**<br>✅ **Temporary credentials** only |
 
 ---
 
@@ -208,27 +208,27 @@ flowchart TB
 
 ## 🔐 Security Principles Incorporated
 
-### **1. Defense in Depth**
+### **1. Defense in Depth** 🛡️
 - **Multiple security layers** (Network, Application, Data, Monitoring)
 - **Redundant controls** at each level
 - **Compromise containment** between layers
 
-### **2. Least Privilege**
+### **2. Least Privilege** 👥
 - **IAM roles** with minimal required permissions
 - **Service account restrictions**
 - **Time-limited access** for privileged operations
 
-### **3. Fail Securely**
+### **3. Fail Securely** 🔒
 - **Default deny** for unknown requests
 - **Secure defaults** for all configurations
 - **Automatic lockout** on suspicious activity
 
-### **4. Separation of Duties**
+### **4. Separation of Duties** 👨‍💼
 - **Different roles** for different functions
 - **Multi-person approval** for critical changes
 - **Segregated environments** (dev, staging, prod)
 
-### **5. Complete Mediation**
+### **5. Complete Mediation** ✅
 - **Every access** is validated and logged
 - **No trusted paths** for privileged operations
 - **Continuous monitoring** of all system interactions
@@ -237,7 +237,7 @@ flowchart TB
 
 ## 📋 Compliance Alignment
 
-### **HIPAA Security Rule Compliance**
+### **HIPAA Security Rule Compliance** 🏥
 
 | HIPAA Requirement | Implementation | Status |
 |-------------------|----------------|--------|
@@ -258,25 +258,25 @@ flowchart TB
 
 ## 🚀 Incident Response Plan
 
-### **Detection**
+### **Detection** 🔍
 1. **Real-time monitoring** via CloudWatch
 2. **Security Hub** for threat detection
 3. **Log analysis** for suspicious patterns
 4. **User behavior analytics** for anomaly detection
 
-### **Response**
+### **Response** ⚡
 1. **Immediate isolation** of affected systems
 2. **Preservation of evidence** (logs, memory dumps)
 3. **Notification** of security team and stakeholders
 4. **Containment** of threat scope
 
-### **Recovery**
+### **Recovery** 🔄
 1. **System restoration** from clean backups
 2. **Security patching** of identified vulnerabilities
 3. **Access credential rotation**
 4. **Post-incident analysis** and lessons learned
 
-### **Reporting**
+### **Reporting** 📋
 1. **HIPAA breach notification** (within 60 days)
 2. **Internal incident report** (within 24 hours)
 3. **Regulatory filing** if required
@@ -286,13 +286,13 @@ flowchart TB
 
 ## 📈 Continuous Improvement
 
-### **Security Metrics**
+### **Security Metrics** 📊
 - **Mean Time to Detect (MTTD)**: Target < 4 hours
 - **Mean Time to Respond (MTTR)**: Target < 24 hours
 - **Vulnerability Remediation**: Target < 30 days
 - **Security Training Completion**: Target 100%
 
-### **Regular Activities**
+### **Regular Activities** 🔄
 - **Monthly**: Security patch updates
 - **Quarterly**: Access reviews and audits
 - **Semi-annually**: Penetration testing

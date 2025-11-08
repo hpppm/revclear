@@ -18,7 +18,7 @@ cd RevClear/backend
 npm install
 npm run dev
 
-# Frontend  
+# Frontend
 cd RevClear/frontend
 npm install
 npm run dev
@@ -36,49 +36,49 @@ terraform plan
 ### ✅ Deployed Resources
 
 **Security**
-- KMS Key: `4ed14e...` (AES-256 encryption, HIPAA-compliant)
+- 🔐 KMS Key: `4ed14e...` (AES-256 encryption, HIPAA-compliant)
 
 **Databases (DynamoDB)**
-- `physical_therapy_patients` (5 records, encrypted, PITR enabled)
-- `speech_therapy_patients` (5 records, encrypted, PITR enabled)
-- `mental_health_patients` (5 records, encrypted, PITR enabled)
+- 🗄️ `physical_therapy_patients` (5 records, encrypted, PITR enabled)
+- 🗄️ `speech_therapy_patients` (5 records, encrypted, PITR enabled)
+- 🗄️ `mental_health_patients` (5 records, encrypted, PITR enabled)
 
 **Storage (S3 Buckets)**
-- `arevclear` - Main application data
-- `arevclear-raw` - Intake/raw data
-- `arevclear-exports` - EDI 837 files
-- `arevclear-logs` - CloudTrail logs
+- 📦 `arevclear` - Main application data
+- 📦 `arevclear-raw` - Intake/raw data
+- 📦 `arevclear-exports` - EDI 837 files
+- 📦 `arevclear-logs` - CloudTrail logs
 
 **Monitoring**
-- CloudTrail: `RevClearTrail` (multi-region, log validation enabled)
+- 📊 CloudTrail: `RevClearTrail` (multi-region, log validation enabled)
 
 **Frontend (Temporary)**
-- AWS Amplify: `app2100`
-- URL: https://d1hbslcew3u3eg.amplifyapp.com
+- 🌐 AWS Amplify: `app2100`
+- 🔗 URL: https://d1hbslcew3u3eg.amplifyapp.com
 
-**Cost**: ~$35/month
+**💰 Cost**: ~$35/month
 
 ---
 
 ## 🎯 What's Next
 
 ### Phase 1: Core Infrastructure (2-3 weeks)
-- [ ] Deploy Cognito User Pool (authentication + MFA)
-- [ ] Set up API Gateway + Lambda (backend APIs)
-- [ ] Migrate frontend to S3 + CloudFront (cheaper than Amplify)
-- [ ] Configure custom domain with SSL
+- ⏳ Deploy Cognito User Pool (authentication + MFA)
+- ⏳ Set up API Gateway + Lambda (backend APIs)
+- ⏳ Migrate frontend to S3 + CloudFront (cheaper than Amplify)
+- ⏳ Configure custom domain with SSL
 
 ### Phase 2: Backend APIs (2-3 weeks)
-- [ ] Patient management endpoints
-- [ ] Encounter recording and storage
-- [ ] Audio upload to S3
-- [ ] EDI 837 claim generation
+- ⏳ Patient management endpoints
+- ⏳ Encounter recording and storage
+- ⏳ Audio upload to S3
+- ⏳ EDI 837 claim generation
 
 ### Phase 3: AI Integration (4-6 weeks)
-- [ ] Amazon Transcribe (audio → text)
-- [ ] Amazon Bedrock (CPT/ICD code extraction)
-- [ ] HITL validation gates
-- [ ] Denial analysis
+- ⏳ Amazon Transcribe (audio → text)
+- ⏳ Amazon Bedrock (CPT/ICD code extraction)
+- ⏳ HITL validation gates
+- ⏳ Denial analysis
 
 **Projected Cost**: $350-450/month (with AI services)
 
@@ -87,27 +87,27 @@ terraform plan
 ## 🛠️ Tech Stack
 
 **Frontend**
-- Next.js 14 + React 18
-- TypeScript
-- TailwindCSS
+- ⚛️ Next.js 14 + React 18
+- 📘 TypeScript
+- 🎨 TailwindCSS
 
 **Backend**
-- Node.js + Express
-- AWS SDK v3
+- 🟢 Node.js + Express
+- ☁️ AWS SDK v3
 
 **Infrastructure (AWS)**
-- DynamoDB (databases)
-- S3 (storage)
-- Lambda + API Gateway (APIs)
-- Cognito (auth)
-- Transcribe + Bedrock (AI)
-- KMS (encryption)
-- CloudTrail (audit logs)
+- 🗄️ DynamoDB (databases)
+- 📦 S3 (storage)
+- ⚡ Lambda + API Gateway (APIs)
+- 🔐 Cognito (auth)
+- 🎙️ Transcribe + Bedrock (AI)
+- 🔒 KMS (encryption)
+- 📊 CloudTrail (audit logs)
 
 **DevOps**
-- Terraform (infrastructure as code)
-- GitHub Actions (CI/CD)
-- AWS Amplify (temporary frontend hosting)
+- 🏗️ Terraform (infrastructure as code)
+- 🔄 GitHub Actions (CI/CD)
+- 🌐 AWS Amplify (temporary frontend hosting)
 
 ---
 
@@ -115,28 +115,27 @@ terraform plan
 
 ```
 revclear/
-├── Demo/                    # GitHub Pages demo site
-│   ├── index.html
-│   ├── script.js
-│   └── style.css
+├── Demo/                    # 🌐 GitHub Pages demo site
+│   ├── index.html          # 📄 Main demo page
+│   ├── script.js           # ⚙️ Interactive functionality
+│   └── style.css           # 🎨 Styling
 │
-├── RevClear/                # Application code
-│   ├── backend/             # Node.js API
-│   └── frontend/            # Next.js app
+├── RevClear/                # 🏗️ Application code
+│   ├── backend/            # 🟢 Node.js API
+│   └── frontend/           # ⚛️ Next.js app
 │
-├── terraform/               # Infrastructure as code
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── modules/             # Reusable components
-│   └── environments/        # Dev/staging/prod configs
+├── terraform/               # 🏗️ Infrastructure as code
+│   ├── main.tf             # ⚙️ AWS resources
+│   ├── variables.tf        # 🔧 Configuration variables
+│   ├── outputs.tf          # 📤 Resource outputs
+│   └── modules/            # 📦 Reusable components
 │
-├── docs/                    # Documentation
-│   ├── ARCHITECTURE_DIAGRAMS.md
-│   ├── AWS_COMPLETE_GUIDE.md
-│   └── AWS_COST_MANAGEMENT.md
+├── docs/                    # 📚 Documentation
+│   ├── ARCHITECTURE_DIAGRAMS.md    # 🏛️ System design
+│   ├── AWS_COMPLETE_GUIDE.md       # ☁️ AWS services
+│   └── AWS_COST_MANAGEMENT.md      # 💰 Cost optimization
 │
-└── README.md                # This file
+└── README.md               # 📖 This file
 ```
 
 ---
