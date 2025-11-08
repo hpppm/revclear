@@ -7,90 +7,356 @@
     <meta name="description" content="RevClear AI Medical System - Automated medical billing for PT, Mental Health & SLP practices. Speech-to-Claim in minutes with HIPAA compliance.">
     <meta name="theme-color" content="#667eea">
     
-    <!-- Google Fonts -->
+    <!-- Enhanced Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Open Graph -->
-    <meta property="og:title" content="RevClear AI Medical System">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    
+    <!-- Enhanced Meta Tags -->
+    <meta property="og:title" content="RevClear - AI Medical Billing Platform">
+    <meta property="og:description" content="Transform healthcare billing with AI - Speech-to-Claim in minutes">
+    <meta property="og:image" content="https://hpppm.github.io/revclear/preview.jpg">
+    <meta property="og:url" content="https://hpppm.github.io/revclear/">
     <meta property="og:type" content="website">
-    <meta property="og:description" content="Automated medical billing with AI - Speech-to-Claim in minutes">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="RevClear - AI Medical Billing">
+    <meta name="twitter:description" content="HIPAA-compliant medical claims processing with AI">
+    <meta name="theme-color" content="#6366f1">
     
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Loading Animation Styles -->
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            animation: backgroundShift 3s ease-in-out infinite;
+        }
+        
+        @keyframes backgroundShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-left: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .loading-progress-fill {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            animation: progress 2s ease-in-out infinite;
+        }
+        
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        /* Smooth transitions for theme switching */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    </style>
 </head>
 <body>
-    <!-- API Call Tracker Toggle Button -->
-    <button class="api-toggle-btn" onclick="toggleApiTracker()">
-        📡 API Calls <span class="badge" id="apiCallCount">0</span>
-    </button>
-    
-    <!-- API Call Tracker Panel -->
-    <div class="api-tracker" id="apiTracker">
-        <div class="api-tracker-header">
-            <h3>🔌 Backend API Calls</h3>
-            <button class="api-tracker-close" onclick="toggleApiTracker()">✕</button>
+    <!-- Enhanced Loading Screen -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-logo">
+            <i class="fas fa-heartbeat"></i>
         </div>
-        <div class="api-tracker-body" id="apiTrackerBody">
-            <div style="text-align: center; color: #5f6368; padding: 20px;">
-                <p>No API calls yet. Start the demo to see backend routes!</p>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Initializing RevClear...</div>
+        <div class="loading-progress">
+            <div class="loading-progress-fill"></div>
+        </div>
+        <div class="loading-subtitle">Loading AI Medical Billing Platform</div>
+    </div>
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <!-- Enhanced API Call Tracker Toggle -->
+    <div class="floating-controls">
+        <button class="api-toggle-btn animate__animated animate__bounceIn" onclick="toggleApiTracker()">
+            <i class="fas fa-network-wired"></i>
+            <span>API Tracker</span>
+            <span class="badge pulse" id="apiCallCount">0</span>
+            <i class="fas fa-chevron-right toggle-icon"></i>
+        </button>
+        
+        <button class="help-toggle-btn" onclick="toggleHelp()" title="Help & Shortcuts">
+            <i class="fas fa-question-circle"></i>
+        </button>
+    </div>
+
+    <!-- Help Panel -->
+    <div class="help-panel" id="helpPanel" style="display: none;">
+        <div class="help-header">
+            <h3><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h3>
+            <button class="help-close" onclick="toggleHelp()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="help-content">
+            <div class="shortcut-group">
+                <h4>Navigation</h4>
+                <div class="shortcut">
+                    <kbd>1-5</kbd> <span>Switch tabs</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>T</kbd> <span>Toggle theme</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>A</kbd> <span>Toggle API tracker</span>
+                </div>
+            </div>
+            <div class="shortcut-group">
+                <h4>Demo Controls</h4>
+                <div class="shortcut">
+                    <kbd>Space</kbd> <span>Start/Resume demo</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>R</kbd> <span>Reset demo</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Esc</kbd> <span>Close modals</span>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Auth Modal -->
+
+    <!-- Enhanced API Tracker Panel -->
+    <div class="api-tracker animate__animated animate__slideInRight" id="apiTracker">
+        <div class="api-tracker-header">
+            <div class="tracker-title">
+                <i class="fas fa-server"></i>
+                <h3>API Call Monitor</h3>
+                <span class="tracker-subtitle">Real-time backend interactions</span>
+            </div>
+            <div class="tracker-controls">
+                <button class="tracker-btn" onclick="clearApiCalls()" title="Clear all calls">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="tracker-btn" onclick="exportApiLog()" title="Export log">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="api-tracker-close" onclick="toggleApiTracker()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="api-tracker-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="apiTotalCalls">0</span>
+                <span class="stat-label">Total Calls</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="apiSuccessRate">100%</span>
+                <span class="stat-label">Success Rate</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="apiAvgResponse">0ms</span>
+                <span class="stat-label">Avg Response</span>
+            </div>
+        </div>
+        <div class="api-tracker-body" id="apiTrackerBody">
+            <div class="api-empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No API calls yet</p>
+                <small>Start the demo to see backend interactions</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Auth Modal -->
     <div id="authModal" class="auth-modal" style="display: none;">
-        <div class="auth-modal-content">
-            <span class="auth-modal-close" onclick="closeAuthModal()">&times;</span>
+        <div class="auth-modal-content animate__animated animate__zoomIn">
+            <div class="auth-modal-close" onclick="closeAuthModal()">
+                <i class="fas fa-times"></i>
+            </div>
             <div class="auth-modal-header">
-                <h2 id="authModalTitle">🔐 Sign In</h2>
+                <div class="modal-icon">
+                    <i class="fas fa-shield-alt" id="modalIcon"></i>
+                </div>
+                <h2 id="authModalTitle">Secure Access</h2>
                 <p id="authModalSubtitle">Access RevClear AI Medical Billing System</p>
             </div>
+
             <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
-                <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+                <button class="auth-tab active" onclick="switchAuthTab('login')">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </button>
+                <button class="auth-tab" onclick="switchAuthTab('signup')">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Sign Up</span>
+                </button>
             </div>
-            
-            <!-- Login Form -->
+
+            <!-- Enhanced Login Form -->
             <form id="loginForm" class="auth-form" style="display: block;">
                 <div class="form-group">
-                    <label for="loginEmail">Email Address</label>
-                    <input type="email" id="loginEmail" required placeholder="clinician@example.com">
+                    <label for="loginEmail">
+                        <i class="fas fa-envelope"></i>
+                        Email Address
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="email" id="loginEmail" required placeholder="clinician@example.com" autocomplete="email">
+                        <div class="input-icon">
+                            <i class="fas fa-check-circle valid-icon"></i>
+                            <i class="fas fa-exclamation-triangle error-icon"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" required placeholder="Enter your password">
+                    <label for="loginPassword">
+                        <i class="fas fa-lock"></i>
+                        Password
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="password" id="loginPassword" required placeholder="Enter your password" autocomplete="current-password">
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Login</button>
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="rememberMe">
+                        <span class="checkmark"></span>
+                        Remember me
+                    </label>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Secure Login</span>
+                    <div class="btn-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
             </form>
-            
-            <!-- Signup Form -->
+
+            <!-- Enhanced Signup Form -->
             <form id="signupForm" class="auth-form" style="display: none;">
                 <div class="form-group">
-                    <label for="signupName">Full Name</label>
-                    <input type="text" id="signupName" required placeholder="Dr. Jane Smith">
+                    <label for="signupName">
+                        <i class="fas fa-user-md"></i>
+                        Full Name
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="text" id="signupName" required placeholder="Dr. Jane Smith" autocomplete="name">
+                        <div class="input-icon">
+                            <i class="fas fa-user valid-icon"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="signupEmail">Email Address</label>
-                    <input type="email" id="signupEmail" required placeholder="clinician@example.com">
+                    <label for="signupEmail">
+                        <i class="fas fa-envelope"></i>
+                        Professional Email
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="email" id="signupEmail" required placeholder="clinician@clinic.com" autocomplete="email">
+                        <div class="input-icon">
+                            <i class="fas fa-check valid-icon"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="signupPassword">Password</label>
-                    <input type="password" id="signupPassword" required placeholder="Create a password">
+                    <label for="signupPassword">
+                        <i class="fas fa-shield-alt"></i>
+                        Secure Password
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="password" id="signupPassword" required placeholder="Create a secure password">
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-meter">
+                            <div class="strength-fill" id="passwordStrength"></div>
+                        </div>
+                        <span class="strength-text" id="strengthText">Password strength</span>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="signupSpecialty">Specialty</label>
-                    <select id="signupSpecialty" required>
-                        <option value="">Select your specialty</option>
-                        <option value="physical-therapy">Physical Therapy</option>
-                        <option value="mental-health">Mental Health</option>
-                        <option value="speech-language">Speech-Language Pathology</option>
-                        <option value="other">Other</option>
-                    </select>
+                    <label for="signupSpecialty">
+                        <i class="fas fa-stethoscope"></i>
+                        Specialty
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="signupSpecialty" required>
+                            <option value="">Choose your specialty</option>
+                            <option value="physical-therapy">🏃 Physical Therapy</option>
+                            <option value="mental-health">🧠 Mental Health</option>
+                            <option value="speech-language">💬 Speech-Language Pathology</option>
+                            <option value="other">🏥 Other Healthcare</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="termsAgree" required>
+                        <span class="checkmark"></span>
+                        I agree to the <a href="#" class="link">Terms of Service</a> & <a href="#" class="link">Privacy Policy</a>
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Create Secure Account</span>
+                    <div class="btn-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
             </form>
+
+            <div class="auth-footer">
+                <p>🔒 Your data is protected with enterprise-grade security</p>
+            </div>
         </div>
     </div>
     
