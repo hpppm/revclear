@@ -1,767 +1,437 @@
-# RevClear - Healthcare AI Billing Medical System
+# RevClear - Healthcare Claims Management
 
-A production-ready HIPAA-compliant healthcare claims management system for mental health, physical therapy, and speech-language pathology practices.
+AI-powered HIPAA-compliant medical billing for mental health, physical therapy, and speech-language pathology practices.
 
-## 🏥 Project Overview
+**Live Demo**: https://hpppm.github.io/revclear/
 
-RevClear is a **medical claims processing platform** that automates the entire billing workflow from clinical documentation to insurance claim submission. Built specifically for small specialty practices, RevClear reduces billing time by 50%+ while improving claim acceptance rates.
-
-### What RevClear Does
-
-- **Speech-to-Text**: Convert clinical sessions into structured notes
-- **AI Medical Coding**: Automated CPT and ICD code generation with 95%+ accuracy
-- **Claim Generation**: Export to ANSI X12 EDI 837 format
-- **Denial Analysis**: Learn from ERA 835 responses to improve future claims
-- **Compliance**: Three human-in-the-loop checkpoints ensure accuracy and HIPAA compliance
-
-## 🏗️ Architecture
-
-```
-revclear/
-├── RevClear/
-│   ├── backend/          # FastAPI + Python 3.12 + SQLAlchemy
-│   ├── frontend/         # React 18 + TypeScript + Tailwind CSS
-│   └── Demo/            # Static demo site
-├── terraform/           # AWS infrastructure as code
-├── docs/                # Documentation
-└── tests/               # Test suites
-```
-
-## ✨ Key Features
-
-- **HIPAA Compliant**: AWS BAA, encryption at rest/transit, 7-year audit logs
-- **Three-Gate Review**: Mandatory human checkpoints before claim submission
-- **AI-Powered**: SageMaker models for coding and denial prediction
-- **Modern Stack**: React 18, FastAPI, PostgreSQL, TypeScript
-- **AWS Cloud**: ECS, RDS, S3, Lambda, SageMaker
-- **Multi-tenant**: Secure data isolation per clinic
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js 18+
-- Python 3.12+
-- Docker & Docker Compose
-- AWS account with HIPAA BAA
-- Terraform 1.5+
-
-### Ports & URLs
-
-- **Backend API**: `http://localhost:8080`
-- **Frontend App**: `http://localhost:3000`
-- **Demo Page**: `http://localhost:8080` (static demo)
-- **Live Demo**: https://hpppm.github.io/revclear/Demo/index.html
-
-### Local Development
-
-#### Backend Setup
-
 ```bash
-# Navigate to backend
+# Clone and setup
+git clone https://github.com/hpppm/revclear.git
+cd revclear
+
+# Backend
 cd RevClear/backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your local settings
-
-# Run database migrations
-alembic upgrade head
-
-# Start development server
-uvicorn main:app --reload --port 8080
-```
-
-#### Frontend Setup
-
-```bash
-# Navigate to frontend
-cd RevClear/frontend
-
-# Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your local settings
-
-# Start development server
 npm run dev
+
+# Frontend  
+cd RevClear/frontend
+npm install
+npm run dev
+
+# Terraform (infrastructure)
+cd terraform
+terraform init
+terraform plan
 ```
 
-#### Docker Setup (Recommended)
+---
 
-```bash
-# Start all services
-docker-compose up -d
+## 📦 Current AWS Infrastructure
 
-# View logs
-docker-compose logs -f
+### ✅ Deployed Resources
 
-# Stop services
-docker-compose down
+**Security**
+- KMS Key: `4ed14e...` (AES-256 encryption, HIPAA-compliant)
+
+**Databases (DynamoDB)**
+- `physical_therapy_patients` (5 records, encrypted, PITR enabled)
+- `speech_therapy_patients` (5 records, encrypted, PITR enabled)
+- `mental_health_patients` (5 records, encrypted, PITR enabled)
+
+**Storage (S3 Buckets)**
+- `arevclear` - Main application data
+- `arevclear-raw` - Intake/raw data
+- `arevclear-exports` - EDI 837 files
+- `arevclear-logs` - CloudTrail logs
+
+**Monitoring**
+- CloudTrail: `RevClearTrail` (multi-region, log validation enabled)
+
+**Frontend (Temporary)**
+- AWS Amplify: `app2100`
+- URL: https://d1hbslcew3u3eg.amplifyapp.com
+
+**Cost**: ~$35/month
+
+---
+
+## 🎯 What's Next
+
+### Phase 1: Core Infrastructure (2-3 weeks)
+- [ ] Deploy Cognito User Pool (authentication + MFA)
+- [ ] Set up API Gateway + Lambda (backend APIs)
+- [ ] Migrate frontend to S3 + CloudFront (cheaper than Amplify)
+- [ ] Configure custom domain with SSL
+
+### Phase 2: Backend APIs (2-3 weeks)
+- [ ] Patient management endpoints
+- [ ] Encounter recording and storage
+- [ ] Audio upload to S3
+- [ ] EDI 837 claim generation
+
+### Phase 3: AI Integration (4-6 weeks)
+- [ ] Amazon Transcribe (audio → text)
+- [ ] Amazon Bedrock (CPT/ICD code extraction)
+- [ ] HITL validation gates
+- [ ] Denial analysis
+
+**Projected Cost**: $350-450/month (with AI services)
+
+---
+
+## 🛠️ Tech Stack
+
+**Frontend**
+- Next.js 14 + React 18
+- TypeScript
+- TailwindCSS
+
+**Backend**
+- Node.js + Express
+- AWS SDK v3
+
+**Infrastructure (AWS)**
+- DynamoDB (databases)
+- S3 (storage)
+- Lambda + API Gateway (APIs)
+- Cognito (auth)
+- Transcribe + Bedrock (AI)
+- KMS (encryption)
+- CloudTrail (audit logs)
+
+**DevOps**
+- Terraform (infrastructure as code)
+- GitHub Actions (CI/CD)
+- AWS Amplify (temporary frontend hosting)
+
+---
+
+## 📁 Repository Structure
+
+```
+revclear/
+├── Demo/                    # GitHub Pages demo site
+│   ├── index.html
+│   ├── script.js
+│   └── style.css
+│
+├── RevClear/                # Application code
+│   ├── backend/             # Node.js API
+│   └── frontend/            # Next.js app
+│
+├── terraform/               # Infrastructure as code
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── modules/             # Reusable components
+│   └── environments/        # Dev/staging/prod configs
+│
+├── docs/                    # Documentation
+│   ├── ARCHITECTURE_DIAGRAMS.md
+│   ├── AWS_COMPLETE_GUIDE.md
+│   └── AWS_COST_MANAGEMENT.md
+│
+└── README.md                # This file
 ```
 
-### Environment Variables
+---
 
-#### Backend (.env)
+## ⚙️ Environment Setup
 
+### Backend (.env)
 ```env
-# Server
-PORT=8080
-NODE_ENV=development
-DEBUG=true
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/revclear
-DB_POOL_SIZE=20
-DB_MAX_OVERFLOW=10
-
 # AWS
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
 
-# S3
-S3_BUCKET_PHI=revclear-phi-storage
-S3_BUCKET_CLAIMS=revclear-claims-archive
+# DynamoDB Tables
+DYNAMODB_TABLE_PHYSICAL_THERAPY=physical_therapy_patients
+DYNAMODB_TABLE_SPEECH_THERAPY=speech_therapy_patients
+DYNAMODB_TABLE_MENTAL_HEALTH=mental_health_patients
 
-# RDS
-RDS_ENDPOINT=your-rds-endpoint.rds.amazonaws.com
-RDS_PORT=5432
-RDS_DB_NAME=revclear
+# S3 Buckets
+S3_BUCKET_MAIN=arevclear
+S3_BUCKET_RAW=arevclear-raw
+S3_BUCKET_EXPORTS=arevclear-exports
+S3_BUCKET_LOGS=arevclear-logs
 
-# SageMaker
-SAGEMAKER_ENDPOINT_CODING=revclear-coding-model
-SAGEMAKER_ENDPOINT_DENIAL=revclear-denial-prediction
+# KMS
+KMS_KEY_ID=4ed14exxxxxxxx10-78de-4dxxbe-97xxx-xxxxxxxxxxx
 
-# Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_MINUTES=60
-
-# Redis (Session/Cache)
-REDIS_URL=redis://localhost:6379/0
-
-# Celery
-CELERY_BROKER_URL=redis://localhost:6379/1
-CELERY_RESULT_BACKEND=redis://localhost:6379/2
-
-# AWS Transcribe
-TRANSCRIBE_LANGUAGE_CODE=en-US
-TRANSCRIBE_MEDICAL_SPECIALTY=PRIMARYCARE
-
-# Monitoring
-SENTRY_DSN=your-sentry-dsn
-LOG_LEVEL=INFO
+# Cognito (coming soon)
+COGNITO_USER_POOL_ID=
+COGNITO_CLIENT_ID=
 ```
 
-#### Frontend (.env.local)
-
+### Frontend (.env.local)
 ```env
-# API
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_API_TIMEOUT=30000
-
-# Auth
-NEXT_PUBLIC_AUTH_DOMAIN=your-auth-domain
-NEXT_PUBLIC_CLIENT_ID=your-client-id
-
-# Feature Flags
-NEXT_PUBLIC_ENABLE_AI_CODING=true
-NEXT_PUBLIC_ENABLE_DENIAL_PREDICTION=true
-
-# Environment
-NEXT_PUBLIC_ENV=development
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_AWS_REGION=us-east-1
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=
+NEXT_PUBLIC_COGNITO_CLIENT_ID=
 ```
 
-⚠️ **Never commit .env files to Git!**
+⚠️ **Never commit `.env` files!** Use `.env.example` for templates.
 
-## 📦 Deployment
+---
 
-### Deployment Methods
+## 🚢 Deployment
 
-We use **two main deployment approaches**:
-
-1. **Bash Scripts** - Manual deployment and infrastructure management
-2. **GitHub Actions** - Automated CI/CD pipeline
-
-### AWS Infrastructure Setup
-
-#### Prerequisites
-
+### Option 1: Terraform (Recommended)
 ```bash
-# Install AWS CLI
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
+cd terraform
 
-# Configure AWS credentials
-aws configure
-# Enter: Access Key ID, Secret Access Key, Region (us-east-1)
+# Initialize
+terraform init
 
-# Verify AWS connection
-aws sts get-caller-identity
+# Create backend resources (one-time)
+aws s3 mb s3://revclear-terraform-state
+aws dynamodb create-table \
+  --table-name revclear-terraform-locks \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST
+
+# Deploy infrastructure
+terraform plan -var-file="environments/dev/terraform.tfvars"
+terraform apply -var-file="environments/dev/terraform.tfvars"
 ```
 
-#### Infrastructure Components
+See [`terraform/README.md`](terraform/README.md) for detailed instructions.
 
-Our AWS infrastructure includes the following services:
+### Option 2: GitHub Actions (Automated)
+Push to `main` branch triggers automatic deployment.
 
-**Core Services:**
-- **RDS (PostgreSQL)** - Primary database for PHI storage with encryption
-- **S3** - Static frontend hosting and clinical document storage
-- **Secrets Manager** - Secure credential storage (DB passwords, API keys)
-- **Cognito** - User authentication and authorization
-- **CloudFront** - CDN for frontend distribution
-- **EC2/ECS/Elastic Beanstalk** - Backend application hosting options
+Required GitHub Secrets:
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
 
-**Security & Monitoring:**
-- **IAM** - Access control and role management
-- **KMS** - Encryption key management for all PHI data
-- **CloudWatch** - Logging and monitoring (7-year retention)
-- **CloudTrail** - Audit logging for all AWS API calls
-- **WAF** - Web application firewall for attack protection
-- **VPC** - Network isolation with private subnets
+---
 
-**Additional Services:**
-- **SageMaker** - AI/ML model training and inference
-- **Transcribe Medical** - Speech-to-text for clinical notes
-- **Lambda** - Serverless functions for workflows
-- **API Gateway** - API management and throttling
-- **SQS** - Message queuing for async processing
-- **ElastiCache (Redis)** - Session storage and caching
+## 🔐 Security & HIPAA Compliance
 
-### Deployment Method 1: Bash Scripts
+**Encryption**
+- ✅ At rest: KMS encryption on all S3 buckets and DynamoDB tables
+- ✅ In transit: TLS 1.3 for all API communications
+- ✅ Key rotation: Automatic rotation enabled
 
-We have bash scripts to create and manage AWS resources manually:
+**Access Control**
+- ✅ IAM roles with least privilege
+- ✅ MFA required for production access
+- ✅ VPC private subnets (planned)
 
-```bash
-# Navigate to backend directory
-cd RevClear/backend
+**Audit & Monitoring**
+- ✅ CloudTrail logging (multi-region, 7-year retention)
+- ✅ Log validation enabled
+- ✅ Encrypted audit logs
 
-# Make scripts executable
-chmod +x aws-services.sh
+**Compliance Checklist**
+- [x] KMS encryption configured
+- [x] CloudTrail enabled
+- [x] DynamoDB PITR enabled
+- [x] S3 versioning enabled
+- [ ] Cognito MFA configured (pending)
+- [ ] VPC isolation (pending)
+- [ ] CloudWatch alarms (pending)
 
-# Run AWS setup script
-./aws-services.sh
+---
 
-# The script will:
-# 1. Check AWS connection
-# 2. Create RDS database instance
-# 3. Create Cognito user pool
-# 4. Create S3 buckets (frontend + PHI storage)
-# 5. Set up Secrets Manager
-# 6. Configure IAM roles
-# 7. Deploy database schema
-# 8. Output connection details
+## 📊 Architecture
+
+RevClear uses a serverless AWS architecture:
+
+```
+Clinician
+    ↓
+CloudFront + S3 (Frontend)
+    ↓
+API Gateway (HTTPS)
+    ↓
+Lambda Functions (Backend)
+    ↓
+DynamoDB (Patient Data) + S3 (Files)
+    ↓
+Transcribe → Bedrock (AI Processing)
+    ↓
+EDI 837 Generation
+    ↓
+External Clearinghouse
 ```
 
-**What the bash scripts do:**
-- Create all necessary AWS resources
-- Configure security settings (encryption, access control)
-- Deploy database schemas and sample data
-- Set up monitoring and logging
-- Validate HIPAA compliance settings
+Full architecture diagrams: [`docs/ARCHITECTURE_DIAGRAMS.md`](docs/ARCHITECTURE_DIAGRAMS.md)
 
-### Deployment Method 2: GitHub Actions (Automated CI/CD)
+---
 
-Our GitHub Actions workflow automates deployment on every push:
+## 💰 Cost Breakdown
 
-**Workflow File:** `.github/workflows/aws-deployment.yml`
+### Current (Minimal Setup)
+| Service | Monthly Cost |
+|---------|--------------|
+| DynamoDB | $5-10 |
+| S3 | $5 |
+| CloudTrail | $5 |
+| KMS | $1 |
+| Amplify | $15-20 |
+| **Total** | **~$31-41** |
 
-**Trigger Events:**
-- Push to `main`, `test-aws`, or `aws-migration` branches
-- Pull requests to these branches
-- Manual workflow dispatch with environment selection
+### Projected (Full Production)
+| Service | Monthly Cost |
+|---------|--------------|
+| DynamoDB | $10-15 |
+| S3 | $10-15 |
+| CloudFront | $10-15 |
+| API Gateway + Lambda | $10-20 |
+| Cognito | $0-5 |
+| Transcribe | $50-100 |
+| Bedrock | $50-150 |
+| Monitoring | $20-30 |
+| **Total** | **~$160-350** |
 
-**Pipeline Stages:**
+Full cost analysis: [`docs/AWS_COST_MANAGEMENT.md`](docs/AWS_COST_MANAGEMENT.md)
 
-#### Stage 1: AWS Setup & Verification
-```yaml
-# What it does:
-- Checkout code
-- Configure AWS credentials from GitHub Secrets
-- Verify AWS connection (aws sts get-caller-identity)
-- Check existing AWS resources:
-  - RDS databases
-  - Cognito user pools
-  - S3 buckets
-  - Secrets Manager entries
-```
-
-#### Stage 2: Backend Deployment
-```yaml
-# What it does:
-- Install Node.js dependencies
-- Build backend application
-- Retrieve database credentials from Secrets Manager
-- Deploy database schema to RDS
-- Load sample data (if needed)
-- Test AWS SDK connectivity
-- Create deployment summary
-```
-
-#### Stage 3: Frontend Deployment
-```yaml
-# What it does:
-- Install frontend dependencies
-- Build Next.js application
-- Sync build output to S3 bucket
-- Set cache headers for static assets
-- Provide S3 website URL
-- Create deployment summary
-```
-
-#### Stage 4: AWS CLI Scripts
-```yaml
-# What it does:
-- Run custom AWS setup scripts
-- List Cognito users
-- List S3 buckets and RDS instances
-- Verify all services are running
-- Generate infrastructure report
-```
-
-**GitHub Actions Configuration:**
-
-Required secrets in GitHub repository settings:
-- `AWS_ACCESS_KEY_ID` - AWS IAM access key
-- `AWS_SECRET_ACCESS_KEY` - AWS IAM secret key
-- `AWS_REGION` - Default: us-east-1
-- `AWS_USER_POOL_ID` - Cognito user pool ID
-- `NEXT_PUBLIC_API_URL` - Backend API endpoint
-
-**Workflow Features:**
-- ✅ Automatic deployment on code push
-- ✅ Environment-specific deployments (test, staging, production)
-- ✅ Rollback capability on failure
-- ✅ Deployment summaries and logs
-- ✅ AWS resource validation
-- ✅ Security scanning before deployment
-
-### Manual Deployment Commands
-
-If you prefer manual control, use these AWS CLI commands:
-
-#### Deploy Backend
-```bash
-# Option 1: Deploy to EC2
-ssh -i your-key.pem ec2-user@your-instance-ip
-git pull origin main
-npm install
-npm run build
-pm2 restart revclear-backend
-
-# Option 2: Deploy to Elastic Beanstalk
-eb init -p node.js-20 revclear-backend
-eb create production-env
-eb deploy
-
-# Option 3: Deploy to ECS (Requires Docker image in ECR)
-aws ecs update-service \
-  --cluster revclear-cluster \
-  --service revclear-backend \
-  --force-new-deployment
-```
-
-#### Deploy Frontend
-```bash
-# Build frontend
-cd RevClear/frontend
-npm run build
-
-# Deploy to S3
-aws s3 sync out/ s3://revclear-frontend-bucket --delete
-
-# Invalidate CloudFront cache (if using CDN)
-aws cloudfront create-invalidation \
-  --distribution-id YOUR_DISTRIBUTION_ID \
-  --paths "/*"
-```
-
-#### Database Management
-```bash
-# Connect to RDS database
-psql -h your-rds-endpoint.rds.amazonaws.com -U postgres -d revclear
-
-# Deploy schema updates
-psql -h $DB_HOST -U $DB_USER -d revclear \
-  -f RevClear/backend/Documentation/db/002_cloud_db_schema.sql
-
-# Load sample data
-psql -h $DB_HOST -U $DB_USER -d revclear \
-  -f RevClear/backend/Documentation/db/003_sample_data.sql
-```
-
-### GitHub Pages (Demo Only)
-
-Static demo automatically deploys on push to `main`:
-- **URL**: https://hpppm.github.io/revclear/Demo/index.html
-- **Source**: `Demo/` folder
-- **Purpose**: Public demonstration (no PHI, no real features)
-
-### Deployment Best Practices
-
-**Before Deploying:**
-1. ✅ Test locally with Docker Compose
-2. ✅ Run all unit and integration tests
-3. ✅ Scan for security vulnerabilities
-4. ✅ Review code changes with team
-5. ✅ Backup production database
-
-**After Deploying:**
-1. ✅ Verify health checks pass
-2. ✅ Check CloudWatch logs for errors
-3. ✅ Test critical user flows
-4. ✅ Monitor performance metrics
-5. ✅ Document deployment in changelog
-
-**Emergency Rollback:**
-```bash
-# GitHub Actions: Re-run previous successful workflow
-
-# Manual ECS rollback:
-aws ecs update-service \
-  --cluster revclear-cluster \
-  --service revclear-backend \
-  --task-definition revclear-backend:PREVIOUS_VERSION
-
-# Manual S3 rollback (if versioning enabled):
-aws s3 sync s3://revclear-frontend-backup/ s3://revclear-frontend-bucket/
-```
-
-## 👥 Team & Ownership
-
-- **Product Lead**: Aseel Alqoud (requirements, documentation, compliance)
-- **Backend Lead**: Rasmus (`RevClear/backend/`) - Ask before editing
-- **Frontend Lead**: Yarni (`RevClear/frontend/`) - Ask before editing
-- **DevOps Lead**: Brandan (`terraform/`, CI/CD)
-- **Demo Site**: Aseel (`Demo/`) - Anyone can suggest changes
-- **Documentation**: Aseel (Root `.md` files) - Anyone can suggest changes
-
-## 📚 Documentation
-
-### 🚀 Start Here
-
-- **[Team Guide](TEAM_GUIDE.md)** ⭐ - Git workflow, roles, collaboration rules
-- **[Getting Started](GETTING_STARTED.md)** - Detailed setup instructions
-- **[Project Documentation](docs/PROJECT_DOCUMENTATION.md)** - Complete system overview
-- **[Demo Guide](Demo/README.md)** - Check out the working demo
-
-### 📁 Additional Documentation
-
-- **[API Reference](docs/API_REFERENCE.md)** - REST API endpoints
-- **[AWS Architecture](docs/AWS_ARCHITECTURE.md)** - Infrastructure details
-- **[HIPAA Compliance](docs/HIPAA_COMPLIANCE.md)** - Security and compliance
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment steps
-
-## 🤝 Contributing
-
-### Git Workflow
-
-```bash
-# 1. Start new task
-git checkout main
-git pull origin main
-git checkout -b feature/yourname-task-description
-
-# 2. Make changes and commit
-git add .
-git commit -m "feat: add patient registration form"
-git push origin feature/yourname-task-description
-
-# 3. Create Pull Request on GitHub
-# - Request review from team lead
-# - Merge after approval
-
-# 4. Clean up after merge
-git checkout main
-git pull origin main
-git branch -D feature/yourname-task-description
-```
-
-### Commit Message Format
-
-Use conventional commits:
-
-```bash
-feat: add new feature
-fix: bug fix
-docs: documentation changes
-style: code formatting
-refactor: code restructuring
-test: add tests
-chore: maintenance tasks
-```
-
-Examples:
-- `feat: add speech-to-text transcription`
-- `fix: resolve CPT code validation error`
-- `docs: update AWS deployment guide`
-
-### Important Rules
-
-⚠️ **Never commit:**
-- `.env` files (contain secrets!)
-- `node_modules/` or `venv/`
-- AWS credentials or API keys
-- Real PHI data (use synthetic data only!)
-
-✅ **Always:**
-- Pull before you push
-- Create feature branches
-- Write clear commit messages
-- Test your code locally
-- Request code reviews
-- Update documentation
-
-## 🔒 Security
-
-### HIPAA Compliance
-
-- **Encryption**: All PHI encrypted at rest (KMS) and in transit (TLS 1.2+)
-- **Access Control**: Role-based access with MFA required
-- **Audit Logging**: 7-year retention in CloudWatch and S3
-- **Data Isolation**: VPC private subnets for all PHI resources
-- **Incident Response**: 24-hour breach notification procedures
-
-### Security Checklist
-
-- [ ] All API endpoints require authentication
-- [ ] PHI encrypted in RDS, S3, ElastiCache
-- [ ] Input validation on all user inputs
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS protection enabled (React escaping)
-- [ ] CORS properly configured
-- [ ] Rate limiting enabled (API Gateway)
-- [ ] Security headers configured (Helmet.js)
-- [ ] AWS IAM roles use least privilege
-- [ ] CloudTrail logging enabled in all regions
-- [ ] WAF rules configured (SQLi, XSS protection)
-- [ ] Secrets rotated every 90 days
-- [ ] MFA enabled for all admin accounts
-
-### Security Scanning
-
-```bash
-# Run security scans locally
-npm run security:check
-
-# Backend Python dependencies
-pip-audit
-
-# Frontend npm dependencies
-npm audit
-
-# OWASP dependency check
-dependency-check --project revclear --scan .
-
-# Terraform security scan
-tfsec terraform/
-```
+---
 
 ## 🧪 Testing
-
-### Run Tests Locally
 
 ```bash
 # Backend tests
 cd RevClear/backend
-pytest
-pytest --cov=. --cov-report=html  # With coverage
+npm test
 
 # Frontend tests
 cd RevClear/frontend
 npm test
-npm run test:coverage
 
 # E2E tests
 npm run test:e2e
 
-# All tests
-npm run test:all
+# Terraform validation
+cd terraform
+terraform validate
+terraform fmt -check
 ```
 
-### Test Data
+---
 
-⚠️ **Only synthetic data is used in development and testing**
+## 🤝 Contributing
 
-- **Patients**: 50 synthetic patient records
-- **Clinical Notes**: 500+ sample transcripts
-- **Claims**: 200 test EDI 837 files
-- **ERA Responses**: 150 sample ERA 835 files
+```bash
+# 1. Create feature branch
+git checkout -b feature/your-feature
 
-**No real PHI is used in any non-production environment**
+# 2. Make changes and commit
+git add .
+git commit -m "feat: add your feature"
 
-## 📊 Project Status
+# 3. Push and create PR
+git push origin feature/your-feature
+```
 
-### Phase 1: MVP (Current - Months 1-5)
-- [x] AWS infrastructure setup
-- [x] Backend API foundation
-- [x] Frontend UI components
-- [x] HIPAA compliance framework
-- [x] Speech-to-text integration
-- [ ] AI CPT/ICD coding (in progress)
-- [ ] EDI 837 generation (in progress)
-- [ ] ERA 835 import (planned)
-- [ ] Pilot deployment (planned)
+**Commit Convention**:
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation
+- `chore:` - Maintenance
+- `refactor:` - Code refactoring
 
-### Phase 2: Growth (Months 6-12)
-- [ ] Clearinghouse integration
-- [ ] Enhanced denial prediction
-- [ ] Advanced reporting dashboard
-- [ ] Mobile app
-- [ ] Multi-region deployment
+---
 
-### Phase 3: Scale (Months 13-24)
-- [ ] Real-time eligibility verification
-- [ ] Payment processing
-- [ ] Advanced analytics
-- [ ] Third-party API
-- [ ] Multi-state expansion
+## 📚 Documentation
+
+- **[Terraform Guide](terraform/README.md)** - Infrastructure deployment
+- **[Architecture Diagrams](docs/ARCHITECTURE_DIAGRAMS.md)** - System design
+- **[AWS Services Guide](docs/AWS_COMPLETE_GUIDE.md)** - AWS resource details
+- **[Cost Management](docs/AWS_COST_MANAGEMENT.md)** - Cost optimization
+- **[Security Guide](docs/SECURITY.md)** - HIPAA compliance
+
+---
 
 ## 🐛 Troubleshooting
 
-### Common Issues
-
-**Port 8080 already in use**
+### AWS Connection Issues
 ```bash
-# Find process using port
-lsof -ti:8080
-
-# Kill process
-kill -9 $(lsof -ti:8080)
-```
-
-**Docker containers won't start**
-```bash
-# Remove all containers and rebuild
-docker-compose down -v
-docker-compose build --no-cache
-docker-compose up -d
-```
-
-**Database connection fails**
-```bash
-# Check if PostgreSQL is running
-docker ps | grep postgres
-
-# View logs
-docker-compose logs postgres
-
-# Reset database
-docker-compose down -v
-docker-compose up -d postgres
-alembic upgrade head
-```
-
-**AWS credentials not working**
-```bash
-# Reconfigure AWS CLI
-aws configure
-
-# Test credentials
+# Test AWS credentials
 aws sts get-caller-identity
 
-# Check IAM permissions
-aws iam get-user
+# List DynamoDB tables
+aws dynamodb list-tables
+
+# Test S3 access
+aws s3 ls s3://arevclear/
+
+# Verify KMS key
+aws kms describe-key --key-id YOUR_KEY_ID
 ```
 
-**Frontend build fails**
+### Terraform Issues
 ```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json .next
-npm cache clean --force
-npm install
-npm run build
+# Reinitialize
+terraform init -upgrade
+
+# Force unlock (if stuck)
+terraform force-unlock LOCK_ID
+
+# Refresh state
+terraform refresh
 ```
 
-## 📞 Support
+### Common Errors
+**"Table does not exist"**: Verify table names in `.env`  
+**"Access Denied"**: Check IAM permissions  
+**"Port already in use"**: `kill -9 $(lsof -ti:8080)`
 
-- **Technical Issues**: Open an issue on GitHub
-- **Security Concerns**: Email security@revclear.com
-- **Feature Requests**: Create a GitHub Discussion
-- **Team Questions**: Slack #revclear-dev
+---
 
-## 🎯 Target Users
+## 🎯 Target Market
 
-**Primary Market:**
+**Primary Users**:
 - Mental Health Professionals (845,450 US providers)
 - Physical Therapists (130,430 US providers)
 - Speech-Language Pathologists (50,000 US providers)
 
-**Pilot Markets:**
-- Buffalo, NY
-- Cleveland, OH
-- Pittsburgh, PA
-
-**Success Metrics:**
+**Value Proposition**:
+- 50% reduction in billing time
 - 95%+ coding accuracy
 - 85%+ first-pass claim acceptance
-- 50%+ reduction in billing time
-- Positive user feedback from pilot
+- HIPAA-compliant by default
+
+---
+
+## 📞 Support
+
+- **Issues**: Open a GitHub issue
+- **Security**: Report via GitHub Security tab
+- **Questions**: Check documentation first
+
+---
 
 ## 📄 License
 
 Private repository - All rights reserved
 
-## 🏆 Success Criteria
+---
 
-**Technical:**
-- ✅ Speech-to-text transcription functional
-- ✅ AI code suggestion with 95%+ accuracy
-- ✅ EDI 837 generation and export
-- ✅ ERA 835 import and analysis
-- ✅ Three human-in-the-loop checkpoints
+## ✨ Key Features
 
-**Business:**
-- 100+ pilot users by Month 5
-- Clear ROI: subscription < time saved + fewer denials
-- Differentiated value for small specialty practices
-
-**Compliance:**
-- AWS BAA signed and verified
-- All PHI encrypted (at rest and in transit)
-- 7-year audit log retention
-- Zero critical security vulnerabilities
-- Quarterly HIPAA compliance audits passed
+- ✅ HIPAA-compliant architecture
+- ✅ Three-gate human validation
+- ✅ AI-powered medical coding
+- ✅ Automated EDI 837 generation
+- ✅ CloudTrail audit logging
+- ✅ Multi-specialty support (PT, MH, SLP)
+- ✅ Serverless AWS infrastructure
 
 ---
+
+**Last Updated**: November 8, 2025  
+**Version**: 1.0.0-alpha  
+**Status**: Active Development
 
 Built with ❤️ by the RevClear Team
-
-**Last Updated**: January 2025  
-**Version**: 1.0.0-alpha  
-**Status**: Active Development (MVP Phase)
-
----
-
-## Quick Reference
-
-**Start Development:**
-```bash
-docker-compose up -d && npm run dev
-```
-
-**Run Tests:**
-```bash
-npm run test:all
-```
-
-**Deploy to AWS:**
-```bash
-cd terraform && terraform apply && cd ../RevClear/backend && ./deploy.sh
-```
-
-**View Logs:**
-```bash
-docker-compose logs -f
-```
