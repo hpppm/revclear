@@ -52,60 +52,60 @@
 
 ---
 
-## 1. Context Diagram (Level 0)
+## 1. Context Diagram (Level 0) - C4 Model
+
+> Following [C4 Model](https://c4model.com/) best practices for system architecture visualization
 
 ```mermaid
-flowchart TB
-    %% Configuration
-    %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#6366f1', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#4f46e5', 'lineColor': '#64748b', 'secondaryColor': '#10b981', 'tertiaryColor': '#f59e0b', 'background': '#ffffff', 'mainBkgColor': '#ffffff', 'secondBkgColor': '#f8fafc', 'border1': '#e2e8f0', 'border2': '#cbd5e1'}} }%%
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#6366f1','secondaryColor':'#10b981','tertiaryColor':'#f59e0b','primaryBorderColor':'#4f46e5','primaryTextColor':'#fff','lineColor':'#64748b','fontSize':'14px'}}}%%
 
-    %% External Entities with Icons and Details
-    CLI["👨‍⚕️ **Clinician**\n• Mental Health, PT, SLP\n• Patient Care Provider\n• Medical Documentation\n• Claim Review & Approval"]
-
-    ADM["👨‍💼 **Administrator**\n• System Manager\n• User Administration\n• Security Monitoring\n• Compliance Oversight"]
-
-    INS["🏥 **Insurance Payer**\n• Medicare/Medicaid\n• Commercial Insurers\n• Claim Adjudication\n• Payment Processing"]
-
-    AIS["🤖 **AI Services**\n• Amazon Transcribe\n• Amazon Bedrock\n• SageMaker Models\n• Medical AI Processing"]
-
-    %% Central System - RevClear
-    SYS["🚀 **RevClear System**\n\n🏗️ **Healthcare Claims Management**\n\n**Core Functions:**\n• Patient Management\n• AI-Powered Documentation\n• HIPAA-Compliant Processing\n• Automated Claim Generation\n• Multi-Payer Submission\n\n**Key Technologies:**\n• AWS Serverless\n• AI/ML Integration\n• FHIR Standards\n• EDI Processing"]
-
-    %% Data Flow Arrows with Detailed Labels
-    CLI -->|"📊 Patient Data\n🎙️ Encounter Audio\n📝 SOAP Notes\n✅ Claim Approvals"| SYS
-    SYS -->|"👥 Patient Lists\n📄 Transcripts\n📊 Claim Status\n📈 Analytics"| CLI
-
-    ADM -->|"👤 User Management\n🔐 Access Controls\n📊 System Metrics\n📋 Audit Reports"| SYS
-    SYS -->|"👥 User Activity\n🛡️ Security Events\n📈 Performance Data\n📋 Compliance Logs"| ADM
-
-    SYS -->|"📄 CMS-1500 Claims\n📋 EDI 837 Files\n💰 Payment Requests\n📊 Utilization Reports"| INS
-    INS -->|"✅ Claim Status\n💳 Payment Confirmations\n❌ Denial Explanations\n📈 Payment Analytics"| SYS
-
-    SYS -->|"🎙️ Audio Processing\n📝 Text Analysis\n🏥 Medical Code Extraction\n📊 AI Model Training"| AIS
-    AIS -->|"📄 Transcripts\n📋 SOAP Notes\n🔢 ICD-10/CPT Codes\n📈 Accuracy Metrics"| SYS
-
-    %% Enhanced Styling
-    classDef primary fill:#6366f1,stroke:#4f46e5,stroke-width:3px,color:#ffffff,stroke-dasharray: 0 0
-    classDef secondary fill:#10b981,stroke:#059669,stroke-width:3px,color:#ffffff
-    classDef tertiary fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#000000
-    classDef ai fill:#a855f7,stroke:#7c3aed,stroke-width:3px,color:#ffffff
-    classDef system fill:#ec4899,stroke:#db2777,stroke-width:4px,color:#ffffff,font-weight:bold
-
-    class CLI primary
-    class ADM secondary
-    class INS tertiary
-    class AIS ai
-    class SYS system
-
-    %% Link Styling
-    linkStyle 0 stroke:#6366f1,stroke-width:3px
-    linkStyle 1 stroke:#6366f1,stroke-width:3px
-    linkStyle 2 stroke:#10b981,stroke-width:3px
-    linkStyle 3 stroke:#10b981,stroke-width:3px
-    linkStyle 4 stroke:#f59e0b,stroke-width:3px
-    linkStyle 5 stroke:#f59e0b,stroke-width:3px
-    linkStyle 6 stroke:#a855f7,stroke-width:3px
-    linkStyle 7 stroke:#a855f7,stroke-width:3px
+graph TB
+    subgraph external["🌐 External Actors & Systems"]
+        direction LR
+        CLI["<b>👨‍⚕️ Clinician</b><br/><br/>Mental Health | PT | SLP<br/>─────────────<br/>• Records patient encounters<br/>• Reviews AI documentation<br/>• Approves medical claims<br/>• Monitors billing status"]
+        
+        ADM["<b>👨‍💼 Administrator</b><br/><br/>System Manager<br/>─────────────<br/>• Manages user accounts<br/>• Configures workflows<br/>• Reviews audit logs<br/>• Ensures compliance"]
+    end
+    
+    subgraph system["🏥 RevClear Healthcare Claims System"]
+        SYS["<b>🚀 RevClear Platform</b><br/>────────────────────<br/><br/><b>HIPAA-Compliant AI Medical Billing</b><br/><br/>✓ Patient Management<br/>✓ AI-Powered Documentation<br/>✓ 3 HITL Validation Gates<br/>✓ Automated Claim Generation<br/>✓ Multi-Payer EDI Submission<br/><br/><i>AWS Serverless Architecture</i>"]
+    end
+    
+    subgraph integrations["🔌 External Integrations"]
+        direction LR
+        INS["<b>🏥 Insurance Payers</b><br/><br/>Clearinghouses<br/>─────────────<br/>• Medicare/Medicaid<br/>• Commercial Insurers<br/>• Claim adjudication<br/>• Payment processing"]
+        
+        AI["<b>🤖 AWS AI Services</b><br/><br/>Machine Learning<br/>─────────────<br/>• Amazon Transcribe<br/>• Amazon Bedrock<br/>• Medical NLP<br/>• Code extraction"]
+    end
+    
+    %% Primary User Flows
+    CLI -.->|"📤 Upload<br/>Patient encounters<br/>Audio recordings"| SYS
+    SYS -.->|"📥 Provide<br/>Transcripts<br/>Claims status<br/>Analytics"| CLI
+    
+    ADM -.->|"⚙️ Configure<br/>User permissions<br/>System settings<br/>Compliance rules"| SYS
+    SYS -.->|"📊 Report<br/>User activity<br/>Security events<br/>Performance data"| ADM
+    
+    %% External System Integrations
+    SYS ==>|"📋 Submit<br/>CMS-1500 claims<br/>EDI 837 files<br/>HTTPS/SFTP"| INS
+    INS ==>|"💳 Return<br/>Claim status<br/>Payments<br/>Denials/EOBs"| SYS
+    
+    SYS ==>|"🎙️ Process<br/>Audio files<br/>Clinical text<br/>REST API"| AI
+    AI ==>|"📄 Generate<br/>Transcripts<br/>SOAP notes<br/>ICD-10/CPT codes"| SYS
+    
+    %% Styling
+    classDef userClass fill:#6366f1,stroke:#4f46e5,stroke-width:4px,color:#fff,rx:10,ry:10
+    classDef systemClass fill:#ec4899,stroke:#db2777,stroke-width:5px,color:#fff,rx:10,ry:10
+    classDef externalClass fill:#10b981,stroke:#059669,stroke-width:4px,color:#fff,rx:10,ry:10
+    classDef aiClass fill:#a855f7,stroke:#7c3aed,stroke-width:4px,color:#fff,rx:10,ry:10
+    
+    class CLI,ADM userClass
+    class SYS systemClass
+    class INS externalClass
+    class AI aiClass
+    
+    style external fill:#f8fafc,stroke:#e2e8f0,stroke-width:2px,stroke-dasharray:5 5
+    style system fill:#fef3f2,stroke:#ec4899,stroke-width:3px
+    style integrations fill:#f0fdf4,stroke:#10b981,stroke-width:2px,stroke-dasharray:5 5
 ```
 
 ### Trust Boundaries & Data Classification
