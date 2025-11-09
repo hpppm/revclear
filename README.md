@@ -1,8 +1,22 @@
-# RevClear - Healthcare Claims Management
+# RevClear - Healthcare Claims Management System
 
-AI-powered HIPAA-compliant medical billing for mental health, physical therapy, and speech-language pathology practices.
+> **Academic Project** | Cloud Architecture & Full-Stack Development Demonstration  
+> **Student Portfolio Project** - Learning AWS, HIPAA Compliance, and Healthcare IT
 
-**Live Demo**: https://hpppm.github.io/revclear/
+**Live Interactive Demo**: https://hpppm.github.io/revclear/
+
+---
+
+## 🎓 Project Overview
+
+This is a **student demonstration project** showcasing my skills in:
+- ☁️ **AWS Cloud Architecture** - Designing HIPAA-compliant infrastructure
+- 🔐 **Healthcare IT Security** - Understanding medical data protection
+- ⚛️ **Full-Stack Development** - Next.js, React, Node.js, TypeScript
+- 🏗️ **Infrastructure as Code** - Terraform, AWS services
+- 📊 **System Design** - Architecture diagrams, documentation, threat modeling
+
+**⚠️ Disclaimer**: This is a learning project, not a production medical billing system. It demonstrates technical concepts and AWS infrastructure design for educational purposes.
 
 ---
 
@@ -60,27 +74,27 @@ terraform plan
 
 ---
 
-## 🎯 What's Next
+## 🎯 Learning Journey & Next Steps
 
-### Phase 1: Core Infrastructure (2-3 weeks)
-- ⏳ Deploy Cognito User Pool (authentication + MFA)
-- ⏳ Set up API Gateway + Lambda (backend APIs)
-- ⏳ Migrate frontend to S3 + CloudFront (cheaper than Amplify)
-- ⏳ Configure custom domain with SSL
+### ✅ Completed (What I've Learned)
+- **Phase 1: HIPAA Infrastructure** - Deployed KMS encryption, DynamoDB, S3, CloudTrail
+- **Security & Compliance** - Implemented AWS security best practices
+- **System Design** - Created C4 Model architecture diagrams, DFD, ERD, Sequence diagrams
+- **Threat Modeling** - Completed STRIDE analysis for healthcare data
+- **Documentation** - Professional technical documentation and cost analysis
 
-### Phase 2: Backend APIs (2-3 weeks)
-- ⏳ Patient management endpoints
-- ⏳ Encounter recording and storage
-- ⏳ Audio upload to S3
-- ⏳ EDI 837 claim generation
+### 🔄 Currently Learning
+- **AWS Amplify Gen2** - Integrating Next.js with Cognito authentication
+- **Serverless Architecture** - API Gateway + Lambda patterns
+- **Healthcare Standards** - FHIR, EDI 837, CPT/ICD-10 coding systems
 
-### Phase 3: AI Integration (4-6 weeks)
-- ⏳ Amazon Transcribe (audio → text)
-- ⏳ Amazon Bedrock (CPT/ICD code extraction)
-- ⏳ HITL validation gates
-- ⏳ Denial analysis
+### 📚 Future Learning Goals
+- **AI/ML Services** - Amazon Transcribe, Bedrock integration
+- **Advanced Security** - VPC design, WAF configuration
+- **DevOps** - CI/CD pipelines, automated testing
+- **Healthcare Interoperability** - HL7, FHIR resource mapping
 
-**Projected Cost**: $350-450/month (with AI services)
+**Note**: As a student project, I'm keeping costs minimal (~$35/month) while learning AWS services.
 
 ---
 
@@ -319,26 +333,33 @@ terraform fmt -check
 
 ---
 
-## 🤝 Contributing
+## 💡 Skills Demonstrated
 
-```bash
-# 1. Create feature branch
-git checkout -b feature/your-feature
+This project showcases my ability to:
 
-# 2. Make changes and commit
-git add .
-git commit -m "feat: add your feature"
+**Cloud & Infrastructure**
+- Design and deploy AWS infrastructure following HIPAA compliance
+- Use Infrastructure as Code (Terraform) for reproducible deployments
+- Implement encryption at rest and in transit (KMS, TLS)
+- Configure audit logging and monitoring (CloudTrail)
 
-# 3. Push and create PR
-git push origin feature/your-feature
-```
+**Software Development**
+- Build full-stack applications with Next.js and Node.js
+- Write TypeScript for type-safe code
+- Create responsive UIs with TailwindCSS
+- Design RESTful APIs and GraphQL schemas
 
-**Commit Convention**:
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `docs:` - Documentation
-- `chore:` - Maintenance
-- `refactor:` - Code refactoring
+**System Architecture**
+- Create professional architecture diagrams (C4 Model, DFD, ERD, Sequence)
+- Perform threat modeling (STRIDE methodology)
+- Document complex systems clearly
+- Apply security best practices
+
+**Healthcare IT Knowledge**
+- Understand HIPAA compliance requirements
+- Learn medical coding standards (CPT, ICD-10)
+- Study healthcare data formats (EDI 837, FHIR)
+- Design Human-in-the-Loop validation workflows
 
 ---
 
@@ -403,34 +424,53 @@ terraform refresh
 
 ---
 
-## 📞 Support
+## ✨ Key Technical Achievements
 
-- **Issues**: Open a GitHub issue
-- **Security**: Report via GitHub Security tab
-- **Questions**: Check documentation first
-
----
-
-## 📄 License
-
-Private repository - All rights reserved
-
----
-
-## ✨ Key Features
-
-- ✅ HIPAA-compliant architecture
-- ✅ Three-gate human validation
-- ✅ AI-powered medical coding
-- ✅ Automated EDI 837 generation
-- ✅ CloudTrail audit logging
-- ✅ Multi-specialty support (PT, MH, SLP)
-- ✅ Serverless AWS infrastructure
+- ✅ HIPAA-compliant AWS infrastructure (KMS, CloudTrail, encryption)
+- ✅ Professional architecture documentation (C4, DFD, ERD, UML)
+- ✅ STRIDE threat model for healthcare security
+- ✅ Interactive demo with workflow simulation
+- ✅ Infrastructure as Code with Terraform
+- ✅ Multi-tier database design (DynamoDB)
+- ✅ Serverless architecture pattern
+- ✅ Cost-optimized cloud deployment (~$35/month)
 
 ---
 
-**Last Updated**: November 8, 2025  
-**Version**: 1.0.0-alpha  
-**Status**: Active Development
+## 📄 License & Usage
 
-Built with ❤️ by the RevClear Team
+**Student Portfolio Project** - For demonstration and educational purposes
+
+This project demonstrates my technical abilities and understanding of:
+- Cloud architecture and AWS services
+- Healthcare IT security and HIPAA compliance  
+- Full-stack development with modern frameworks
+- Professional software engineering practices
+
+**Note**: This is not a production medical billing system. It's a learning project showcasing cloud infrastructure design and healthcare IT concepts.
+
+---
+
+## 📞 About This Project
+
+**Project Type**: Student Portfolio / Learning Demonstration  
+**Focus Area**: Cloud Architecture, Healthcare IT, Full-Stack Development  
+**Status**: Active Learning & Development  
+**Last Updated**: November 9, 2025  
+
+**Developed by**: A Computer Science Student passionate about Cloud Computing and Healthcare Technology
+
+---
+
+## 🎯 For Recruiters & Employers
+
+This project demonstrates:
+- ✅ Self-directed learning and initiative
+- ✅ Cloud architecture design skills (AWS)
+- ✅ Understanding of healthcare compliance (HIPAA)
+- ✅ Full-stack development capabilities
+- ✅ Professional documentation practices
+- ✅ System design and security awareness
+
+**Live Demo**: https://hpppm.github.io/revclear/  
+**Documentation**: Comprehensive docs in `/docs` folder
