@@ -54,58 +54,58 @@
 
 ## 1. Context Diagram (Level 0) - C4 Model
 
-> Following [C4 Model](https://c4model.com/) best practices for system architecture visualization
+> **Diagram Type**: System Context Diagram (C4 Model Level 0)  
+> **Purpose**: Shows the RevClear system and its relationships with users and external systems  
+> **Standard**: Following [C4 Model](https://c4model.com/) architectural documentation practices
 
 ```mermaid
-%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#6366f1','secondaryColor':'#10b981','tertiaryColor':'#f59e0b','primaryBorderColor':'#4f46e5','primaryTextColor':'#fff','lineColor':'#64748b','fontSize':'14px'}}}%%
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0078D4','secondaryColor':'#107C10','tertiaryColor':'#FFB900','background':'#FFFFFF','mainBkg':'#FFFFFF','primaryTextColor':'#fff','lineColor':'#555','fontSize':'14px'}}}%%
 
 graph TB
-    subgraph external["🌐 External Actors & Systems"]
+    subgraph external["🌐 EXTERNAL ACTORS"]
         direction LR
-        CLI["<b>👨‍⚕️ Clinician</b><br/><br/>Mental Health | PT | SLP<br/>─────────────<br/>• Records patient encounters<br/>• Reviews AI documentation<br/>• Approves medical claims<br/>• Monitors billing status"]
+        CLI["<b>👨‍⚕️ Clinician</b><br/><br/><i>Person</i><br/>─────────────<br/>Mental Health, PT, SLP<br/><br/>Records patient encounters<br/>Reviews AI documentation<br/>Approves medical claims"]
         
-        ADM["<b>👨‍💼 Administrator</b><br/><br/>System Manager<br/>─────────────<br/>• Manages user accounts<br/>• Configures workflows<br/>• Reviews audit logs<br/>• Ensures compliance"]
+        ADM["<b>👨‍💼 Administrator</b><br/><br/><i>Person</i><br/>─────────────<br/>System Manager<br/><br/>Manages user accounts<br/>Configures workflows<br/>Reviews audit logs"]
     end
     
-    subgraph system["🏥 RevClear Healthcare Claims System"]
-        SYS["<b>🚀 RevClear Platform</b><br/>────────────────────<br/><br/><b>HIPAA-Compliant AI Medical Billing</b><br/><br/>✓ Patient Management<br/>✓ AI-Powered Documentation<br/>✓ 3 HITL Validation Gates<br/>✓ Automated Claim Generation<br/>✓ Multi-Payer EDI Submission<br/><br/><i>AWS Serverless Architecture</i>"]
+    subgraph system["💼 SOFTWARE SYSTEM"]
+        SYS["<b>🚀 RevClear Platform</b><br/><br/><i>Software System</i><br/>════════════════════<br/><br/>HIPAA-Compliant AI Medical Billing<br/><br/><b>Core Capabilities:</b><br/>• Patient Management<br/>• AI-Powered Documentation<br/>• 3 HITL Validation Gates<br/>• Automated Claim Generation<br/>• Multi-Payer EDI Submission<br/><br/><i>Technology: AWS Serverless</i>"]
     end
     
-    subgraph integrations["🔌 External Integrations"]
+    subgraph integrations["🔌 EXTERNAL SYSTEMS"]
         direction LR
-        INS["<b>🏥 Insurance Payers</b><br/><br/>Clearinghouses<br/>─────────────<br/>• Medicare/Medicaid<br/>• Commercial Insurers<br/>• Claim adjudication<br/>• Payment processing"]
+        INS["<b>🏥 Insurance Payers</b><br/><br/><i>External System</i><br/>─────────────<br/>Clearinghouses<br/><br/>Medicare/Medicaid<br/>Commercial Insurers<br/>Claim adjudication"]
         
-        AI["<b>🤖 AWS AI Services</b><br/><br/>Machine Learning<br/>─────────────<br/>• Amazon Transcribe<br/>• Amazon Bedrock<br/>• Medical NLP<br/>• Code extraction"]
+        AI["<b>🤖 AWS AI Services</b><br/><br/><i>External System</i><br/>─────────────<br/>Machine Learning APIs<br/><br/>Amazon Transcribe<br/>Amazon Bedrock<br/>Medical NLP"]
     end
     
     %% Primary User Flows
-    CLI -.->|"📤 Upload<br/>Patient encounters<br/>Audio recordings"| SYS
-    SYS -.->|"📥 Provide<br/>Transcripts<br/>Claims status<br/>Analytics"| CLI
+    CLI -.->|"Uses<br/>[HTTPS]<br/><br/>Uploads encounters<br/>Records audio<br/>Reviews claims"| SYS
+    SYS -.->|"Provides<br/>[HTTPS]<br/><br/>Transcripts<br/>Claims status<br/>Analytics"| CLI
     
-    ADM -.->|"⚙️ Configure<br/>User permissions<br/>System settings<br/>Compliance rules"| SYS
-    SYS -.->|"📊 Report<br/>User activity<br/>Security events<br/>Performance data"| ADM
+    ADM -.->|"Manages<br/>[HTTPS]<br/><br/>User permissions<br/>System settings<br/>Compliance rules"| SYS
+    SYS -.->|"Reports<br/>[HTTPS]<br/><br/>User activity<br/>Security events<br/>Performance"| ADM
     
     %% External System Integrations
-    SYS ==>|"📋 Submit<br/>CMS-1500 claims<br/>EDI 837 files<br/>HTTPS/SFTP"| INS
-    INS ==>|"💳 Return<br/>Claim status<br/>Payments<br/>Denials/EOBs"| SYS
+    SYS ==>|"Submits Claims<br/>[HTTPS/SFTP]<br/><br/>CMS-1500 forms<br/>EDI 837 files"| INS
+    INS ==>|"Returns Status<br/>[HTTPS]<br/><br/>Claim status<br/>Payments<br/>Denials"| SYS
     
-    SYS ==>|"🎙️ Process<br/>Audio files<br/>Clinical text<br/>REST API"| AI
-    AI ==>|"📄 Generate<br/>Transcripts<br/>SOAP notes<br/>ICD-10/CPT codes"| SYS
+    SYS ==>|"Processes<br/>[REST API]<br/><br/>Audio files<br/>Clinical text"| AI
+    AI ==>|"Returns<br/>[REST API]<br/><br/>Transcripts<br/>SOAP notes<br/>Medical codes"| SYS
     
-    %% Styling
-    classDef userClass fill:#6366f1,stroke:#4f46e5,stroke-width:4px,color:#fff,rx:10,ry:10
-    classDef systemClass fill:#ec4899,stroke:#db2777,stroke-width:5px,color:#fff,rx:10,ry:10
-    classDef externalClass fill:#10b981,stroke:#059669,stroke-width:4px,color:#fff,rx:10,ry:10
-    classDef aiClass fill:#a855f7,stroke:#7c3aed,stroke-width:4px,color:#fff,rx:10,ry:10
+    %% C4 Model Standard Styling
+    classDef personClass fill:#08427B,stroke:#052E56,stroke-width:2px,color:#ffffff
+    classDef systemClass fill:#1168BD,stroke:#0B4884,stroke-width:4px,color:#ffffff
+    classDef externalClass fill:#999999,stroke:#6B6B6B,stroke-width:2px,color:#ffffff
     
-    class CLI,ADM userClass
+    class CLI,ADM personClass
     class SYS systemClass
-    class INS externalClass
-    class AI aiClass
+    class INS,AI externalClass
     
-    style external fill:#f8fafc,stroke:#e2e8f0,stroke-width:2px,stroke-dasharray:5 5
-    style system fill:#fef3f2,stroke:#ec4899,stroke-width:3px
-    style integrations fill:#f0fdf4,stroke:#10b981,stroke-width:2px,stroke-dasharray:5 5
+    style external fill:#ffffff,stroke:#cccccc,stroke-width:2px,stroke-dasharray:5 5
+    style system fill:#e6f2ff,stroke:#1168BD,stroke-width:3px
+    style integrations fill:#ffffff,stroke:#cccccc,stroke-width:2px,stroke-dasharray:5 5
 ```
 
 ### Trust Boundaries & Data Classification
@@ -250,42 +250,45 @@ graph TB
 
 ## 2. Data Flow Diagram - Level 1 (System Overview)
 
+> **Diagram Type**: Data Flow Diagram (DFD) - Level 1  
+> **Purpose**: Shows major system processes, data stores, and information flows  
+> **Notation**: Gane-Sarson notation (rounded rectangles for processes, open rectangles for data stores)
+
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#4CAF50','secondaryColor':'#2196F3','tertiaryColor':'#FF9800','background':'#FFFFFF','mainBkg':'#FFFFFF','primaryTextColor':'#000','lineColor':'#333','fontSize':'13px'}}}%%
+
 flowchart TB
-    %% Configuration for enhanced styling
-    %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#6366f1', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#4f46e5', 'lineColor': '#64748b', 'secondaryColor': '#10b981', 'tertiaryColor': '#f59e0b', 'background': '#ffffff', 'mainBkgColor': '#ffffff', 'secondBkgColor': '#f8fafc', 'border1': '#e2e8f0', 'border2': '#cbd5e1'}} }%%
+    %% External Entities (Squares)
+    CLI["<b>👨‍⚕️ Clinician</b><br/><i>External Entity</i>"]
 
-    %% External Entities
-    CLI["👨‍⚕️ **Clinician**\nPatient Care Provider"]
+    %% Processes (Rounded Rectangles with Process Numbers)
+    P1(["<b>1.0</b><br/>User Authentication<br/>──────────<br/>AWS Cognito MFA<br/>JWT Tokens<br/>Session Mgmt"])
 
-    %% Enhanced Main Processes with Detailed Descriptions
-    P1["🔐 **1.0 User Authentication**\n• AWS Cognito MFA\n• JWT Token Generation\n• Session Management\n• Role-Based Access"]
+    P2(["<b>2.0</b><br/>Patient Management<br/>──────────<br/>CRUD Operations<br/>PHI Handling<br/>Insurance Data"])
 
-    P2["👥 **2.0 Patient Management**\n• CRUD Patient Records\n• PHI Data Handling\n• Insurance Information\n• Medical History"]
+    P3(["<b>3.0</b><br/>Encounter Recording<br/>──────────<br/>Audio Upload<br/>S3 Storage<br/>Metadata"])
 
-    P3["🎙️ **3.0 Encounter Recording**\n• Audio File Upload\n• S3 Secure Storage\n• Metadata Creation\n• Session Documentation"]
+    P4(["<b>4.0</b><br/>AI Processing<br/>──────────<br/>Transcription<br/>SOAP Generation<br/>Code Extraction"])
 
-    P4["🤖 **4.0 AI Processing Pipeline**\n• Multi-Step AI Workflow\n• Medical Transcription\n• SOAP Note Generation\n• Code Extraction & Validation"]
+    P5(["<b>5.0</b><br/>Human Validation<br/>──────────<br/>3 HITL Gates<br/>Clinician Review<br/>Compliance Check"])
 
-    P5["👀 **5.0 Human Validation**\n• 3-Tier HITL Gates\n• Clinician Review\n• Medical Coding Validation\n• Final Compliance Check"]
+    P6(["<b>6.0</b><br/>Claim Generation<br/>──────────<br/>CMS-1500<br/>EDI 837<br/>FHIR Resources"])
 
-    P6["📄 **6.0 Claim Generation**\n• CMS-1500 Creation\n• FHIR Resource Generation\n• EDI 837 Formatting\n• HIPAA Compliance"]
+    P7(["<b>7.0</b><br/>Claim Submission<br/>──────────<br/>Clearinghouse<br/>Status Tracking<br/>Reconciliation"])
 
-    P7["🚀 **7.0 Claim Submission**\n• Clearinghouse Integration\n• Status Tracking\n• Acknowledgment Processing\n• Payment Reconciliation"]
+    %% Data Stores (Open Rectangles with D# prefix)
+    D1[("<b>D1</b> | Patients Database<br/>─────────────────<br/>DynamoDB | KMS Encrypted")]
 
-    %% Enhanced Data Stores with Security Details
-    D1[("🗄️ **D1: Patients Database**\n• Amazon RDS PostgreSQL\n• PHI Encrypted (KMS)\n• Multi-AZ Deployment\n• Automated Backups")]
+    D2[("<b>D2</b> | Cloud Storage<br/>─────────────────<br/>Amazon S3 | Versioning")]
 
-    D2[("📦 **D2: Cloud Storage**\n• Amazon S3 Encrypted\n• Audio Files & Documents\n• Versioning Enabled\n• Lifecycle Policies")]
+    D3[("<b>D3</b> | Encounters<br/>─────────────────<br/>DynamoDB | PITR Enabled")]
 
-    D3[("🗄️ **D3: Encounters Database**\n• AI-Generated Content\n• SOAP Notes & Transcripts\n• Medical Codes\n• Processing Status")]
+    D4[("<b>D4</b> | Claims<br/>─────────────────<br/>DynamoDB | Audit Trail")]
 
-    D4[("💼 **D4: Claims Database**\n• Billing Records\n• EDI 837 Files\n• Payment Status\n• Audit Trail")]
+    D5[("<b>D5</b> | Audit Logs<br/>─────────────────<br/>CloudTrail | 7-Year Retention")]
 
-    D5[("📊 **D5: Audit Logs**\n• Amazon CloudWatch\n• HIPAA Audit Trail\n• 7-Year Retention\n• Security Events")]
-
-    %% External Entities Bottom
-    PAY["🏥 **Insurance Payer**\nClaim Processing & Payment"]
+    %% External Entity (Bottom)
+    PAY["<b>🏥 Insurance Payer</b><br/><i>External Entity</i>"]
 
     %% Enhanced Data Flows with Detailed Labels
     CLI -->|"🔑 Session Token\n👤 User Profile"| P1
@@ -341,26 +344,14 @@ flowchart TB
     P6 -.->|"📄 Claim Generation"| D5
     P7 -.->|"🚀 Submission Events"| D5
 
-    %% Enhanced Styling Classes
-    classDef authentication fill:#6366f1,stroke:#4f46e5,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef management fill:#10b981,stroke:#059669,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef recording fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef ai fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#000000,font-weight:bold
-    classDef validation fill:#ec4899,stroke:#db2777,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef generation fill:#06b6d4,stroke:#0891b2,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef submission fill:#84cc16,stroke:#65a30d,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef database fill:#64748b,stroke:#475569,stroke-width:3px,color:#ffffff,font-weight:bold
-    classDef external fill:#f97316,stroke:#ea580c,stroke-width:3px,color:#ffffff,font-weight:bold
-
-    class CLI,PAY external
-    class P1 authentication
-    class P2 management
-    class P3 recording
-    class P4 ai
-    class P5 validation
-    class P6 generation
-    class P7 submission
-    class D1,D2,D3,D4,D5 database
+    %% DFD Standard Notation Styling
+    classDef externalEntity fill:#E8F5E9,stroke:#4CAF50,stroke-width:3px,color:#000
+    classDef process fill:#81C784,stroke:#388E3C,stroke-width:2px,color:#000
+    classDef dataStore fill:#FFF9C4,stroke:#F57C00,stroke-width:2px,color:#000
+    
+    class CLI,PAY externalEntity
+    class P1,P2,P3,P4,P5,P6,P7 process
+    class D1,D2,D3,D4,D5 dataStore
 
     %% Link Styling for Different Data Types
     linkStyle 0 stroke:#6366f1,stroke-width:3px %% Authentication flows
@@ -618,7 +609,13 @@ flowchart TB
 
 ## 4. Entity Relationship Diagram (ERD)
 
+> **Diagram Type**: Entity Relationship Diagram (ERD) - Crow's Foot Notation  
+> **Purpose**: Shows database schema, entities, attributes, and relationships  
+> **Database**: DynamoDB (NoSQL) - designed for relational data model
+
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#BBDEFB','secondaryColor':'#C8E6C9','tertiaryColor':'#FFF9C4','background':'#FFFFFF','primaryTextColor':'#000','lineColor':'#666'}}}%%
+
 erDiagram
     USERS ||--o{ PATIENTS : manages
     USERS ||--o{ ENCOUNTERS : creates
@@ -733,13 +730,19 @@ erDiagram
 
 ## 5. Sequence Diagram - Complete Workflow
 
+> **Diagram Type**: UML Sequence Diagram  
+> **Purpose**: Shows time-ordered message exchanges between system components  
+> **Scope**: End-to-end claim processing workflow from login to submission
+
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'background':'#FFFFFF','actorBkg':'#DEEBFF','actorBorder':'#0747A6','actorTextColor':'#000','actorLineColor':'#0747A6','signalColor':'#333','signalTextColor':'#000','labelBoxBkgColor':'#E3FCEF','labelBoxBorderColor':'#006644','labelTextColor':'#000','loopTextColor':'#000','noteBkgColor':'#FFFAE6','noteTextColor':'#000'}}}%%
+
 sequenceDiagram
     actor Clinician
     participant Frontend
     participant API as API Gateway
     participant AI as AI Services<br/>(Transcribe/Bedrock)
-    participant DB as Database<br/>(RDS)
+    participant DB as DynamoDB
     participant S3 as Amazon S3
     participant Payer as Insurance Payer
     
