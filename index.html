@@ -7,10 +7,7 @@
     <meta name="description" content="RevClear AI Medical System - Automated medical billing for PT, Mental Health & SLP practices. Speech-to-Claim in minutes with HIPAA compliance.">
     <meta name="theme-color" content="#6366f1">
 
-    <!-- Enhanced Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Modern System Fonts - No external dependencies -->
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,9 +44,9 @@
                         }
                     },
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Poppins', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
+                        display: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas', 'Liberation Mono', 'monospace'],
                     }
                 }
             }
@@ -395,10 +392,10 @@
                     <div class="select-wrapper">
                         <select id="signupSpecialty" required>
                             <option value="">Choose your specialty</option>
-                            <option value="physical-therapy">🏃 Physical Therapy</option>
-                            <option value="mental-health">🧠 Mental Health</option>
-                            <option value="speech-language">💬 Speech-Language Pathology</option>
-                            <option value="other">🏥 Other Healthcare</option>
+                            <option value="physical-therapy">Physical Therapy</option>
+                            <option value="mental-health">Mental Health</option>
+                            <option value="speech-language">Speech-Language Pathology</option>
+                            <option value="other">Other Healthcare</option>
                         </select>
                         <i class="fas fa-chevron-down select-arrow"></i>
                     </div>
@@ -419,7 +416,7 @@
             </form>
 
             <div class="auth-footer">
-                <p>🔒 Your data is protected with enterprise-grade security</p>
+                <p><i class="fas fa-lock"></i> Your data is protected with enterprise-grade security</p>
             </div>
         </div>
     </div>
@@ -435,51 +432,51 @@
                 <span class="gradient-text">AI-Powered Medical Billing</span> That Learns to Reduce Claim Denials
             </p>
             <div class="specialty-badges">
-                <span class="specialty-badge">🧠 Mental Health</span>
-                <span class="specialty-badge">🏃 Physical Therapy</span>
-                <span class="specialty-badge">💬 Speech-Language</span>
+                <span class="specialty-badge">Mental Health</span>
+                <span class="specialty-badge">Physical Therapy</span>
+                <span class="specialty-badge">Speech-Language</span>
             </div>
             <div style="margin-top: 15px;" id="authNav">
-                <button onclick="openAuthModal('login')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔐 Login</button>
-                <button onclick="openAuthModal('signup')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✍️ Sign Up</button>
+                <button onclick="openAuthModal('login')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'"><i class="fas fa-sign-in-alt"></i> Login</button>
+                <button onclick="openAuthModal('signup')" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 5px; margin: 0 5px; display: inline-block; transition: all 0.3s; border: none; cursor: pointer; font-size: 14px; font-weight: 600;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'"><i class="fas fa-user-plus"></i> Sign Up</button>
             </div>
 
             <!-- Deployment Status Banner with Tailwind -->
             <div class="mt-5 px-5 py-3 bg-gradient-to-r from-secondary-500/10 via-secondary-600/10 to-secondary-500/10 border border-secondary-500/30 rounded-lg shadow-lg backdrop-blur-sm animate__animated animate__fadeInUp">
                 <div class="text-center mb-3">
-                    <span class="text-4xl animate-bounce inline-block">✅</span>
+                    <i class="fas fa-check-circle text-4xl animate-bounce inline-block text-secondary-500"></i>
                     <span class="text-white font-bold text-lg ml-2 font-display">Phase 1: HIPAA Infrastructure Deployed</span>
                 </div>
                 
                 <!-- Deployed Resources Grid -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
                     <div class="bg-white/10 backdrop-blur-sm p-3 rounded-lg text-center transform transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl">
-                        <div class="text-2xl mb-1">🔐</div>
+                        <div class="text-2xl mb-1"><i class="fas fa-key"></i></div>
                         <div class="text-white font-semibold text-xs mb-1">AWS KMS</div>
                         <div class="text-white/70 text-[10px]">AES-256 Encryption</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm p-3 rounded-lg text-center transform transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl">
-                        <div class="text-2xl mb-1">🗄️</div>
+                        <div class="text-2xl mb-1"><i class="fas fa-database"></i></div>
                         <div class="text-white font-semibold text-xs mb-1">3 DynamoDB Tables</div>
                         <div class="text-white/70 text-[10px]">PT • SLP • MH</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm p-3 rounded-lg text-center transform transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl">
-                        <div class="text-2xl mb-1">📦</div>
+                        <div class="text-2xl mb-1"><i class="fas fa-box"></i></div>
                         <div class="text-white font-semibold text-xs mb-1">4 S3 Buckets</div>
                         <div class="text-white/70 text-[10px]">Data • Raw • Exports • Logs</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm p-3 rounded-lg text-center transform transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl">
-                        <div class="text-2xl mb-1">📊</div>
+                        <div class="text-2xl mb-1"><i class="fas fa-chart-bar"></i></div>
                         <div class="text-white font-semibold text-xs mb-1">CloudTrail</div>
                         <div class="text-white/70 text-[10px]">7-Year Audit Logs</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm p-3 rounded-lg text-center transform transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl">
-                        <div class="text-2xl mb-1">👤</div>
+                        <div class="text-2xl mb-1"><i class="fas fa-user-shield"></i></div>
                         <div class="text-white font-semibold text-xs mb-1">IAM Role</div>
                         <div class="text-white/70 text-[10px]">AmplifyServiceRole</div>
                     </div>
                     <div class="bg-white/10 backdrop-blur-sm p-3 rounded-lg text-center transform transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl">
-                        <div class="text-2xl mb-1">🚀</div>
+                        <div class="text-2xl mb-1"><i class="fas fa-rocket"></i></div>
                         <div class="text-white font-semibold text-xs mb-1">Amplify App</div>
                         <div class="text-white/70 text-[10px]">app2100 (Next.js)</div>
                     </div>
@@ -488,25 +485,25 @@
                 <!-- GitHub Link -->
                 <div class="text-center pt-3 border-t border-white/20">
                     <a href="https://github.com/hpppm/revclear" target="_blank" class="inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 no-underline font-semibold text-sm transition-all duration-300 hover:gap-3">
-                        <span>📂 View Full Documentation on GitHub</span>
+                        <span><i class="fab fa-github"></i> View Full Documentation on GitHub</span>
                         <i class="lni lni-arrow-right"></i>
                     </a>
                 </div>
                 
                 <!-- Coming Soon Badge -->
                 <div class="text-center mt-3 p-2 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-md animate__animated animate__pulse animate__infinite animate__slow">
-                    <span class="text-yellow-400 font-semibold text-sm">🔄 Phase 2 Coming Soon:</span>
+                    <span class="text-yellow-400 font-semibold text-sm"><i class="fas fa-sync-alt"></i> Phase 2 Coming Soon:</span>
                     <span class="text-white/80 text-xs ml-2">Cognito Auth • API Gateway • Lambda • AI Services (Transcribe + Bedrock) • HealthLake FHIR</span>
                 </div>
             </div>
         </div>
 
         <div class="tabs">
-            <button class="tab active" onclick="showTab('architecture')">📊 Architecture</button>
-            <button class="tab" onclick="showTab('demo')">🚀 Interactive Demo</button>
-            <button class="tab" onclick="showTab('api')">🔌 API Routes</button>
-            <button class="tab" onclick="showTab('components')">🔧 Components</button>
-            <button class="tab" onclick="showTab('security')">🔒 Security & Compliance</button>
+            <button class="tab active" onclick="showTab('architecture')"><i class="fas fa-sitemap"></i> Architecture</button>
+            <button class="tab" onclick="showTab('demo')"><i class="fas fa-play-circle"></i> Interactive Demo</button>
+            <button class="tab" onclick="showTab('api')"><i class="fas fa-plug"></i> API Routes</button>
+            <button class="tab" onclick="showTab('components')"><i class="fas fa-cubes"></i> Components</button>
+            <button class="tab" onclick="showTab('security')"><i class="fas fa-shield-alt"></i> Security & Compliance</button>
         </div>
 
         <div class="content">
@@ -514,7 +511,7 @@
             <div id="architecture" class="tab-content active">
                 <h2>System Architecture Diagram</h2>
                 <div class="alert alert-info">
-                    <strong>ℹ️ About this Architecture:</strong> This diagram shows a complete HIPAA-compliant medical claims processing system built on AWS (Amazon Web Services) with three Human-in-the-Loop (HITL) validation gates to ensure accuracy and compliance.
+                    <strong><i class="fas fa-info-circle"></i> About this Architecture:</strong> This diagram shows a complete HIPAA-compliant medical claims processing system built on AWS (Amazon Web Services) with three Human-in-the-Loop (HITL) validation gates to ensure accuracy and compliance.
                 </div>
 
                 <div class="diagram-container">
@@ -527,7 +524,7 @@ config:
 
 flowchart TB
     %% Entry Point
-    U["👤 Clinician<br/><small>SSO + MFA Auth</small>"] --> LB["Load Balancer<br/><small>HTTPS + SSL</small>"]
+    U["Clinician<br/><small>SSO + MFA Auth</small>"] --> LB["Load Balancer<br/><small>HTTPS + SSL</small>"]
 
     LB --> WAF["AWS WAF & Shield<br/><small>DDoS + Threat Protection</small>"]
 
@@ -564,12 +561,12 @@ flowchart TB
     PS --> BQ["Amazon Redshift<br/><small>Analytics Warehouse</small><br/><small>Claims Data</small>"]
 
     %% External Submission
-    H3 --> OUT["✅ External Clearinghouse<br/><small>Claim Submission</small>"]
+    H3 --> OUT["External Clearinghouse<br/><small>Claim Submission</small>"]
 
     %% Security Layer
-    KMS["🔒 AWS KMS<br/><small>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</small><br/><small>AES-256 Encryption</small>"]
-    VPC["🌐 Amazon VPC<br/><small>Private Connectivity</small><br/><small>Traffic Isolation</small>"]
-    MON["📊 Amazon CloudWatch<br/><small>Service Health</small><br/><small>Audit Logs</small>"]
+    KMS["AWS KMS<br/><small>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</small><br/><small>AES-256 Encryption</small>"]
+    VPC["Amazon VPC<br/><small>Private Connectivity</small><br/><small>Traffic Isolation</small>"]
+    MON["Amazon CloudWatch<br/><small>Service Health</small><br/><small>Audit Logs</small>"]
 
     KMS -.-> S3
     KMS -.-> SQL
@@ -593,41 +590,41 @@ flowchart TB
 
                 <div class="info-grid">
                     <div class="info-card">
-                        <h4>🔐 Security Features (✅ DEPLOYED)</h4>
+                        <h4><i class="fas fa-shield-alt"></i> Security Features (DEPLOYED)</h4>
                         <ul>
-                            <li><strong>✅ KMS Key:</strong> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</li>
-                            <li><strong>✅ AES-256 encryption</strong> for all data at rest</li>
-                            <li><strong>✅ CloudTrail:</strong> RevClearTrail with 7-year retention</li>
-                            <li><strong>✅ IAM Role:</strong> AmplifyServiceRole (least privilege)</li>
-                            <li>🔄 AWS WAF & Shield (Phase 2)</li>
-                            <li>🔄 VPC network isolation (Phase 2)</li>
+                            <li><strong>KMS Key:</strong> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</li>
+                            <li><strong>AES-256 encryption</strong> for all data at rest</li>
+                            <li><strong>CloudTrail:</strong> RevClearTrail with 7-year retention</li>
+                            <li><strong>IAM Role:</strong> AmplifyServiceRole (least privilege)</li>
+                            <li>AWS WAF & Shield (Phase 2)</li>
+                            <li>VPC network isolation (Phase 2)</li>
                         </ul>
                     </div>
                     <div class="info-card">
-                        <h4>🔍 3 Human-in-the-Loop (HITL) Gates</h4>
+                        <h4><i class="fas fa-search"></i> 3 Human-in-the-Loop (HITL) Gates</h4>
                         <ul>
-                            <li><strong>🟡 Gate 1:</strong> Transcription Accuracy Review
+                            <li><strong>Gate 1:</strong> Transcription Accuracy Review
                                 <br><small>Medical professional validates AI transcription</small>
                             </li>
-                            <li><strong>🟡 Gate 2:</strong> Medical Coding Validation
+                            <li><strong>Gate 2:</strong> Medical Coding Validation
                                 <br><small>Certified coder verifies CPT/ICD-10 codes</small>
                             </li>
-                            <li><strong>🟡 Gate 3:</strong> Final Billing Compliance
+                            <li><strong>Gate 3:</strong> Final Billing Compliance
                                 <br><small>Billing specialist approves EDI 837 submission</small>
                             </li>
                             <li><strong>Quality:</strong> 99.2% accuracy with human oversight</li>
                         </ul>
                     </div>
                     <div class="info-card">
-                        <h4>💾 Data Storage (✅ DEPLOYED)</h4>
+                        <h4><i class="fas fa-database"></i> Data Storage (DEPLOYED)</h4>
                         <ul>
-                            <li><strong>✅ 4 S3 Buckets:</strong>
+                            <li><strong>4 S3 Buckets:</strong>
                                 <br>• arevclear (main data)
                                 <br>• arevclear-raw (intake)
                                 <br>• arevclear-exports (EDI files)
                                 <br>• arevclear-logs (CloudTrail)
                             </li>
-                            <li><strong>✅ 3 DynamoDB Tables:</strong>
+                            <li><strong>3 DynamoDB Tables:</strong>
                                 <br>• physical_therapy_patients (5 records)
                                 <br>• speech_therapy_patients (5 records)
                                 <br>• mental_health_patients (5 records)
@@ -636,13 +633,13 @@ flowchart TB
                         </ul>
                     </div>
                     <div class="info-card">
-                        <h4>🤖 AI Components (Phase 2 - Planned)</h4>
+                        <h4><i class="fas fa-robot"></i> AI Components (Phase 2 - Planned)</h4>
                         <ul>
-                            <li>🔄 <strong>Amazon Transcribe:</strong> Medical speech-to-text</li>
-                            <li>🔄 <strong>Amazon Bedrock:</strong> SOAP note generation</li>
-                            <li>🔄 <strong>Amazon Bedrock:</strong> CPT/ICD code extraction</li>
-                            <li>🔄 <strong>AWS HealthLake:</strong> FHIR resource generation</li>
-                            <li>🔄 <strong>EDI 837:</strong> Electronic claim formatting</li>
+                            <li><strong>Amazon Transcribe:</strong> Medical speech-to-text</li>
+                            <li><strong>Amazon Bedrock:</strong> SOAP note generation</li>
+                            <li><strong>Amazon Bedrock:</strong> CPT/ICD code extraction</li>
+                            <li><strong>AWS HealthLake:</strong> FHIR resource generation</li>
+                            <li><strong>EDI 837:</strong> Electronic claim formatting</li>
                             <li><strong>Integration:</strong> Via API Gateway + Lambda</li>
                         </ul>
                     </div>
@@ -650,10 +647,10 @@ flowchart TB
                 
                 <!-- Phase 1 vs Phase 2 Status -->
                 <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4285f4;">
-                    <h4 style="margin-top: 0; color: #4285f4;">📋 Implementation Status</h4>
+                    <h4 style="margin-top: 0; color: #4285f4;"><i class="fas fa-tasks"></i> Implementation Status</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div>
-                            <strong style="color: #34a853;">✅ Phase 1 Complete (HIPAA Foundation):</strong>
+                            <strong style="color: #34a853;"><i class="fas fa-check-circle"></i> Phase 1 Complete (HIPAA Foundation):</strong>
                             <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
                                 <li>AWS KMS encryption infrastructure</li>
                                 <li>3 DynamoDB tables with sample data</li>
@@ -664,7 +661,7 @@ flowchart TB
                             </ul>
                         </div>
                         <div>
-                            <strong style="color: #fbbc04;">🔄 Phase 2 In Progress (AI & APIs):</strong>
+                            <strong style="color: #fbbc04;"><i class="fas fa-sync-alt"></i> Phase 2 In Progress (AI & APIs):</strong>
                             <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
                                 <li>AWS Cognito user authentication + MFA</li>
                                 <li>API Gateway + Lambda backend</li>
@@ -727,7 +724,7 @@ flowchart TB
                     <!-- Step 4 -->
                     <div class="workflow-step" id="step4">
                         <span class="step-status status-pending">Step 4: AI Analysis</span>
-                        <h3>🤖 Amazon SageMaker: Code Extraction</h3>
+                        <h3><i class="fas fa-robot"></i> Amazon SageMaker: Code Extraction</h3>
                         <p>AI extracts diagnosis and suggests CPT/ICD codes</p>
                         <div id="aiResult" style="display:none;">
                             <strong>Extracted Information:</strong>
@@ -778,10 +775,10 @@ flowchart TB
                     <!-- Step 8 -->
                     <div class="workflow-step" id="step8">
                         <span class="step-status status-pending">Step 8: Submission</span>
-                        <h3>✅ External Clearinghouse Submission</h3>
+                        <h3><i class="fas fa-paper-plane"></i> External Clearinghouse Submission</h3>
                         <p>Claim submitted to external clearinghouse for payer processing</p>
                         <div id="submissionResult" style="display:none;">
-                            <p style="color:#34a853;font-weight:600;">✓ Claim successfully submitted!</p>
+                            <p style="color:#34a853;font-weight:600;"><i class="fas fa-check"></i> Claim successfully submitted!</p>
                             <p>Tracking ID: CLM-2025-10-30-001</p>
                             <p>Data stored in Amazon Redshift for analytics</p>
                         </div>
@@ -791,13 +788,13 @@ flowchart TB
 
             <!-- API Routes Tab -->
             <div id="api" class="tab-content">
-                <h2>🔌 Backend API Routes</h2>
+                <h2><i class="fas fa-plug"></i> Backend API Routes</h2>
                 <div class="alert alert-info">
-                    <strong>ℹ️ Production API Endpoints:</strong> These are the RESTful API routes that would be called in a production deployment on AWS Fargate.
+                    <strong><i class="fas fa-info-circle"></i> Production API Endpoints:</strong> These are the RESTful API routes that would be called in a production deployment on AWS Fargate.
                 </div>
 
                 <div class="workflow-step">
-                    <h3>🔐 Authentication & Authorization</h3>
+                    <h3><i class="fas fa-lock"></i> Authentication & Authorization</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/auth/login</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Authenticate clinician with SSO + MFA. Returns JWT token.</p>
@@ -853,7 +850,7 @@ flowchart TB
                 </div>
 
                 <div class="workflow-step">
-                    <h3>🤖 AI Code Extraction (Amazon SageMaker)</h3>
+                    <h3><i class="fas fa-robot"></i> AI Code Extraction (Amazon SageMaker)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/ai/extract-codes</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Amazon SageMaker analyzes transcription and suggests CPT/ICD codes.</p>
@@ -867,7 +864,7 @@ flowchart TB
                 </div>
 
                 <div class="workflow-step">
-                    <h3>💾 Code Validation (DynamoDB)</h3>
+                    <h3><i class="fas fa-database"></i> Code Validation (DynamoDB)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-get">GET</span> <strong>/api/v1/codes/validate</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Validate CPT/ICD codes against reference database.</p>
@@ -895,7 +892,7 @@ flowchart TB
                 </div>
 
                 <div class="workflow-step">
-                    <h3>🏥 AWS HealthLake (FHIR & EDI)</h3>
+                    <h3><i class="fas fa-hospital"></i> AWS HealthLake (FHIR & EDI)</h3>
                     <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         <div style="margin: 8px 0;"><span class="api-call-method method-post">POST</span> <strong>/api/v1/fhir/create-claim</strong></div>
                         <p style="margin-left: 70px; color: #5f6368;">Create FHIR Claim resource in AWS HealthLake.</p>
