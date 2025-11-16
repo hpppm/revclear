@@ -1,0 +1,99 @@
+@startuml STRIDE_Threats
+
+title STRIDE Threat Attack Vectors
+caption Threat Actors and Attack Scenarios
+
+scale max 2400 width
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 13
+
+' === THREAT ACTORS ===
+actor "Phishing\nActor" as phish #FFA500
+actor "External\nAttacker" as threat #FF0000
+actor "Malicious\nInsider" as insider #FF6B6B
+
+' === TARGET COMPONENTS (SIMPLIFIED) ===
+component "User/Clinician" as user
+component "Cognito Auth" as cognito
+component "API Gateway" as api
+component "DynamoDB (PHI)" as db
+component "S3 Files" as s3
+component "KMS Keys" as kms
+component "CloudTrail Logs" as trail
+component "IAM Roles" as iam
+component "Lambda Functions" as lambda
+component "Clearinghouse" as clearinghouse
+
+' === STRIDE THREAT ATTACKS ===
+' Spoofing Attacks
+phish .[#red,thickness=3].> user : **[S-01] Credential Phishing**\nEmail/SMS attacks
+threat .[#red,thickness=3].> cognito : **[S-02] Token Forgery**\nSteal/forge JWT tokens
+threat .[#red,thickness=3].> api : **[S-03] API Spoofing**\nForged requests
+
+' Tampering Attacks
+insider .[#orange,thickness=3].> db : **[T-01] Data Tampering**\nUnauthorized PHI changes
+insider .[#orange,thickness=3].> s3 : **[T-02] File Modification**\nAlter clinical files
+threat .[#orange,thickness=3].> clearinghouse : **[T-03] EDI Tampering**\nModify claims data
+
+' Repudiation Attacks
+insider .[#orange,thickness=3].> trail : **[R-01] Log Tampering**\nDelete/modify audit logs
+
+' Information Disclosure Attacks
+threat .[#red,thickness=3].> db : **[I-01] PHI Data Breach**\nSteal patient data
+threat .[#orange,thickness=3].> kms : **[I-02] Key Exposure**\nSteal encryption keys
+threat .[#orange,thickness=3].> api : **[I-03] Data Leakage**\nExcessive API response
+
+' Denial of Service Attacks
+threat .[#red,thickness=3].> api : **[D-01] DDoS Attack**\nFlood API endpoints
+threat .[#orange,thickness=3].> lambda : **[D-02] Resource Exhaustion**\nExhaust Lambda quota
+
+' Elevation of Privilege Attacks
+insider .[#orange,thickness=3].> iam : **[E-01] Privilege Escalation**\nGain admin access
+threat .[#orange,thickness=3].> lambda : **[E-02] Code Injection**\nInject malicious code
+
+note right of phish
+  **Phishing Actor**
+  - Targets: Clinicians
+  - Method: Email/SMS phishing
+  - Goal: Steal credentials
+  - Impact: Account takeover
+end note
+
+note right of threat
+  **External Attacker**
+  - Targets: Public endpoints
+  - Methods: DDoS, SQL injection,
+    token theft, API attacks
+  - Goal: Data breach, disruption
+  - Impact: PHI exposure, downtime
+end note
+
+note right of insider
+  **Malicious Insider**
+  - Targets: Internal systems
+  - Methods: Privilege abuse,
+    data tampering, log deletion
+  - Goal: Cover tracks, steal data
+  - Impact: Compliance violation
+end note
+
+legend right
+  **STRIDE Categories**
+  S = Spoofing Identity
+  T = Tampering with Data
+  R = Repudiation
+  I = Information Disclosure
+  D = Denial of Service
+  E = Elevation of Privilege
+  
+  **Severity Levels**
+  Red (thick) = Critical Risk
+  Orange (thick) = High Risk
+  
+  **Total Threats: 15**
+  Critical: 6
+  High: 9
+endlegend
+
+@enduml

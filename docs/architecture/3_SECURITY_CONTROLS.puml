@@ -1,0 +1,98 @@
+@startuml Security_Controls
+
+title Security Controls & Mitigations
+caption STRIDE Threat Mitigations Mapped to AWS Services
+
+scale max 2400 width
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 13
+
+package "STRIDE Categories" {
+  component "[S]\nSpoofing" as spoofing #FFCDD2
+  component "[T]\nTampering" as tampering #FFE0B2
+  component "[R]\nRepudiation" as repudiation #FFF9C4
+  component "[I]\nInfo Disclosure" as disclosure #E1F5FE
+  component "[D]\nDenial of Service" as dos #F3E5F5
+  component "[E]\nElevation" as elevation #FCE4EC
+}
+
+package "Security Controls" {
+  component "Cognito + MFA" as cognito #90EE90
+  component "WAF + Rate Limiting" as waf #90EE90
+  component "KMS Encryption" as kms #90EE90
+  component "S3 Versioning" as versioning #90EE90
+  component "CloudTrail (7yr)" as trail #90EE90
+  component "TLS 1.3" as tls #90EE90
+  component "IAM Least Privilege" as iam #90EE90
+  component "CloudWatch Alerts" as cw #90EE90
+  component "API Gateway Throttle" as throttle #90EE90
+}
+
+' === MITIGATION MAPPINGS ===
+spoofing --> cognito : MFA + JWT validation
+spoofing --> tls : Secure transport
+
+tampering --> kms : Encrypt at rest
+tampering --> versioning : Track changes
+tampering --> trail : Audit all writes
+
+repudiation --> trail : Immutable logs
+repudiation --> versioning : Version history
+
+disclosure --> kms : Data encryption
+disclosure --> tls : Transport encryption
+disclosure --> iam : Access control
+
+dos --> waf : DDoS protection
+dos --> throttle : Rate limiting
+dos --> cw : Auto-scaling triggers
+
+elevation --> iam : Role separation
+elevation --> cw : Privilege monitoring
+elevation --> trail : Access logging
+
+note right of cognito
+  **Preventive Controls**
+  - Stop threats before they occur
+  - Examples: IAM, Cognito, WAF
+  - Status: Cognito PLANNED
+end note
+
+note right of trail
+  **Detective Controls**
+  - Identify threats in progress
+  - Examples: CloudWatch, CloudTrail
+  - Status: CloudTrail LIVE
+end note
+
+note right of cw
+  **Corrective Controls**
+  - Respond to detected threats
+  - Examples: Lambda alerts, rollback
+  - Status: CloudWatch PLANNED
+end note
+
+legend right
+  **Security Principles**
+  - Least Privilege (IAM policies)
+  - Defense in Depth (multiple layers)
+  - Confidentiality (TLS + KMS)
+  - Integrity (versioning + audit)
+  - Availability (auto-scaling)
+  
+  **Control Types**
+  Preventive: IAM, Cognito, WAF
+  Detective: CloudWatch, CloudTrail
+  Corrective: Lambda alerts
+  Compensating: Rate limits, masking
+  
+  **HIPAA Compliance**
+  - Access Control (Cognito + IAM) ✓
+  - Audit Controls (CloudTrail) ✓
+  - Integrity (KMS + Versioning) ✓
+  - Transmission Security (TLS) ✓
+  - Encryption (AES-256) ✓
+endlegend
+
+@enduml
