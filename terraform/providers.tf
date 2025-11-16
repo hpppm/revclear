@@ -12,13 +12,6 @@ terraform {
     }
   }
   
-  backend "s3" {
-    bucket         = "revclear-terraform-state"
-    key            = "terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    dynamodb_table = "revclear-terraform-locks"
-  }
 }
 
 provider "aws" {

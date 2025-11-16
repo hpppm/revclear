@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RevClear - Clinician Review Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 { font-size: 28px; margin-bottom: 10px; }
+        .subtitle { opacity: 0.9; }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .filter-group select, .filter-group button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .patient-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 5px solid #ddd;
+            transition: transform 0.2s;
+        }
+        
+        .patient-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        
+        .patient-card.pending { border-left-color: #ff9800; }
+        .patient-card.approved { border-left-color: #4caf50; }
+        .patient-card.rejected { border-left-color: #f44336; }
+        
+        .patient-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .patient-info h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .patient-meta {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.pending { background: #fff3e0; color: #f57c00; }
+        .status-badge.approved { background: #e8f5e9; color: #2e7d32; }
+        .status-badge.rejected { background: #ffebee; color: #c62828; }
+        
+        .section {
+            margin: 20px 0;
+        }
+        
+        .section h3 {
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section h3::before {
+            content: "▸";
+            margin-right: 8px;
+            color: #667eea;
+        }
+        
+        .soap-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .code-chip {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 5px 12px;
+            border-radius: 15px;
+            margin: 5px 5px 5px 0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .approve {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .approve:hover { background: #45a049; }
+        
+        .reject {
+            background: #f44336;
+            color: white;
+        }
+        
+        .reject:hover { background: #da190b; }
+        
+        .edit {
+            background: #2196f3;
+            color: white;
+        }
+        
+        .edit:hover { background: #0b7dda; }
+        
+        .refresh {
+            background: #9c27b0;
+            color: white;
+        }
+        
+        .refresh:hover { background: #7b1fa2; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏥 RevClear - Clinician Review Dashboard</h1>
+        <p class="subtitle">Review and approve AI-generated medical codes</p>
+    </div>
+
+    <div class="filters">
+        <div class="filter-group">
+            <label>Specialty:</label>
+            <select id="specialty-filter" onchange="filterPatients()">
+                <option value="all">All Specialties</option>
+                <option value="mental_health">Mental Health</option>
+                <option value="physical_therapy">Physical Therapy</option>
+                <option value="speech_therapy">Speech Therapy</option>
+            </select>
+            
+            <label>Status:</label>
+            <select id="status-filter" onchange="filterPatients()">
+                <option value="all">All Statuses</option>
+                <option value="PENDING_REVIEW">Pending Review</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+            </select>
+            
+            <button class="refresh" onclick="loadPatients()">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+
+    <div id="patients-container">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading patients...</p>
+        </div>
+    </div>
+
+    <script>
+        // TODO: Replace with your actual API Gateway endpoint after deployment
+        const API_ENDPOINT = 'https://your-api-id.execute-api.us-east-1.amazonaws.com/dev';
+        
+        let allPatients = [];
+        
+        async function loadPatients() {
+            try {
+                const container = document.getElementById('patients-container');
+                container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading patients...</p></div>';
+                
+                // Fetch from all 3 DynamoDB tables
+                const specialties = ['mental_health', 'physical_therapy', 'speech_therapy'];
+                const promises = specialties.map(async (specialty) => {
+                    const response = await fetch(`${API_ENDPOINT}/patients?specialty=${specialty}`);
+                    if (!response.ok) throw new Error(`Failed to load ${specialty} patients`);
+                    const data = await response.json();
+                    return data.map(p => ({ ...p, specialty }));
+                });
+                
+                const results = await Promise.all(promises);
+                allPatients = results.flat();
+                
+                displayPatients(allPatients);
+            } catch (error) {
+                console.error('Error loading patients:', error);
+                document.getElementById('patients-container').innerHTML = `
+                    <div class="empty-state">
+                        <h3>⚠️ Error Loading Patients</h3>
+                        <p>${error.message}</p>
+                        <p style="margin-top:10px; font-size:12px; color:#999;">
+                            Make sure API_ENDPOINT is configured and Lambda functions are deployed.
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayPatients(patients) {
+            const container = document.getElementById('patients-container');
+            
+            if (patients.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📋 No Patients Found</h3>
+                        <p>No patients match the current filters.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = patients.map(patient => `
+                <div class="patient-card ${(patient.review_status || 'pending').toLowerCase()}">
+                    <div class="patient-header">
+                        <div class="patient-info">
+                            <h2>${patient.patient_name || 'Patient ' + patient.patient_id}</h2>
+                            <div class="patient-meta">
+                                ID: ${patient.patient_id} | 
+                                Specialty: ${formatSpecialty(patient.specialty)} |
+                                Generated: ${formatDate(patient.ai_generated_at)}
+                            </div>
+                        </div>
+                        <span class="status-badge ${(patient.review_status || 'pending').toLowerCase()}">
+                            ${patient.review_status || 'PENDING_REVIEW'}
+                        </span>
+                    </div>
+                    
+                    <div class="section">
+                        <h3>SOAP Summary (AI Generated)</h3>
+                        <div class="soap-summary">${patient.soap_summary || 'Not generated yet'}</div>
+                    </div>
+                    
+                    <div class="section">
+                        <h3>ICD-10 Diagnosis Codes</h3>
+                        <input type="text" 
+                               id="icd10-${patient.patient_id}" 
+                               value="${(patient.icd10_codes || []).join(', ')}" 
+                               placeholder="Enter ICD-10 codes (comma-separated)">
+                    </div>
+                    
+                    <div class="section">
+                        <h3>CPT Procedure Codes</h3>
+                        <input type="text" 
+                               id="cpt-${patient.patient_id}" 
+                               value="${(patient.cpt_codes || []).join(', ')}" 
+                               placeholder="Enter CPT codes (comma-separated)">
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="approve" onclick="approve('${patient.patient_id}', '${patient.specialty}')">
+                            ✓ Approve & Submit
+                        </button>
+                        <button class="edit" onclick="saveEdits('${patient.patient_id}', '${patient.specialty}')">
+                            ✎ Save Edits
+                        </button>
+                        <button class="reject" onclick="reject('${patient.patient_id}', '${patient.specialty}')">
+                            ✗ Reject for Review
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterPatients() {
+            const specialty = document.getElementById('specialty-filter').value;
+            const status = document.getElementById('status-filter').value;
+            
+            let filtered = allPatients;
+            
+            if (specialty !== 'all') {
+                filtered = filtered.filter(p => p.specialty === specialty);
+            }
+            
+            if (status !== 'all') {
+                filtered = filtered.filter(p => (p.review_status || 'PENDING_REVIEW') === status);
+            }
+            
+            displayPatients(filtered);
+        }
+        
+        async function approve(patientId, specialty) {
+            if (!confirm('Approve this patient for billing? This will mark codes as final.')) return;
+            
+            const icd10 = document.getElementById(`icd10-${patientId}`).value.split(',').map(s => s.trim()).filter(s => s);
+            const cpt = document.getElementById(`cpt-${patientId}`).value.split(',').map(s => s.trim()).filter(s => s);
+            
+            try {
+                const response = await fetch(`${API_ENDPOINT}/patients/${patientId}/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        specialty,
+                        icd10_codes: icd10,
+                        cpt_codes: cpt,
+                        status: 'APPROVED',
+                        approved_by: 'Clinician', // TODO: Add actual user
+                        approved_at: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to approve patient');
+                
+                alert('✅ Patient approved successfully!');
+                loadPatients();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        async function saveEdits(patientId, specialty) {
+            const icd10 = document.getElementById(`icd10-${patientId}`).value.split(',').map(s => s.trim()).filter(s => s);
+            const cpt = document.getElementById(`cpt-${patientId}`).value.split(',').map(s => s.trim()).filter(s => s);
+            
+            try {
+                const response = await fetch(`${API_ENDPOINT}/patients/${patientId}/update`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        specialty,
+                        icd10_codes: icd10,
+                        cpt_codes: cpt,
+                        last_edited_at: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to save edits');
+                
+                alert('✅ Edits saved successfully!');
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        async function reject(patientId, specialty) {
+            const reason = prompt('Please provide a reason for rejection:');
+            if (!reason) return;
+            
+            try {
+                const response = await fetch(`${API_ENDPOINT}/patients/${patientId}/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        specialty,
+                        status: 'REJECTED',
+                        rejection_reason: reason,
+                        rejected_at: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to reject patient');
+                
+                alert('⚠️ Patient marked for review.');
+                loadPatients();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        function formatSpecialty(specialty) {
+            return specialty.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleString();
+        }
+        
+        // Load patients on page load
+        loadPatients();
+        
+        // Auto-refresh every 60 seconds
+        setInterval(loadPatients, 60000);
+    </script>
+</body>
+</html>

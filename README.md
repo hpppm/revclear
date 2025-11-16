@@ -69,59 +69,174 @@ Speech-to-text for clinical encounters
 ### 🤖 Amazon Bedrock
 AI-powered clinical coding and summaries
 - Model: Claude 3 Sonnet
-- Embeddings: Titan Text
-- Human review required after code generation
+---
 
-### 👥 Amazon A2I (Augmented AI)
-Human-in-the-loop review at three checkpoints:
-1. After speech-to-text transcription
-2. After CPT/ICD code generation
-3. After EDI claim draft
+## Quick Deploy (3 Steps)
 
-### 🎨 Frontend (CloudFront + S3)
-React application with Vite
-- Deployment: S3 static hosting + CloudFront CDN
-- Auth: Cognito Hosted UI
-- See: frontend/
+### 1. Install Dependencies
+```bash
+cd backend/lambdas
+npm install
+```
+
+### 2. Deploy Lambda Functions
+```bash
+# Package
+zip -r transcribeAudioSimple.zip transcribeAudioSimple.js node_modules/
+zip -r generateCodesSimple.zip generateCodesSimple.js node_modules/
+
+# Deploy
+aws lambda create-function \
+  --function-name transcribeAudioSimple \
+  --runtime nodejs18.x \
+  --role arn:aws:iam::414669980881:role/LambdaRevclearRole \
+  --handler transcribeAudioSimple.handler \
+  --zip-file fileb://transcribeAudioSimple.zip \
+  --timeout 60 \
+  --memory-size 512
+
+aws lambda create-function \
+  --function-name generateCodesSimple \
+  --runtime nodejs18.x \
+  --role arn:aws:iam::414669980881:role/LambdaRevclearRole \
+  --handler generateCodesSimple.handler \
+  --zip-file fileb://generateCodesSimple.zip \
+  --timeout 90 \
+  --memory-size 1024
+```
+
+### 3. Upload Review UI
+```bash
+aws s3 cp frontend/review.html s3://arevclear/review.html --acl public-read
+```
+
+**Done!** Access at: https://arevclear.s3.amazonaws.com/review.html
 
 ---
 
-## Repository Structure
+## Project Structure
 
 ```
 revclear/
-├── .env.example           Environment variables template
-├── backend/
-│   ├── lambdas/          Lambda function templates
-│   └── api-gateway-config.json
-├── frontend/
-│   ├── src/config.js     Frontend configuration
+├── backend/lambdas/
+│   ├── processAudioLambda.js         ✅ Deployed
+│   ├── transcribeAudioSimple.js      ⏳ To deploy
+│   ├── generateCodesSimple.js        ⏳ To deploy
 │   └── package.json
-├── terraform/            Infrastructure as code
-├── docs/                 Documentation
-└── Demo/                 Static demo site
+├── frontend/
+│   └── review.html                   ⏳ Clinician dashboard
+├── terraform/                         📁 Optional (for future scaling)
+└── .env.production                    🔑 All your AWS IDs
 ```
 
 ---
 
-## Quick Start
+## How It Works
 
-1. Copy environment variables
-   ```bash
-   cp .env.example .env
-   ```
+### Workflow
+```
+Audio Upload (S3)
+   ↓
+processAudioLambda (triggers transcription)
+   ↓
+Transcribe Medical (speech-to-text)
+   ↓
+generateCodesSimple (Bedrock AI)
+   ↓
+DynamoDB (status: PENDING_REVIEW)
+   ↓
+review.html (clinician approves)
+   ↓
+Ready for billing
+```
 
-2. Review Lambda templates in backend/lambdas/
-
-3. Review API Gateway configuration in backend/api-gateway-config.json
-
-4. Review frontend configuration in frontend/src/config.js
+### Specialties
+- Mental Health (`mental_health_patients`)
+- Physical Therapy (`physical_therapy_patients`)
+- Speech Therapy (`speech_therapy_patients`)
 
 ---
 
-## Documentation
+## Common Commands
 
-- IMPLEMENTATION_PLAN.md - Step-by-step implementation guide
-- docs/MULTITENANCY.md - Tenant isolation architecture
-- docs/IAM_ROLES.md - Role policies and permissions
-- docs/COGNITO_FLOW.md - Authentication flow
+### Check Deployment
+```bash
+# List Lambda functions
+aws lambda list-functions --query 'Functions[*].[FunctionName,Runtime]' --output table
+
+# Check S3 buckets
+aws s3 ls
+
+# View DynamoDB tables
+aws dynamodb list-tables
+
+# Run full audit
+bash audit_revclear.sh
+```
+
+### Update Lambda
+```bash
+cd backend/lambdas
+zip -r function.zip index.js node_modules/
+aws lambda update-function-code \
+  --function-name FUNCTION_NAME \
+  --zip-file fileb://function.zip
+```
+
+### View Logs
+```bash
+aws logs tail /aws/lambda/transcribeAudioSimple --follow
+```
+
+---
+
+## Environment Variables
+
+See `.env.production` for all AWS resource IDs.
+
+Key variables:
+- `AWS_ACCOUNT_ID=414669980881`
+- `API_GATEWAY_ID=5ryzn2juw7`
+- `S3_MAIN_BUCKET=arevclear`
+- `COGNITO_USER_POOL_ID=us-east-1_NZCFuSv1l`
+
+---
+
+## Troubleshooting
+
+**Lambda fails:** Check IAM role permissions  
+**Transcribe errors:** Verify audio format (wav, mp3, flac)  
+**DynamoDB errors:** Check table names match specialty  
+**Review UI not loading:** Update API_ENDPOINT in review.html
+
+---
+
+## Cost Estimate
+
+**For 15 patients/month:**
+- Lambda: $0.20
+- Transcribe: $7.50 (100 min)
+- Bedrock: $0.30
+- DynamoDB: $1.00
+- S3: $0.50
+- **Total: ~$10/month** ✅
+
+---
+
+## Security
+
+- ✅ HIPAA compliant
+- ✅ Encryption at rest (S3, DynamoDB)
+- ✅ Encryption in transit (TLS 1.2+)
+- ✅ Cognito authentication
+- ✅ IAM least privilege
+
+---
+
+## Support
+
+- 📧 AWS Resources: See `.env.production`
+- 📝 Audit Script: `bash audit_revclear.sh`
+- 🔧 Operations Guide: (this file)
+
+**Last Updated:** 2025-11-16

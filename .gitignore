@@ -94,3 +94,14 @@ terraform.rc
 # Terraform plan files
 *.tfplan
 *plan.out
+
+# Lambda deployment packages
+backend/lambdas/*.zip
+*.zip
+
+# AWS audit reports
+*_audit_*.txt
+revclear_audit_*.txt
+
+# Environment files (keep .env.production as template, but gitignore local copies)
+.env.production.local

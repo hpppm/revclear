@@ -5,6 +5,12 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "region" {
+  description = "AWS region (alias for aws_region)"
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
@@ -146,6 +152,12 @@ variable "bedrock_model_id" {
   default     = "anthropic.claude-3-sonnet-20240229-v1:0"
 }
 
+variable "lambda_code_path" {
+  description = "Path to Lambda function code"
+  type        = string
+  default     = "../backend/lambdas"
+}
+
 # Security Variables
 variable "enable_waf" {
   description = "Enable AWS WAF"
@@ -178,6 +190,12 @@ variable "cognito_user_pool_name" {
   default     = "revclear-users"
 }
 
+variable "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  type        = string
+  default     = "us-east-1_NZCFuSv1l"
+}
+
 variable "cognito_mfa_configuration" {
   description = "MFA configuration (OFF, ON, OPTIONAL)"
   type        = string
@@ -199,6 +217,32 @@ variable "enable_cloudtrail" {
   description = "Enable CloudTrail logging"
   type        = bool
   default     = true
+}
+
+# Monitoring Variables
+variable "alert_email" {
+  description = "Email address for CloudWatch alarms and alerts"
+  type        = string
+  default     = ""
+}
+
+# SageMaker Variables
+variable "create_sagemaker_notebook" {
+  description = "Whether to create a SageMaker notebook instance for ML development"
+  type        = bool
+  default     = false
+}
+
+variable "sagemaker_notebook_instance_type" {
+  description = "Instance type for SageMaker notebook"
+  type        = string
+  default     = "ml.t3.medium"
+}
+
+variable "deploy_sagemaker_model" {
+  description = "Whether to deploy SageMaker model endpoints"
+  type        = bool
+  default     = false
 }
 
 # Tags
