@@ -174,3 +174,33 @@ resource "aws_s3_bucket_notification" "audio_upload" {
 
   depends_on = [aws_lambda_permission.allow_s3_invoke]
 }
+
+# Lambda function for Whisper transcription
+resource "aws_lambda_function" "whisper_transcribe" {
+  function_name = "${var.project_name}-${var.environment}-whisper-transcribe"
+  role          = aws_iam_role.ai_lambda_role.arn
+  handler       = "lambda_handler.lambda_handler"
+  runtime       = "python3.10"
+  filename      = "${var.lambda_code_path}/whisper-lambda.zip"
+  timeout       = 300  # 5 minutes for audio processing
+  memory_size   = 4096  # 4GB for Whisper model
+  
+  ephemeral_storage {
+    size = 2048  # 2GB for model and temp files
+  }
+
+  environment {
+    variables = {
+      WHISPER_MODEL_SIZE = "base"
+      AWS_REGION         = var.region
+      S3_BUCKET_MAIN     = var.s3_bucket_name
+    }
+  }
+
+  tags = merge(
+    var.additional_tags,
+    {
+      Service = "Whisper-Transcription"
+    }
+  )
+}
