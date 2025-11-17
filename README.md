@@ -1,6 +1,34 @@
 # RevClear
 
-HIPAA-compliant multi-tenant healthcare claims processing system
+Healthcare claims processing and transcription platform with AI-powered audio transcription.
+
+## 🚀 Quick Start
+
+Your infrastructure is **already deployed** and ready to test!
+
+**Account**: 414669980881 | **Region**: us-east-1
+
+### Test in 2 Minutes
+
+```bash
+# 1. Upload test audio
+aws s3 cp /mnt/c/Dev/test_audio.wav s3://arevclear/test/audio/test.wav
+
+# 2. Test Lambda
+aws lambda invoke --function-name kr --payload file://s3-event.json output.json
+
+# 3. Check logs
+aws logs tail /aws/lambda/processAudioLambda --since 10m
+```
+
+📖 **Full guide**: See [`SETUP_AND_TEST.md`](./SETUP_AND_TEST.md)
+
+## 📁 Key Files
+
+- **[SETUP_AND_TEST.md](./SETUP_AND_TEST.md)** - Start here! Quick testing guide
+- **[TEST_GUIDE.md](./TEST_GUIDE.md)** - Detailed testing instructions with all your resource names
+- **[FINAL_SUMMARY.md](./FINAL_SUMMARY.md)** - Complete project overview
+- **[cleanup.sh](./cleanup.sh)** - Clean build artifacts
 
 **AWS Account**: 414669980881 | **Region**: us-east-1
 

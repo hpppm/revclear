@@ -1,0 +1,14 @@
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {
+          "name": "arevclear"
+        },
+        "object": {
+          "key": "test/audio/test.wav"
+        }
+      }
+    }
+  ]
+}

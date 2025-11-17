@@ -1,0 +1,99 @@
+{
+  "Comment": "Audio processing workflow with Whisper transcription, PII redaction, and summarization",
+  "StartAt": "TranscribeAudio",
+  "States": {
+    "TranscribeAudio": {
+      "Type": "Task",
+      "Resource": "${WhisperLambdaArn}",
+      "Parameters": {
+        "bucket.$": "$.bucket",
+        "key.$": "$.key",
+        "language.$": "$.language",
+        "task": "transcribe",
+        "enable_pii_redaction": false,
+        "generate_summary": false
+      },
+      "ResultPath": "$.transcription",
+      "Next": "RedactPII",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ],
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "RedactPII": {
+      "Type": "Task",
+      "Resource": "${PIIRedactionLambdaArn}",
+      "Parameters": {
+        "text.$": "$.transcription.body.text",
+        "guardrail_id": "${GuardrailId}"
+      },
+      "ResultPath": "$.redaction",
+      "Next": "GenerateSummary",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "GenerateSummary"
+        }
+      ]
+    },
+    "GenerateSummary": {
+      "Type": "Task",
+      "Resource": "${SummaryLambdaArn}",
+      "Parameters": {
+        "text.$": "$.redaction.body.redacted_text",
+        "model_id": "${BedrockModelId}"
+      },
+      "ResultPath": "$.summary",
+      "Next": "SaveResults",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "SaveResults"
+        }
+      ]
+    },
+    "SaveResults": {
+      "Type": "Task",
+      "Resource": "${SaveResultsLambdaArn}",
+      "Parameters": {
+        "bucket.$": "$.bucket",
+        "key.$": "$.key",
+        "transcription.$": "$.transcription",
+        "redaction.$": "$.redaction",
+        "summary.$": "$.summary"
+      },
+      "ResultPath": "$.output",
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "HandleError": {
+      "Type": "Task",
+      "Resource": "${ErrorHandlerLambdaArn}",
+      "Parameters": {
+        "error.$": "$.error",
+        "input.$": "$"
+      },
+      "Next": "Fail"
+    },
+    "Fail": {
+      "Type": "Fail",
+      "Error": "WorkflowFailed",
+      "Cause": "Audio processing workflow failed"
+    }
+  }
+}
