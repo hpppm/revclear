@@ -1,18 +1,19 @@
 # Terraform Infrastructure
 
-AWS infrastructure as code for multi-tenant healthcare system
-
-## Prerequisites
+## Setup
 
 ```bash
-# Install Terraform and AWS CLI
-aws configure  # Use account 414669980881
-```
+# Load environment variables
+source ../.env
 
-## Deploy
+# Initialize with backend config
+terraform init -backend-config="bucket=${BUCKET_TERRAFORM}"
 
-```bash
-terraform init
+# Create terraform.tfvars from example
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+# Deploy
 terraform plan
 terraform apply
 ```

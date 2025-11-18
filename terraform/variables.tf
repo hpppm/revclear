@@ -193,7 +193,7 @@ variable "cognito_user_pool_name" {
 variable "cognito_user_pool_id" {
   description = "Cognito User Pool ID"
   type        = string
-  default     = "us-east-1_NZCFuSv1l"
+  default     = ""
 }
 
 variable "cognito_mfa_configuration" {
@@ -243,6 +243,25 @@ variable "deploy_sagemaker_model" {
   description = "Whether to deploy SageMaker model endpoints"
   type        = bool
   default     = false
+}
+
+# Bucket name variables
+variable "bucket_ai_data" {
+  description = "AI data bucket name"
+  type        = string
+  default     = ""
+}
+
+variable "bucket_terraform_state" {
+  description = "Terraform state bucket name"
+  type        = string
+  default     = ""
+}
+
+variable "sagemaker_role_arn" {
+  description = "SageMaker IAM role ARN"
+  type        = string
+  default     = ""
 }
 
 # Tags

@@ -6,7 +6,7 @@ Healthcare claims processing and transcription platform with AI-powered audio tr
 
 Your infrastructure is **already deployed** and ready to test!
 
-**Account**: 414669980881 | **Region**: us-east-1
+**Account**: See `.env` | **Region**: See `.env`
 
 ### Test in 2 Minutes
 
@@ -30,27 +30,27 @@ aws logs tail /aws/lambda/processAudioLambda --since 10m
 - **[FINAL_SUMMARY.md](./FINAL_SUMMARY.md)** - Complete project overview
 - **[cleanup.sh](./cleanup.sh)** - Clean build artifacts
 
-**AWS Account**: 414669980881 | **Region**: us-east-1
+**AWS Account**: See `.env` | **Region**: See `.env`
 
 ---
 
 ## Deployed Services
 
 ### 🔐 Authentication (Amazon Cognito)
-- User Pool ID: us-east-1_NZCFuSv1l
-- App Client ID: 5g5qvrvd04h9suejmlie2rjncd
-- Identity Pool ID: us-east-1:1d234050-e204-4a70-b4af-5930556b6957
+- User Pool ID: `${COGNITO_USER_POOL_ID}`
+- App Client ID: `${COGNITO_APP_CLIENT_ID}`
+- Identity Pool ID: `${COGNITO_IDENTITY_POOL_ID}`
 - Groups: Clinic_A, Clinic_B, Clinic_C
-- Users: clinicianA@example.com, clinicianB@example.com, clinicianC@example.com
+- Users: Configured in Cognito (see `.env`)
 
 ### 👤 IAM Roles
 Tenant Access:
-- ClinicARole: arn:aws:iam::414669980881:role/ClinicARole
-- ClinicBRole: arn:aws:iam::414669980881:role/ClinicBRole
-- ClinicCRole: arn:aws:iam::414669980881:role/ClinicCRole
+- ClinicARole: `${ROLE_CLINIC_A}`
+- ClinicBRole: `${ROLE_CLINIC_B}`
+- ClinicCRole: `${ROLE_CLINIC_C}`
 
 Lambda Execution:
-- RevClearAIProcessingRole: arn:aws:iam::414669980881:role/RevClearAIProcessingRole
+- RevClearAIProcessingRole: `${ROLE_LAMBDA_PROCESSING}`
 
 ### 🗄️ Data Storage (DynamoDB)
 - mental_health_patients
@@ -58,15 +58,15 @@ Lambda Execution:
 - speech_therapy_patients
 
 ### 📦 File Storage (S3)
-- arevclear (tenant data)
-- arevclear-logs (CloudTrail logs)
-- arevclear-raw (raw uploads)
-- arevclear-exports (data exports)
-- revclear-ai-data-414669980881 (AI processing, lifecycle: 90d→DEEP_ARCHIVE, 730d expiration)
+- `${S3_MAIN_BUCKET}` (tenant data)
+- `${S3_LOGS_BUCKET}` (CloudTrail logs)
+- `${S3_RAW_BUCKET}` (raw uploads)
+- `${S3_EXPORTS_BUCKET}` (data exports)
+- `${S3_AI_DATA_BUCKET}` (AI processing, lifecycle: 90d→DEEP_ARCHIVE, 730d expiration)
 
 ### 🔍 Audit Trail (CloudTrail)
-- Trail: RevClearTrail
-- Logs: arevclear-logs/AWSLogs/414669980881
+- Trail: `${CLOUDTRAIL_NAME}`
+- Logs: `${CLOUDTRAIL_LOG_BUCKET}/AWSLogs/${AWS_ACCOUNT_ID}`
 
 ### 🔒 Encryption (KMS)
 - All DynamoDB tables encrypted
@@ -114,10 +114,13 @@ zip -r transcribeAudioSimple.zip transcribeAudioSimple.js node_modules/
 zip -r generateCodesSimple.zip generateCodesSimple.js node_modules/
 
 # Deploy
+# Load environment variables first
+source .env
+
 aws lambda create-function \
   --function-name transcribeAudioSimple \
   --runtime nodejs18.x \
-  --role arn:aws:iam::414669980881:role/LambdaRevclearRole \
+  --role $LAMBDA_ROLE_ARN \
   --handler transcribeAudioSimple.handler \
   --zip-file fileb://transcribeAudioSimple.zip \
   --timeout 60 \
@@ -126,7 +129,7 @@ aws lambda create-function \
 aws lambda create-function \
   --function-name generateCodesSimple \
   --runtime nodejs18.x \
-  --role arn:aws:iam::414669980881:role/LambdaRevclearRole \
+  --role $LAMBDA_ROLE_ARN \
   --handler generateCodesSimple.handler \
   --zip-file fileb://generateCodesSimple.zip \
   --timeout 90 \
@@ -138,7 +141,7 @@ aws lambda create-function \
 aws s3 cp frontend/review.html s3://arevclear/review.html --acl public-read
 ```
 
-**Done!** Access at: https://arevclear.s3.amazonaws.com/review.html
+**Done!** Access at: `${FRONTEND_URL}`
 
 ---
 
@@ -153,8 +156,8 @@ revclear/
 │   └── package.json
 ├── frontend/
 │   └── review.html                   ⏳ Clinician dashboard
-├── terraform/                         📁 Optional (for future scaling)
-└── .env.production                    🔑 All your AWS IDs
+├── terraform/                         📁 Infrastructure as code
+└── .env                               🔑 All your AWS IDs (NEVER commit!)
 ```
 
 ---
@@ -220,13 +223,15 @@ aws logs tail /aws/lambda/transcribeAudioSimple --follow
 
 ## Environment Variables
 
-See `.env.production` for all AWS resource IDs.
+All AWS credentials are stored in `.env` (excluded from git).
 
 Key variables:
-- `AWS_ACCOUNT_ID=414669980881`
-- `API_GATEWAY_ID=5ryzn2juw7`
-- `S3_MAIN_BUCKET=arevclear`
-- `COGNITO_USER_POOL_ID=us-east-1_NZCFuSv1l`
+- `AWS_ACCOUNT_ID` - Your AWS account ID
+- `API_GATEWAY_ID` - API Gateway endpoint ID
+- `S3_MAIN_BUCKET` - Main S3 bucket name
+- `COGNITO_USER_POOL_ID` - Cognito user pool ID
+
+See `.env.example` for a complete list of required variables.
 
 ---
 
@@ -263,8 +268,15 @@ Key variables:
 
 ## Support
 
-- 📧 AWS Resources: See `.env.production`
+- 📧 AWS Resources: See `.env`
 - 📝 Audit Script: `bash audit_revclear.sh`
 - 🔧 Operations Guide: (this file)
 
-**Last Updated:** 2025-11-16
+## Important Security Notes
+
+⚠️ **Never commit `.env` or `.env.production` to git**
+- All AWS credentials are in `.env` (gitignored)
+- Use `.env.example` as a template for setup
+- This repo is safe to share with professors
+
+**Last Updated:** 2025-11-18
