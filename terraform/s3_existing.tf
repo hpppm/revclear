@@ -14,10 +14,12 @@ resource "aws_s3_bucket" "arevclear_raw" {
   bucket = "arevclear-raw"
 }
 
+# Import with: terraform import aws_s3_bucket.revclear_ai_data ${BUCKET_AI}
 resource "aws_s3_bucket" "revclear_ai_data" {
-  bucket = "revclear-ai-data-414669980881"
+  bucket = var.bucket_ai_data
 }
 
+# Import with: terraform import aws_s3_bucket.revclear_terraform_state ${BUCKET_TERRAFORM}
 resource "aws_s3_bucket" "revclear_terraform_state" {
-  bucket = "revclear-terraform-state-414669980881"
+  bucket = var.bucket_terraform_state
 }

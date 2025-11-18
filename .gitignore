@@ -103,5 +103,10 @@ backend/lambdas/*.zip
 *_audit_*.txt
 revclear_audit_*.txt
 
-# Environment files (keep .env.production as template, but gitignore local copies)
+# Environment files - ALL variants should be ignored
+.env.production
 .env.production.local
+
+# Lambda builds
+lambda_whisper/
+whisper_layer/
