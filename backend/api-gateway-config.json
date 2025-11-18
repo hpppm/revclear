@@ -3,8 +3,8 @@
   "service": "AWS API Gateway",
   "type": "REST API",
   "authentication": "Cognito User Pool Authorizer",
-  "cognitoUserPoolId": "us-east-1_NZCFuSv1l",
-  "cognitoAppClientId": "5g5qvrvd04h9suejmlie2rjncd",
+  "cognitoUserPoolId": "${COGNITO_USER_POOL_ID}",
+  "cognitoAppClientId": "${COGNITO_APP_CLIENT_ID}",
   "endpoints": [
     {
       "path": "/patients",
