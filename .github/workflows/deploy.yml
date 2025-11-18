@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy to AWS
     runs-on: ubuntu-latest
 
     steps:
@@ -29,23 +28,22 @@ jobs:
         with:
           terraform_version: 1.13.5
 
-      - name: Initialize Terraform
+      - name: Terraform Init
         run: terraform init
         working-directory: terraform
 
-      - name: Plan Terraform
+      - name: Terraform Plan
         run: terraform plan
         working-directory: terraform
 
-      - name: Apply Terraform
+      - name: Terraform Apply
         run: terraform apply -auto-approve
         working-directory: terraform
 
-      - name: Install AWS SAM CLI
-        run: |
-          pip install aws-sam-cli
+      - name: Install AWS SAM
+        run: pip install aws-sam-cli
 
-      - name: Build and Deploy Lambda Functions
+      - name: SAM Build and Deploy
         run: |
           sam build
           sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
