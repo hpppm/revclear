@@ -1,3 +1,0 @@
-# Utilities requirements
-pydub>=0.25.1
-boto3>=1.28.0
