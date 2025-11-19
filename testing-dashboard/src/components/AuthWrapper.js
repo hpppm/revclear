@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Login from './Login';
-import { decodeEmailFromToken } from '../lib/utils/token';
+import React, { useState, useEffect } from "react";
+import Login from "./Login";
+import { decodeEmailFromToken } from "../lib/utils/jwtDecoder";
 
 /**
  * A wrapper component that protects its children from unauthenticated access.
@@ -16,7 +16,7 @@ export default function AuthWrapper({ children }) {
 
   useEffect(() => {
     // On initial load, check local storage for an existing token.
-    const storedToken = window.localStorage.getItem('revclear-token');
+    const storedToken = window.localStorage.getItem("revclear-token");
     if (storedToken) {
       setToken(storedToken);
       setUser({ email: decodeEmailFromToken(storedToken) });
@@ -33,7 +33,7 @@ export default function AuthWrapper({ children }) {
   const handleLoginSuccess = (authResult) => {
     const newToken = authResult.IdToken;
     if (newToken) {
-      window.localStorage.setItem('revclear-token', newToken);
+      window.localStorage.setItem("revclear-token", newToken);
       setToken(newToken);
       setUser({ email: decodeEmailFromToken(newToken) });
     }
@@ -43,7 +43,7 @@ export default function AuthWrapper({ children }) {
    * Handles user logout by clearing the token and user state.
    */
   const handleLogout = () => {
-    window.localStorage.removeItem('revclear-token');
+    window.localStorage.removeItem("revclear-token");
     setToken(null);
     setUser(null);
   };

@@ -3,7 +3,7 @@ import express from "express";
 import helmet, { HelmetOptions } from "helmet";
 import cors from "cors";
 import morgan from "morgan";
-import { registerRoutes } from "./api";
+
 import { auditLogger } from "./middleware/audit";
 
 const app = express();
