@@ -23,6 +23,9 @@ jobs:
           role-to-assume: arn:aws:iam::414669980881:role/GitHubActionsRole
           aws-region: us-east-1
 
+      - name: Test AWS identity
+        run: aws sts get-caller-identity
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -35,4 +38,3 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve
         working-directory: terraform
-
