@@ -110,3 +110,4 @@ revclear_audit_*.txt
 # Lambda builds
 lambda_whisper/
 whisper_layer/
+trust.json
