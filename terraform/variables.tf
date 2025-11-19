@@ -139,25 +139,6 @@ variable "s3_lifecycle_glacier_days" {
   default     = 90
 }
 
-# AI Services Variables
-variable "transcribe_language_code" {
-  description = "Language code for Amazon Transcribe"
-  type        = string
-  default     = "en-US"
-}
-
-variable "bedrock_model_id" {
-  description = "Amazon Bedrock model ID"
-  type        = string
-  default     = "anthropic.claude-3-sonnet-20240229-v1:0"
-}
-
-variable "lambda_code_path" {
-  description = "Path to Lambda function code"
-  type        = string
-  default     = "../backend/lambdas"
-}
-
 # Security Variables
 variable "enable_waf" {
   description = "Enable AWS WAF"
@@ -226,25 +207,6 @@ variable "alert_email" {
   default     = ""
 }
 
-# SageMaker Variables
-variable "create_sagemaker_notebook" {
-  description = "Whether to create a SageMaker notebook instance for ML development"
-  type        = bool
-  default     = false
-}
-
-variable "sagemaker_notebook_instance_type" {
-  description = "Instance type for SageMaker notebook"
-  type        = string
-  default     = "ml.t3.medium"
-}
-
-variable "deploy_sagemaker_model" {
-  description = "Whether to deploy SageMaker model endpoints"
-  type        = bool
-  default     = false
-}
-
 # Bucket name variables
 variable "bucket_ai_data" {
   description = "AI data bucket name"
@@ -254,12 +216,6 @@ variable "bucket_ai_data" {
 
 variable "bucket_terraform_state" {
   description = "Terraform state bucket name"
-  type        = string
-  default     = ""
-}
-
-variable "sagemaker_role_arn" {
-  description = "SageMaker IAM role ARN"
   type        = string
   default     = ""
 }
