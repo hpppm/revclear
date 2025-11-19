@@ -1,0 +1,260 @@
+@tailwind base;
+@tailwind utilities;
+@tailwind utilities;
+
+:root {
+  /* Dark theme colors by default */
+  --color-bg-primary: #1a202c; /* Dark blue-gray */
+  --color-bg-secondary: #2d3748; /* Slightly lighter dark blue-gray */
+  --color-bg-tertiary: #4a5568; /* Even lighter dark blue-gray */
+  --color-text-primary: #000000; /* Light gray */
+  --color-text-secondary: #3b3e43; /* Medium gray (for descriptions) */
+  --color-text-accent: #63b3ed; /* Light blue */
+  --color-border: #4a5568; /* Dark border */
+  --color-success: #68d391; /* Green */
+  --color-error: #fc8181; /* Red */
+  --color-warning: #f6ad55; /* Orange */
+
+  /* RGB versions for rgba() usage */
+  --color-success-rgb: 104, 211, 145;
+  --color-error-rgb: 252, 129, 129;
+  --color-text-accent-rgb: 99, 179, 237;
+
+  --font-console: "Red Hat Display", "Inter", system-ui;
+}
+
+/* Override for light theme if preferred by user's system */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f7fafc;
+    --color-bg-tertiary: #edf2f7;
+    --color-text-primary: #1a202c;
+    --color-text-secondary: #4a5568;
+    --color-text-accent: #3182ce;
+    --color-border: #e2e8f0;
+    --color-success: #38a169;
+    --color-error: #e53e3e;
+    --color-warning: #dd6b20;
+
+    --color-success-rgb: 56, 161, 105;
+    --color-error-rgb: 229, 62, 62;
+    --color-text-accent-rgb: 49, 130, 206;
+  }
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-console), "Red Hat Display", sans-serif;
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* General styles for panels and buttons for dark theme */
+.panel {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-radius: 0.5rem; /* Added for consistency */
+  padding: 1.5rem; /* Added for consistency */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Added shadow */
+}
+
+.s3-editor,
+.s3-input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  /* Ensure placeholder text is visible */
+  &::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+  }
+}
+
+
+
+.s3-action-status,
+.s3-editor-status,
+.details,
+.status-copy {
+  color: var(--color-text-secondary); /* For description texts */
+  font-size: 0.9rem;
+}
+
+.s3-action-status.error,
+.s3-editor-status.error,
+.status-copy.error-copy {
+  color: var(--color-error);
+}
+.s3-action-status.success,
+.s3-editor-status.success,
+.status-copy.success-copy {
+  color: var(--color-success);
+}
+
+.callout.neutral {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.callout.success {
+  background-color: rgba(
+    var(--color-success-rgb),
+    0.15
+  ); /* Use rgba for transparency */
+  color: var(--color-success);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.callout.error {
+  background-color: rgba(
+    var(--color-error-rgb),
+    0.15
+  ); /* Use rgba for transparency */
+  color: var(--color-error);
+  border: 1px solid rgba(var(--color-error-rgb), 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.pill.warning {
+  background-color: var(--color-warning);
+  color: var(--color-bg-primary);
+}
+.pill.running {
+  background-color: var(--color-success);
+  color: var(--color-bg-primary);
+}
+.pill {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+}
+
+code {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-accent);
+  padding: 0.2em 0.4em;
+  border-radius: 0.2em;
+}
+
+pre {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+/* Base layout adjustments */
+.hero-card {
+  background-color: var(
+    --color-bg-primary
+  ); /* The primary, darkest background */
+  padding: 2rem 1.5rem; /* Adjust padding as needed for the card */
+  border-bottom: 1px solid var(--color-border); /* Keep separator */
+  border-top-left-radius: 0; /* No top radius if it spans full width */
+  border-top-right-radius: 0; /* No top radius */
+  border-left: none; /* No side borders */
+  border-right: none; /* No side borders */
+  margin-bottom: 2rem; /* Add some space below */
+  box-shadow: none; /* No shadow for this top-level card */
+}
+
+.hero-card .hero-label {
+  color: var(--color-text-primary); /* Ensure it's brightest white/light gray */
+}
+.hero-card .hero-title {
+  color: var(--color-text-primary); /* Ensure it's brightest white/light gray */
+}
+.hero-card .hero-subtitle {
+  color: var(--color-text-primary); /* Ensure it's brightest white/light gray */
+  margin-top: 1rem;
+}
+
+/* Adjust text colors within the hero panel to ensure visibility */
+.hero-panel .hero-label {
+  color: var(--color-text-secondary);
+}
+.hero-panel .hero-title {
+  color: var(--color-text-primary);
+}
+.hero-panel .hero-subtitle {
+  color: var(--color-text-secondary);
+}
+.user-bar {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Ensure placeholder text is visible */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+/* Link buttons */
+.link-button {
+  color: var(--color-text-accent);
+}
+
+/* Log Panel Specific Styles */
+.log-entry {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+}
+
+/* Utility class for no transition */
+.no-transition {
+  transition: none !important;
+}
+.log-entry strong {
+  color: var(--color-text-primary);
+}
+.log-entry.error {
+  background-color: rgba(var(--color-error-rgb), 0.15);
+  color: var(--color-error);
+  border: 1px solid rgba(var(--color-error-rgb), 0.3);
+}
+.log-entry.success {
+  background-color: rgba(var(--color-success-rgb), 0.15);
+  color: var(--color-success);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
+}
+.log-entry.info {
+  background-color: rgba(var(--color-text-accent-rgb), 0.15);
+  color: var(--color-text-accent);
+  border: 1px solid rgba(var(--color-text-accent-rgb), 0.3);
+}
+.log-entry pre {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+}
