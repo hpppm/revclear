@@ -111,3 +111,6 @@ revclear_audit_*.txt
 lambda_whisper/
 whisper_layer/
 trust.json
+
+AGENTS.md
+GEMINI.md

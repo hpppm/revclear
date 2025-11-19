@@ -1,0 +1,50 @@
+.button {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s; /* Default transition */
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--color-bg-primary); /* Darker on hover */
+}
+
+.button.primary {
+  background-color: var(--color-text-accent);
+  color: var(--color-bg-primary);
+  border-color: var(--color-text-accent);
+}
+.button.primary:hover:not(:disabled) {
+  background-color: #53a3dc; /* Slightly darker accent */
+}
+
+.button.cyan {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-accent);
+  border-color: var(--color-text-accent);
+}
+.button.cyan:hover:not(:disabled) {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-accent);
+}
+
+.button.danger {
+  background-color: var(--color-error);
+  color: var(--color-bg-primary);
+  border-color: var(--color-error);
+}
+.button.danger:hover:not(:disabled) {
+  background-color: #d13a3a;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button.no-transition {
+  transition: none !important;
+}
