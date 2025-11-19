@@ -8,6 +8,9 @@ import {
   AdminSetUserPasswordCommand,
   AdminConfirmSignUpCommand,
   DescribeUserPoolClientCommand,
+  GlobalSignOutCommand,
+  ForgotPasswordCommand,
+  ConfirmForgotPasswordCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -101,6 +104,56 @@ export async function signInUser(email: string, password: string) {
 
   return cognitoClient.send(command);
 }
+
+/**
+ * Refresh authentication tokens
+ */
+export async function refreshAuthTokens(refreshToken: string) {
+  const command = new InitiateAuthCommand({
+    ClientId: clientId,
+    AuthFlow: 'REFRESH_TOKEN_AUTH',
+    AuthParameters: {
+      REFRESH_TOKEN: refreshToken,
+    },
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
+ * Sign out user globally
+ */
+export async function signOutUser(accessToken: string) {
+  const command = new GlobalSignOutCommand({
+    AccessToken: accessToken,
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Initiate forgot password flow
+ */
+export async function forgotPassword(email: string) {
+  const command = new ForgotPasswordCommand({
+    ClientId: clientId,
+    Username: email,
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Confirm forgot password
+ */
+export async function confirmForgotPassword(email: string, code: string, newPassword: string) {
+  const command = new ConfirmForgotPasswordCommand({
+    ClientId: clientId,
+    Username: email,
+    ConfirmationCode: code,
+    Password: newPassword,
+  });
+  return cognitoClient.send(command);
+}
+
 
 /**
  * Admin create user (for testing or admin operations)
