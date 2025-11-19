@@ -13,18 +13,6 @@ module "storage" {
   additional_tags             = var.additional_tags
 }
 
-# AI Services Module (Lambda + IAM)
-module "ai_services" {
-  source = "./modules/ai_services"
-
-  project_name                 = var.project_name
-  environment                  = var.environment
-  region                       = var.region
-  s3_bucket_name              = module.storage.main_bucket_id
-  transcription_jobs_table_arn = module.storage.transcription_jobs_table_arn
-  cognito_user_pool_id        = var.cognito_user_pool_id
-  lambda_code_path            = var.lambda_code_path
-  additional_tags             = var.additional_tags
 }
 
 # Note: Cognito, API Gateway, CloudTrail were created manually and are not managed by Terraform
