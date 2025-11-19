@@ -1,0 +1,2 @@
+- name: Test AWS identity
+  run: aws sts get-caller-identity
