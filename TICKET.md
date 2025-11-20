@@ -115,3 +115,34 @@ Implement the foundational global layout for the frontend application. This layo
 ### ASSIGNED TO
 
 ## RASMUS SEPPANEN
+
+## 4. Genkit: Install Genkit to the backend
+
+**Title:** `feature: global layout shell`
+
+**Description:**
+Install genkit dependencies and get the google ai studio to run.
+
+**Requirements:**
+
+- Install dependencies
+- create a test flow
+- set google ai credentials
+- start the genkit server and see the studio
+
+**Deliverables:**
+
+- genkit folder in the backend
+- 1 example flow
+- 1 tool for getting the transcription file
+
+**Acceptance Criteria:**
+
+- 1 flow in google ai studio can run
+
+**Branch Name:**
+`feature/genkit-setup`
+
+### ASSIGNED TO
+
+## RASMUS SEPPANEN
