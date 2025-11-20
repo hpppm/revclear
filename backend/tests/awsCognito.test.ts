@@ -1,55 +1,5 @@
-const mockCognitoSend = jest.fn();
-const mockGetSigningKey = jest.fn(
-  (kid: string, callback: (err: unknown, key?: { getPublicKey: () => string }) => void) => {
-    callback(null, {
-      getPublicKey: () => "public-key",
-    });
-  }
-);
-const mockJwtVerify = jest.fn(
-  (
-    token: string,
-    getKey: (header: unknown, cb: (err: unknown, key?: string) => void) => void,
-    _opts: unknown,
-    callback: (err: unknown, decoded?: unknown) => void
-  ) => {
-    getKey({ kid: "test-kid" }, () => {
-      callback(null, { sub: "test-user" });
-    });
-  }
-);
-
-const SignUpCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "SignUpCommand",
-  input,
-}));
-const ConfirmSignUpCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "ConfirmSignUpCommand",
-  input,
-}));
-const InitiateAuthCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "InitiateAuthCommand",
-  input,
-}));
-const AdminCreateUserCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "AdminCreateUserCommand",
-  input,
-}));
-const AdminSetUserPasswordCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "AdminSetUserPasswordCommand",
-  input,
-}));
-const AdminConfirmSignUpCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "AdminConfirmSignUpCommand",
-  input,
-}));
-const DescribeUserPoolClientCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "DescribeUserPoolClientCommand",
-  input,
-}));
-
-jest.mock("@aws-sdk/client-cognito-identity-provider", () => ({
-  CognitoIdentityProviderClient: jest.fn(() => ({ send: mockCognitoSend })),
+import {
+  CognitoIdentityProviderClient,
   SignUpCommand,
   ConfirmSignUpCommand,
   InitiateAuthCommand,
@@ -57,6 +7,34 @@ jest.mock("@aws-sdk/client-cognito-identity-provider", () => ({
   AdminSetUserPasswordCommand,
   AdminConfirmSignUpCommand,
   DescribeUserPoolClientCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+
+const mockCognitoSend = jest.fn();
+const mockGetSigningKey = jest.fn(
+  (_kid: string, callback: (err: unknown, key?: { getPublicKey: () => string }) => void) => {
+    callback(null, { getPublicKey: () => "public-key" });
+  }
+);
+const mockJwtVerify = jest.fn(
+  (_token: string, getKey: any, _opts: any, callback: (err: unknown, payload?: any) => void) => {
+    getKey({ kid: "test-kid" }, () => {
+      callback(null, { sub: "test-user" });
+    });
+  }
+);
+
+jest.mock("@aws-sdk/client-cognito-identity-provider", () => ({
+  CognitoIdentityProviderClient: jest.fn(() => ({ send: mockCognitoSend })),
+  SignUpCommand: jest.fn((input) => ({ type: "SignUpCommand", input })),
+  ConfirmSignUpCommand: jest.fn((input) => ({ type: "ConfirmSignUpCommand", input })),
+  InitiateAuthCommand: jest.fn((input) => ({ type: "InitiateAuthCommand", input })),
+  AdminCreateUserCommand: jest.fn((input) => ({ type: "AdminCreateUserCommand", input })),
+  AdminSetUserPasswordCommand: jest.fn((input) => ({ type: "AdminSetUserPasswordCommand", input })),
+  AdminConfirmSignUpCommand: jest.fn((input) => ({ type: "AdminConfirmSignUpCommand", input })),
+  DescribeUserPoolClientCommand: jest.fn((input) => ({
+    type: "DescribeUserPoolClientCommand",
+    input,
+  })),
 }));
 
 jest.mock("jwks-rsa", () => ({
@@ -70,10 +48,9 @@ jest.mock("jsonwebtoken", () => ({
   verify: mockJwtVerify,
 }));
 
-type AwsCognitoModule = typeof import("../src/config/awsCognito");
-let awsCognito: AwsCognitoModule;
+describe("AWS Cognito helpers (TypeScript)", () => {
+  let awsCognito: typeof import("../src/config/awsCognito");
 
-describe("AWS Cognito helpers", () => {
   beforeEach(() => {
     jest.resetModules();
     process.env.AWS_USER_POOL_ID = "pool-123";
@@ -82,13 +59,13 @@ describe("AWS Cognito helpers", () => {
     mockCognitoSend.mockClear();
     mockJwtVerify.mockClear();
     mockGetSigningKey.mockClear();
-    SignUpCommand.mockClear();
-    ConfirmSignUpCommand.mockClear();
-    InitiateAuthCommand.mockClear();
-    AdminCreateUserCommand.mockClear();
-    AdminSetUserPasswordCommand.mockClear();
-    AdminConfirmSignUpCommand.mockClear();
-    DescribeUserPoolClientCommand.mockClear();
+    (SignUpCommand as jest.Mock).mockClear();
+    (ConfirmSignUpCommand as jest.Mock).mockClear();
+    (InitiateAuthCommand as jest.Mock).mockClear();
+    (AdminCreateUserCommand as jest.Mock).mockClear();
+    (AdminSetUserPasswordCommand as jest.Mock).mockClear();
+    (AdminConfirmSignUpCommand as jest.Mock).mockClear();
+    (DescribeUserPoolClientCommand as jest.Mock).mockClear();
   });
 
   it("exposes the configured pool/client identifiers", () => {
@@ -104,6 +81,7 @@ describe("AWS Cognito helpers", () => {
         ClientId: "client-abc",
       })
     );
+
     await awsCognito.confirmSignUp("test@example.com", "123456");
     expect(ConfirmSignUpCommand).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -111,6 +89,7 @@ describe("AWS Cognito helpers", () => {
         ConfirmationCode: "123456",
       })
     );
+
     await awsCognito.signInUser("test@example.com", "Secret123!");
     expect(InitiateAuthCommand).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -130,6 +109,7 @@ describe("AWS Cognito helpers", () => {
         TemporaryPassword: "TempPass1!",
       })
     );
+
     await awsCognito.adminSetUserPassword("admin@example.com", "Secret123!");
     expect(AdminSetUserPasswordCommand).toHaveBeenCalledWith(
       expect.objectContaining({

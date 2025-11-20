@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Login from "./Login";
 import { decodeEmailFromToken } from "../lib/utils/jwtDecoder";
 
@@ -15,15 +15,21 @@ export default function AuthWrapper({ children }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // On initial load, check local storage for an existing token.
     const storedToken = window.localStorage.getItem("revclear-token");
     if (storedToken) {
-      setToken(storedToken);
-      setUser({ email: decodeEmailFromToken(storedToken) });
+      setTimeout(() => {
+        setToken(storedToken);
+        setUser({ email: decodeEmailFromToken(storedToken) });
+        setIsLoaded(true);
+      }, 0);
+      return;
     }
-    // Mark that we have finished the initial check.
-    setIsLoaded(true);
   }, []);
+  useEffect(() => {
+    if (!isLoaded) {
+      setTimeout(() => setIsLoaded(true), 0);
+    }
+  }, [isLoaded]);
 
   /**
    * Callback function passed to the Login component.

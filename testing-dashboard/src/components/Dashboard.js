@@ -6,6 +6,7 @@ import S3Panel from "./S3Panel";
 import CognitoPanel from "./CognitoPanel";
 import DynamoDBPanel from "./DynamoDBPanel";
 import TranscribePanel from "./TranscribePanel";
+import GenkitPanel from "./GenkitPanel";
 import LogPanel from "./LogPanel";
 import Card from "./ui/Card";
 
@@ -41,6 +42,8 @@ export default function Dashboard({ user, onLogout }) {
         return <DynamoDBPanel tableName={config?.testTableName} />;
       case "transcribe":
         return <TranscribePanel />;
+      case "genkit":
+        return <GenkitPanel />;
       default:
         return null;
     }
@@ -116,6 +119,20 @@ export default function Dashboard({ user, onLogout }) {
             className="primary"
             type="button">
             Open Transcribe Console
+          </button>
+        </article>
+        <article className="service-card">
+          <header>
+            <span>Genkit</span>
+          </header>
+          <p>
+            Review mock Whisper text and generate a SOAP note via the Genkit flow.
+          </p>
+          <button
+            onClick={() => setActivePanel("genkit")}
+            className="primary"
+            type="button">
+            Open Genkit Panel
           </button>
         </article>
       </section>

@@ -1,49 +1,42 @@
-const mockSend = jest.fn();
-const mockGetSignedUrl = jest.fn(async () => "https://signed.example.com");
-
-const PutObjectCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "PutObjectCommand",
-  input,
-}));
-const GetObjectCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "GetObjectCommand",
-  input,
-}));
-const DeleteObjectCommand = jest.fn((input: Record<string, unknown>) => ({
-  type: "DeleteObjectCommand",
-  input,
-}));
-const ListObjectsV2Command = jest.fn((input: Record<string, unknown>) => ({
-  type: "ListObjectsV2Command",
-  input,
-}));
-
-jest.mock("@aws-sdk/client-s3", () => ({
-  S3Client: jest.fn(() => ({ send: mockSend })),
+import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+const mockSend = jest.fn();
+const mockGetSignedUrl = jest.fn(async () => "https://signed.example.com");
+
+jest.mock("@aws-sdk/client-s3", () => ({
+  S3Client: jest.fn(() => ({ send: mockSend })),
+  PutObjectCommand: jest.fn((input) => ({ type: "PutObjectCommand", input })),
+  GetObjectCommand: jest.fn((input) => ({ type: "GetObjectCommand", input })),
+  DeleteObjectCommand: jest.fn((input) => ({ type: "DeleteObjectCommand", input })),
+  ListObjectsV2Command: jest.fn((input) => ({
+    type: "ListObjectsV2Command",
+    input,
+  })),
 }));
 
 jest.mock("@aws-sdk/s3-request-presigner", () => ({
-  getSignedUrl: mockGetSignedUrl,
+  getSignedUrl: jest.fn(async () => "https://signed.example.com"),
 }));
 
-type AwsS3Module = typeof import("../src/config/awsS3");
-let awsS3: AwsS3Module;
+describe("AWS S3 helpers (TypeScript)", () => {
+  let awsS3: typeof import("../src/config/awsS3");
 
-describe("AWS S3 helpers", () => {
   beforeEach(() => {
     jest.resetModules();
     process.env.AWS_S3_BUCKET = "test-bucket";
     awsS3 = require("../src/config/awsS3");
     mockSend.mockClear();
     mockGetSignedUrl.mockClear();
-    PutObjectCommand.mockClear();
-    GetObjectCommand.mockClear();
-    DeleteObjectCommand.mockClear();
-    ListObjectsV2Command.mockClear();
+    (PutObjectCommand as jest.Mock).mockClear();
+    (GetObjectCommand as jest.Mock).mockClear();
+    (DeleteObjectCommand as jest.Mock).mockClear();
+    (ListObjectsV2Command as jest.Mock).mockClear();
   });
 
   it("exports configured bucket name", () => {
@@ -51,7 +44,11 @@ describe("AWS S3 helpers", () => {
   });
 
   it("uploads files with AES256 encryption", async () => {
-    await awsS3.uploadFile("reports/encounter.json", Buffer.from("{}"), "application/json");
+    await awsS3.uploadFile(
+      "reports/encounter.json",
+      Buffer.from("{}"),
+      "application/json"
+    );
     expect(PutObjectCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Bucket: "test-bucket",
