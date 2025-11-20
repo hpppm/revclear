@@ -6,6 +6,8 @@ This document provides examples of well-structured development tickets, adhering
 
 ## 1. Ticket: Setup Landing Page
 
+## TODO
+
 **Title:** `feature: setup landing page`
 
 **Description:**
@@ -41,6 +43,8 @@ NAME GOES HERE
 ---
 
 ## 2. Ticket: Create Login Page UI
+
+## TODO
 
 **Title:** `feature: create login page UI`
 
@@ -80,6 +84,8 @@ NAME GOES HERE
 
 ## 3. Ticket: Setup Global Layout Shell
 
+## TODO
+
 **Title:** `feature: global layout shell`
 
 **Description:**
@@ -118,7 +124,9 @@ Implement the foundational global layout for the frontend application. This layo
 
 ## 4. Genkit: Install Genkit to the backend
 
-**Title:** `feature: global layout shell`
+## FINISHED
+
+**Title:** `feature: genkit implementation`
 
 **Description:**
 Install genkit dependencies and get the google ai studio to run.
@@ -142,6 +150,41 @@ Install genkit dependencies and get the google ai studio to run.
 
 **Branch Name:**
 `feature/genkit-setup`
+
+### ASSIGNED TO
+
+## RASMUS SEPPANEN
+
+## 5. RDS: RDS connection to testing-dashboard
+
+## FINISHED
+
+**Title:** `feature: RDS connection plus CRUD sample data`
+
+**Description:**
+Connect to the RDS database in aws
+
+**Requirements:**
+
+- Set env variables to connect to RDS
+- Create a new RDS panel in testing-dashboard
+- Create a new patient in the RDS
+- Read the patients in the RDS
+- Update a patient in the RDS
+- Delete a patient in the RDS
+- Visually see these functions work in the testing-dashboard
+
+**Deliverables:**
+
+- Succesful connection to RDS
+- Succesfully send and retrieve the data
+
+**Acceptance Criteria:**
+
+- See the data in the testing-dashboard ui
+
+**Branch Name:**
+`feature/RDS-setup`
 
 ### ASSIGNED TO
 
