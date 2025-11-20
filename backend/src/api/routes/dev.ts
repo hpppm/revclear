@@ -3,6 +3,7 @@ import s3Routes from "./dev/s3";
 import cognitoRoutes from "./dev/cognito";
 import statusRoutes from "./dev/status";
 import dynamodbRoutes from "./dev/dynamodb";
+import genkitRoutes from "./dev/genkit";
 
 // Imports needed for the new /config route
 import { userPoolId, clientId } from "../../config/awsCognito";
@@ -53,5 +54,6 @@ router.use("/s3", s3Routes);
 router.use("/cognito", cognitoRoutes);
 router.use("/status", statusRoutes);
 router.use("/dynamodb", dynamodbRoutes);
+router.use("/genkit", genkitRoutes);
 
 export default router;

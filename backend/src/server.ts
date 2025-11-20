@@ -8,6 +8,17 @@ import { auditLogger } from "./middleware/audit";
 
 const app = express();
 
+// Load Genkit flows/tools in dev mode so the CLI Dev UI can attach.
+if (process.env.GENKIT_ENV === "dev") {
+  import("../genkit")
+    .then(() => {
+      console.log("✅ Genkit dev runtime loaded.");
+    })
+    .catch((err) => {
+      console.warn("⚠️ Genkit dev runtime failed to load:", err);
+    });
+}
+
 /**
  * 🚀 FIX #1:
  * Register /api/transcribe BEFORE express.json(), helmet, auditLogger, etc.

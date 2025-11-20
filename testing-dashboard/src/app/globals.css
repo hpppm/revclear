@@ -3,82 +3,65 @@
 @tailwind utilities;
 
 :root {
-  /* Dark theme colors by default */
-  --color-bg-primary: #1a202c; /* Dark blue-gray */
-  --color-bg-secondary: #2d3748; /* Slightly lighter dark blue-gray */
-  --color-bg-tertiary: #4a5568; /* Even lighter dark blue-gray */
-  --color-text-primary: #000000; /* Light gray */
-  --color-text-secondary: #3b3e43; /* Medium gray (for descriptions) */
-  --color-text-accent: #63b3ed; /* Light blue */
-  --color-border: #4a5568; /* Dark border */
-  --color-success: #68d391; /* Green */
-  --color-error: #fc8181; /* Red */
-  --color-warning: #f6ad55; /* Orange */
+  /* Light, neutral base */
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #ffffff;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #4b5563;
+  --color-text-accent: #0ea5e9;
+  --color-border: #e5e7eb;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning: #f59e0b;
 
   /* RGB versions for rgba() usage */
-  --color-success-rgb: 104, 211, 145;
-  --color-error-rgb: 252, 129, 129;
-  --color-text-accent-rgb: 99, 179, 237;
+  --color-success-rgb: 22, 163, 74;
+  --color-error-rgb: 220, 38, 38;
+  --color-text-accent-rgb: 14, 165, 233;
 
-  --font-console: "Red Hat Display", "Inter", system-ui;
-}
-
-/* Override for light theme if preferred by user's system */
-@media (prefers-color-scheme: light) {
-  :root {
-    --color-bg-primary: #ffffff;
-    --color-bg-secondary: #f7fafc;
-    --color-bg-tertiary: #edf2f7;
-    --color-text-primary: #1a202c;
-    --color-text-secondary: #4a5568;
-    --color-text-accent: #3182ce;
-    --color-border: #e2e8f0;
-    --color-success: #38a169;
-    --color-error: #e53e3e;
-    --color-warning: #dd6b20;
-
-    --color-success-rgb: 56, 161, 105;
-    --color-error-rgb: 229, 62, 62;
-    --color-text-accent-rgb: 49, 130, 206;
-  }
+  --font-console: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  font-family: var(--font-console), "Red Hat Display", sans-serif;
+  font-family: var(--font-console), sans-serif;
   position: relative;
   min-height: 100vh;
   overflow-x: hidden;
 }
 
-/* General styles for panels and buttons for dark theme */
+/* Panels */
 .panel {
   background-color: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   color: var(--color-text-primary);
-  border-radius: 0.5rem; /* Added for consistency */
-  padding: 1.5rem; /* Added for consistency */
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Added shadow */
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
+/* Form elements */
 .s3-editor,
 .s3-input,
 input[type="text"],
 input[type="email"],
 input[type="password"],
-textarea {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  border-radius: 0.25rem;
-  padding: 0.5rem;
-  /* Ensure placeholder text is visible */
-  &::placeholder {
-    color: var(--color-text-secondary);
-    opacity: 0.7;
-  }
+input[type="number"],
+textarea,
+select {
+  background-color: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.6rem 0.7rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+  opacity: 1;
 }
 
 
@@ -164,9 +147,7 @@ pre {
 
 /* Base layout adjustments */
 .hero-card {
-  background-color: var(
-    --color-bg-primary
-  ); /* The primary, darkest background */
+  background-color: var(--color-bg-secondary);
   padding: 2rem 1.5rem; /* Adjust padding as needed for the card */
   border-bottom: 1px solid var(--color-border); /* Keep separator */
   border-top-left-radius: 0; /* No top radius if it spans full width */
@@ -199,17 +180,10 @@ pre {
   color: var(--color-text-secondary);
 }
 .user-bar {
-  background-color: var(--color-bg-secondary);
+  background-color: rgba(255, 255, 255, 0.9);
   color: var(--color-text-primary);
   padding: 1rem;
   border-bottom: 1px solid var(--color-border);
-}
-
-/* Ensure placeholder text is visible */
-input::placeholder,
-textarea::placeholder {
-  color: var(--color-text-secondary);
-  opacity: 0.7;
 }
 
 /* Link buttons */

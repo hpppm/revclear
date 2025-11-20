@@ -1,0 +1,19 @@
+{
+  "encounter_id": "mock-encounter-123",
+  "transcript": {
+    "text": "Hi Sarah what brings you in today I've had this nagging headache for the last four days it's mostly behind my eyes Any nausea dizziness or vision changes A little bit of nausea yesterday but no vomiting no vision changes Any recent stress poor sleep or caffeine changes I've been studying for exams and sleeping maybe four to five hours I also started drinking more coffee Any fever sinus pressure or congestion Some mild congestion but no fever Alright let me check vitals look normal no neuro deficits mild tenderness over the frontal sinuses Sounds like tension type headache aggravated by stress and sinus congestion",
+    "language": "en",
+    "language_probability": 0.99,
+    "duration": 41.2,
+    "segments": [
+      { "start": 0.0, "end": 2.8, "text": "Hi Sarah what brings you in today " },
+      { "start": 2.8, "end": 7.3, "text": "I've had this nagging headache for the last four days it's mostly behind my eyes " },
+      { "start": 7.3, "end": 10.9, "text": "Any nausea dizziness or vision changes " },
+      { "start": 10.9, "end": 16.0, "text": "A little bit of nausea yesterday but no vomiting no vision changes " },
+      { "start": 16.0, "end": 22.1, "text": "Any recent stress poor sleep or caffeine changes I've been studying for exams and sleeping maybe four to five hours I also started drinking more coffee " },
+      { "start": 22.1, "end": 26.2, "text": "Any fever sinus pressure or congestion " },
+      { "start": 26.2, "end": 30.7, "text": "Some mild congestion but no fever " },
+      { "start": 30.7, "end": 41.2, "text": "Alright let me check vitals look normal no neuro deficits mild tenderness over the frontal sinuses Sounds like tension type headache aggravated by stress and sinus congestion" }
+    ]
+  }
+}

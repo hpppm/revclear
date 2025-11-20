@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dev } from '../lib/api/dev';
 import { useLogger } from '@/contexts/LogContext';
 import Button from './ui/Button';
@@ -11,7 +11,7 @@ export default function CognitoPanel({ userPoolId, clientId }) {
   const [status, setStatus] = useState({ message: 'Waiting for health check...', type: 'neutral' });
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleCheck = async () => {
+  const handleCheck = useCallback(async () => {
     setIsLoading(true);
     setStatus({ message: 'Checking Cognito...', type: 'neutral' });
     try {
@@ -24,11 +24,11 @@ export default function CognitoPanel({ userPoolId, clientId }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [log]);
 
   useEffect(() => {
     handleCheck();
-  }, []); // Empty array ensures this runs only once on mount
+  }, [handleCheck]); // Runs on mount
 
   return (
     <Card header={<h3>Cognito testing console</h3>} className="service-panel">

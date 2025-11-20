@@ -32,6 +32,8 @@ dist/
 build/
 .next/
 out/
+.genkit/
+backend/.genkit/
 
 # Logs
 logs/
