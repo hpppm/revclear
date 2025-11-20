@@ -75,3 +75,43 @@ Implement the frontend-only login screen. This task focuses solely on the user i
 ### ASSIGNED TO
 
 NAME GOES HERE
+
+---
+
+## 3. Ticket: Setup Global Layout Shell
+
+**Title:** `feature: global layout shell`
+
+**Description:**
+Implement the foundational global layout for the frontend application. This layout will wrap all authenticated pages and establish the overall structure for navigation, spacing, and content rendering. The focus is strictly on the visual shell—no business logic or real data needs to be included at this stage. This layout will help ensure design consistency across all future pages.
+
+**Requirements:**
+
+- Create a global layout component that all dashboard pages will use.
+- Include a placeholder top navigation bar.
+- Include a placeholder sidebar (minimal or collapsible).
+- Define a main content area where pages will be rendered.
+- Ensure the layout uses consistent spacing and basic styling.
+- The design should be simple at this stage—no interactive behavior required.
+
+**Deliverables:**
+
+- A layout file at `app/(dashboard)/layout.tsx` implementing the shell.
+- Placeholder components for the navbar and sidebar (can be inline or separated into `components/`).
+- Basic global layout styling.
+
+**Acceptance Criteria:**
+
+- [ ] Dashboard pages render inside the layout.
+- [ ] Navbar placeholder is visible at the top of all pages within the dashboard group.
+- [ ] Sidebar placeholder appears on the left side.
+- [ ] Content area properly adjusts to the layout and spacing.
+- [ ] No styling or layout errors in console.
+- [ ] Layout does not break when resizing the window.
+
+**Branch Name:**
+`feature/global-layout`
+
+### ASSIGNED TO
+
+## RASMUS SEPPANEN
