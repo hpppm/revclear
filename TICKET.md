@@ -189,3 +189,41 @@ Connect to the RDS database in aws
 ### ASSIGNED TO
 
 ## RASMUS SEPPANEN
+
+## 6. BACKEND API ROUTES: Set up main routes in the backend
+
+## TODO
+
+**Title:** `feature: Expose and create API routes in the backend`
+
+**Description:**
+Stand up production-facing backend routes (not /api/dev) that the real frontend will call. This includes auth, patients, encounters, claims, transcription upload, and SOAP generation at `/api/*`, with correct middleware ordering for file uploads.
+
+**Requirements:**
+
+- Register and mount routers in `src/server.ts`: `/api/auth`, `/api/patients`, `/api/encounters`, `/api/claims`, `/api/transcribe`, `/api/soap`.
+- Implement CRUD for patients and encounters; list/read (and create if available) for claims.
+- Add transcription upload endpoint (mount before `express.json`) that preserves raw file stream and calls transcription flow.
+- Add SOAP generation endpoint that accepts encounter/transcript payload and returns SOAP output (real).
+- Apply middleware (`setupEnv`, `cors`, `helmet` with CSP, morgan, audit logger); ensure routes return 4xx on bad input without leaking stack traces.
+
+**Deliverables:**
+
+- `src/server.ts` updated with production API registrations (no /api/dev dependency).
+- Routers/handlers for patients, encounters, claims, transcription, and SOAP generation under `/api/*`.
+- Input validation and normalized error responses for new endpoints.
+
+**Acceptance Criteria:**
+
+- `npm run dev` starts cleanly on `localhost:3005` with these routes mounted.
+- Patients/encounters support create/read/update/delete with 2xx/4xx (no 5xx on happy paths).
+- Claims list/read (and create if implemented) return 2xx/4xx appropriately.
+- Transcription route accepts file upload (Multer sees raw stream) and returns transcript payload.
+- SOAP endpoint accepts payload and returns SOAP response from genki (real) with 2xx on success and 4xx on validation issues.
+
+**Branch Name:**
+`feature/backend-api-routes`
+
+### ASSIGNED TO
+
+## RASMUS SEPPANEN
