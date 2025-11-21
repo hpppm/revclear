@@ -843,3 +843,165 @@ textarea:focus {
 .link-button:hover {
   color: #1d4ed8;
 }
+
+.rds-connection {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--neutral-border);
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.rds-status {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rds-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: rgba(71, 85, 105, 0.9);
+}
+
+.rds-ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.rds-card {
+  border-radius: 18px;
+  border: 1px solid var(--neutral-border);
+  background: #ffffff;
+  padding: 1rem;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rds-card-head span {
+  display: block;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rds-card-head small {
+  color: rgba(71, 85, 105, 0.85);
+}
+
+.rds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rds-field span {
+  font-size: 0.9rem;
+  color: rgba(71, 85, 105, 0.9);
+}
+
+.rds-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 0.65rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.rds-textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 0.75rem;
+  font-family: var(--font-console, "Space Mono", monospace);
+  font-size: 0.92rem;
+  min-height: 140px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.rds-textarea:focus,
+.rds-input:focus {
+  outline: none;
+  border-color: rgba(14, 165, 233, 0.7);
+  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.15);
+}
+
+.rds-sql {
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.rds-sql-snippet {
+  margin-top: 1.5rem;
+  border-radius: 18px;
+  border: 1px solid var(--neutral-border);
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1rem;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+}
+
+.rds-sql-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rds-sql-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.rds-sql-block {
+  margin: 0.9rem 0 0;
+  background: #0b1221;
+  border-radius: 14px;
+  padding: 0.9rem;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.rds-result {
+  margin-top: 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--neutral-border);
+  background: rgba(247, 250, 252, 0.9);
+  padding: 0.75rem;
+}
+
+.rds-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rds-result-body {
+  margin: 0;
+  background: #ffffff;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 12px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow: auto;
+}

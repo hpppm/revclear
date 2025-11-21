@@ -4,6 +4,7 @@ import cognitoRoutes from "./dev/cognito";
 import statusRoutes from "./dev/status";
 import dynamodbRoutes from "./dev/dynamodb";
 import genkitRoutes from "./dev/genkit";
+import dbRoutes from "./dev/db";
 
 // Imports needed for the new /config route
 import { userPoolId, clientId } from "../../config/awsCognito";
@@ -55,5 +56,6 @@ router.use("/cognito", cognitoRoutes);
 router.use("/status", statusRoutes);
 router.use("/dynamodb", dynamodbRoutes);
 router.use("/genkit", genkitRoutes);
+router.use("/db", dbRoutes);
 
 export default router;
