@@ -74,14 +74,26 @@ app.use(auditLogger);
  */
 import authRoutes from "./api/routes/auth";
 import patientRoutes from "./api/routes/patients";
+import encounterRoutes from "./api/routes/encounters";
+import claimRoutes from "./api/routes/claims";
+import meRoutes from "./api/routes/me";
+import healthRoutes from "./api/routes/health";
 import devRoutes from "./api/routes/dev";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
+app.use("/api/encounters", encounterRoutes);
+app.use("/api/claims", claimRoutes);
+app.use("/api/me", meRoutes);
+app.use("/api/health", healthRoutes);
 app.use("/api/dev", devRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3005;
-app.listen(PORT, () => {
-  console.log(`✅ API running securely on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`✅ API running securely on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
