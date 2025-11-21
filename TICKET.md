@@ -192,7 +192,7 @@ Connect to the RDS database in aws
 
 ## 6. BACKEND API ROUTES: Set up main routes in the backend
 
-## TODO
+## Finished
 
 **Title:** `feature: Expose and create API routes in the backend`
 
