@@ -79,6 +79,7 @@ import claimRoutes from "./api/routes/claims";
 import meRoutes from "./api/routes/me";
 import healthRoutes from "./api/routes/health";
 import devRoutes from "./api/routes/dev";
+import userRoutes from "./api/routes/users"; // Added userRoutes
 
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
@@ -87,6 +88,7 @@ app.use("/api/claims", claimRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/dev", devRoutes);
+app.use("/api/users", userRoutes); // Added userRoutes
 
 // Start server
 const PORT = process.env.PORT || 3005;

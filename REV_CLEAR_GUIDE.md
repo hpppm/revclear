@@ -50,9 +50,9 @@
      npm run dev
      ```
      Served at `http://localhost:3000` (Next.js rewrites proxy `/api/*` to backend).
-   - Frontend (Demo):
+   - Frontend:
      ```
-     cd Demo
+     cd frontend
      npm install
      npm run dev
      ```
