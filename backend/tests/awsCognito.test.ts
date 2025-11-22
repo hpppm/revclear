@@ -48,6 +48,15 @@ jest.mock("jsonwebtoken", () => ({
   verify: mockJwtVerify,
 }));
 
+const mockSignUpCommand = SignUpCommand as jest.Mock;
+const mockConfirmSignUpCommand = ConfirmSignUpCommand as jest.Mock;
+const mockInitiateAuthCommand = InitiateAuthCommand as jest.Mock;
+const mockAdminCreateUserCommand = AdminCreateUserCommand as jest.Mock;
+const mockAdminSetUserPasswordCommand = AdminSetUserPasswordCommand as jest.Mock;
+const mockAdminConfirmSignUpCommand = AdminConfirmSignUpCommand as jest.Mock;
+const mockDescribeUserPoolClientCommand =
+  DescribeUserPoolClientCommand as jest.Mock;
+
 describe("AWS Cognito helpers (TypeScript)", () => {
   let awsCognito: typeof import("../src/config/awsCognito");
 
@@ -59,13 +68,13 @@ describe("AWS Cognito helpers (TypeScript)", () => {
     mockCognitoSend.mockClear();
     mockJwtVerify.mockClear();
     mockGetSigningKey.mockClear();
-    (SignUpCommand as jest.Mock).mockClear();
-    (ConfirmSignUpCommand as jest.Mock).mockClear();
-    (InitiateAuthCommand as jest.Mock).mockClear();
-    (AdminCreateUserCommand as jest.Mock).mockClear();
-    (AdminSetUserPasswordCommand as jest.Mock).mockClear();
-    (AdminConfirmSignUpCommand as jest.Mock).mockClear();
-    (DescribeUserPoolClientCommand as jest.Mock).mockClear();
+    mockSignUpCommand.mockClear();
+    mockConfirmSignUpCommand.mockClear();
+    mockInitiateAuthCommand.mockClear();
+    mockAdminCreateUserCommand.mockClear();
+    mockAdminSetUserPasswordCommand.mockClear();
+    mockAdminConfirmSignUpCommand.mockClear();
+    mockDescribeUserPoolClientCommand.mockClear();
   });
 
   it("exposes the configured pool/client identifiers", () => {
@@ -75,7 +84,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
 
   it("issues commands for signup, confirmation, and authentication", async () => {
     await awsCognito.signUpUser("test@example.com", "Secret123!");
-    expect(SignUpCommand).toHaveBeenCalledWith(
+    expect(mockSignUpCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Username: "test@example.com",
         ClientId: "client-abc",
@@ -83,7 +92,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
     );
 
     await awsCognito.confirmSignUp("test@example.com", "123456");
-    expect(ConfirmSignUpCommand).toHaveBeenCalledWith(
+    expect(mockConfirmSignUpCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Username: "test@example.com",
         ConfirmationCode: "123456",
@@ -91,7 +100,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
     );
 
     await awsCognito.signInUser("test@example.com", "Secret123!");
-    expect(InitiateAuthCommand).toHaveBeenCalledWith(
+    expect(mockInitiateAuthCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         AuthParameters: expect.objectContaining({
           USERNAME: "test@example.com",
@@ -103,7 +112,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
 
   it("creates admin users and sets permanent passwords", async () => {
     await awsCognito.adminCreateUser("admin@example.com", "TempPass1!");
-    expect(AdminCreateUserCommand).toHaveBeenCalledWith(
+    expect(mockAdminCreateUserCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Username: "admin@example.com",
         TemporaryPassword: "TempPass1!",
@@ -111,7 +120,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
     );
 
     await awsCognito.adminSetUserPassword("admin@example.com", "Secret123!");
-    expect(AdminSetUserPasswordCommand).toHaveBeenCalledWith(
+    expect(mockAdminSetUserPasswordCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Username: "admin@example.com",
         Password: "Secret123!",
@@ -122,7 +131,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
 
   it("confirms users via the admin flow", async () => {
     await awsCognito.adminConfirmSignUp("admin@example.com");
-    expect(AdminConfirmSignUpCommand).toHaveBeenCalledWith(
+    expect(mockAdminConfirmSignUpCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Username: "admin@example.com",
         UserPoolId: "pool-123",
@@ -140,7 +149,7 @@ describe("AWS Cognito helpers (TypeScript)", () => {
 
   it("describes the configured user pool client", async () => {
     await awsCognito.checkCognitoConnectivity();
-    expect(DescribeUserPoolClientCommand).toHaveBeenCalledWith(
+    expect(mockDescribeUserPoolClientCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         UserPoolId: "pool-123",
         ClientId: "client-abc",
