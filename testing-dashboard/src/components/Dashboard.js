@@ -9,6 +9,7 @@ import TranscribePanel from "./TranscribePanel";
 import GenkitPanel from "./GenkitPanel";
 import LogPanel from "./LogPanel";
 import Card from "./ui/Card";
+import RdsPanel from "./RdsPanel";
 
 export default function Dashboard({ user, onLogout }) {
   const [config, setConfig] = useState(null);
@@ -44,6 +45,8 @@ export default function Dashboard({ user, onLogout }) {
         return <TranscribePanel />;
       case "genkit":
         return <GenkitPanel />;
+      case "rds":
+        return <RdsPanel />;
       default:
         return null;
     }
@@ -107,6 +110,18 @@ export default function Dashboard({ user, onLogout }) {
             className="primary"
             type="button">
             Open DynamoDB Console
+          </button>
+        </article>
+        <article className="service-card">
+          <header>
+            <span>RDS (Postgres)</span>
+          </header>
+          <p>Draft CRUD requests against the patients table on RDS.</p>
+          <button
+            onClick={() => setActivePanel("rds")}
+            className="primary"
+            type="button">
+            Open RDS Console
           </button>
         </article>
         <article className="service-card">
