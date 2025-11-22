@@ -24,6 +24,11 @@ jest.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: jest.fn(async () => "https://signed.example.com"),
 }));
 
+const mockPutObjectCommand = PutObjectCommand as jest.Mock;
+const mockGetObjectCommand = GetObjectCommand as jest.Mock;
+const mockDeleteObjectCommand = DeleteObjectCommand as jest.Mock;
+const mockListObjectsV2Command = ListObjectsV2Command as jest.Mock;
+
 describe("AWS S3 helpers (TypeScript)", () => {
   let awsS3: typeof import("../src/config/awsS3");
 
@@ -32,11 +37,11 @@ describe("AWS S3 helpers (TypeScript)", () => {
     process.env.AWS_S3_BUCKET = "test-bucket";
     awsS3 = require("../src/config/awsS3");
     mockSend.mockClear();
-    mockGetSignedUrl.mockClear();
-    (PutObjectCommand as jest.Mock).mockClear();
-    (GetObjectCommand as jest.Mock).mockClear();
-    (DeleteObjectCommand as jest.Mock).mockClear();
-    (ListObjectsV2Command as jest.Mock).mockClear();
+    (mockGetSignedUrl as jest.Mock).mockClear();
+    mockPutObjectCommand.mockClear();
+    mockGetObjectCommand.mockClear();
+    mockDeleteObjectCommand.mockClear();
+    mockListObjectsV2Command.mockClear();
   });
 
   it("exports configured bucket name", () => {
@@ -49,7 +54,7 @@ describe("AWS S3 helpers (TypeScript)", () => {
       Buffer.from("{}"),
       "application/json"
     );
-    expect(PutObjectCommand).toHaveBeenCalledWith(
+    expect(mockPutObjectCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         Bucket: "test-bucket",
         Key: "reports/encounter.json",
@@ -63,11 +68,11 @@ describe("AWS S3 helpers (TypeScript)", () => {
 
   it("retrieves and deletes objects with the correct keys", async () => {
     await awsS3.getFile("reports/encounter.json");
-    expect(GetObjectCommand).toHaveBeenCalledWith(
+    expect(mockGetObjectCommand).toHaveBeenCalledWith(
       expect.objectContaining({ Bucket: "test-bucket", Key: "reports/encounter.json" })
     );
     await awsS3.deleteFile("reports/encounter.json");
-    expect(DeleteObjectCommand).toHaveBeenCalledWith(
+    expect(mockDeleteObjectCommand).toHaveBeenCalledWith(
       expect.objectContaining({ Bucket: "test-bucket", Key: "reports/encounter.json" })
     );
     expect(mockSend).toHaveBeenCalledTimes(2);
@@ -75,7 +80,7 @@ describe("AWS S3 helpers (TypeScript)", () => {
 
   it("lists objects with optional prefix", async () => {
     await awsS3.listFiles("reports/");
-    expect(ListObjectsV2Command).toHaveBeenCalledWith(
+    expect(mockListObjectsV2Command).toHaveBeenCalledWith(
       expect.objectContaining({ Bucket: "test-bucket", Prefix: "reports/" })
     );
     expect(mockSend).toHaveBeenCalledWith(
