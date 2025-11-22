@@ -76,7 +76,7 @@ Implement the frontend-only login screen. This task focuses solely on the user i
 **Branch Name:**
 `feature/login-page-ui`
 
-### ASSIGNED TO
+### Narni Yoga
 
 NAME GOES HERE
 
@@ -232,7 +232,7 @@ Baseline the production API wiring (no `/api/dev`): ensure middleware ordering, 
 
 ## 7. USERS & `/api/me`
 
-## TODO
+## STATUS: FINISHED
 
 **Title:** `feature: add users api and /api/me`
 
@@ -260,7 +260,7 @@ Implement a production `/api/me` endpoint that returns the current authenticated
 **Branch Name:**
 `feature/users-me-endpoint`
 
-### ASSIGNED TO
+### Rasmus Seppanen
 
 ## NO ONE YET
 
@@ -268,7 +268,7 @@ Implement a production `/api/me` endpoint that returns the current authenticated
 
 ## 8. PATIENTS & ENCOUNTERS API
 
-## TODO
+## STATUS: TODO
 
 **Title:** `feature: patients and encounters api`
 
