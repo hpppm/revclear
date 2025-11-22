@@ -2,6 +2,8 @@ import request from "supertest";
 import app from "../src/server";
 import { Readable } from "stream";
 import { mock } from "jest-mock-extended";
+import { uploadFile, getFile } from "../src/config/awsS3"; // Import directly
+import { createAudioRecord, createAiResult } from "../src/db/queries"; // Import directly
 
 // Mock AWS S3 functions
 jest.mock("../src/config/awsS3", () => ({
@@ -17,10 +19,10 @@ jest.mock("../src/db/queries", () => ({
 }));
 
 // Mock child_process.spawn
-const mockSpawn = jest.fn();
 const mockStdin = mock<Readable>();
 const mockStdout = mock<Readable>();
 const mockStderr = mock<Readable>();
+const mockSpawn = jest.fn(); // Moved declaration before jest.mock
 
 mockSpawn.mockReturnValue({
   stdin: mockStdin,
@@ -48,7 +50,7 @@ jest.mock("../src/middleware/auth", () => ({
 
 describe("Transcribe API (integration)", () => {
   const MOCK_ENCOUNTER_ID = "123e4567-e89b-12d3-a456-426614174000";
-  const M MOCK_S3_KEY = "audio/test-audio.wav";
+  const MOCK_S3_KEY = "audio/test-audio.wav"; // Fixed typo here
   const MOCK_TRANSCRIPT = {
     language: "en",
     text: "Hello world",
@@ -91,9 +93,9 @@ describe("Transcribe API (integration)", () => {
   
 
   it("should transcribe an uploaded audio file successfully", async () => {
-    const mockUploadFile = require("../src/config/awsS3").uploadFile;
-    const mockCreateAudioRecord = require("../src/db/queries").createAudioRecord;
-    const mockCreateAiResult = require("../src/db/queries").createAiResult;
+    // const mockUploadFile = require("../src/config/awsS3").uploadFile; // Old way
+    // const mockCreateAudioRecord = require("../src/db/queries").createAudioRecord; // Old way
+    // const mockCreateAiResult = require("../src/db/queries").createAiResult; // Old way
 
     // Simulate successful Python transcription
     simulatePythonResponse(JSON.stringify(MOCK_TRANSCRIPT));
@@ -109,9 +111,9 @@ describe("Transcribe API (integration)", () => {
     expect(res.statusCode).toEqual(200);
     expect(res.body.success).toBe(true);
     expect(res.body.transcript).toEqual(MOCK_TRANSCRIPT);
-    expect(mockUploadFile).toHaveBeenCalledTimes(1);
-    expect(mockCreateAudioRecord).toHaveBeenCalledTimes(1);
-    expect(mockCreateAiResult).toHaveBeenCalledTimes(1);
+    expect(uploadFile).toHaveBeenCalledTimes(1); // Use direct import
+    expect(createAudioRecord).toHaveBeenCalledTimes(1); // Use direct import
+    expect(createAiResult).toHaveBeenCalledTimes(1); // Use direct import
     expect(mockSpawn).toHaveBeenCalledTimes(1);
     expect(mockStdin.pipe).toHaveBeenCalledTimes(1);
   });
@@ -139,20 +141,19 @@ describe("Transcribe API (integration)", () => {
 
     expect(res.statusCode).toEqual(400);
     expect(res.body.error).toBe("Provided file is not an audio file.");
-    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(uploadFile).not.toHaveBeenCalled(); // Use direct import
     expect(mockSpawn).not.toHaveBeenCalled();
   });
 
   it("should transcribe an S3-referenced audio file successfully (fallback)", async () => {
-    const mockGetFile = require("../src/config/awsS3").getFile;
-    const mockCreateAiResult = require("../src/db/queries").createAiResult;
+    // const mockGetFile = require("../src/config/awsS3").getFile; // Old way
 
     // Simulate successful Python transcription
     simulatePythonResponse(JSON.stringify(MOCK_TRANSCRIPT));
 
     // Mock S3 getFile to return a readable stream
     const mockS3Stream = Readable.from(Buffer.from("mock s3 audio data"));
-    (mockGetFile as jest.Mock).mockResolvedValue({ Body: mockS3Stream });
+    (getFile as jest.Mock).mockResolvedValue({ Body: mockS3Stream }); // Use direct import
 
     const res = await request(app)
       .post("/api/transcribe")
@@ -162,8 +163,8 @@ describe("Transcribe API (integration)", () => {
     expect(res.statusCode).toEqual(200);
     expect(res.body.success).toBe(true);
     expect(res.body.transcript).toEqual(MOCK_TRANSCRIPT);
-    expect(mockGetFile).toHaveBeenCalledWith(MOCK_S3_KEY);
-    expect(mockCreateAiResult).toHaveBeenCalledTimes(1);
+    expect(getFile).toHaveBeenCalledWith(MOCK_S3_KEY); // Use direct import
+    expect(createAiResult).toHaveBeenCalledTimes(1); // Use direct import
     expect(mockSpawn).toHaveBeenCalledTimes(1);
     expect(mockStdin.pipe).toHaveBeenCalledTimes(1);
   });
@@ -191,8 +192,8 @@ describe("Transcribe API (integration)", () => {
   });
 
   it("should return 500 if S3 file retrieval fails (fallback)", async () => {
-    const mockGetFile = require("../src/config/awsS3").getFile;
-    (mockGetFile as jest.Mock).mockResolvedValue({ Body: undefined }); // Simulate file not found or empty
+    // const mockGetFile = require("../src/config/awsS3").getFile; // Old way
+    (getFile as jest.Mock).mockResolvedValue({ Body: undefined }); // Use direct import // Simulate file not found or empty
 
     const res = await request(app)
       .post("/api/transcribe")
