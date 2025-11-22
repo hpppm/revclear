@@ -43,6 +43,19 @@ export const query = <T extends QueryResultRow = QueryResultRow>(
   params?: any[]
 ): Promise<QueryResult<T>> => pool.query<T>(text, params);
 
+export const findUserByCognitoId = async (cognitoId: string) => {
+  const result = await query('SELECT id, cognito_id, email, full_name, role, created_at FROM users WHERE cognito_id = $1', [cognitoId]);
+  return result.rows[0];
+};
+
+export const createUser = async (cognitoId: string, email: string, fullName: string) => {
+  const result = await query(
+    'INSERT INTO users (cognito_id, email, full_name) VALUES ($1, $2, $3) RETURNING id, cognito_id, email, full_name, role, created_at',
+    [cognitoId, email, fullName]
+  );
+  return result.rows[0];
+};
+
 export const getClient = () => pool.connect();
 
 export const closePool = () => pool.end();
