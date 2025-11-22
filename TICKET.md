@@ -189,3 +189,189 @@ Connect to the RDS database in aws
 ### ASSIGNED TO
 
 ## RASMUS SEPPANEN
+
+## 6. BACKEND API ROUTES: Set up main routes in the backend
+
+## Finished
+
+**Title:** `feature: Expose and create API routes in the backend`
+
+**Description:**
+Baseline the production API wiring (no `/api/dev`): ensure middleware ordering, mount the primary routers, add `/api/health`, and stub `/api/me` until the dedicated tickets (7–10) fill in full CRUD/flows.
+
+**Requirements:**
+
+- Register and mount routers in `src/server.ts`: `/api/auth`, `/api/patients`, `/api/encounters`, `/api/claims`, `/api/transcribe`, `/api/soap`, `/api/me`, `/api/health` (stubs ok for new ones).
+- Keep `/api/transcribe` mounted before `express.json` to preserve raw file stream.
+- Apply middleware (`setupEnv`, `cors`, `helmet` with CSP, morgan, audit logger).
+- Add `/api/health` (DB ping, optional S3) and a stub `/api/me` (will be fully implemented in ticket 7).
+- Export `app` for tests (supertest) without changing start script behavior.
+
+**Deliverables:**
+
+- `src/server.ts` updated with production API registrations (no `/api/dev` dependency).
+- Stubbed `/api/me` and `/api/health` endpoints responding 200.
+- Middleware ordering documented/applied; `app` export available for tests.
+- Make sure `/api/dev`still exists as a valid endpoint (required for testing-dashboard)
+
+**Acceptance Criteria:**
+
+- `npm run dev` starts cleanly on `localhost:3005` with routes mounted (no 5xx on startup requests).
+- `/api/health` returns 200 with DB ping (and S3 if included).
+- `/api/me` responds 200 (placeholder ok until ticket 7).
+- `/api/transcribe` remains mounted before JSON parsing.
+
+**Branch Name:**
+`feature/backend-api-routes`
+
+### ASSIGNED TO
+
+## RASMUS SEPPANEN
+
+---
+
+## 7. USERS & `/api/me`
+
+## TODO
+
+**Title:** `feature: add users api and /api/me`
+
+**Description:**
+Implement a production `/api/me` endpoint that returns the current authenticated user from the `users` table and creates the user row on first login if missing. Add minimal users CRUD as needed to support the frontend.
+
+**Requirements:**
+
+- Add `/api/me` (auth-protected) to fetch current user from DB; if absent, insert and return.
+- Implement minimal `/api/users` CRUD (list/read/update/delete) if required; protect with auth.
+- Use Zod for payload/param validation and return structured 4xx errors.
+- Ensure audit logging for user-facing operations.
+
+**Deliverables:**
+
+- `/api/me` route wired to Postgres `users` table with create-on-first-login logic.
+- Users endpoints with validation and auth (if needed for UI).
+
+**Acceptance Criteria:**
+
+- Authenticated request to `/api/me` returns the user row (creates if missing).
+- Users endpoints enforce auth and validation; return 2xx/4xx (no 5xx on happy paths).
+- No stack traces in responses; audit log captures calls.
+
+**Branch Name:**
+`feature/users-me-endpoint`
+
+### ASSIGNED TO
+
+## NO ONE YET
+
+---
+
+## 8. PATIENTS & ENCOUNTERS API
+
+## TODO
+
+**Title:** `feature: patients and encounters api`
+
+**Description:**
+Build fully validated patients and encounters routes for production (no `/api/dev`). CRUD for patients; CRUD for encounters tied to patients; enforce auth and use Zod validation.
+
+**Requirements:**
+
+- `/api/patients`: create/read/update/delete with Zod schemas; normalized envelopes.
+- `/api/encounters`: create/read/update/delete, linking to patients; validate payloads.
+- Apply `authMiddleware` to all routes; structured 4xx errors on validation issues.
+- Ensure DB operations use the RDS pool and handle not-found gracefully.
+
+**Deliverables:**
+
+- Patients and encounters routers under `/api/patients` and `/api/encounters`.
+- Zod schemas for payloads and params; shared error shape.
+
+**Acceptance Criteria:**
+
+- CRUD operations return 2xx/4xx appropriately (no 5xx on happy paths).
+- Linking to patients is enforced for encounters; not-found returns 404.
+- Validation errors return 400 with field-level detail; audit logging present.
+
+**Branch Name:**
+`feature/patients-encounters-api`
+
+### ASSIGNED TO
+
+## NO ONE YET
+
+---
+
+## 9. TRANSCRIBE FLOW WITH S3 FALLBACK
+
+## TODO
+
+**Title:** `feature: transcribe flow with s3 fallback`
+
+**Description:**
+Implement production `/api/transcribe` that accepts audio uploads, streams to Whisper when present, and falls back to fetching audio from S3 if the request lacks the stream (e.g., page refresh). Keep original audio in S3; persist transcript in DB.
+
+**Requirements:**
+
+- Mount `/api/transcribe` before `express.json`; accept multipart audio.
+- If request has audio stream, pipe directly to Whisper; otherwise, fetch from S3 (key in DB) and transcribe.
+- Store audio in S3 and record in `audio_records` with status.
+- Save transcript in `ai_results` (`flow_name=whisper_transcript`); optional S3 JSON snapshot.
+- Zod-validate params/payload; auth-protect route; structured 4xx errors.
+
+**Deliverables:**
+
+- Transcribe route with dual-path handling (direct stream or S3 fallback).
+- DB writes: `audio_records` entry and `ai_results` transcript entry.
+
+**Acceptance Criteria:**
+
+- Upload + transcribe works with immediate stream.
+- Refresh scenario: transcribe succeeds by fetching audio from S3.
+- Responses include transcript payload; original audio remains in S3.
+- 2xx/4xx only on happy/error paths (no 5xx); audit logging present.
+
+**Branch Name:**
+`feature/transcribe-s3-fallback`
+
+### ASSIGNED TO
+
+## NO ONE YET
+
+---
+
+## 10. SOAP / GENKIT FLOW (GENERATE, EDIT, SAVE)
+
+## TODO
+
+**Title:** `feature: soap genkit flow`
+
+**Description:**
+Expose SOAP generation endpoints for encounters using Genkit/Gemini. Support fetch, regenerate, and save edited SOAP. Use transcript from DB `ai_results` (no `/api/dev`), persist SOAP in DB, and optionally to S3.
+
+**Requirements:**
+
+- `/api/encounters/:id/soap` GET: fetch latest SOAP from DB.
+- `/api/encounters/:id/soap` POST: generate (or regenerate) SOAP via Genkit using transcript from DB.
+- `/api/encounters/:id/soap` PUT: save edited SOAP back to DB.
+- Persist SOAP in `ai_results` (`flow_name=soap_gemini`), with optional S3 snapshot.
+- Zod validation; auth on all endpoints; structured 4xx errors.
+
+**Deliverables:**
+
+- SOAP router under `/api/encounters/:id/soap` with GET/POST/PUT.
+- Integration with Genkit (mock acceptable initially) and DB persistence.
+
+**Acceptance Criteria:**
+
+- GET returns latest SOAP (404 if none).
+- POST triggers SOAP generation and saves result; returns 2xx.
+- PUT updates saved SOAP; returns 2xx; validation errors return 400.
+- No 5xx on happy paths; audit logging present.
+
+**Branch Name:**
+`feature/soap-genkit-flow`
+
+### ASSIGNED TO
+
+## NO ONE YET
