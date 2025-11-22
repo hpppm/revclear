@@ -4,158 +4,188 @@ import { useState, FormEvent } from "react";
 
 export default function SignupPage() {
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
+    license: "",
+    practitioner: "",
     password: "",
-    confirmPassword: "",
+    confirm: "",
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [passwordStrength, setPasswordStrength] = useState("");
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const practitionerTypes = [
+    "Mental Health",
+    "Speech Therapy",
+    "Physical Therapy",
+  ];
+
+  // Password Strength Logic
+  function checkStrength(pw: string) {
+    let strength = 0;
+    if (pw.length >= 8) strength++;
+    if (/[A-Z]/.test(pw)) strength++;
+    if (/[0-9]/.test(pw)) strength++;
+    if (/[^A-Za-z0-9]/.test(pw)) strength++;
+
+    if (strength <= 1) return "Weak";
+    if (strength === 2) return "Medium";
+    return "Strong";
+  }
+
+  function handleChange(e: any) {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+
+    if (name === "password") {
+      setPasswordStrength(checkStrength(value));
+    }
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    const newErrors: Record<string, string> = {};
-
-    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    if (!form.password.trim()) newErrors.password = "Password is required";
-    if (!form.confirmPassword.trim())
-      newErrors.confirmPassword = "Confirm password is required";
-
-    if (form.password !== form.confirmPassword)
-      newErrors.confirmPassword = "Passwords do not match";
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      alert("Account created (mock UI only)");
+    if (form.password !== form.confirm) {
+      alert("Passwords do not match");
+      return;
     }
+
+    alert("Account created (mock)");
+    window.location.href = "/login";
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white p-8 shadow-lg shadow-slate-200">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold text-slate-900">Create Account</h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Enter your details to get started.
+    <div className="min-h-screen flex items-center justify-center bg-[#F0F6FF] px-4">
+      <div className="flex w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden bg-white">
+
+        {/* LEFT BLUE PANEL */}
+        <div className="hidden md:flex w-1/2 bg-[#2563EB] items-center justify-center p-10">
+          <div className="text-white text-center space-y-4">
+            <h2 className="text-3xl font-bold">Welcome to RevClear</h2>
+            <p className="text-lg opacity-90">
+              Smart AI Tools for SOAP Notes & Billing Automation
             </p>
           </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* FIRST NAME */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                First Name
-              </label>
-              <input
-                type="text"
-                name="firstName"
-                value={form.firstName}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="John"
-              />
-              {errors.firstName && (
-                <p className="text-sm text-red-600">{errors.firstName}</p>
-              )}
-            </div>
+        {/* RIGHT FORM */}
+        <div className="w-full md:w-1/2 p-8 bg-white">
+          <h1 className="text-2xl font-bold text-[#0F172A] mb-6">Create Account</h1>
 
-            {/* LAST NAME */}
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* NAME */}
             <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Last Name
-              </label>
+              <label className="text-sm font-medium text-slate-700">Full Name</label>
               <input
+                name="name"
                 type="text"
-                name="lastName"
-                value={form.lastName}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="Doe"
+                className="w-full border border-slate-300 bg-[#F8FAFC] rounded-lg px-3 py-2 mt-1"
+                placeholder="John Carter"
+                required
               />
-              {errors.lastName && (
-                <p className="text-sm text-red-600">{errors.lastName}</p>
-              )}
             </div>
 
             {/* EMAIL */}
             <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Email
-              </label>
+              <label className="text-sm font-medium text-slate-700">Email</label>
               <input
-                type="email"
                 name="email"
-                value={form.email}
+                type="email"
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                className="w-full border border-slate-300 bg-[#F8FAFC] rounded-lg px-3 py-2 mt-1"
                 placeholder="you@example.com"
+                required
               />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email}</p>
-              )}
+            </div>
+
+            {/* PRACTITIONER TYPE */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">Practitioner Type</label>
+              <select
+                name="practitioner"
+                onChange={handleChange}
+                className="w-full border border-slate-300 bg-[#F8FAFC] rounded-lg px-3 py-2 mt-1"
+                required
+              >
+                <option value="">Select one</option>
+                {practitionerTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* LICENSE ID */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">License / Certification ID</label>
+              <input
+                name="license"
+                type="text"
+                onChange={handleChange}
+                className="w-full border border-slate-300 bg-[#F8FAFC] rounded-lg px-3 py-2 mt-1"
+                placeholder="License Number"
+                required
+              />
             </div>
 
             {/* PASSWORD */}
             <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Password
-              </label>
+              <label className="text-sm font-medium text-slate-700">Password</label>
               <input
-                type="password"
                 name="password"
-                value={form.password}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="••••••••"
-              />
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
-
-            {/* CONFIRM PASSWORD */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Confirm Password
-              </label>
-              <input
                 type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="••••••••"
+                className="w-full border border-slate-300 bg-[#F8FAFC] rounded-lg px-3 py-2 mt-1"
+                required
               />
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-600">{errors.confirmPassword}</p>
-              )}
+              <p
+                className={`text-sm mt-1 ${
+                  passwordStrength === "Weak"
+                    ? "text-red-600"
+                    : passwordStrength === "Medium"
+                    ? "text-yellow-600"
+                    : "text-green-600"
+                }`}
+              >
+                {passwordStrength && `Password strength: ${passwordStrength}`}
+              </p>
+
+              {/* Password Rules */}
+              <ul className="text-xs text-slate-500 mt-1 space-y-1">
+                <li>• Minimum 8 characters</li>
+                <li>• At least one uppercase letter</li>
+                <li>• At least one number</li>
+                <li>• At least one symbol (!@#$%)</li>
+              </ul>
             </div>
 
-            {/* SIGNUP BUTTON */}
+            {/* CONFIRM */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">Confirm Password</label>
+              <input
+                name="confirm"
+                type="password"
+                onChange={handleChange}
+                className="w-full border border-slate-300 bg-[#F8FAFC] rounded-lg px-3 py-2 mt-1"
+                required
+              />
+            </div>
+
+            {/* SUBMIT BUTTON */}
             <button
               type="submit"
-              className="flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+              className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold py-2.5 rounded-lg mt-2 transition"
             >
               Create Account
             </button>
-          </form>
 
-          <p className="mt-4 text-center text-sm text-slate-500">
-            Already have an account?{" "}
-            <a href="/login" className="text-blue-600 hover:underline">
-              Log in
-            </a>
-          </p>
+            <p className="text-sm text-center mt-2">
+              Already have an account?{" "}
+              <a href="/login" className="text-[#2563EB] font-medium underline">
+                Sign In
+              </a>
+            </p>
+          </form>
         </div>
       </div>
     </div>
