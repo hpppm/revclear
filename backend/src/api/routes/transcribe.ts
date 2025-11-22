@@ -74,7 +74,7 @@ router.post(
         // --- Path 2: S3 Fallback ---
         const validation = S3FallbackSchema.safeParse(req.body);
         if (!validation.success) {
-          return res.status(400).json({ error: "Invalid request body for S3 fallback.", details: validation.error.errors });
+          return res.status(400).json({ error: "Invalid request body for S3 fallback.", details: validation.error.issues });
         }
 
         s3Key = validation.data.s3Key;
