@@ -1,25 +1,54 @@
-// Placeholder for database connection
-// In a real application, you would import your database client here (e.g., PostgreSQL, DynamoDB).
-const db = {
-  // Mock function for creating an audio record
-  createAudioRecord: async (data: { s3_key: string; encounter_id: string; status: string }) => {
-    console.log("DB: Creating audio record with data:", data);
-    // Simulate database insert
-    return { id: `audio-${Date.now()}`, ...data };
-  },
+import { query } from "../config/db";
 
-  // Mock function for creating an AI result record (e.g., transcription)
-  createAiResult: async (data: {
-    encounter_id: string;
-    flow_name: string;
-    result_json: any;
-    input_s3_key: string;
-  }) => {
-    console.log("DB: Creating AI result with data:", data);
-    // Simulate database insert
-    return { id: `ai-result-${Date.now()}`, ...data };
-  },
+export const createAudioRecord = async (data: {
+  encounter_id: string;
+  file_url: string;
+  transcription_status?: string;
+  duration_seconds?: number;
+}) => {
+  const { encounter_id, file_url, transcription_status = "uploaded", duration_seconds } = data;
+  const result = await query(
+    `INSERT INTO audio_records (encounter_id, file_url, transcription_status, duration_seconds)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [encounter_id, file_url, transcription_status, duration_seconds ?? null]
+  );
+  return result.rows[0];
 };
 
-export const createAudioRecord = db.createAudioRecord;
-export const createAiResult = db.createAiResult;
+export const createAiResult = async (data: {
+  encounter_id: string;
+  flow_name: string;
+  input_json?: any;
+  output_json: any;
+  model_version?: string;
+  confidence_score?: number;
+}) => {
+  const { encounter_id, flow_name, input_json, output_json, model_version, confidence_score } = data;
+  const result = await query(
+    `INSERT INTO ai_results (encounter_id, flow_name, input_json, output_json, model_version, confidence_score)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [
+      encounter_id,
+      flow_name,
+      input_json ?? null,
+      output_json ?? null,
+      model_version ?? null,
+      confidence_score ?? null,
+    ]
+  );
+  return result.rows[0];
+};
+
+export const getLatestAiResult = async (encounter_id: string, flow_name: string) => {
+  const result = await query(
+    `SELECT *
+     FROM ai_results
+     WHERE encounter_id = $1 AND flow_name = $2
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [encounter_id, flow_name]
+  );
+  return result.rows[0];
+};

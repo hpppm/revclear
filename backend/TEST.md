@@ -1,0 +1,115 @@
+# Manual API Test Checklist
+
+Set these first in your terminal:
+
+```bash
+API=http://localhost:3005
+TOKEN="eyJraWQiOiJYOWVrUit6eUlMZ0ZBNWxVUUhXVXJrV1ZKRTljZktTcVV6bTd5N1JNdkZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNDc4OTQzOC0zMDcxLTcwNmQtNzdkOC1jYjg4ZjE4YmM4Y2IiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX05aQ0Z1U3YxbCIsImNvZ25pdG86dXNlcm5hbWUiOiJyYXNtdXNAbG9jYWxob3N0LmRldiIsIm9yaWdpbl9qdGkiOiI3Y2I4ZTFlMi1iMmY5LTQ2NDAtOTg2NC00ODY4NDdlNzRkNmQiLCJhdWQiOiI1ZzVxdnJ2ZDA0aDlzdWVqbWxpZTJyam5jZCIsImV2ZW50X2lkIjoiODI2YjA1NDItM2IwNi00YjBmLThhNzEtNDhiZjFhM2ZkYWRmIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjM4NTgxMDEsImV4cCI6MTc2Mzg2MTcwMSwiaWF0IjoxNzYzODU4MTAxLCJqdGkiOiI3MDc0NjAyOC1hZDlmLTQ4MzktOWM3OS01ZDllNzgzNWZiYTQiLCJlbWFpbCI6InJhc211c0Bsb2NhbGhvc3QuZGV2In0.oHaZNZcqWTmfVRNLuiLYxpD72OdCyNG1BnT-a0oY1mzPtAs_TU-apwULtQf8MkzrLm6fHenADe4Q7gw80znQlbOSuVZQjESWEl-rD0eBdvtmkRkX4_Jn3plQyhzHO-0EXnayhH3gnKTzZiBQpflUVFCC1kPS8QP27Lso94oLvqVXkYFAk3E3I1Zjmxa_7XWplLGfeI2673TzOxX_senIbq_vPj-T_hzZUacumlKQUcNFTYZy3layKikVU9AmXuZx3DEBTiENEZlXuuQyDituk7fBzwk8dk05wELu9d7amZu0VMxO0FC6J3QGKpkp7j3Zurx2gN2D3-sOwjSBIEwUUw"
+AUTH=-H "Authorization: Bearer eyJraWQiOiJYOWVrUit6eUlMZ0ZBNWxVUUhXVXJrV1ZKRTljZktTcVV6bTd5N1JNdkZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNDc4OTQzOC0zMDcxLTcwNmQtNzdkOC1jYjg4ZjE4YmM4Y2IiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX05aQ0Z1U3YxbCIsImNvZ25pdG86dXNlcm5hbWUiOiJyYXNtdXNAbG9jYWxob3N0LmRldiIsIm9yaWdpbl9qdGkiOiI3Y2I4ZTFlMi1iMmY5LTQ2NDAtOTg2NC00ODY4NDdlNzRkNmQiLCJhdWQiOiI1ZzVxdnJ2ZDA0aDlzdWVqbWxpZTJyam5jZCIsImV2ZW50X2lkIjoiODI2YjA1NDItM2IwNi00YjBmLThhNzEtNDhiZjFhM2ZkYWRmIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjM4NTgxMDEsImV4cCI6MTc2Mzg2MTcwMSwiaWF0IjoxNzYzODU4MTAxLCJqdGkiOiI3MDc0NjAyOC1hZDlmLTQ4MzktOWM3OS01ZDllNzgzNWZiYTQiLCJlbWFpbCI6InJhc211c0Bsb2NhbGhvc3QuZGV2In0.oHaZNZcqWTmfVRNLuiLYxpD72OdCyNG1BnT-a0oY1mzPtAs_TU-apwULtQf8MkzrLm6fHenADe4Q7gw80znQlbOSuVZQjESWEl-rD0eBdvtmkRkX4_Jn3plQyhzHO-0EXnayhH3gnKTzZiBQpflUVFCC1kPS8QP27Lso94oLvqVXkYFAk3E3I1Zjmxa_7XWplLGfeI2673TzOxX_senIbq_vPj-T_hzZUacumlKQUcNFTYZy3layKikVU9AmXuZx3DEBTiENEZlXuuQyDituk7fBzwk8dk05wELu9d7amZu0VMxO0FC6J3QGKpkp7j3Zurx2gN2D3-sOwjSBIEwUUw"
+```
+
+Use the commands below (order matters where IDs are needed).
+
+1. Health check
+
+```bash
+curl -s $API/api/health
+```
+
+2. Current user
+
+```bash
+curl -s localhost:3005/api/me -H "Authorization: Bearer eyJraWQiOiJYOWVrUit6eUlMZ0ZBNWxVUUhXVXJrV1ZKRTljZktTcVV6bTd5N1JNdkZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNDc4OTQzOC0zMDcxLTcwNmQtNzdkOC1jYjg4ZjE4YmM4Y2IiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX05aQ0Z1U3YxbCIsImNvZ25pdG86dXNlcm5hbWUiOiJyYXNtdXNAbG9jYWxob3N0LmRldiIsIm9yaWdpbl9qdGkiOiI3Y2I4ZTFlMi1iMmY5LTQ2NDAtOTg2NC00ODY4NDdlNzRkNmQiLCJhdWQiOiI1ZzVxdnJ2ZDA0aDlzdWVqbWxpZTJyam5jZCIsImV2ZW50X2lkIjoiODI2YjA1NDItM2IwNi00YjBmLThhNzEtNDhiZjFhM2ZkYWRmIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjM4NTgxMDEsImV4cCI6MTc2Mzg2MTcwMSwiaWF0IjoxNzYzODU4MTAxLCJqdGkiOiI3MDc0NjAyOC1hZDlmLTQ4MzktOWM3OS01ZDllNzgzNWZiYTQiLCJlbWFpbCI6InJhc211c0Bsb2NhbGhvc3QuZGV2In0.oHaZNZcqWTmfVRNLuiLYxpD72OdCyNG1BnT-a0oY1mzPtAs_TU-apwULtQf8MkzrLm6fHenADe4Q7gw80znQlbOSuVZQjESWEl-rD0eBdvtmkRkX4_Jn3plQyhzHO-0EXnayhH3gnKTzZiBQpflUVFCC1kPS8QP27Lso94oLvqVXkYFAk3E3I1Zjmxa_7XWplLGfeI2673TzOxX_senIbq_vPj-T_hzZUacumlKQUcNFTYZy3layKikVU9AmXuZx3DEBTiENEZlXuuQyDituk7fBzwk8dk05wELu9d7amZu0VMxO0FC6J3QGKpkp7j3Zurx2gN2D3-sOwjSBIEwUUw"
+```
+
+3. Create patient
+
+```bash
+curl -s -X POST localhost:3005/api/patients -H "Authorization: Bearer eyJraWQiOiJYOWVrUit6eUlMZ0ZBNWxVUUhXVXJrV1ZKRTljZktTcVV6bTd5N1JNdkZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNDc4OTQzOC0zMDcxLTcwNmQtNzdkOC1jYjg4ZjE4YmM4Y2IiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX05aQ0Z1U3YxbCIsImNvZ25pdG86dXNlcm5hbWUiOiJyYXNtdXNAbG9jYWxob3N0LmRldiIsIm9yaWdpbl9qdGkiOiI3Y2I4ZTFlMi1iMmY5LTQ2NDAtOTg2NC00ODY4NDdlNzRkNmQiLCJhdWQiOiI1ZzVxdnJ2ZDA0aDlzdWVqbWxpZTJyam5jZCIsImV2ZW50X2lkIjoiODI2YjA1NDItM2IwNi00YjBmLThhNzEtNDhiZjFhM2ZkYWRmIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjM4NTgxMDEsImV4cCI6MTc2Mzg2MTcwMSwiaWF0IjoxNzYzODU4MTAxLCJqdGkiOiI3MDc0NjAyOC1hZDlmLTQ4MzktOWM3OS01ZDllNzgzNWZiYTQiLCJlbWFpbCI6InJhc211c0Bsb2NhbGhvc3QuZGV2In0.oHaZNZcqWTmfVRNLuiLYxpD72OdCyNG1BnT-a0oY1mzPtAs_TU-apwULtQf8MkzrLm6fHenADe4Q7gw80znQlbOSuVZQjESWEl-rD0eBdvtmkRkX4_Jn3plQyhzHO-0EXnayhH3gnKTzZiBQpflUVFCC1kPS8QP27Lso94oLvqVXkYFAk3E3I1Zjmxa_7XWplLGfeI2673TzOxX_senIbq_vPj-T_hzZUacumlKQUcNFTYZy3layKikVU9AmXuZx3DEBTiENEZlXuuQyDituk7fBzwk8dk05wELu9d7amZu0VMxO0FC6J3QGKpkp7j3Zurx2gN2D3-sOwjSBIEwUUw" \
+  -H "Content-Type: application/json" \
+  -d '{"full_name":"Jane Doe","date_of_birth":"1990-01-01","gender":"Female"}'
+```
+
+4. List patients
+
+```bash
+curl -s localhost:3005/api/patients -H "Authorization: Bearer eyJraWQiOiJYOWVrUit6eUlMZ0ZBNWxVUUhXVXJrV1ZKRTljZktTcVV6bTd5N1JNdkZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNDc4OTQzOC0zMDcxLTcwNmQtNzdkOC1jYjg4ZjE4YmM4Y2IiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX05aQ0Z1U3YxbCIsImNvZ25pdG86dXNlcm5hbWUiOiJyYXNtdXNAbG9jYWxob3N0LmRldiIsIm9yaWdpbl9qdGkiOiI3Y2I4ZTFlMi1iMmY5LTQ2NDAtOTg2NC00ODY4NDdlNzRkNmQiLCJhdWQiOiI1ZzVxdnJ2ZDA0aDlzdWVqbWxpZTJyam5jZCIsImV2ZW50X2lkIjoiODI2YjA1NDItM2IwNi00YjBmLThhNzEtNDhiZjFhM2ZkYWRmIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjM4NTgxMDEsImV4cCI6MTc2Mzg2MTcwMSwiaWF0IjoxNzYzODU4MTAxLCJqdGkiOiI3MDc0NjAyOC1hZDlmLTQ4MzktOWM3OS01ZDllNzgzNWZiYTQiLCJlbWFpbCI6InJhc211c0Bsb2NhbGhvc3QuZGV2In0.oHaZNZcqWTmfVRNLuiLYxpD72OdCyNG1BnT-a0oY1mzPtAs_TU-apwULtQf8MkzrLm6fHenADe4Q7gw80znQlbOSuVZQjESWEl-rD0eBdvtmkRkX4_Jn3plQyhzHO-0EXnayhH3gnKTzZiBQpflUVFCC1kPS8QP27Lso94oLvqVXkYFAk3E3I1Zjmxa_7XWplLGfeI2673TzOxX_senIbq_vPj-T_hzZUacumlKQUcNFTYZy3layKikVU9AmXuZx3DEBTiENEZlXuuQyDituk7fBzwk8dk05wELu9d7amZu0VMxO0FC6J3QGKpkp7j3Zurx2gN2D3-sOwjSBIEwUUw"
+```
+
+5. Get patient by id
+
+```bash
+PATIENT_ID="replace-with-patient-uuid"
+curl -s $API/api/patients/$PATIENT_ID $AUTH
+```
+
+6. Update patient
+
+```bash
+curl -s -X PUT $API/api/patients/$PATIENT_ID $AUTH \
+  -H "Content-Type: application/json" \
+  -d '{"full_name":"Jane Q. Doe"}'
+```
+
+7. Delete patient
+
+```bash
+curl -s -X DELETE $API/api/patients/$PATIENT_ID $AUTH
+```
+
+8. Create encounter (needs patient id)
+
+```bash
+curl -s -X POST $API/api/encounters $AUTH \
+  -H "Content-Type: application/json" \
+  -d '{"patient_id":"'"$PATIENT_ID"'","encounter_date":"2024-10-01T10:00:00.000Z","type":"Initial Visit"}'
+```
+
+9. List encounters
+
+```bash
+curl -s localhost:3005/api/encounters -H "Authorization: Bearer eyJraWQiOiJYOWVrUit6eUlMZ0ZBNWxVUUhXVXJrV1ZKRTljZktTcVV6bTd5N1JNdkZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNDc4OTQzOC0zMDcxLTcwNmQtNzdkOC1jYjg4ZjE4YmM4Y2IiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX05aQ0Z1U3YxbCIsImNvZ25pdG86dXNlcm5hbWUiOiJyYXNtdXNAbG9jYWxob3N0LmRldiIsIm9yaWdpbl9qdGkiOiI3Y2I4ZTFlMi1iMmY5LTQ2NDAtOTg2NC00ODY4NDdlNzRkNmQiLCJhdWQiOiI1ZzVxdnJ2ZDA0aDlzdWVqbWxpZTJyam5jZCIsImV2ZW50X2lkIjoiODI2YjA1NDItM2IwNi00YjBmLThhNzEtNDhiZjFhM2ZkYWRmIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjM4NTgxMDEsImV4cCI6MTc2Mzg2MTcwMSwiaWF0IjoxNzYzODU4MTAxLCJqdGkiOiI3MDc0NjAyOC1hZDlmLTQ4MzktOWM3OS01ZDllNzgzNWZiYTQiLCJlbWFpbCI6InJhc211c0Bsb2NhbGhvc3QuZGV2In0.oHaZNZcqWTmfVRNLuiLYxpD72OdCyNG1BnT-a0oY1mzPtAs_TU-apwULtQf8MkzrLm6fHenADe4Q7gw80znQlbOSuVZQjESWEl-rD0eBdvtmkRkX4_Jn3plQyhzHO-0EXnayhH3gnKTzZiBQpflUVFCC1kPS8QP27Lso94oLvqVXkYFAk3E3I1Zjmxa_7XWplLGfeI2673TzOxX_senIbq_vPj-T_hzZUacumlKQUcNFTYZy3layKikVU9AmXuZx3DEBTiENEZlXuuQyDituk7fBzwk8dk05wELu9d7amZu0VMxO0FC6J3QGKpkp7j3Zurx2gN2D3-sOwjSBIEwUUw"
+```
+
+10. Get encounter by id
+
+```bash
+ENCOUNTER_ID="replace-with-encounter-uuid"
+curl -s $API/api/encounters/$ENCOUNTER_ID $AUTH
+```
+
+11. Update encounter
+
+```bash
+curl -s -X PUT $API/api/encounters/$ENCOUNTER_ID $AUTH \
+  -H "Content-Type: application/json" \
+  -d '{"type":"Follow-up Visit"}'
+```
+
+12. Delete encounter
+
+```bash
+curl -s -X DELETE $API/api/encounters/$ENCOUNTER_ID $AUTH
+```
+
+13. Transcribe (upload stream)
+
+```bash
+curl -s -X POST $API/api/transcribe $AUTH \
+  -H "encounterId: $ENCOUNTER_ID" \
+  -F "audio=@/path/to/audio.wav"
+```
+
+14. Transcribe (S3 fallback)
+
+```bash
+curl -s -X POST $API/api/transcribe $AUTH \
+  -H "Content-Type: application/json" \
+  -d '{"s3Key":"audio/test-audio.wav","encounterId":"'"$ENCOUNTER_ID"'"}'
+```
+
+15. Claims list (if wired)
+
+```bash
+curl -s $API/api/claims $AUTH
+```
