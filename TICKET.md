@@ -480,3 +480,225 @@ Create a "My Profile" page that displays the authenticated user's information an
 
 ## Rasmus Seppanen
 
+# 🟢 Frontend: Encounter Flow
+
+## 13. Ticket: Encounter Page & Metadata Form
+
+## STATUS: TODO
+
+**Title:** `feature: encounter page and metadata form`
+
+**Description:**
+Create the main encounter creation page and the initial metadata form. This is the entry point for the encounter flow.
+
+**Requirements:**
+- Create a page at `/dashboard/encounters/create` (or appropriate path).
+- Implement a form to collect:
+  - Date of encounter.
+  - Patient selection (dropdown or search).
+  - Provider (auto-filled from auth).
+- "Next" or "Start" button to proceed to audio capture.
+- Manage form state.
+
+**Deliverables:**
+- Encounter Page component.
+- Metadata Form component.
+
+**Acceptance Criteria:**
+- [ ] Page loads successfully.
+- [ ] User can select a patient and date.
+- [ ] User can proceed to the next step (Audio).
+
+**Branch Name:** `feature/encounter-page-form`
+
+### ASSIGNED TO
+## [Name]
+
+---
+
+## 14. Ticket: Audio Recorder Component
+
+## STATUS: TODO
+
+**Title:** `feature: audio recorder component`
+
+**Description:**
+Develop a reusable UI component for recording audio via the browser microphone.
+
+**Requirements:**
+- Request microphone permissions.
+- Start, Stop, and Pause recording functionality.
+- Visual feedback (timer, waveform, or simple indicator).
+- Output the recorded audio as a Blob/File.
+- Allow re-recording (discard and start over).
+
+**Deliverables:**
+- `AudioRecorder.tsx` component.
+
+**Acceptance Criteria:**
+- [ ] Component requests mic permission.
+- [ ] User can record and stop audio.
+- [ ] Recorded audio is available as a Blob.
+- [ ] Visual feedback works during recording.
+
+**Branch Name:** `feature/audio-recorder-component`
+
+### ASSIGNED TO
+## [Name]
+
+---
+
+## 15. Ticket: Audio Uploader Component
+
+## STATUS: TODO
+
+**Title:** `feature: audio uploader component`
+
+**Description:**
+Develop a reusable UI component for uploading existing audio files.
+
+**Requirements:**
+- File input for selecting audio files.
+- Drag and drop zone.
+- Validate file type (mp3, wav, m4a) and size.
+- Display selected file name/info.
+- Output the selected file to the parent component.
+
+**Deliverables:**
+- `AudioUploader.tsx` component.
+
+**Acceptance Criteria:**
+- [ ] User can select a file via dialog.
+- [ ] User can drag and drop a file.
+- [ ] Invalid files are rejected with a message.
+- [ ] Selected file is passed to parent state.
+
+**Branch Name:** `feature/audio-uploader-component`
+
+### ASSIGNED TO
+## [Name]
+
+---
+
+## 16. Ticket: Transcription Integration
+
+## STATUS: TODO
+
+**Title:** `feature: transcription integration`
+
+**Description:**
+Integrate the audio capture (Recorder/Uploader) with the backend transcription API.
+
+**Requirements:**
+- "Transcribe" button (active only when audio is ready).
+- Send `multipart/form-data` request to `/api/transcribe`.
+- Handle loading state (spinner/progress).
+- Handle error states.
+- Receive and store the JSON transcript in the frontend state.
+- Display the transcript (or a summary) to the user.
+
+**Deliverables:**
+- Integration logic in the Encounter Page.
+- API service function for transcription.
+
+**Acceptance Criteria:**
+- [ ] Clicking "Transcribe" sends audio to backend.
+- [ ] Loading state is visible.
+- [ ] Transcript JSON is received and stored.
+- [ ] Errors are displayed gracefully.
+
+**Branch Name:** `feature/transcription-integration`
+
+### ASSIGNED TO
+## [Name]
+
+---
+
+## 17. Ticket: SOAP Note Display
+
+## STATUS: TODO
+
+**Title:** `feature: soap note display`
+
+**Description:**
+Create a component to display the generated SOAP note in a readable format.
+
+**Requirements:**
+- Render the SOAP note sections (Subjective, Objective, Assessment, Plan).
+- Support Markdown rendering if the backend returns markdown.
+- Clean, professional styling.
+
+**Deliverables:**
+- `SoapNoteViewer.tsx` component.
+
+**Acceptance Criteria:**
+- [ ] SOAP note renders correctly.
+- [ ] Sections are clearly distinguishable.
+
+**Branch Name:** `feature/soap-note-display`
+
+### ASSIGNED TO
+## [Name]
+
+---
+
+## 18. Ticket: SOAP Note Editor & Save
+
+## STATUS: TODO
+
+**Title:** `feature: soap note editor`
+
+**Description:**
+Implement functionality to edit the generated SOAP note and save changes to the backend.
+
+**Requirements:**
+- Switch between "View" and "Edit" modes, or provide an always-editable text area.
+- "Save" button to trigger `PUT /api/encounters/:id/soap`.
+- Handle save success (toast notification) and error.
+- Ensure local state stays in sync with edits.
+
+**Deliverables:**
+- `SoapNoteEditor.tsx` component (or updated Viewer).
+- Integration with PUT endpoint.
+
+**Acceptance Criteria:**
+- [ ] User can edit the SOAP text.
+- [ ] Clicking "Save" updates the backend.
+- [ ] Success/Error feedback is provided.
+
+**Branch Name:** `feature/soap-note-editor`
+
+### ASSIGNED TO
+## [Name]
+
+---
+
+## 19. Ticket: SOAP Regeneration
+
+## STATUS: TODO
+
+**Title:** `feature: soap regeneration`
+
+**Description:**
+Implement the "Try Again" or "Regenerate" flow for SOAP notes.
+
+**Requirements:**
+- "Regenerate" button.
+- Call `POST /api/encounters/:id/soap` to re-trigger generation.
+- Confirm action (modal?) to prevent accidental overwrite.
+- Update the display with the new result.
+
+**Deliverables:**
+- Regeneration logic and UI button.
+
+**Acceptance Criteria:**
+- [ ] Clicking "Regenerate" calls the backend.
+- [ ] New SOAP note replaces the old one.
+- [ ] Loading state is shown during regeneration.
+
+**Branch Name:** `feature/soap-regeneration`
+
+### ASSIGNED TO
+## [Name]
+
+---
