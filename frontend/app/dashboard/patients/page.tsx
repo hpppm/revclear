@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { mockPatients } from "./mockPatients";
+import { mockPatients } from "@/app/lib/mock/mockPatients";
+import { Patient } from "@/types";
 
 export default function PatientsPage() {
   const [doctorType, setDoctorType] = useState("");
@@ -43,7 +44,7 @@ export default function PatientsPage() {
               </thead>
 
               <tbody>
-                {mockPatients[categoryKey].map((p: any) => (
+                {mockPatients[categoryKey as keyof typeof mockPatients].map((p: Patient) => (
                   <tr key={p.id} className="border-b last:border-none">
                     <td className="py-3">{p.name}</td>
                     <td className="py-3">{p.age}</td>
