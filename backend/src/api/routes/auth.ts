@@ -9,6 +9,7 @@ import {
   forgotPassword,
   confirmForgotPassword,
 } from "../../config/awsCognito";
+import { createUser } from "../../config/db";
 import { authMiddleware } from "../../middleware/auth";
 
 const router = Router();
@@ -35,10 +36,15 @@ async function buildSignupResponse(email: string, password: string, baseMessage:
       await adminConfirmSignUp(email);
       autoConfirmResult.success = true;
     } catch (confirmError: any) {
-      console.warn("Auto confirm failed; user must confirm manually:", confirmError);
-      autoConfirmResult.success = false;
-      autoConfirmResult.error =
-        confirmError?.message || "Failed to auto confirm user.";
+      if (confirmError.name === 'NotAuthorizedException' && confirmError.message.includes('Current status is CONFIRMED')) {
+        // User is already confirmed, proceed as success
+        autoConfirmResult.success = true;
+      } else {
+        console.warn("Auto confirm failed; user must confirm manually:", confirmError);
+        autoConfirmResult.success = false;
+        autoConfirmResult.error =
+          confirmError?.message || "Failed to auto confirm user.";
+      }
     }
   }
 
@@ -96,6 +102,18 @@ router.post("/signup", async (req, res) => {
   }
   try {
     const response = await signUpUser(email, password, attributes);
+
+    if (response.UserSub) {
+      try {
+        await createUser(response.UserSub, email, attributes.name || "Unknown");
+        console.log(`User ${email} stored in DB with Cognito ID ${response.UserSub}`);
+      } catch (dbError) {
+        console.error("Failed to store user in DB:", dbError);
+        // Optional: Decide if we should fail the request or just log it. 
+        // For now, we log it but allow the response to proceed as the user is created in Cognito.
+      }
+    }
+
     const payload = await buildSignupResponse(
       email,
       password,
@@ -115,14 +133,10 @@ router.post("/signup", async (req, res) => {
       });
     }
     if (error.name === 'UsernameExistsException') {
-      const payload = await buildSignupResponse(
-        email,
-        password,
-        "Account already exists — reusing sandbox credentials."
-      );
-      return res.status(200).json({
-        ...payload,
-        existingAccount: true,
+      return res.status(400).json({
+        error: "An account with this email already exists.",
+        message: "Please use the login page to sign in, or use a different email address.",
+        code: "USER_ALREADY_EXISTS"
       });
     }
     res.status(400).json({ error: error.message || "Failed to sign up user." });
@@ -174,6 +188,14 @@ router.post("/signin", async (req, res) => {
           AuthenticationResult: response.AuthenticationResult,
         });
       } catch (confirmError: any) {
+        if (confirmError.name === 'NotAuthorizedException' && confirmError.message.includes('Current status is CONFIRMED')) {
+          // User is already confirmed, retry sign-in
+          const response = await signInUser(email, password);
+          return res.status(200).json({
+            message: "User signed in successfully.",
+            AuthenticationResult: response.AuthenticationResult,
+          });
+        }
         console.warn("Auto confirm during sign-in failed:", confirmError);
         return res.status(400).json({
           error: "User is not confirmed. Please verify the account via Cognito.",

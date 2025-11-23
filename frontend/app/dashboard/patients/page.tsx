@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mockPatients } from "@/app/lib/mock/mockPatients";
-import { Patient } from "@/types";
+import { Patient } from "@/app/lib/types";
 
 export default function PatientsPage() {
   const [doctorType, setDoctorType] = useState("");

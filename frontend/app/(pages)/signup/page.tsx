@@ -3,9 +3,20 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import api from "@/app/lib/api/api";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { login } = useAuth();
+
+  // Clear any existing auth state when visiting signup
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("token");
+    }
+  });
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -48,7 +59,7 @@ export default function SignupPage() {
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (form.password !== form.confirm) {
@@ -59,8 +70,54 @@ export default function SignupPage() {
     // ⭐ Save practitioner type so Dashboard + Patients page can filter
     localStorage.setItem("practitionerType", form.practitioner);
 
-    alert("Account created (mock)");
-    router.push("/login");
+    try {
+      const response = await api.post("/api/auth/signup", {
+        email: form.email,
+        password: form.password,
+        attributes: {
+          name: form.name,
+          // "custom:practitioner_type": form.practitioner,
+          // "custom:license_id": form.license,
+        },
+      });
+
+      if (response.data.AuthenticationResult) {
+        // Auto-login - Use IdToken for authentication (not AccessToken)
+        const token = response.data.AuthenticationResult.IdToken;
+        localStorage.setItem("token", token);
+
+        // Fetch user details with explicit token
+        const userResponse = await api.get("/api/me", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const user = userResponse.data;
+
+        login(token, user);
+      } else {
+        // Redirect to login
+        alert("Account created! Please check your email for verification code.");
+        router.push("/login");
+      }
+    } catch (error: any) {
+      console.error("Signup failed:", error);
+      console.error("Error response:", error.response?.data);
+
+      const errorData = error.response?.data;
+      let errorMessage = "Signup failed. Please try again.";
+
+      if (errorData?.code === "USER_ALREADY_EXISTS") {
+        errorMessage = errorData.error + " " + errorData.message;
+      } else if (errorData?.error) {
+        errorMessage = errorData.error;
+        if (errorData.policy) {
+          errorMessage += "\n\n" + errorData.policy;
+        }
+      }
+
+      alert(errorMessage);
+    }
   }
 
   return (
@@ -152,10 +209,10 @@ export default function SignupPage() {
               {/* Password Strength */}
               <p
                 className={`text-sm mt-1 ${passwordStrength === "Weak"
-                    ? "text-red-600"
-                    : passwordStrength === "Medium"
-                      ? "text-yellow-600"
-                      : "text-green-600"
+                  ? "text-red-600"
+                  : passwordStrength === "Medium"
+                    ? "text-yellow-600"
+                    : "text-green-600"
                   }`}
               >
                 {passwordStrength && `Password strength: ${passwordStrength}`}
