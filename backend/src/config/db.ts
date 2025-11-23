@@ -12,9 +12,18 @@ const poolConfig: PoolConfig = {
   connectionTimeoutMillis: appConfig.db.connectionTimeoutMillis,
 };
 
-if (appConfig.db.ssl) {
-  poolConfig.ssl = { rejectUnauthorized: false };
-}
+// Force SSL for debugging 'no encryption' error
+poolConfig.ssl = { rejectUnauthorized: false };
+// if (appConfig.db.ssl) {
+//   poolConfig.ssl = { rejectUnauthorized: false };
+// }
+
+console.log("DB Config:", {
+  host: poolConfig.host,
+  user: poolConfig.user,
+  database: poolConfig.database,
+  ssl: poolConfig.ssl,
+});
 
 const pool = new Pool(poolConfig);
 
@@ -29,6 +38,19 @@ export const query = <T extends QueryResultRow = QueryResultRow>(
 
 export const findUserByCognitoId = async (cognitoId: string) => {
   const result = await query('SELECT id, cognito_id, email, full_name, role, created_at FROM users WHERE cognito_id = $1', [cognitoId]);
+  return result.rows[0];
+};
+
+export const findUserByEmail = async (email: string) => {
+  const result = await query('SELECT id, cognito_id, email, full_name, role, created_at FROM users WHERE email = $1', [email]);
+  return result.rows[0];
+};
+
+export const updateUserCognitoId = async (email: string, cognitoId: string) => {
+  const result = await query(
+    'UPDATE users SET cognito_id = $1 WHERE email = $2 RETURNING id, cognito_id, email, full_name, role, created_at',
+    [cognitoId, email]
+  );
   return result.rows[0];
 };
 

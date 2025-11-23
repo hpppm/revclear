@@ -3,6 +3,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import api from "@/app/lib/api/api";
+import { useAuth } from "@/app/context/AuthContext";
 
 type FieldErrors = {
   email?: string;
@@ -12,6 +14,7 @@ type FieldErrors = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -21,7 +24,7 @@ export default function LoginPage() {
     [email, password]
   );
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const nextErrors: FieldErrors = {};
@@ -31,8 +34,28 @@ export default function LoginPage() {
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length === 0) {
-      // SUCCESS → Redirect to dashboard
-      router.push("/dashboard");
+      try {
+        const response = await api.post("/api/auth/signin", { email, password });
+        const { AuthenticationResult } = response.data;
+        const token = AuthenticationResult.IdToken; // Use IdToken for authentication
+
+        // Temporarily set token to fetch user
+        localStorage.setItem("token", token);
+
+        // Fetch user details
+        const userResponse = await api.get("/api/me");
+        const user = userResponse.data;
+
+        login(token, user);
+      } catch (error: any) {
+        console.error("Login failed:", error);
+        console.error("Error response:", error.response?.data);
+        const errorMessage = error.response?.data?.error || error.response?.data?.details || "Invalid email or password";
+        setErrors({
+          form: errorMessage,
+        });
+        localStorage.removeItem("token"); // Cleanup if failed
+      }
     }
   }
 

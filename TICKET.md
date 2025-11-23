@@ -381,7 +381,7 @@ Expose SOAP generation endpoints for encounters using Genkit/Gemini. Support fet
 
 ## 11. Ticket: Frontend Authentication Integration
 
-## TODO
+## STATUS: FINISHED
 
 **Title:** `feature: frontend authentication integration`
 
@@ -421,5 +421,5 @@ Implement real authentication in the frontend by integrating with the backend AP
 
 ### ASSIGNED TO
 
-## NO ONE YET
+## Rasmus Seppanen
 
