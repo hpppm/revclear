@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type FieldErrors = {
   email?: string;
@@ -9,6 +11,7 @@ type FieldErrors = {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -29,7 +32,7 @@ export default function LoginPage() {
 
     if (Object.keys(nextErrors).length === 0) {
       // SUCCESS → Redirect to dashboard
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
     }
   }
 
@@ -101,6 +104,13 @@ export default function LoginPage() {
               Continue
             </button>
           </form>
+
+          <p className="mt-4 text-center text-sm text-slate-600">
+            Don't have an account?{" "}
+            <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500 hover:underline">
+              Sign up
+            </Link>
+          </p>
         </div>
       </div>
     </div>

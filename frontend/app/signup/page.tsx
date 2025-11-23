@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -57,7 +60,7 @@ export default function SignupPage() {
     localStorage.setItem("practitionerType", form.practitioner);
 
     alert("Account created (mock)");
-    window.location.href = "/login";
+    router.push("/login");
   }
 
   return (
@@ -148,13 +151,12 @@ export default function SignupPage() {
 
               {/* Password Strength */}
               <p
-                className={`text-sm mt-1 ${
-                  passwordStrength === "Weak"
+                className={`text-sm mt-1 ${passwordStrength === "Weak"
                     ? "text-red-600"
                     : passwordStrength === "Medium"
-                    ? "text-yellow-600"
-                    : "text-green-600"
-                }`}
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
               >
                 {passwordStrength && `Password strength: ${passwordStrength}`}
               </p>
@@ -190,9 +192,9 @@ export default function SignupPage() {
 
             <p className="text-sm text-center mt-3">
               Already have an account?{" "}
-              <a href="/login" className="text-blue-600 font-medium underline">
+              <Link href="/login" className="text-blue-600 font-medium underline">
                 Sign In
-              </a>
+              </Link>
             </p>
 
           </form>
