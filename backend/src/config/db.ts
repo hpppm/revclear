@@ -1,34 +1,18 @@
 import { Pool, PoolConfig, QueryResult, QueryResultRow } from "pg";
-
-const {
-  DB_HOST,
-  DB_PORT,
-  DB_USERNAME,
-  DB_PASSWORD,
-  DB_DATABASE,
-  DB_SSL,
-  DB_POOL_MAX,
-  DB_IDLE_TIMEOUT_MS,
-  DB_CONN_TIMEOUT_MS,
-} = process.env;
-
-if (!DB_HOST || !DB_USERNAME || !DB_PASSWORD || !DB_DATABASE) {
-  throw new Error("Database configuration is incomplete. Please check DB_* environment variables.");
-}
+import { appConfig } from "./appConfig";
 
 const poolConfig: PoolConfig = {
-  host: DB_HOST,
-  port: DB_PORT ? Number(DB_PORT) : 5432,
-  user: DB_USERNAME,
-  password: DB_PASSWORD,
-  database: DB_DATABASE,
-  max: DB_POOL_MAX ? Number(DB_POOL_MAX) : 10,
-  idleTimeoutMillis: DB_IDLE_TIMEOUT_MS ? Number(DB_IDLE_TIMEOUT_MS) : 30000,
-  connectionTimeoutMillis: DB_CONN_TIMEOUT_MS ? Number(DB_CONN_TIMEOUT_MS) : 5000,
+  host: appConfig.db.host,
+  port: appConfig.db.port,
+  user: appConfig.db.user,
+  password: appConfig.db.password,
+  database: appConfig.db.database,
+  max: appConfig.db.max,
+  idleTimeoutMillis: appConfig.db.idleTimeoutMillis,
+  connectionTimeoutMillis: appConfig.db.connectionTimeoutMillis,
 };
 
-const sslEnabled = DB_SSL ? DB_SSL.toLowerCase() === "true" : true;
-if (sslEnabled) {
+if (appConfig.db.ssl) {
   poolConfig.ssl = { rejectUnauthorized: false };
 }
 
