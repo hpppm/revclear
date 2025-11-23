@@ -1,9 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
 import { spawn } from 'child_process';
-import { writeFile, unlink, access, constants } from 'fs/promises'; // Import access and constants
 import path from 'path';
+import { z } from 'zod';
 import { authMiddleware } from "../../middleware/auth";
+import { uploadFile, getFile } from "../../config/awsS3";
+import { Readable } from "stream";
+import { createAudioRecord, createAiResult } from '../../db/queries'; // Placeholder for DB functions
 
 const router = Router();
 
@@ -12,40 +15,83 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Define the path to your Python Whisper transcription script
-const WHISPER_SCRIPT_PATH = path.join(process.cwd(), 'python', 'whisper.py');
-// Define the path to your Python executable within your virtual environment
-const PYTHON_EXECUTABLE_PATH = path.join(process.cwd(), 'venv', 'bin', 'python'); // Assuming Linux/macOS venv structure
+const WHISPER_SCRIPT_PATH = path.join(process.cwd(), 'src', 'python', 'whisper.py');
+// Define the path to your Python executable
+const PYTHON_EXECUTABLE_PATH = 'python'; // Assumes 'python' is in the system's PATH
+
+// Zod schema for S3 fallback request
+const S3FallbackSchema = z.object({
+  s3Key: z.string().min(1, "s3Key cannot be empty"),
+  encounterId: z.string().uuid("Invalid encounter ID"),
+});
 
 /**
  * @route POST /api/transcribe
- * @description Accepts an audio file for transcription, processes it using a Python Whisper service.
+ * @description Accepts an audio file for transcription or an S3 key to transcribe an existing file.
+ * Handles two scenarios:
+ * 1. Direct audio file upload (multipart/form-data with "audio" field).
+ * 2. S3 fallback (application/json with "s3Key" and "encounterId").
  */
 router.post(
   "/",
   authMiddleware,
-  upload.single("audio"), // The form field name for the audio file must be "audio"
+  upload.single("audio"),
   async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: "No audio file provided." });
-    }
-
-    if (!req.file.mimetype.startsWith('audio/')) {
-        return res.status(400).json({ error: "Provided file is not an audio file." });
-    }
-
-    let tempAudioFilePath: string | undefined;
-
     try {
-      // 1. Save the received audio file buffer to a temporary file
-      const originalExtension = path.extname(req.file.originalname);
-      const tempFileName = `audio-${Date.now()}-${Math.random().toString(36).substring(2, 15)}${originalExtension || '.wav'}`;
-      tempAudioFilePath = path.join('/tmp', tempFileName); // Use /tmp for temporary storage
+      let audioStream: Readable;
+      let s3Key: string;
+      const encounterId = req.body.encounterId; // Assuming encounterId is passed for both paths
 
-      await writeFile(tempAudioFilePath, req.file.buffer);
-      console.log(`Backend: Saved temporary audio to ${tempAudioFilePath}`);
+      if (!encounterId) {
+        return res.status(400).json({ error: "Encounter ID is required." });
+      }
 
-      // 2. Spawn a Python child process to run the Whisper script
-      const pythonProcess = spawn(PYTHON_EXECUTABLE_PATH, [WHISPER_SCRIPT_PATH, tempAudioFilePath]);
+      if (req.file) {
+        // --- Path 1: Direct Audio Upload ---
+        if (!req.file.mimetype.startsWith('audio/')) {
+            return res.status(400).json({ error: "Provided file is not an audio file." });
+        }
+
+        // Generate a unique S3 key
+        const originalExtension = path.extname(req.file.originalname);
+        s3Key = `audio/encounter_${encounterId}_${Date.now()}${originalExtension || '.tmp'}`;
+
+        // Upload to S3
+        await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
+        console.log(`Backend: Uploaded audio to S3 with key: ${s3Key}`);
+        
+        // Create a record in audio_records table
+        await createAudioRecord({
+          s3_key: s3Key,
+          encounter_id: encounterId,
+          status: 'uploaded',
+        });
+
+        // Get a readable stream from the buffer to pass to Whisper
+        audioStream = Readable.from(req.file.buffer);
+
+      } else {
+        // --- Path 2: S3 Fallback ---
+        const validation = S3FallbackSchema.safeParse(req.body);
+        if (!validation.success) {
+          return res.status(400).json({ error: "Invalid request body for S3 fallback.", details: validation.error.issues });
+        }
+
+        s3Key = validation.data.s3Key;
+        
+        // Get file stream from S3
+        const s3File = await getFile(s3Key);
+        if (!s3File.Body) {
+            throw new Error("Failed to retrieve file from S3.");
+        }
+        audioStream = s3File.Body as Readable;
+      }
+
+      // --- Universal Transcription Process ---
+      const pythonProcess = spawn(PYTHON_EXECUTABLE_PATH, [WHISPER_SCRIPT_PATH]);
+      
+      // Pipe the audio stream to the Python script's stdin
+      audioStream.pipe(pythonProcess.stdin);
 
       let pythonOutput = '';
       let pythonError = '';
@@ -61,7 +107,7 @@ router.post(
       await new Promise<void>((resolve, reject) => {
         pythonProcess.on('close', (code) => {
           if (code !== 0) {
-            const fullError = `Python script exited with code ${code}. Stderr: ${pythonError}. Stdout: ${pythonOutput}`;
+            const fullError = `Python script exited with code ${code}. Stderr: ${pythonError}.`;
             console.error(`Backend: Python script error - ${fullError}`);
             return reject(new Error(`Whisper transcription failed: ${pythonError || 'Unknown Python error.'}`));
           }
@@ -69,47 +115,31 @@ router.post(
         });
         pythonProcess.on('error', (err) => {
             console.error('Backend: Failed to start Python child process:', err);
-            reject(new Error(`Failed to start Whisper service: ${err.message}. Ensure Python is in PATH and script is executable.`));
+            reject(new Error(`Failed to start Whisper service: ${err.message}.`));
         });
       });
 
-      // 3. Parse the JSON transcript from Python's stdout
       const transcript = JSON.parse(pythonOutput);
-      console.log(`Backend: Transcription successful for ${req.file.originalname}`);
-      console.log(`Backend: Preparing to send response for ${req.file.originalname}`);
+      console.log(`Backend: Transcription successful for S3 key: ${s3Key}`);
+      
+      // Persist transcript to ai_results table
+      await createAiResult({
+        encounter_id: encounterId,
+        flow_name: 'whisper_transcript',
+        result_json: transcript,
+        input_s3_key: s3Key,
+      });
 
-      try {
-        res.json({
-          success: true,
-          message: `Transcription complete for ${req.file.originalname}.`,
-          transcript: transcript,
-        });
-        console.log("Backend: Response sent successfully.");
-      } catch (jsonError: any) {
-        console.error("Backend: Error sending JSON response:", jsonError);
-        // Fallback error response
-        res.status(500).json({ error: "Failed to send transcription response." });
-      }
+      res.json({
+        success: true,
+        message: `Transcription complete.`,
+        s3Key: s3Key,
+        transcript: transcript,
+      });
 
     } catch (error: any) {
       console.error("Backend: Transcription processing error:", error);
       res.status(500).json({ error: error.message || "Failed to process audio file." });
-    } finally {
-      // Ensure file cleanup only if it exists
-      if (tempAudioFilePath) {
-        try {
-          // Check if file exists before trying to unlink
-          await access(tempAudioFilePath, constants.F_OK);
-          await unlink(tempAudioFilePath);
-          console.log(`Backend: Deleted temporary file: ${tempAudioFilePath}`);
-        } catch (err: any) {
-          if (err.code === 'ENOENT') {
-            console.log(`Backend: Temporary file already deleted or never created: ${tempAudioFilePath}`);
-          } else {
-            console.error(`Backend: Failed to delete temporary file ${tempAudioFilePath}:`, err);
-          }
-        }
-      }
     }
   }
 );
