@@ -6,7 +6,7 @@ This document provides examples of well-structured development tickets, adhering
 
 ## 1. Ticket: Setup Landing Page
 
-## TODO
+## STATUS: FINISHED
 
 **Title:** `feature: setup landing page`
 
@@ -38,13 +38,13 @@ Create the initial landing page for the frontend. This will be the default page 
 
 ### ASSIGNED TO
 
-NAME GOES HERE
+## NARNI YOGA
 
 ---
 
 ## 2. Ticket: Create Login Page UI
 
-## TODO
+## STATUS: FINISHED
 
 **Title:** `feature: create login page UI`
 
@@ -76,15 +76,15 @@ Implement the frontend-only login screen. This task focuses solely on the user i
 **Branch Name:**
 `feature/login-page-ui`
 
-### Narni Yoga
+### ASSIGNED TO
 
-NAME GOES HERE
+## NARNI YOGA
 
 ---
 
 ## 3. Ticket: Setup Global Layout Shell
 
-## TODO
+## STATUS: FINISHED
 
 **Title:** `feature: global layout shell`
 
@@ -120,11 +120,11 @@ Implement the foundational global layout for the frontend application. This layo
 
 ### ASSIGNED TO
 
-## RASMUS SEPPANEN
+## NARNI YOGA
 
 ## 4. Genkit: Install Genkit to the backend
 
-## FINISHED
+## STATUS: FINISHED
 
 **Title:** `feature: genkit implementation`
 
@@ -157,7 +157,7 @@ Install genkit dependencies and get the google ai studio to run.
 
 ## 5. RDS: RDS connection to testing-dashboard
 
-## FINISHED
+## STATUS: FINISHED
 
 **Title:** `feature: RDS connection plus CRUD sample data`
 
@@ -192,7 +192,7 @@ Connect to the RDS database in aws
 
 ## 6. BACKEND API ROUTES: Set up main routes in the backend
 
-## Finished
+## STATUS: FINISHED
 
 **Title:** `feature: Expose and create API routes in the backend`
 
@@ -260,15 +260,16 @@ Implement a production `/api/me` endpoint that returns the current authenticated
 **Branch Name:**
 `feature/users-me-endpoint`
 
-### Rasmus Seppanen
+### ASSIGNED TO
 
-## NO ONE YET
+## RASMUS SEPPANEN
+
 
 ---
 
 ## 8. PATIENTS & ENCOUNTERS API
 
-## STATUS: Finished
+## STATUS: FINISHED
 
 **Title:** `feature: patients and encounters api`
 
@@ -304,7 +305,7 @@ Build fully validated patients and encounters routes for production (no `/api/de
 
 ## 9. TRANSCRIBE FLOW WITH S3 FALLBACK
 
-## Finished
+## FINISHED
 
 **Title:** `feature: transcribe flow with s3 fallback`
 
@@ -342,7 +343,7 @@ Implement production `/api/transcribe` that accepts audio uploads, streams to Wh
 
 ## 10. SOAP / GENKIT FLOW (GENERATE, EDIT, SAVE)
 
-## TODO
+## STATUS: FINISHED
 
 **Title:** `feature: soap genkit flow`
 
