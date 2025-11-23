@@ -26,6 +26,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Suppress SES_UNCAUGHT_EXCEPTION errors
+              (function() {
+                const originalError = console.error;
+                console.error = function(...args) {
+                  if (args[0]?.includes?.('SES_UNCAUGHT_EXCEPTION')) {
+                    return;
+                  }
+                  originalError.apply(console, args);
+                };
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

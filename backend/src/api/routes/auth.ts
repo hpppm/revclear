@@ -9,7 +9,7 @@ import {
   forgotPassword,
   confirmForgotPassword,
 } from "../../config/awsCognito";
-import { createUser } from "../../config/db";
+import { createUser, updateUserPractitionerInfo } from "../../config/db";
 import { authMiddleware } from "../../middleware/auth";
 
 const router = Router();
@@ -94,7 +94,7 @@ async function buildSignupResponse(email: string, password: string, baseMessage:
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
-  const { email, password, attributes } = req.body;
+  const { email, password, attributes, practitionerType, licenseId } = req.body;
   if (!isAllowedEmail(email)) {
     return res.status(400).json({
       error: `Email must end with ${allowedEmailDomain} for testing`,
@@ -105,10 +105,25 @@ router.post("/signup", async (req, res) => {
 
     if (response.UserSub) {
       try {
-        await createUser(response.UserSub, email, attributes.name || "Unknown");
+        await createUser(
+          response.UserSub,
+          email,
+          attributes.name || "Unknown",
+          practitionerType,
+          licenseId
+        );
         console.log(`User ${email} stored in DB with Cognito ID ${response.UserSub}`);
-      } catch (dbError) {
+      } catch (dbError: any) {
         console.error("Failed to store user in DB:", dbError);
+        // If user already exists (duplicate key), update their practitioner info
+        if (dbError.code === '23505') {
+          try {
+            await updateUserPractitionerInfo(email, practitionerType, licenseId);
+            console.log(`Updated practitioner info for existing user ${email}`);
+          } catch (updateError) {
+            console.error("Failed to update practitioner info:", updateError);
+          }
+        }
         // Optional: Decide if we should fail the request or just log it. 
         // For now, we log it but allow the response to proceed as the user is created in Cognito.
       }

@@ -33,7 +33,7 @@ export default function DashboardHome() {
 
         {/* Profile */}
         <Link
-          href="#"
+          href="/dashboard/profile"
           className="rounded-xl bg-white p-6 shadow border border-slate-200 hover:shadow-md transition block"
         >
           <h2 className="text-xl font-semibold text-slate-900">My Profile</h2>
