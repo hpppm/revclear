@@ -423,3 +423,60 @@ Implement real authentication in the frontend by integrating with the backend AP
 
 ## Rasmus Seppanen
 
+---
+
+## 12. Ticket: My Profile Page
+
+## STATUS: TODO
+
+**Title:** `feature: my profile page`
+
+**Description:**
+Create a "My Profile" page that displays the authenticated user's information and allows them to view their account details. This page should fetch user data from the `/api/me` endpoint and display it in a clean, organized layout. The page should be accessible from the dashboard and provide a good user experience for viewing profile information.
+
+**Requirements:**
+
+- Create a new page at `/dashboard/profile`.
+- Update the dashboard home page to link to the profile page (currently shows `href="#"`).
+- Fetch user data from the Auth Context (already available from login).
+- Display user information including:
+  - Full name
+  - Email address
+  - Role (e.g., "clinician")
+  - Account creation date
+- Use consistent styling with the rest of the dashboard.
+- Add a "Back to Dashboard" or navigation breadcrumb.
+- Handle loading states while fetching data.
+- Handle error states if user data is unavailable.
+
+**Optional Enhancements:**
+
+- Add an "Edit Profile" button (functionality can be implemented later).
+- Show last login timestamp.
+- Add a "Logout" button on the profile page.
+
+**Deliverables:**
+
+- New profile page component at `/dashboard/profile/page.tsx`.
+- Updated dashboard home page with working profile link.
+- Clean, responsive UI displaying user information.
+- Proper error and loading state handling.
+
+**Acceptance Criteria:**
+
+- [ ] Profile page is accessible at `/dashboard/profile`.
+- [ ] Dashboard home page links to the profile page.
+- [ ] User information is displayed correctly (name, email, role, created date).
+- [ ] Page uses consistent styling with the dashboard.
+- [ ] Loading state is shown while data is being fetched.
+- [ ] Error state is handled gracefully if data fetch fails.
+- [ ] Page is responsive and works on mobile devices.
+- [ ] User can navigate back to the dashboard.
+
+**Branch Name:**
+`feature/my-profile-page`
+
+### ASSIGNED TO
+
+## Rasmus Seppanen
+

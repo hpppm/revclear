@@ -76,9 +76,9 @@ export default function SignupPage() {
         password: form.password,
         attributes: {
           name: form.name,
-          // "custom:practitioner_type": form.practitioner,
-          // "custom:license_id": form.license,
         },
+        practitionerType: form.practitioner,
+        licenseId: form.license,
       });
 
       if (response.data.AuthenticationResult) {

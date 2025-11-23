@@ -37,27 +37,45 @@ export const query = <T extends QueryResultRow = QueryResultRow>(
 ): Promise<QueryResult<T>> => pool.query<T>(text, params);
 
 export const findUserByCognitoId = async (cognitoId: string) => {
-  const result = await query('SELECT id, cognito_id, email, full_name, role, created_at FROM users WHERE cognito_id = $1', [cognitoId]);
+  const result = await query('SELECT id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at FROM users WHERE cognito_id = $1', [cognitoId]);
   return result.rows[0];
 };
 
 export const findUserByEmail = async (email: string) => {
-  const result = await query('SELECT id, cognito_id, email, full_name, role, created_at FROM users WHERE email = $1', [email]);
+  const result = await query('SELECT id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at FROM users WHERE email = $1', [email]);
   return result.rows[0];
 };
 
 export const updateUserCognitoId = async (email: string, cognitoId: string) => {
   const result = await query(
-    'UPDATE users SET cognito_id = $1 WHERE email = $2 RETURNING id, cognito_id, email, full_name, role, created_at',
+    'UPDATE users SET cognito_id = $1 WHERE email = $2 RETURNING id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at',
     [cognitoId, email]
   );
   return result.rows[0];
 };
 
-export const createUser = async (cognitoId: string, email: string, fullName: string) => {
+export const createUser = async (
+  cognitoId: string,
+  email: string,
+  fullName: string,
+  practitionerType?: string,
+  licenseId?: string
+) => {
   const result = await query(
-    'INSERT INTO users (cognito_id, email, full_name) VALUES ($1, $2, $3) RETURNING id, cognito_id, email, full_name, role, created_at',
-    [cognitoId, email, fullName]
+    'INSERT INTO users (cognito_id, email, full_name, practitioner_type, license_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at',
+    [cognitoId, email, fullName, practitionerType || null, licenseId || null]
+  );
+  return result.rows[0];
+};
+
+export const updateUserPractitionerInfo = async (
+  email: string,
+  practitionerType?: string,
+  licenseId?: string
+) => {
+  const result = await query(
+    'UPDATE users SET practitioner_type = $1, license_id = $2 WHERE email = $3 RETURNING id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at',
+    [practitionerType || null, licenseId || null, email]
   );
   return result.rows[0];
 };
