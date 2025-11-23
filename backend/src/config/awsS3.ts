@@ -7,9 +7,10 @@ import {
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { appConfig } from "./appConfig";
 
-const region = process.env.AWS_REGION || "us-east-1";
-const bucketName = process.env.AWS_S3_BUCKET;
+const region = appConfig.aws.region;
+const bucketName = appConfig.aws.s3Bucket;
 
 if (!bucketName) {
   throw new Error("AWS_S3_BUCKET must be set");

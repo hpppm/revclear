@@ -7,8 +7,8 @@
     "test": "cross-env npx jest --config jest.config.ts --verbose --passWithNoTests backend/tests",
     "build": "tsc",
     "build:watch": "tsc -w",
-    "start": "node dist/server.js",
-    "dev": "NODE_OPTIONS=--no-deprecation nodemon --watch 'src/**/*.ts' --exec 'npx ts-node --files' src/server.ts",
+    "start": "node dist/start.js",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation nodemon --watch 'src/**/*.ts' --exec 'npx ts-node --files' src/start.ts",
     "build:genkit": "tsc -p genkit/tsconfig.json",
     "depcheck": "depcheck"
   },
@@ -35,7 +35,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
-    "zod": "^4.1.12"
+    "zod": "^3.25.8"
   },
   "devDependencies": {
     "@jest/types": "^29.6.3",

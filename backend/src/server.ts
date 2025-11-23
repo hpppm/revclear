@@ -5,11 +5,13 @@ import cors from "cors";
 import morgan from "morgan";
 
 import { auditLogger } from "./middleware/audit";
+import { appConfig } from "./config/appConfig";
 
 const app = express();
+const isTestEnv = appConfig.env === "test" || process.env.JEST_WORKER_ID;
 
 // Load Genkit flows/tools in dev mode so the CLI Dev UI can attach.
-if (process.env.GENKIT_ENV === "dev") {
+if (appConfig.genkitEnv === "dev") {
   import("../genkit")
     .then(() => {
       console.log("✅ Genkit dev runtime loaded.");
@@ -78,24 +80,22 @@ import encounterRoutes from "./api/routes/encounters";
 import claimRoutes from "./api/routes/claims";
 import meRoutes from "./api/routes/me";
 import healthRoutes from "./api/routes/health";
-import devRoutes from "./api/routes/dev";
 import userRoutes from "./api/routes/users"; // Added userRoutes
+import soapRoutes from "./api/routes/soap";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/encounters", encounterRoutes);
+app.use("/api/encounters", soapRoutes);
 app.use("/api/claims", claimRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);
-app.use("/api/dev", devRoutes);
 app.use("/api/users", userRoutes); // Added userRoutes
 
-// Start server
-const PORT = process.env.PORT || 3005;
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
-    console.log(`✅ API running securely on http://localhost:${PORT}`);
-  });
+if (!isTestEnv) {
+  // Lazily load dev routes only outside test runs to avoid heavy fixtures
+  const devRoutes = require("./api/routes/dev").default;
+  app.use("/api/dev", devRoutes);
 }
 
 export default app;
