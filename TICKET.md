@@ -38,7 +38,7 @@ Create the initial landing page for the frontend. This will be the default page 
 
 ### ASSIGNED TO
 
-## NARNI YOGA
+## [NARNI YOGA]
 
 ---
 
@@ -78,7 +78,7 @@ Implement the frontend-only login screen. This task focuses solely on the user i
 
 ### ASSIGNED TO
 
-## NARNI YOGA
+## [NARNI YOGA]
 
 ---
 
@@ -120,7 +120,7 @@ Implement the foundational global layout for the frontend application. This layo
 
 ### ASSIGNED TO
 
-## NARNI YOGA
+## [NARNI YOGA]
 
 ## 4. Genkit: Install Genkit to the backend
 
@@ -153,7 +153,7 @@ Install genkit dependencies and get the google ai studio to run.
 
 ### ASSIGNED TO
 
-## RASMUS SEPPANEN
+## [RASMUS SEPPANEN]
 
 ## 5. RDS: RDS connection to testing-dashboard
 
@@ -188,7 +188,7 @@ Connect to the RDS database in aws
 
 ### ASSIGNED TO
 
-## RASMUS SEPPANEN
+## [RASMUS SEPPANEN]
 
 ## 6. BACKEND API ROUTES: Set up main routes in the backend
 
@@ -226,7 +226,7 @@ Baseline the production API wiring (no `/api/dev`): ensure middleware ordering, 
 
 ### ASSIGNED TO
 
-## RASMUS SEPPANEN
+## [RASMUS SEPPANEN]
 
 ---
 
@@ -262,7 +262,7 @@ Implement a production `/api/me` endpoint that returns the current authenticated
 
 ### ASSIGNED TO
 
-## RASMUS SEPPANEN
+## [RASMUS SEPPANEN]
 
 
 ---
@@ -299,7 +299,7 @@ Build fully validated patients and encounters routes for production (no `/api/de
 
 ### ASSIGNED TO
 
-## Brendan
+## [BRENDAN]
 
 ---
 
@@ -337,7 +337,7 @@ Implement production `/api/transcribe` that accepts audio uploads, streams to Wh
 
 ### ASSIGNED TO
 
-## Aseel
+## [ASEEL]
 
 ---
 
@@ -375,7 +375,7 @@ Expose SOAP generation endpoints for encounters using Genkit/Gemini. Support fet
 
 ### ASSIGNED TO
 
-## Rasmus Seppanen
+## [RASMUS SEPPANEN]
 
 ---
 
@@ -421,7 +421,7 @@ Implement real authentication in the frontend by integrating with the backend AP
 
 ### ASSIGNED TO
 
-## Rasmus Seppanen
+## [RASMUS SEPPANEN]
 
 ---
 
@@ -477,8 +477,7 @@ Create a "My Profile" page that displays the authenticated user's information an
 `feature/my-profile-page`
 
 ### ASSIGNED TO
-
-## Rasmus Seppanen
+## [RASMUS SEPPANEN]
 
 # 🟢 Frontend: Encounter Flow
 
@@ -512,7 +511,7 @@ Create the main encounter creation page and the initial metadata form. This is t
 **Branch Name:** `feature/encounter-page-form`
 
 ### ASSIGNED TO
-## [Name]
+## [NARNI YOGA]
 
 ---
 
@@ -544,7 +543,7 @@ Develop a reusable UI component for recording audio via the browser microphone.
 **Branch Name:** `feature/audio-recorder-component`
 
 ### ASSIGNED TO
-## [Name]
+## [NARNI YOGA]
 
 ---
 
@@ -576,7 +575,7 @@ Develop a reusable UI component for uploading existing audio files.
 **Branch Name:** `feature/audio-uploader-component`
 
 ### ASSIGNED TO
-## [Name]
+## [NARNI YOGA]
 
 ---
 
@@ -610,7 +609,7 @@ Integrate the audio capture (Recorder/Uploader) with the backend transcription A
 **Branch Name:** `feature/transcription-integration`
 
 ### ASSIGNED TO
-## [Name]
+## [RASMUS SEPPANEN]
 
 ---
 
@@ -638,7 +637,7 @@ Create a component to display the generated SOAP note in a readable format.
 **Branch Name:** `feature/soap-note-display`
 
 ### ASSIGNED TO
-## [Name]
+## [RASMUS SEPPANEN]
 
 ---
 
@@ -669,7 +668,7 @@ Implement functionality to edit the generated SOAP note and save changes to the 
 **Branch Name:** `feature/soap-note-editor`
 
 ### ASSIGNED TO
-## [Name]
+## [RASMUS SEPPANEN]
 
 ---
 
@@ -699,6 +698,6 @@ Implement the "Try Again" or "Regenerate" flow for SOAP notes.
 **Branch Name:** `feature/soap-regeneration`
 
 ### ASSIGNED TO
-## [Name]
+## [RASMUS SEPPANEN]
 
 ---
