@@ -268,7 +268,7 @@ Implement a production `/api/me` endpoint that returns the current authenticated
 
 ## 8. PATIENTS & ENCOUNTERS API
 
-## STATUS: TODO
+## STATUS: Finished
 
 **Title:** `feature: patients and encounters api`
 
@@ -298,13 +298,13 @@ Build fully validated patients and encounters routes for production (no `/api/de
 
 ### ASSIGNED TO
 
-## NO ONE YET
+## Brendan
 
 ---
 
 ## 9. TRANSCRIBE FLOW WITH S3 FALLBACK
 
-## TODO
+## Finished
 
 **Title:** `feature: transcribe flow with s3 fallback`
 
@@ -336,7 +336,7 @@ Implement production `/api/transcribe` that accepts audio uploads, streams to Wh
 
 ### ASSIGNED TO
 
-## NO ONE YET
+## Aseel
 
 ---
 
@@ -374,4 +374,51 @@ Expose SOAP generation endpoints for encounters using Genkit/Gemini. Support fet
 
 ### ASSIGNED TO
 
+## Rasmus Seppanen
+
+---
+
+## 11. Ticket: Frontend Authentication Integration
+
+## TODO
+
+**Title:** `feature: frontend authentication integration`
+
+**Description:**
+Implement real authentication in the frontend by integrating with the backend API. This involves wiring up the existing login and signup pages to the `/api/auth` endpoints and ensuring that the user profile is created or retrieved via `/api/me` upon successful login. The goal is to have a fully functional authentication flow where users can sign up, sign in, and access protected routes.
+
+**Requirements:**
+
+- Integrate the Login page (`app/login/page.tsx`) with `POST /api/auth/signin`.
+- Integrate the Signup page (`app/signup/page.tsx`) with `POST /api/auth/signup`.
+- Handle the confirmation flow (if required by backend config) or auto-login after signup.
+- Upon successful login, store the authentication tokens (e.g., in localStorage or cookies) securely.
+- Call `GET /api/me` immediately after login to ensure the user record exists in the database and to fetch user details.
+- Create an Auth Context or Hook to manage user state globally.
+- Protect dashboard routes: redirect unauthenticated users to `/login`.
+- Handle logout functionality.
+
+**Deliverables:**
+
+- Functional Login and Signup forms connected to the backend.
+- Auth Context/Provider managing user state.
+- Protected route implementation (e.g., middleware or higher-order component).
+- User data available in the frontend application state.
+
+**Acceptance Criteria:**
+
+- [ ] User can sign up successfully; account is created in Cognito and backend.
+- [ ] User can sign in with valid credentials.
+- [ ] Invalid credentials show an error message.
+- [ ] `GET /api/me` is called successfully after login.
+- [ ] Unauthenticated access to `/dashboard/*` redirects to `/login`.
+- [ ] Authenticated user can access `/dashboard`.
+- [ ] Logout clears tokens and redirects to `/login`.
+
+**Branch Name:**
+`feature/frontend-auth-integration`
+
+### ASSIGNED TO
+
 ## NO ONE YET
+

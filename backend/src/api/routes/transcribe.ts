@@ -1,12 +1,13 @@
 import { Router } from "express";
 import multer from "multer";
-import { spawn } from 'child_process';
-import path from 'path';
-import { z } from 'zod';
+import { spawn } from "child_process";
+import path from "path";
+import { z } from "zod";
+import { Readable } from "stream";
 import { authMiddleware } from "../../middleware/auth";
 import { uploadFile, getFile } from "../../config/awsS3";
-import { Readable } from "stream";
-import { createAudioRecord, createAiResult } from '../../db/queries'; // Placeholder for DB functions
+import { createAudioRecord, createAiResult } from "../../db/queries";
+import { sendError } from "../../utils/httpResponses";
 
 const router = Router();
 
@@ -43,18 +44,18 @@ router.post(
       const encounterId = req.body.encounterId; // Assuming encounterId is passed for both paths
 
       if (!encounterId) {
-        return res.status(400).json({ error: "Encounter ID is required." });
+        return sendError(res, 400, "Encounter ID is required.");
       }
 
       if (req.file) {
         // --- Path 1: Direct Audio Upload ---
-        if (!req.file.mimetype.startsWith('audio/')) {
-            return res.status(400).json({ error: "Provided file is not an audio file." });
+        if (!req.file.mimetype.startsWith("audio/")) {
+          return sendError(res, 400, "Provided file is not an audio file.");
         }
 
         // Generate a unique S3 key
         const originalExtension = path.extname(req.file.originalname);
-        s3Key = `audio/encounter_${encounterId}_${Date.now()}${originalExtension || '.tmp'}`;
+        s3Key = `audio/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
 
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
@@ -62,9 +63,9 @@ router.post(
         
         // Create a record in audio_records table
         await createAudioRecord({
-          s3_key: s3Key,
           encounter_id: encounterId,
-          status: 'uploaded',
+          file_url: s3Key,
+          transcription_status: "uploaded",
         });
 
         // Get a readable stream from the buffer to pass to Whisper
@@ -74,7 +75,12 @@ router.post(
         // --- Path 2: S3 Fallback ---
         const validation = S3FallbackSchema.safeParse(req.body);
         if (!validation.success) {
-          return res.status(400).json({ error: "Invalid request body for S3 fallback.", details: validation.error.issues });
+          return sendError(
+            res,
+            400,
+            "Invalid request body for S3 fallback.",
+            validation.error.issues
+          );
         }
 
         s3Key = validation.data.s3Key;
@@ -82,7 +88,7 @@ router.post(
         // Get file stream from S3
         const s3File = await getFile(s3Key);
         if (!s3File.Body) {
-            throw new Error("Failed to retrieve file from S3.");
+          throw new Error("Failed to retrieve file from S3.");
         }
         audioStream = s3File.Body as Readable;
       }
@@ -125,9 +131,11 @@ router.post(
       // Persist transcript to ai_results table
       await createAiResult({
         encounter_id: encounterId,
-        flow_name: 'whisper_transcript',
-        result_json: transcript,
-        input_s3_key: s3Key,
+        flow_name: "whisper_transcript",
+        input_json: { s3Key },
+        output_json: transcript,
+        model_version: transcript?.model_version || "whisper",
+        confidence_score: transcript?.confidence_score,
       });
 
       res.json({
@@ -139,7 +147,7 @@ router.post(
 
     } catch (error: any) {
       console.error("Backend: Transcription processing error:", error);
-      res.status(500).json({ error: error.message || "Failed to process audio file." });
+      sendError(res, 500, error.message || "Failed to process audio file.");
     }
   }
 );

@@ -6,6 +6,7 @@ const config: Config.InitialOptions = {
   roots: ["<rootDir>/tests"],
   modulePathIgnorePatterns: ["<rootDir>/dist"],
   clearMocks: true,
+  setupFiles: ["<rootDir>/tests/setupEnv.ts"],
 };
 
 export default config;

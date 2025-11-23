@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { query } from "../../config/db";
+import { appConfig } from "../../config/appConfig";
+import { sendError } from "../../utils/httpResponses";
 
 const router = Router();
 
@@ -9,13 +11,15 @@ router.get("/", async (_req, res) => {
     res.json({
       success: true,
       db: { now: result.rows[0]?.now },
+      s3: appConfig.aws.s3Bucket
+        ? { configured: true, bucket: appConfig.aws.s3Bucket }
+        : { configured: false, error: "AWS_S3_BUCKET not set" },
+      env: appConfig.env,
+      uptimeMs: Math.round(process.uptime() * 1000),
     });
   } catch (error: any) {
     console.error("Health check failed:", error);
-    res.status(500).json({
-      success: false,
-      error: "Database connectivity failed",
-    });
+    sendError(res, 500, "Database connectivity failed");
   }
 });
 
