@@ -22,12 +22,12 @@ export default function DashboardHome() {
 
         {/* Encounters */}
         <Link
-          href="/dashboard/encounter"
+          href="/dashboard/encounters/create"
           className="rounded-xl bg-white p-6 shadow border border-slate-200 hover:shadow-md transition block"
         >
-          <h2 className="text-xl font-semibold text-slate-900">Encounters</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Encounter Flow</h2>
           <p className="text-slate-600 mt-2">
-            Start new SOAP encounters for patients.
+            Start or continue patient encounters with audio and SOAP.
           </p>
         </Link>
 
