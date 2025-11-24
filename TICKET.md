@@ -483,7 +483,7 @@ Create a "My Profile" page that displays the authenticated user's information an
 
 ## 13. Ticket: Encounter Page & Metadata Form
 
-## STATUS: IN PROGRESS
+## STATUS: FINISHED
 
 **Title:** `feature: encounter page and metadata form`
 
