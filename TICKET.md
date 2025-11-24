@@ -517,7 +517,7 @@ Create the main encounter creation page and the initial metadata form. This is t
 
 ## 14. Ticket: Audio Recorder Component
 
-## STATUS: TODO
+## STATUS: IN PROGRESS
 
 **Title:** `feature: audio recorder component`
 
