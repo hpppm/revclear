@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/app/lib/api/api";
+import { apiClient } from "@/app/lib/api/apiClient";
 import { User } from "@/app/lib/types";
 
 interface AuthContextType {
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setToken(storedToken);
             try {
                 // Verify token and get user details
-                const response = await api.get("/api/me");
+                const response = await apiClient.me.getProfile();
                 setUser(response.data);
             } catch (error) {
                 console.error("Auth check failed:", error);

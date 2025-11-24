@@ -33,7 +33,13 @@ router.get("/:id", authMiddleware, async (req, res) => {
     const { id } = parsedParams.data;
 
     const result = await query(
-      "SELECT id, patient_id, clinician_id, date_of_service, subjective, objective, assessment, plan, status, ai_confidence, created_at, updated_at FROM encounters WHERE id = $1",
+      `SELECT e.id, e.patient_id, e.clinician_id, e.date_of_service, e.subjective, e.objective, e.assessment, e.plan, e.status, e.ai_confidence, e.created_at, e.updated_at,
+              ar.file_url as audio_key
+       FROM encounters e
+       LEFT JOIN audio_records ar ON e.id = ar.encounter_id
+       WHERE e.id = $1
+       ORDER BY ar.created_at DESC
+       LIMIT 1`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -164,8 +170,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     const values = Object.values(validatedData);
 
     const result = await query(
-      `UPDATE encounters SET ${fields} WHERE id = $${
-        values.length + 1
+      `UPDATE encounters SET ${fields} WHERE id = $${values.length + 1
       } RETURNING id, patient_id, clinician_id, date_of_service, subjective, objective, assessment, plan, status, ai_confidence, created_at, updated_at`,
       [...values, id]
     );

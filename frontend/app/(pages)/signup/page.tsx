@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "@/app/lib/api/api";
+import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
 
 export default function SignupPage() {
@@ -71,7 +71,7 @@ export default function SignupPage() {
     localStorage.setItem("practitionerType", form.practitioner);
 
     try {
-      const response = await api.post("/api/auth/signup", {
+      const response = await apiClient.auth.signup({
         email: form.email,
         password: form.password,
         attributes: {
@@ -87,11 +87,7 @@ export default function SignupPage() {
         localStorage.setItem("token", token);
 
         // Fetch user details with explicit token
-        const userResponse = await api.get("/api/me", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
         login(token, user);

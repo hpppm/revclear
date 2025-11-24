@@ -21,6 +21,8 @@ if (appConfig.genkitEnv === "dev") {
     });
 }
 
+app.use(cors());
+
 /**
  * 🚀 FIX #1:
  * Register /api/transcribe BEFORE express.json(), helmet, auditLogger, etc.
@@ -33,7 +35,6 @@ app.use("/api/transcribe", transcribeRoutes);
  * Normal middleware can now follow safely.
  */
 app.use(express.json());
-app.use(cors());
 
 const helmetOptions: HelmetOptions = {
   contentSecurityPolicy: {

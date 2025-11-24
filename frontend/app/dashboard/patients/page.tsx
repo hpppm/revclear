@@ -1,76 +1,91 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { mockPatients } from "@/app/lib/mock/mockPatients";
+import { useEffect, useState } from "react";
+import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient } from "@/app/lib/types";
 
 export default function PatientsPage() {
-  const [doctorType, setDoctorType] = useState("");
-  const [customPatients, setCustomPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [newPatient, setNewPatient] = useState({
     name: "",
     dob: "",
     phone: "",
     insuranceType: "Insurance provider",
     insuranceId: "",
-    diagnosisType: "",
   });
 
-  useEffect(() => {
-    const p = localStorage.getItem("practitionerType") || "";
-    setDoctorType(p);
-    const saved = localStorage.getItem("customPatients");
-    if (saved) {
-      try {
-        setCustomPatients(JSON.parse(saved));
-      } catch {
-        setCustomPatients([]);
-      }
-    }
-  }, []);
+  const fetchPatients = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.patients.getAll();
+      // Backend returns { success: true, data: [...] }
+      const rawPatients = response.data?.data || [];
 
-  const categoryMap: Record<string, keyof typeof mockPatients> = {
-    "Mental Health": "mentalHealth",
-    "Speech Therapy": "speechTherapy",
-    "Physical Therapy": "physicalTherapy",
+      const mappedPatients: Patient[] = Array.isArray(rawPatients)
+        ? rawPatients.map((p: any) => ({
+          id: p.id,
+          name: p.full_name,
+          age: p.age || 0, // Backend might not return age, calculate or default
+          dob: p.dob,
+          phone: p.phone,
+          insuranceType: p.insurance_provider,
+          insuranceId: p.insurance_policy_number,
+          diagnosis: p.diagnosis, // If backend adds it back
+        }))
+        : [];
+
+      setPatients(mappedPatients);
+    } catch (err) {
+      console.error("Failed to fetch patients", err);
+      setError("Failed to load patients. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const categoryKey = categoryMap[doctorType];
+  useEffect(() => {
+    fetchPatients();
+  }, []);
 
-  const patients = useMemo(() => {
-    const base = categoryKey ? mockPatients[categoryKey] : [];
-    return [...customPatients, ...base];
-  }, [categoryKey, customPatients]);
-
-  const handleSavePatient = () => {
+  const handleSavePatient = async () => {
     const name = newPatient.name.trim();
     if (!name) return;
 
-    const created: Patient = {
-      id: `local-${Date.now()}`,
-      name,
-      age: 0,
-      diagnosis: newPatient.diagnosisType || "Not provided",
-      dob: newPatient.dob,
-      phone: newPatient.phone,
-      insuranceType: newPatient.insuranceType,
-      insuranceId: newPatient.insuranceId,
-      diagnosisType: newPatient.diagnosisType,
-    };
-    const nextList = [created, ...customPatients];
-    setCustomPatients(nextList);
-    localStorage.setItem("customPatients", JSON.stringify(nextList));
-    setNewPatient({
-      name: "",
-      dob: "",
-      phone: "",
-      insuranceType: "Insurance provider",
-      insuranceId: "",
-      diagnosisType: "",
-    });
-    setShowAdd(false);
+    setCreating(true);
+    try {
+      await apiClient.patients.create({
+        full_name: name,
+        dob: newPatient.dob || undefined,
+        phone: newPatient.phone || undefined,
+        insurance_provider: newPatient.insuranceType || undefined,
+        insurance_policy_number: newPatient.insuranceId || undefined,
+      });
+
+      // Reset form
+      setNewPatient({
+        name: "",
+        dob: "",
+        phone: "",
+        insuranceType: "Insurance provider",
+        insuranceId: "",
+      });
+      setShowAdd(false);
+
+      // Refresh list
+      await fetchPatients();
+    } catch (err) {
+      console.error("Failed to create patient", err);
+      const msg = (err as any).response?.data?.errors?.[0]?.message || (err as any).response?.data?.message || "Failed to create patient. Please check your input.";
+      alert(msg);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -84,10 +99,10 @@ export default function PatientsPage() {
           </p>
         </div>
         <Link
-          href="/dashboard/encounters/create"
+          href="/dashboard"
           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
         >
-          Go to encounter flow
+          ← Back to Dashboard
         </Link>
       </div>
 
@@ -145,20 +160,14 @@ export default function PatientsPage() {
               setNewPatient((prev) => ({ ...prev, phone: e.target.value }))
             }
           />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm md:col-span-3"
-            placeholder="Diagnosis"
-            value={newPatient.diagnosisType}
-            onChange={(e) =>
-              setNewPatient((prev) => ({ ...prev, diagnosisType: e.target.value }))
-            }
-          />
+
           <div className="md:col-span-3 flex gap-2">
             <button
               onClick={handleSavePatient}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+              disabled={creating || !newPatient.name}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
-              Save patient
+              {creating ? "Saving..." : "Save patient"}
             </button>
             <button
               onClick={() => {
@@ -169,7 +178,6 @@ export default function PatientsPage() {
                   phone: "",
                   insuranceType: "Insurance provider",
                   insuranceId: "",
-                  diagnosisType: "",
                 });
               }}
               className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm"
@@ -180,8 +188,14 @@ export default function PatientsPage() {
         </div>
       )}
 
-      {!categoryKey && patients.length === 0 ? (
-        <p className="text-slate-600">No practitioner type found.</p>
+      {loading ? (
+        <p className="text-slate-600">Loading patients...</p>
+      ) : error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          {error}
+        </div>
+      ) : patients.length === 0 ? (
+        <p className="text-slate-600">No patients found. Add one to get started.</p>
       ) : (
         <div className="rounded-xl bg-white p-6 shadow border border-slate-200">
           <div className="flex items-center justify-between mb-4">
@@ -201,15 +215,14 @@ export default function PatientsPage() {
                   <th className="py-2 pr-4">Insurance Provider</th>
                   <th className="py-2 pr-4">Insurance ID</th>
                   <th className="py-2 pr-4">Phone</th>
-                  <th className="py-2 pr-4">Diagnosis</th>
                   <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
                 {patients.map((p: Patient, idx: number) => {
-                  const fallbackDob = p.dob || `198${idx}-0${(idx % 9) + 1}-1${idx % 9}`;
-                  const fallbackInsId = p.insuranceId || `INS-${(idx + 1) * 1734}`;
-                  const provider = p.insuranceType || "Insurance provider";
+                  const fallbackDob = p.dob ? new Date(p.dob).toLocaleDateString() : "—";
+                  const fallbackInsId = p.insuranceId || "—";
+                  const provider = p.insuranceType || "—";
                   return (
                     <tr key={p.id} className="border-b last:border-none">
                       <td className="py-3 pr-4">{p.name}</td>
@@ -217,7 +230,6 @@ export default function PatientsPage() {
                       <td className="py-3 pr-4">{provider}</td>
                       <td className="py-3 pr-4">{fallbackInsId}</td>
                       <td className="py-3 pr-4">{p.phone || "—"}</td>
-                      <td className="py-3 pr-4">{(p as any).diagnosisType || p.diagnosis}</td>
                       <td className="py-3 text-right">
                         <Link
                           href={`/dashboard/encounters/create?patientId=${encodeURIComponent(p.id)}`}

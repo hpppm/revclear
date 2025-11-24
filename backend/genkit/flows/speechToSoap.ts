@@ -32,11 +32,15 @@ export const speechToSoap = ai.defineFlow(
     outputSchema: SoapSchema,
   },
   async (input) => {
+    console.log(`[speechToSoap] Input transcript length: ${input.transcript?.length || 0}`);
+
     const transcriptText =
       input.transcript && input.transcript.trim().length > 0
         ? input.transcript
         : (await mockTranscriptTool({ encounter_id: input.encounter_id }))
-            .transcript;
+          .transcript;
+
+    console.log(`[speechToSoap] Using transcript (first 100 chars): ${transcriptText.substring(0, 100)}...`);
 
     const { output } = await ai.generate({
       model: ai.options.model,
@@ -50,6 +54,8 @@ export const speechToSoap = ai.defineFlow(
       ].join("\n"),
       output: { schema: SoapSchema },
     });
+
+    console.log(`[speechToSoap] Generated SOAP:`, JSON.stringify(output, null, 2));
 
     const base = output ?? {
       soap: {

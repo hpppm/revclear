@@ -3,7 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "@/app/lib/api/api";
+import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
 
 type FieldErrors = {
@@ -35,7 +35,7 @@ export default function LoginPage() {
 
     if (Object.keys(nextErrors).length === 0) {
       try {
-        const response = await api.post("/api/auth/signin", { email, password });
+        const response = await apiClient.auth.signin({ email, password });
         const { AuthenticationResult } = response.data;
         const token = AuthenticationResult.IdToken; // Use IdToken for authentication
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
         localStorage.setItem("token", token);
 
         // Fetch user details
-        const userResponse = await api.get("/api/me");
+        const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
         login(token, user);
