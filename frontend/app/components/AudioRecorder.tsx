@@ -1,191 +1,177 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from "react";
 
-interface AudioRecorderProps {
-  onRecordingComplete: (audioBlob: Blob) => void;
-}
+type Props = {
+  onRecorded: (file: File) => void;
+};
 
-const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+export default function AudioRecorder({ onRecorded }: Props) {
+  const [status, setStatus] = useState<"idle" | "recording" | "paused">("idle");
+  const [seconds, setSeconds] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const emitOnStopRef = useRef(true);
 
   useEffect(() => {
-    // Request microphone access when the component mounts
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then((stream) => {
-        const recorder = new MediaRecorder(stream);
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            setRecordedChunks((prev) => [...prev, event.data]);
-          }
-        };
-        recorder.onstop = () => {
-          const mimeType = recorder.mimeType.split(';')[0]; // Extract primary MIME type
-          const blob = new Blob(recordedChunks, { type: mimeType });
-          setAudioBlob(blob);
-          onRecordingComplete(blob); // Emit the complete recording
-          setRecordedChunks([]); // Clear chunks for next recording
-          stopTimer();
-        };
-        setMediaRecorder(recorder);
-      })
-      .catch((err) => {
-        console.error('Error accessing microphone:', err);
-        alert('Could not access microphone. Please ensure it is connected and permissions are granted.');
-      });
-
     return () => {
-      // Cleanup: Stop any active recording and media stream if component unmounts
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-      }
-      if (mediaRecorder && mediaRecorder.stream) {
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-      }
-      stopTimer();
+      stopRecorder(true);
     };
   }, []);
-
-  const startTimer = () => {
-    timerRef.current = setInterval(() => {
-      setRecordingTime((prevTime) => prevTime + 1);
-    }, 1000);
-  };
 
   const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    setSeconds(0);
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes < 10 ? '0' : ''}${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  };
+  const stopRecorder = (silent = false) => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
 
-  const startRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'inactive') {
-      setRecordedChunks([]); // Clear previous chunks
-      setAudioBlob(null); // Clear previous blob
-      setRecordingTime(0); // Reset timer
-      mediaRecorder.start();
-      setIsRecording(true);
-      setIsPaused(false);
-      startTimer();
+    if (recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    recorder.stream.getTracks().forEach((track) => track.stop());
+
+    stopTimer();
+    if (!silent) {
+      setStatus("idle");
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setIsPaused(false);
+  const startRecording = async () => {
+    setError(null);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("This browser does not support audio recording.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      emitOnStopRef.current = true;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        if (!emitOnStopRef.current || !chunksRef.current.length) {
+          chunksRef.current = [];
+          emitOnStopRef.current = true;
+          return;
+        }
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `recording-${Date.now()}.webm`, {
+          type: "audio/webm",
+        });
+        chunksRef.current = [];
+        onRecorded(file);
+      };
+
+      recorder.start();
+      setStatus("recording");
       stopTimer();
+      timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    } catch (err) {
+      console.error(err);
+      setError("Microphone permission denied or unavailable.");
     }
   };
 
-  const pauseRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.pause();
-      setIsPaused(true);
-      stopTimer();
+  const togglePause = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    if (recorder.state === "recording") {
+      recorder.pause();
+      setStatus("paused");
+    } else if (recorder.state === "paused") {
+      recorder.resume();
+      setStatus("recording");
     }
   };
 
-  const resumeRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'paused') {
-      mediaRecorder.resume();
-      setIsPaused(false);
-      startTimer();
-    }
+  const stopAndSave = () => {
+    emitOnStopRef.current = true;
+    stopRecorder();
   };
 
-  const discardRecording = () => {
-    stopRecording(); // Ensure recording is stopped
-    setAudioBlob(null);
-    setRecordedChunks([]);
-    setRecordingTime(0);
-    alert('Recording discarded.');
+  const discard = () => {
+    emitOnStopRef.current = false;
+    stopRecorder();
   };
+
+  const formattedTime = new Date(seconds * 1000)
+    .toISOString()
+    .substring(14, 19);
 
   return (
-    <div className="p-4 border rounded-lg shadow-md bg-white">
-      <h2 className="text-xl font-semibold mb-3">Audio Recorder</h2>
-      {!mediaRecorder && <p className="text-red-500">Microphone not available or permission denied.</p>}
-
-      {mediaRecorder && (
-        <div className="flex items-center space-x-4 mb-4">
-          <div className="text-lg font-mono">{formatTime(recordingTime)}</div>
-          {!isRecording && !audioBlob && (
-            <button
-              onClick={startRecording}
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full"
-            >
-              Start Recording
-            </button>
-          )}
-
-          {isRecording && !isPaused && (
-            <>
-              <button
-                onClick={pauseRecording}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full"
-              >
-                Pause
-              </button>
-              <button
-                onClick={stopRecording}
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full"
-              >
-                Stop
-              </button>
-            </>
-          )}
-
-          {isRecording && isPaused && (
-            <>
-              <button
-                onClick={resumeRecording}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full"
-              >
-                Resume
-              </button>
-              <button
-                onClick={stopRecording}
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full"
-              >
-                Stop
-              </button>
-            </>
-          )}
-
-          {audioBlob && (
-            <button
-              onClick={discardRecording}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full"
-            >
-              Discard & Re-record
-            </button>
-          )}
+    <div className="border p-4 rounded-xl bg-white shadow space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-medium text-slate-900">Audio Recorder</p>
+          <p className="text-xs text-slate-600">
+            Request mic permission, record, pause, stop, or re-record.
+          </p>
         </div>
-      )}
+        <span
+          className={`h-3 w-3 rounded-full ${
+            status === "recording" ? "bg-red-500 animate-pulse" : "bg-slate-300"
+          }`}
+        />
+      </div>
 
-      {audioBlob && (
-        <div className="mt-4">
-          <h3 className="text-lg font-medium mb-2">Recorded Audio:</h3>
-          <audio controls src={URL.createObjectURL(audioBlob)} className="w-full"></audio>
-        </div>
-      )}
+      <div className="flex items-center gap-3 text-sm text-slate-700">
+        <span className="font-mono text-lg">{formattedTime}</span>
+        <span className="px-2 py-1 rounded-full border text-xs">
+          {status === "idle" ? "Idle" : status === "paused" ? "Paused" : "Recording"}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={startRecording}
+          disabled={status === "recording"}
+          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          Start
+        </button>
+        <button
+          onClick={togglePause}
+          disabled={status === "idle"}
+          className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {status === "paused" ? "Resume" : "Pause"}
+        </button>
+        <button
+          onClick={stopAndSave}
+          disabled={status === "idle"}
+          className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          Stop & Save
+        </button>
+        <button
+          onClick={discard}
+          disabled={status === "idle"}
+          className="px-3 py-2 rounded-lg bg-slate-200 text-slate-800 text-sm font-semibold disabled:cursor-not-allowed"
+        >
+          Discard
+        </button>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
-};
-
-export default AudioRecorder;
+}
