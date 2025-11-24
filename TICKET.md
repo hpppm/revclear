@@ -609,7 +609,7 @@ Integrate the audio capture (Recorder/Uploader) with the backend transcription A
 **Branch Name:** `feature/transcription-integration`
 
 ### ASSIGNED TO
-## [Narni Yoga]
+## [RASMUS SEPPANEN]
 
 ---
 
