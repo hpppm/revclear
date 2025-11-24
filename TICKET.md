@@ -609,7 +609,7 @@ Integrate the audio capture (Recorder/Uploader) with the backend transcription A
 **Branch Name:** `feature/transcription-integration`
 
 ### ASSIGNED TO
-## [RASMUS SEPPANEN]
+## [Narni Yoga]
 
 ---
 
@@ -637,7 +637,7 @@ Create a component to display the generated SOAP note in a readable format.
 **Branch Name:** `feature/soap-note-display`
 
 ### ASSIGNED TO
-## [RASMUS SEPPANEN]
+## [NARNI YOGA]
 
 ---
 
