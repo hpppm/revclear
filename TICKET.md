@@ -615,7 +615,7 @@ Integrate the audio capture (Recorder/Uploader) with the backend transcription A
 
 ## 17. Ticket: SOAP Note Display
 
-## STATUS: IN PROGRESS
+## STATUS: FINISHED
 
 **Title:** `feature: soap note display`
 
