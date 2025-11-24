@@ -11,6 +11,12 @@ export interface Patient {
     name: string;
     age: number;
     diagnosis: string;
+    dob?: string;
+    email?: string;
+    phone?: string;
+    insuranceType?: string;
+    insuranceId?: string;
+    diagnosisType?: string;
     lastVisit?: string;
     status?: "Active" | "Archived";
 }

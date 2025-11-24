@@ -483,7 +483,7 @@ Create a "My Profile" page that displays the authenticated user's information an
 
 ## 13. Ticket: Encounter Page & Metadata Form
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: encounter page and metadata form`
 
@@ -517,7 +517,7 @@ Create the main encounter creation page and the initial metadata form. This is t
 
 ## 14. Ticket: Audio Recorder Component
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: audio recorder component`
 
@@ -549,7 +549,7 @@ Develop a reusable UI component for recording audio via the browser microphone.
 
 ## 15. Ticket: Audio Uploader Component
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: audio uploader component`
 
@@ -615,7 +615,7 @@ Integrate the audio capture (Recorder/Uploader) with the backend transcription A
 
 ## 17. Ticket: SOAP Note Display
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: soap note display`
 
@@ -637,7 +637,7 @@ Create a component to display the generated SOAP note in a readable format.
 **Branch Name:** `feature/soap-note-display`
 
 ### ASSIGNED TO
-## [RASMUS SEPPANEN]
+## [NARNI YOGA]
 
 ---
 
