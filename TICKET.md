@@ -549,7 +549,7 @@ Develop a reusable UI component for recording audio via the browser microphone.
 
 ## 15. Ticket: Audio Uploader Component
 
-## STATUS: IN PROGRESS
+## STATUS: FINISHED
 
 **Title:** `feature: audio uploader component`
 
