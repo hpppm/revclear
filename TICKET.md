@@ -581,7 +581,7 @@ Develop a reusable UI component for uploading existing audio files.
 
 ## 16. Ticket: Transcription Integration
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: transcription integration`
 
@@ -674,7 +674,7 @@ Implement functionality to edit the generated SOAP note and save changes to the 
 
 ## 19. Ticket: SOAP Regeneration
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: soap regeneration`
 

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import multer from "multer";
 import { spawn } from "child_process";
 import path from "path";
@@ -17,8 +17,8 @@ const upload = multer({ storage: storage });
 
 // Define the path to your Python Whisper transcription script
 const WHISPER_SCRIPT_PATH = path.join(process.cwd(), 'src', 'python', 'whisper.py');
-// Define the path to your Python executable
-const PYTHON_EXECUTABLE_PATH = 'python'; // Assumes 'python' is in the system's PATH
+// Define the path to your Python executable (using venv)
+const PYTHON_EXECUTABLE_PATH = path.join(process.cwd(), 'venv', 'bin', 'python3');
 
 // Zod schema for S3 fallback request
 const S3FallbackSchema = z.object({
@@ -36,6 +36,7 @@ const S3FallbackSchema = z.object({
 router.post(
   "/",
   authMiddleware,
+  json(),
   upload.single("audio"),
   async (req, res) => {
     try {
@@ -60,13 +61,22 @@ router.post(
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
         console.log(`Backend: Uploaded audio to S3 with key: ${s3Key}`);
-        
+
         // Create a record in audio_records table
         await createAudioRecord({
           encounter_id: encounterId,
           file_url: s3Key,
           transcription_status: "uploaded",
         });
+
+        // Check if upload_only is requested
+        if (req.query.upload_only === 'true') {
+          return res.json({
+            success: true,
+            message: "Audio uploaded successfully.",
+            s3Key: s3Key,
+          });
+        }
 
         // Get a readable stream from the buffer to pass to Whisper
         audioStream = Readable.from(req.file.buffer);
@@ -84,7 +94,7 @@ router.post(
         }
 
         s3Key = validation.data.s3Key;
-        
+
         // Get file stream from S3
         const s3File = await getFile(s3Key);
         if (!s3File.Body) {
@@ -95,7 +105,7 @@ router.post(
 
       // --- Universal Transcription Process ---
       const pythonProcess = spawn(PYTHON_EXECUTABLE_PATH, [WHISPER_SCRIPT_PATH]);
-      
+
       // Pipe the audio stream to the Python script's stdin
       audioStream.pipe(pythonProcess.stdin);
 
@@ -120,14 +130,14 @@ router.post(
           resolve();
         });
         pythonProcess.on('error', (err) => {
-            console.error('Backend: Failed to start Python child process:', err);
-            reject(new Error(`Failed to start Whisper service: ${err.message}.`));
+          console.error('Backend: Failed to start Python child process:', err);
+          reject(new Error(`Failed to start Whisper service: ${err.message}.`));
         });
       });
 
       const transcript = JSON.parse(pythonOutput);
       console.log(`Backend: Transcription successful for S3 key: ${s3Key}`);
-      
+
       // Persist transcript to ai_results table
       await createAiResult({
         encounter_id: encounterId,

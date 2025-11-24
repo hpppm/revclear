@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AudioRecorder from "@/app/components/AudioRecorder";
 import AudioUploader from "@/app/components/AudioUploader";
 import SoapNoteViewer from "@/app/components/SoapNoteViewer";
 import { useAuth } from "@/app/context/AuthContext";
-import api from "@/app/lib/api/api";
+import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient } from "@/app/lib/types";
 import { mockPatients } from "@/app/lib/mock/mockPatients";
 
 type Step = "metadata" | "audio" | "review";
-type Transcript = { text?: string; summary?: string; [key: string]: any };
+type Transcript = { text?: string; summary?: string;[key: string]: any };
 type Soap = { subjective?: string; objective?: string; assessment?: string; plan?: string };
 
 const allowedAudioTypes = [
@@ -30,6 +30,7 @@ const today = () => new Date().toISOString().split("T")[0];
 export default function EncounterPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [step, setStep] = useState<Step>("metadata");
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -40,14 +41,17 @@ export default function EncounterPage() {
     date: today(),
     patientId: "",
     provider: "",
-    note: "",
   });
 
+  const [encounterId, setEncounterId] = useState<string | null>(null);
+  const [s3Key, setS3Key] = useState<string | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [soap, setSoap] = useState<Soap | null>(null);
   const [transcribing, setTranscribing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [generatingSoap, setGeneratingSoap] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>("Select a patient and date, then capture audio.");
 
@@ -68,6 +72,33 @@ export default function EncounterPage() {
     fetchPatients();
   }, []);
 
+  // Restore state from backend if encounterId is in URL
+  useEffect(() => {
+    const paramEncounterId = searchParams?.get("encounterId");
+    if (paramEncounterId) {
+      setEncounterId(paramEncounterId);
+      // Fetch encounter details
+      apiClient.encounters.getById(paramEncounterId)
+        .then((res) => {
+          const data = res.data?.data || res.data;
+          if (data) {
+            if (data.audio_key) {
+              setS3Key(data.audio_key);
+              setInfo("Restored previous session. Ready to transcribe.");
+            }
+            // Restore metadata if needed, though we might want to keep current selection
+            // or strictly follow what's in the DB.
+            // For now, let's at least ensure patientId matches if we want to be safe,
+            // but the user might be just refreshing.
+            if (data.patient_id) {
+              setMetadata(prev => ({ ...prev, patientId: data.patient_id, date: data.date_of_service?.split('T')[0] || prev.date }));
+            }
+          }
+        })
+        .catch(err => console.error("Failed to restore encounter", err));
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const param = searchParams?.get("patientId");
     if (param) {
@@ -84,14 +115,28 @@ export default function EncounterPage() {
     setLoadingPatients(true);
     setPatientsError(null);
     try {
-      const response = await api.get("/api/patients");
-      const body = response.data?.patients ?? response.data ?? [];
-      setPatients(Array.isArray(body) ? body : []);
+      const response = await apiClient.patients.getAll();
+      // Backend returns { success: true, data: [...] }
+      const rawPatients = response.data?.data || [];
+
+      const mappedPatients: Patient[] = Array.isArray(rawPatients)
+        ? rawPatients.map((p: any) => ({
+          id: p.id,
+          name: p.full_name,
+          age: p.age || 0,
+          dob: p.dob,
+          phone: p.phone,
+          insuranceType: p.insurance_provider,
+          insuranceId: p.insurance_policy_number,
+          diagnosis: p.diagnosis,
+        }))
+        : [];
+
+      setPatients(mappedPatients);
     } catch (err) {
-      console.error("Patient fetch failed, using mock list instead.", err);
-      const fallback = Object.values(mockPatients).flat();
-      setPatients(fallback as Patient[]);
-      setPatientsError("Using mock patients because the API is not reachable.");
+      console.error("Patient fetch failed.", err);
+      setPatients([]);
+      setPatientsError("Failed to load patients. Please try again.");
     } finally {
       setLoadingPatients(false);
     }
@@ -102,8 +147,14 @@ export default function EncounterPage() {
     setAudioUrl(null);
     setTranscript(null);
     setSoap(null);
+    setEncounterId(null);
+    setS3Key(null);
     setInfo(message || "Audio cleared. Ready to record or upload.");
     setError(null);
+    // Remove encounterId from URL
+    const params = new URLSearchParams(searchParams?.toString());
+    params.delete("encounterId");
+    router.replace(`/dashboard/encounters/create?${params.toString()}`);
   };
 
   const handleNext = () => {
@@ -116,33 +167,74 @@ export default function EncounterPage() {
     setInfo("Encounter started. Record or upload audio, then transcribe.");
   };
 
-  const handleAudioSelected = (file: File) => {
+  const handleAudioSelected = async (file: File) => {
     setAudioFile(file);
     setAudioUrl(URL.createObjectURL(file));
     setTranscript(null);
     setSoap(null);
-    setInfo(`Ready to transcribe: ${file.name}`);
+    setError(null);
+
+    // Auto-save flow: Create encounter -> Upload audio
+    if (!metadata.date || !metadata.patientId) {
+      setError("Please select a patient and date before saving audio.");
+      return;
+    }
+
+    setUploading(true);
+    setInfo("Saving encounter and uploading audio...");
+
+    try {
+      // 1. Create Encounter
+      const encounterRes = await apiClient.encounters.create({
+        patient_id: metadata.patientId,
+        date_of_service: metadata.date,
+        status: "in_progress"
+      });
+
+      const newEncounterId = encounterRes.data?.data?.id || encounterRes.data?.id;
+      if (!newEncounterId) throw new Error("Failed to create encounter ID");
+      setEncounterId(newEncounterId);
+
+      // Update URL with encounterId
+      const params = new URLSearchParams(searchParams?.toString());
+      params.set("encounterId", newEncounterId);
+      router.replace(`/dashboard/encounters/create?${params.toString()}`);
+
+      // 2. Upload Audio
+      const form = new FormData();
+      form.append("audio", file);
+      form.append("encounterId", newEncounterId);
+
+      const uploadRes = await apiClient.transcribe.uploadAudio(form, true);
+      const key = uploadRes.data?.s3Key;
+
+      if (!key) throw new Error("Failed to get S3 key from upload");
+      setS3Key(key);
+
+      setInfo("Audio saved. Ready to transcribe.");
+    } catch (err: any) {
+      console.error("Save failed", err);
+      setError("Failed to save audio. Please try again.");
+      // Optional: clear audio if save failed?
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleTranscribe = async () => {
-    if (!audioFile) {
-      setError("Please record or upload audio first.");
+    if (!s3Key || !encounterId) {
+      setError("Audio not saved yet. Please record or upload audio first.");
       return;
     }
 
     setTranscribing(true);
     setError(null);
-    setInfo("Sending audio to transcription...");
+    setInfo("Transcribing audio...");
 
     try {
-      const form = new FormData();
-      form.append("file", audioFile);
-      form.append("encounterDate", metadata.date);
-      form.append("patientId", metadata.patientId);
-      if (metadata.note) form.append("note", metadata.note);
-
-      const res = await api.post("/api/transcribe", form, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await apiClient.transcribe.transcribeS3({
+        s3Key: s3Key,
+        encounterId: encounterId
       });
 
       const receivedTranscript =
@@ -152,6 +244,10 @@ export default function EncounterPage() {
       setTranscript(receivedTranscript);
       setSoap(receivedSoap);
       setInfo("Transcription complete. Continue to SOAP.");
+
+      // Auto-scroll to review
+      setTimeout(() => goToReview(), 100);
+
     } catch (err: any) {
       console.error("Transcription failed", err);
       const message =
@@ -170,12 +266,77 @@ export default function EncounterPage() {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleGenerateSoap = async () => {
+    if (!encounterId) {
+      setError("No encounter ID available.");
+      return;
+    }
+
+    setGeneratingSoap(true);
+    setError(null);
+    setInfo("Generating SOAP note from transcript...");
+
+    try {
+      const res = await apiClient.soap.generateFromTranscript(encounterId);
+      // Handle nested response structure: res.data.data.soap or res.data.soap
+      const responseData = res.data?.data || res.data;
+      const soapData = responseData?.soap || responseData;
+
+      console.log("SOAP Response:", soapData);
+      setSoap(soapData);
+      setInfo("SOAP note generated successfully.");
+      setStep("review"); // Ensure review section is visible
+    } catch (err: any) {
+      console.error("SOAP generation failed", err);
+      const message =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to generate SOAP note. Please try again.";
+      setError(message);
+    } finally {
+      setGeneratingSoap(false);
+    }
+  };
+
+  const handleGenerateMockSoap = async () => {
+    if (!encounterId) {
+      setError("No encounter ID available.");
+      return;
+    }
+
+    setGeneratingSoap(true);
+    setError(null);
+    setInfo("Generating SOAP note from MOCK transcript...");
+
+    try {
+      // Call dedicated mock endpoint
+      const res = await apiClient.soap.generateFromMockTranscript(encounterId);
+      const responseData = res.data?.data || res.data;
+      const soapData = responseData?.soap || responseData;
+
+      console.log("Mock SOAP Response:", soapData);
+      setSoap(soapData);
+      setTranscript({ text: "[Using mock transcript for testing]" });
+      setInfo("SOAP note generated from mock transcript.");
+      setStep("review"); // Ensure review section is visible
+    } catch (err: any) {
+      console.error("Mock SOAP generation failed", err);
+      const message =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Failed to generate SOAP note. Please try again.";
+      setError(message);
+    } finally {
+      setGeneratingSoap(false);
+    }
+  };
+
   const transcriptText =
     typeof transcript === "string"
       ? transcript
       : transcript?.text ||
-        transcript?.summary ||
-        JSON.stringify(transcript ?? {}, null, 2);
+      transcript?.summary ||
+      JSON.stringify(transcript ?? {}, null, 2);
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
@@ -191,10 +352,10 @@ export default function EncounterPage() {
             </p>
           </div>
           <Link
-            href="/dashboard"
+            href="/dashboard/patients"
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            Back to dashboard
+            ← Back to Patients
           </Link>
         </div>
 
@@ -241,7 +402,6 @@ export default function EncounterPage() {
                   <option key={patient.id} value={patient.id}>
                     {patient.name}
                     {patient.age ? ` • ${patient.age}` : ""}
-                    {patient.diagnosis ? ` • ${patient.diagnosis}` : ""}
                   </option>
                 ))}
               </select>
@@ -266,20 +426,7 @@ export default function EncounterPage() {
               <p className="text-xs text-slate-500">Pulled from your profile.</p>
             </label>
 
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700">
-                Optional note
-              </span>
-              <textarea
-                rows={3}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="Symptoms, visit context, etc."
-                value={metadata.note}
-                onChange={(e) =>
-                  setMetadata((prev) => ({ ...prev, note: e.target.value }))
-                }
-              />
-            </label>
+
           </div>
 
           <div className="flex items-center justify-between">
@@ -291,8 +438,7 @@ export default function EncounterPage() {
             <button
               type="button"
               onClick={handleNext}
-              disabled={!metadata.date || !metadata.patientId}
-              className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
             >
               Continue to audio
             </button>
@@ -301,9 +447,7 @@ export default function EncounterPage() {
 
         <section
           id="audio-section"
-          className={`rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4 ${
-            step === "metadata" ? "opacity-60 pointer-events-none" : ""
-          }`}
+          className={`rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4`}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -314,7 +458,7 @@ export default function EncounterPage() {
                 Record or upload audio, then transcribe to SOAP.
               </p>
             </div>
-            {audioFile && (
+            {(audioFile || s3Key) && (
               <button
                 onClick={() => clearAudioState()}
                 className="text-sm text-slate-600 hover:text-slate-800"
@@ -333,7 +477,7 @@ export default function EncounterPage() {
             />
           </div>
 
-          {audioUrl && (
+          {audioUrl ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 flex flex-col gap-2">
               <div className="flex items-center justify-between text-sm text-slate-700">
                 <span>Selected audio: {audioFile?.name}</span>
@@ -345,7 +489,17 @@ export default function EncounterPage() {
               </div>
               <audio controls src={audioUrl} className="w-full" />
             </div>
-          )}
+          ) : s3Key ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-900">Audio uploaded</p>
+                <p className="text-xs text-blue-700">Ready to transcribe from previous session.</p>
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex items-center justify-between">
             <div className="text-sm text-slate-600">
@@ -354,38 +508,30 @@ export default function EncounterPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={clearAudioState}
-                disabled={!audioFile && !transcript}
-                className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm hover:border-blue-500 disabled:cursor-not-allowed"
+                onClick={() => clearAudioState()}
+                className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm hover:border-blue-500"
               >
                 Redo encounter
               </button>
               <button
                 type="button"
-                onClick={goToReview}
-                className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800 border border-slate-200 shadow-sm hover:border-blue-500"
-              >
-                Next: Transcript & SOAP
-              </button>
-              <button
-                type="button"
                 onClick={handleTranscribe}
-                disabled={!audioFile || transcribing}
+                disabled={!s3Key || transcribing || uploading}
                 className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {transcribing ? "Transcribing..." : "Transcribe"}
+                {transcribing ? "Transcribing..." : uploading ? "Saving..." : "Transcribe"}
               </button>
             </div>
           </div>
 
-          {!audioFile && (
+          {!audioFile && !s3Key && (
             <p className="text-xs text-amber-700">
               Record or upload audio to enable transcription.
             </p>
           )}
         </section>
 
-        {step === "review" && (
+        {(step === "review" || transcript || soap) && (
           <section
             id="review-section"
             className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4"
@@ -397,7 +543,31 @@ export default function EncounterPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700">Transcript</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-700">Transcript</p>
+                <div className="flex gap-2">
+                  {transcriptText && !soap && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateSoap}
+                      disabled={generatingSoap}
+                      className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      {generatingSoap ? "Generating..." : "Generate SOAP"}
+                    </button>
+                  )}
+                  {!soap && encounterId && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateMockSoap}
+                      disabled={generatingSoap}
+                      className="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      {generatingSoap ? "Generating..." : "Generate SOAP (Mock)"}
+                    </button>
+                  )}
+                </div>
+              </div>
               {transcriptText ? (
                 <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-800">
                   {transcriptText}

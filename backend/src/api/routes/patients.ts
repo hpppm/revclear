@@ -10,11 +10,31 @@ const sendValidationError = (res: Response, error: z.ZodError) => {
   return res.status(400).json({ success: false, errors: error.errors });
 };
 
-// GET all patients
+// GET all patients for the authenticated clinician
 router.get("/", authMiddleware, async (req, res) => {
   try {
+    const cognitoId = (req as any).user?.sub;
+    if (!cognitoId) {
+      console.error("No Cognito ID in token:", (req as any).user);
+      return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    // Get user ID from database using Cognito ID
+    const userResult = await query(
+      "SELECT id FROM users WHERE cognito_id = $1",
+      [cognitoId]
+    );
+
+    if (userResult.rows.length === 0) {
+      console.error("User not found for Cognito ID:", cognitoId);
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userResult.rows[0].id;
+
     const result = await query(
-      "SELECT id, clinician_id, full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number, created_at FROM patients"
+      "SELECT id, clinician_id, full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number, created_at FROM patients WHERE clinician_id = $1 ORDER BY created_at DESC",
+      [userId]
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
@@ -23,7 +43,7 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-// GET patient by ID
+// GET patient by ID (only if owned by authenticated clinician)
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
@@ -32,9 +52,26 @@ router.get("/:id", authMiddleware, async (req, res) => {
     }
     const { id } = parsedParams.data;
 
+    const cognitoId = (req as any).user?.sub;
+    if (!cognitoId) {
+      return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    // Get user ID from database
+    const userResult = await query(
+      "SELECT id FROM users WHERE cognito_id = $1",
+      [cognitoId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userResult.rows[0].id;
+
     const result = await query(
-      "SELECT id, clinician_id, full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number, created_at FROM patients WHERE id = $1",
-      [id]
+      "SELECT id, clinician_id, full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number, created_at FROM patients WHERE id = $1 AND clinician_id = $2",
+      [id, userId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Patient not found" });
@@ -63,10 +100,28 @@ router.post("/", authMiddleware, async (req, res) => {
       insurance_policy_number,
     } = parsedBody.data;
 
-    const columns = ["full_name"];
-    const values: any[] = [full_name];
-    const placeholders = ["$1"];
-    let idx = 2;
+    // Get user ID from Cognito token
+    const cognitoId = (req as any).user?.sub;
+    if (!cognitoId) {
+      return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    const userResult = await query(
+      "SELECT id FROM users WHERE cognito_id = $1",
+      [cognitoId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Start with required fields including clinician_id
+    const columns = ["full_name", "clinician_id"];
+    const values: any[] = [full_name, userId];
+    const placeholders = ["$1", "$2"];
+    let idx = 3;
 
     const optionalFields: Record<string, any> = {
       dob,
