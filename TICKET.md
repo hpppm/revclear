@@ -701,3 +701,227 @@ Implement the "Try Again" or "Regenerate" flow for SOAP notes.
 ## [RASMUS SEPPANEN]
 
 ---
+# 🔵 Medical Coding & Claims Flow
+
+## 20. Ticket: Mock Medical Codes Data
+
+## STATUS: TODO
+
+**Title:** `feature: mock medical codes data`
+
+**Description:**
+Create mock datasets for CPT (procedure) and ICD-10 (diagnosis) codes to support the medical coding flow. These will be used by the Genkit flow to match codes against SOAP notes.
+
+**Requirements:**
+- Create `backend/genkit/data/mockCptCodes.json` with common CPT codes
+- Create `backend/genkit/data/mockIcdCodes.json` with common ICD-10 codes
+- Include at least 20-30 codes per category for testing
+- Include codes for common scenarios (office visits, mental health, headaches, etc.)
+- Each code should have: code, description, and category
+
+**Deliverables:**
+- `mockCptCodes.json` with CPT codes
+- `mockIcdCodes.json` with ICD-10 codes
+
+**Acceptance Criteria:**
+- [ ] Mock data files exist in `backend/genkit/data/`
+- [ ] Files contain valid JSON with proper structure
+- [ ] Codes cover common medical scenarios
+- [ ] Each code has required fields (code, description, category)
+
+**Branch Name:** `feature/mock-medical-codes`
+
+### ASSIGNED TO
+## [RASMUS SEPPANEN]
+
+---
+
+## 21. Ticket: soapToCodes Genkit Flow
+
+## STATUS: TODO
+
+**Title:** `feature: soap-to-codes genkit flow`
+
+**Description:**
+Create a Genkit flow that analyzes SOAP notes and extracts relevant CPT and ICD-10 medical billing codes using Gemini 2.5 Flash. The flow should match the SOAP content against mock code datasets and return codes with confidence scores.
+
+**Requirements:**
+- Create `backend/genkit/flows/soapToCodes.ts`
+- Load mock CPT and ICD-10 codes from JSON files
+- Use Gemini to analyze SOAP note and suggest relevant codes
+- Return matched codes with confidence scores (0-1)
+- Include a tool to load mock codes: `mockCodesLoader`
+- Handle cases where no codes match
+
+**Deliverables:**
+- `soapToCodes` Genkit flow
+- `mockCodesLoader` tool
+- Export from `backend/genkit/index.ts`
+
+**Acceptance Criteria:**
+- [ ] Flow accepts SOAP note as input
+- [ ] Returns CPT and ICD codes with confidence scores
+- [ ] Codes are validated against mock data
+- [ ] Flow is testable in Genkit Studio
+- [ ] Handles edge cases (no matches, low confidence)
+
+**Branch Name:** `feature/soap-to-codes-flow`
+
+### ASSIGNED TO
+## [RASMUS SEPPANEN]
+
+---
+
+## 22. Ticket: Medical Codes API Endpoints
+
+## STATUS: TODO
+
+**Title:** `feature: medical codes api`
+
+**Description:**
+Create backend API endpoints for generating, fetching, and updating medical codes for encounters. Integrate with the `soapToCodes` Genkit flow and persist codes in the database.
+
+**Requirements:**
+- Create `backend/src/api/routes/codes.ts`
+- `POST /api/encounters/:id/codes` - Generate codes from SOAP using Genkit
+- `GET /api/encounters/:id/codes` - Fetch saved codes for encounter
+- `PUT /api/encounters/:id/codes` - Update/edit codes
+- Create `medical_codes` table in database
+- Use Zod for validation
+- Apply `authMiddleware` to all routes
+
+**Deliverables:**
+- Codes router with GET/POST/PUT endpoints
+- Database migration for `medical_codes` table
+- Integration with `soapToCodes` flow
+
+**Acceptance Criteria:**
+- [ ] POST generates codes and saves to DB
+- [ ] GET returns saved codes (404 if none)
+- [ ] PUT updates codes successfully
+- [ ] All routes are auth-protected
+- [ ] Validation errors return 400 with details
+- [ ] No 5xx on happy paths
+
+**Branch Name:** `feature/medical-codes-api`
+
+### ASSIGNED TO
+## [RASMUS SEPPANEN]
+
+---
+
+## 23. Ticket: Medical Codes Display Component
+
+## STATUS: TODO
+## 🟢 FRONTEND ONLY - NO BACKEND CHANGES
+
+**Title:** `feature: medical codes display`
+
+**Description:**
+Create a UI component to display CPT and ICD-10 codes after SOAP generation. Allow users to review, edit, and remove codes that are based on the SOAP note before generating claims.
+
+**Requirements:**
+- Create `MedicalCodesViewer.tsx` component
+- "Generate Codes" button (calls API, stub for now)
+- Display CPT codes section (procedure codes) with code, description, category, and confidence score
+- Display ICD-10 codes section (diagnosis codes) with code, description, category, and confidence score
+- Allow removing individual codes
+- Loading and error states
+- Integrate into encounter flow after SOAP display
+
+**Deliverables:**
+- `MedicalCodesViewer.tsx` component
+- Integration in encounter pages
+
+**Acceptance Criteria:**
+- [ ] Component displays codes in organized sections
+- [ ] "Generate Codes" button triggers API stub call
+- [ ] Loading state shown during generation
+- [ ] Codes are editable/removable
+- [ ] Error handling works
+- [ ] Integrates smoothly into encounter flow
+
+**Branch Name:** `feature/medical-codes-display`
+
+### ASSIGNED TO
+## [NARNI YOGA]
+
+---
+
+## 24. Ticket: Claims Generation Backend
+
+## STATUS: TODO
+
+**Title:** `feature: claims generation backend`
+
+**Description:**
+Create backend logic to generate insurance claims from medical codes. Format claims according to CMS-1500 structure and persist in the database.
+
+**Requirements:**
+- Create `backend/src/api/routes/claims.ts`
+- `POST /api/encounters/:id/claim` - Generate claim from codes
+- `GET /api/encounters/:id/claim` - Fetch saved claim
+- Create `claims` table in database
+- Format claim data (CMS-1500 structure)
+- Include patient, provider, codes, and encounter info
+- Support claim status (draft, submitted, approved, denied)
+- Use Zod for validation
+
+**Deliverables:**
+- Claims router with POST/GET endpoints
+- Database migration for `claims` table
+- Claim formatting logic
+
+**Acceptance Criteria:**
+- [ ] POST generates claim from codes and encounter data
+- [ ] Claim follows CMS-1500 structure
+- [ ] GET returns saved claim (404 if none)
+- [ ] All routes are auth-protected
+- [ ] Claim includes all required fields
+- [ ] No 5xx on happy paths
+
+**Branch Name:** `feature/claims-generation`
+
+### ASSIGNED TO
+## [RASMUS SEPPANEN]
+
+---
+
+## 25. Ticket: Claims Display & Export
+
+## STATUS: TODO
+## 🟢 FRONTEND ONLY - NO BACKEND CHANGES
+
+**Title:** `feature: claims display and export`
+
+**Description:**
+Create UI to display generated insurance claims and export them as PDF. Show claim status and allow users to review all claim details.
+
+**Requirements:**
+- Create `ClaimViewer.tsx` component
+- Display all claim fields in organized sections
+- "Generate Claim" button (calls API, stub for now)
+- Export as PDF button
+- Show claim status badge
+- Display patient, provider, codes, and billing info
+- Integrate into encounter flow after codes
+
+**Deliverables:**
+- `ClaimViewer.tsx` component
+- PDF export functionality
+- Integration in encounter page
+
+**Acceptance Criteria:**
+- [ ] Component displays claim in readable format
+- [ ] "Generate Claim" button works with mock data
+- [ ] PDF export downloads correctly
+- [ ] Claim status is visible
+- [ ] All claim fields are shown
+- [ ] Integrates into encounter flow
+
+**Branch Name:** `feature/claims-display-export`
+
+### ASSIGNED TO
+## [NARNI YOGA]
+
+---
