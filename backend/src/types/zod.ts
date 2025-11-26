@@ -20,7 +20,7 @@ export const CreatePatientSchema = PatientSchema.extend({
 
 export const UpdatePatientSchema = PatientSchema.partial(); // All fields optional for update
 
-// Encounter Schemas (schema columns: patient_id, clinician_id, date_of_service, subjective/objective/assessment/plan/status/ai_confidence)
+// Encounter Schemas (new schema: patient_id, clinician_id, date_of_service, transcript_result_id, soap_result_id, status)
 export const EncounterSchema = z.object({
   patient_id: z.string().uuid("Patient ID must be a valid UUID"),
   date_of_service: z
@@ -30,12 +30,9 @@ export const EncounterSchema = z.object({
       "date_of_service must be in YYYY-MM-DD or ISO format"
     ),
   clinician_id: z.string().uuid().optional(),
-  subjective: z.string().optional(),
-  objective: z.string().optional(),
-  assessment: z.string().optional(),
-  plan: z.string().optional(),
+  transcript_result_id: z.string().uuid().optional().nullable(),
+  soap_result_id: z.string().uuid().optional().nullable(),
   status: z.string().optional(),
-  ai_confidence: z.number().optional(),
 });
 
 export const CreateEncounterSchema = EncounterSchema.extend({
