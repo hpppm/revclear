@@ -5,6 +5,7 @@ import { IdParamSchema } from "../../types/zod";
 import { createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
 import { speechToSoap } from "../../../genkit";
+import { query } from "../../config/db";
 
 const router = Router();
 
@@ -59,6 +60,12 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
       model_version: soapResult.model_version,
       confidence_score: soapResult.confidence,
     });
+
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
 
     return res.status(201).json({
       success: true,
@@ -140,6 +147,12 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
       confidence_score: soapResult.confidence,
     });
 
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
+
     return res.status(201).json({
       success: true,
       data: saved.output_json,
@@ -177,6 +190,12 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
       model_version: model_version ?? "manual_edit",
       confidence_score: confidence_score ?? undefined,
     });
+
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
 
     return res.json({
       success: true,

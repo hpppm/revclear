@@ -14,7 +14,7 @@ const sendValidationError = (res: Response, error: z.ZodError) => {
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const result = await query(
-      "SELECT id, patient_id, clinician_id, date_of_service, subjective, objective, assessment, plan, status, ai_confidence, created_at, updated_at FROM encounters"
+      "SELECT id, patient_id, clinician_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters"
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
@@ -33,7 +33,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
     const { id } = parsedParams.data;
 
     const result = await query(
-      `SELECT e.id, e.patient_id, e.clinician_id, e.date_of_service, e.subjective, e.objective, e.assessment, e.plan, e.status, e.ai_confidence, e.created_at, e.updated_at,
+      `SELECT e.id, e.patient_id, e.clinician_id, e.date_of_service, e.transcript_result_id, e.soap_result_id, e.status, e.created_at, e.updated_at,
               ar.file_url as audio_key
        FROM encounters e
        LEFT JOIN audio_records ar ON e.id = ar.encounter_id
@@ -65,12 +65,9 @@ router.post("/", authMiddleware, async (req, res) => {
       patient_id,
       clinician_id,
       date_of_service,
-      subjective,
-      objective,
-      assessment,
-      plan,
+      transcript_result_id,
+      soap_result_id,
       status,
-      ai_confidence,
     } = validatedData;
 
     // Check if patient_id exists
@@ -90,12 +87,9 @@ router.post("/", authMiddleware, async (req, res) => {
 
     const optionalFields: Record<string, any> = {
       clinician_id,
-      subjective,
-      objective,
-      assessment,
-      plan,
+      transcript_result_id,
+      soap_result_id,
       status,
-      ai_confidence,
     };
 
     for (const [key, value] of Object.entries(optionalFields)) {
@@ -111,7 +105,7 @@ router.post("/", authMiddleware, async (req, res) => {
       ", "
     )}) VALUES (${placeholders.join(
       ", "
-    )}) RETURNING id, patient_id, clinician_id, date_of_service, subjective, objective, assessment, plan, status, ai_confidence, created_at, updated_at`;
+    )}) RETURNING id, patient_id, clinician_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at`;
     const result = await query(insertQuery, values);
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -171,7 +165,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 
     const result = await query(
       `UPDATE encounters SET ${fields} WHERE id = $${values.length + 1
-      } RETURNING id, patient_id, clinician_id, date_of_service, subjective, objective, assessment, plan, status, ai_confidence, created_at, updated_at`,
+      } RETURNING id, patient_id, clinician_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at`,
       [...values, id]
     );
 

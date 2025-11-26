@@ -83,11 +83,14 @@ import meRoutes from "./api/routes/me";
 import healthRoutes from "./api/routes/health";
 import userRoutes from "./api/routes/users"; // Added userRoutes
 import soapRoutes from "./api/routes/soap";
+import codesRoutes from "./api/routes/codes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/encounters", encounterRoutes);
 app.use("/api/encounters", soapRoutes);
+app.use("/api/encounters", codesRoutes); // Medical codes & claims
+app.use("/api/codes", codesRoutes); // For /api/codes/search
 app.use("/api/claims", claimRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);

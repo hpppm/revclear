@@ -70,7 +70,8 @@ textarea::placeholder {
 .s3-editor-status,
 .details,
 .status-copy {
-  color: var(--color-text-secondary); /* For description texts */
+  color: var(--color-text-secondary);
+  /* For description texts */
   font-size: 0.9rem;
 }
 
@@ -79,6 +80,7 @@ textarea::placeholder {
 .status-copy.error-copy {
   color: var(--color-error);
 }
+
 .s3-action-status.success,
 .s3-editor-status.success,
 .status-copy.success-copy {
@@ -92,21 +94,21 @@ textarea::placeholder {
   border-radius: 0.5rem;
   padding: 1rem;
 }
+
 .callout.success {
-  background-color: rgba(
-    var(--color-success-rgb),
-    0.15
-  ); /* Use rgba for transparency */
+  background-color: rgba(var(--color-success-rgb),
+      0.15);
+  /* Use rgba for transparency */
   color: var(--color-success);
   border: 1px solid rgba(var(--color-success-rgb), 0.3);
   border-radius: 0.5rem;
   padding: 1rem;
 }
+
 .callout.error {
-  background-color: rgba(
-    var(--color-error-rgb),
-    0.15
-  ); /* Use rgba for transparency */
+  background-color: rgba(var(--color-error-rgb),
+      0.15);
+  /* Use rgba for transparency */
   color: var(--color-error);
   border: 1px solid rgba(var(--color-error-rgb), 0.3);
   border-radius: 0.5rem;
@@ -117,10 +119,12 @@ textarea::placeholder {
   background-color: var(--color-warning);
   color: var(--color-bg-primary);
 }
+
 .pill.running {
   background-color: var(--color-success);
   color: var(--color-bg-primary);
 }
+
 .pill {
   background-color: var(--color-bg-tertiary);
   color: var(--color-text-primary);
@@ -148,24 +152,37 @@ pre {
 /* Base layout adjustments */
 .hero-card {
   background-color: var(--color-bg-secondary);
-  padding: 2rem 1.5rem; /* Adjust padding as needed for the card */
-  border-bottom: 1px solid var(--color-border); /* Keep separator */
-  border-top-left-radius: 0; /* No top radius if it spans full width */
-  border-top-right-radius: 0; /* No top radius */
-  border-left: none; /* No side borders */
-  border-right: none; /* No side borders */
-  margin-bottom: 2rem; /* Add some space below */
-  box-shadow: none; /* No shadow for this top-level card */
+  padding: 2rem 1.5rem;
+  /* Adjust padding as needed for the card */
+  border-bottom: 1px solid var(--color-border);
+  /* Keep separator */
+  border-top-left-radius: 0;
+  /* No top radius if it spans full width */
+  border-top-right-radius: 0;
+  /* No top radius */
+  border-left: none;
+  /* No side borders */
+  border-right: none;
+  /* No side borders */
+  margin-bottom: 2rem;
+  /* Add some space below */
+  box-shadow: none;
+  /* No shadow for this top-level card */
 }
 
 .hero-card .hero-label {
-  color: var(--color-text-primary); /* Ensure it's brightest white/light gray */
+  color: var(--color-text-primary);
+  /* Ensure it's brightest white/light gray */
 }
+
 .hero-card .hero-title {
-  color: var(--color-text-primary); /* Ensure it's brightest white/light gray */
+  color: var(--color-text-primary);
+  /* Ensure it's brightest white/light gray */
 }
+
 .hero-card .hero-subtitle {
-  color: var(--color-text-primary); /* Ensure it's brightest white/light gray */
+  color: var(--color-text-primary);
+  /* Ensure it's brightest white/light gray */
   margin-top: 1rem;
 }
 
@@ -173,12 +190,15 @@ pre {
 .hero-panel .hero-label {
   color: var(--color-text-secondary);
 }
+
 .hero-panel .hero-title {
   color: var(--color-text-primary);
 }
+
 .hero-panel .hero-subtitle {
   color: var(--color-text-secondary);
 }
+
 .user-bar {
   background-color: rgba(255, 255, 255, 0.9);
   color: var(--color-text-primary);
@@ -205,24 +225,29 @@ pre {
 .no-transition {
   transition: none !important;
 }
+
 .log-entry strong {
   color: var(--color-text-primary);
 }
+
 .log-entry.error {
   background-color: rgba(var(--color-error-rgb), 0.15);
   color: var(--color-error);
   border: 1px solid rgba(var(--color-error-rgb), 0.3);
 }
+
 .log-entry.success {
   background-color: rgba(var(--color-success-rgb), 0.15);
   color: var(--color-success);
   border: 1px solid rgba(var(--color-success-rgb), 0.3);
 }
+
 .log-entry.info {
   background-color: rgba(var(--color-text-accent-rgb), 0.15);
   color: var(--color-text-accent);
   border: 1px solid rgba(var(--color-text-accent-rgb), 0.3);
 }
+
 .log-entry pre {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
@@ -231,4 +256,24 @@ pre {
   margin-top: 0.5rem;
   border-radius: 0.25rem;
   overflow-x: auto;
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 10px rgba(14, 165, 233, 0);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
