@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AudioRecorder from "@/app/components/AudioRecorder";
 import AudioUploader from "@/app/components/AudioUploader";
+import MedicalCodesViewer from "@/app/components/MedicalCodesViewer";
 import SoapNoteViewer from "@/app/components/SoapNoteViewer";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient } from "@/app/lib/types";
-import { mockPatients } from "@/app/lib/mock/mockPatients";
 
 type Step = "metadata" | "audio" | "review";
-type Transcript = { text?: string; summary?: string;[key: string]: any };
+type Transcript = { text?: string; summary?: string; [key: string]: any };
 type Soap = { subjective?: string; objective?: string; assessment?: string; plan?: string };
 
 const allowedAudioTypes = [
@@ -77,8 +77,8 @@ export default function EncounterPage() {
     const paramEncounterId = searchParams?.get("encounterId");
     if (paramEncounterId) {
       setEncounterId(paramEncounterId);
-      // Fetch encounter details
-      apiClient.encounters.getById(paramEncounterId)
+      apiClient.encounters
+        .getById(paramEncounterId)
         .then((res) => {
           const data = res.data?.data || res.data;
           if (data) {
@@ -86,16 +86,16 @@ export default function EncounterPage() {
               setS3Key(data.audio_key);
               setInfo("Restored previous session. Ready to transcribe.");
             }
-            // Restore metadata if needed, though we might want to keep current selection
-            // or strictly follow what's in the DB.
-            // For now, let's at least ensure patientId matches if we want to be safe,
-            // but the user might be just refreshing.
             if (data.patient_id) {
-              setMetadata(prev => ({ ...prev, patientId: data.patient_id, date: data.date_of_service?.split('T')[0] || prev.date }));
+              setMetadata((prev) => ({
+                ...prev,
+                patientId: data.patient_id,
+                date: data.date_of_service?.split("T")[0] || prev.date,
+              }));
             }
           }
         })
-        .catch(err => console.error("Failed to restore encounter", err));
+        .catch((err) => console.error("Failed to restore encounter", err));
     }
   }, [searchParams]);
 
@@ -116,20 +116,19 @@ export default function EncounterPage() {
     setPatientsError(null);
     try {
       const response = await apiClient.patients.getAll();
-      // Backend returns { success: true, data: [...] }
       const rawPatients = response.data?.data || [];
 
       const mappedPatients: Patient[] = Array.isArray(rawPatients)
         ? rawPatients.map((p: any) => ({
-          id: p.id,
-          name: p.full_name,
-          age: p.age || 0,
-          dob: p.dob,
-          phone: p.phone,
-          insuranceType: p.insurance_provider,
-          insuranceId: p.insurance_policy_number,
-          diagnosis: p.diagnosis,
-        }))
+            id: p.id,
+            name: p.full_name,
+            age: p.age || 0,
+            dob: p.dob,
+            phone: p.phone,
+            insuranceType: p.insurance_provider,
+            insuranceId: p.insurance_policy_number,
+            diagnosis: p.diagnosis,
+          }))
         : [];
 
       setPatients(mappedPatients);
@@ -151,7 +150,6 @@ export default function EncounterPage() {
     setS3Key(null);
     setInfo(message || "Audio cleared. Ready to record or upload.");
     setError(null);
-    // Remove encounterId from URL
     const params = new URLSearchParams(searchParams?.toString());
     params.delete("encounterId");
     router.replace(`/dashboard/encounters/create?${params.toString()}`);
@@ -174,7 +172,6 @@ export default function EncounterPage() {
     setSoap(null);
     setError(null);
 
-    // Auto-save flow: Create encounter -> Upload audio
     if (!metadata.date || !metadata.patientId) {
       setError("Please select a patient and date before saving audio.");
       return;
@@ -184,23 +181,20 @@ export default function EncounterPage() {
     setInfo("Saving encounter and uploading audio...");
 
     try {
-      // 1. Create Encounter
       const encounterRes = await apiClient.encounters.create({
         patient_id: metadata.patientId,
         date_of_service: metadata.date,
-        status: "in_progress"
+        status: "in_progress",
       });
 
       const newEncounterId = encounterRes.data?.data?.id || encounterRes.data?.id;
       if (!newEncounterId) throw new Error("Failed to create encounter ID");
       setEncounterId(newEncounterId);
 
-      // Update URL with encounterId
       const params = new URLSearchParams(searchParams?.toString());
       params.set("encounterId", newEncounterId);
       router.replace(`/dashboard/encounters/create?${params.toString()}`);
 
-      // 2. Upload Audio
       const form = new FormData();
       form.append("audio", file);
       form.append("encounterId", newEncounterId);
@@ -215,26 +209,49 @@ export default function EncounterPage() {
     } catch (err: any) {
       console.error("Save failed", err);
       setError("Failed to save audio. Please try again.");
-      // Optional: clear audio if save failed?
     } finally {
       setUploading(false);
     }
   };
 
   const handleTranscribe = async () => {
-    if (!s3Key || !encounterId) {
-      setError("Audio not saved yet. Please record or upload audio first.");
-      return;
-    }
-
     setTranscribing(true);
     setError(null);
     setInfo("Transcribing audio...");
 
     try {
+      // If we somehow lost the saved audio reference, try to re-save before transcribing
+      if ((!s3Key || !encounterId) && audioFile) {
+        setInfo("Saving audio before transcription...");
+        const encounterRes = await apiClient.encounters.create({
+          patient_id: metadata.patientId,
+          date_of_service: metadata.date,
+          status: "in_progress",
+        });
+        const newEncounterId = encounterRes.data?.data?.id || encounterRes.data?.id;
+        if (!newEncounterId) throw new Error("Failed to create encounter ID");
+        setEncounterId(newEncounterId);
+
+        const params = new URLSearchParams(searchParams?.toString());
+        params.set("encounterId", newEncounterId);
+        router.replace(`/dashboard/encounters/create?${params.toString()}`);
+
+        const form = new FormData();
+        form.append("audio", audioFile);
+        form.append("encounterId", newEncounterId);
+        const uploadRes = await apiClient.transcribe.uploadAudio(form, true);
+        const key = uploadRes.data?.s3Key;
+        if (!key) throw new Error("Failed to get S3 key from upload");
+        setS3Key(key);
+      }
+
+      if (!s3Key || !encounterId) {
+        throw new Error("Audio not saved yet. Please record/upload and try again.");
+      }
+
       const res = await apiClient.transcribe.transcribeS3({
         s3Key: s3Key,
-        encounterId: encounterId
+        encounterId: encounterId,
       });
 
       const receivedTranscript =
@@ -245,9 +262,7 @@ export default function EncounterPage() {
       setSoap(receivedSoap);
       setInfo("Transcription complete. Continue to SOAP.");
 
-      // Auto-scroll to review
       setTimeout(() => goToReview(), 100);
-
     } catch (err: any) {
       console.error("Transcription failed", err);
       const message =
@@ -278,14 +293,12 @@ export default function EncounterPage() {
 
     try {
       const res = await apiClient.soap.generateFromTranscript(encounterId);
-      // Handle nested response structure: res.data.data.soap or res.data.soap
       const responseData = res.data?.data || res.data;
       const soapData = responseData?.soap || responseData;
 
-      console.log("SOAP Response:", soapData);
       setSoap(soapData);
       setInfo("SOAP note generated successfully.");
-      setStep("review"); // Ensure review section is visible
+      setStep("review");
     } catch (err: any) {
       console.error("SOAP generation failed", err);
       const message =
@@ -309,16 +322,14 @@ export default function EncounterPage() {
     setInfo("Generating SOAP note from MOCK transcript...");
 
     try {
-      // Call dedicated mock endpoint
       const res = await apiClient.soap.generateFromMockTranscript(encounterId);
       const responseData = res.data?.data || res.data;
       const soapData = responseData?.soap || responseData;
 
-      console.log("Mock SOAP Response:", soapData);
       setSoap(soapData);
       setTranscript({ text: "[Using mock transcript for testing]" });
       setInfo("SOAP note generated from mock transcript.");
-      setStep("review"); // Ensure review section is visible
+      setStep("review");
     } catch (err: any) {
       console.error("Mock SOAP generation failed", err);
       const message =
@@ -331,12 +342,26 @@ export default function EncounterPage() {
     }
   };
 
+  const handlePreviewSoapLayout = () => {
+    setTranscript({
+      text: "[Preview only] Replace with real transcript after transcription.",
+    });
+    setSoap({
+      subjective: "Feeling feverish\nChest wall discomfort",
+      objective: "BP elevated, mild facial flushing",
+      assessment: "Likely hypertension exacerbation",
+      plan: "Order labs\nEKG if symptoms persist\nSchedule follow-up in 1 week",
+    });
+    setInfo("Preview mode active. Generate real SOAP after transcription.");
+    goToReview();
+  };
+
   const transcriptText =
     typeof transcript === "string"
       ? transcript
       : transcript?.text ||
-      transcript?.summary ||
-      JSON.stringify(transcript ?? {}, null, 2);
+        transcript?.summary ||
+        JSON.stringify(transcript ?? {}, null, 2);
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
@@ -355,7 +380,7 @@ export default function EncounterPage() {
             href="/dashboard/patients"
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            ← Back to Patients
+            Back to Patients
           </Link>
         </div>
 
@@ -401,7 +426,7 @@ export default function EncounterPage() {
                 {patients.map((patient) => (
                   <option key={patient.id} value={patient.id}>
                     {patient.name}
-                    {patient.age ? ` • ${patient.age}` : ""}
+                    {patient.age ? ` (${patient.age})` : ""}
                   </option>
                 ))}
               </select>
@@ -425,8 +450,6 @@ export default function EncounterPage() {
               />
               <p className="text-xs text-slate-500">Pulled from your profile.</p>
             </label>
-
-
           </div>
 
           <div className="flex items-center justify-between">
@@ -447,7 +470,7 @@ export default function EncounterPage() {
 
         <section
           id="audio-section"
-          className={`rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4`}
+          className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -492,7 +515,21 @@ export default function EncounterPage() {
           ) : s3Key ? (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-full text-blue-600">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" x2="12" y1="3" y2="15" />
+                </svg>
               </div>
               <div>
                 <p className="text-sm font-medium text-blue-900">Audio uploaded</p>
@@ -501,10 +538,10 @@ export default function EncounterPage() {
             </div>
           ) : null}
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-600">
-              {info || "Send the audio to the transcription service."}
-            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-600">
+                {info || "Send the audio to the transcription service."}
+              </div>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -516,10 +553,17 @@ export default function EncounterPage() {
               <button
                 type="button"
                 onClick={handleTranscribe}
-                disabled={!s3Key || transcribing || uploading}
+                disabled={(!audioFile && !s3Key) || transcribing || uploading}
                 className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {transcribing ? "Transcribing..." : uploading ? "Saving..." : "Transcribe"}
+                {transcribing ? "Transcribing..." : uploading ? "Saving..." : "Transcript"}
+              </button>
+              <button
+                type="button"
+                onClick={handlePreviewSoapLayout}
+                className="inline-flex items-center rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 border border-rose-200 shadow-sm hover:border-rose-300"
+              >
+                Preview SOAP layout
               </button>
             </div>
           </div>
@@ -532,58 +576,71 @@ export default function EncounterPage() {
         </section>
 
         {(step === "review" || transcript || soap) && (
-          <section
-            id="review-section"
-            className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Transcript and SOAP
-              </h2>
-            </div>
-
-            <div className="space-y-2">
+          <>
+            <section
+              id="review-section"
+              className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4"
+            >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Transcript</p>
-                <div className="flex gap-2">
-                  {transcriptText && !soap && (
-                    <button
-                      type="button"
-                      onClick={handleGenerateSoap}
-                      disabled={generatingSoap}
-                      className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                    >
-                      {generatingSoap ? "Generating..." : "Generate SOAP"}
-                    </button>
-                  )}
-                  {!soap && encounterId && (
-                    <button
-                      type="button"
-                      onClick={handleGenerateMockSoap}
-                      disabled={generatingSoap}
-                      className="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                    >
-                      {generatingSoap ? "Generating..." : "Generate SOAP (Mock)"}
-                    </button>
-                  )}
-                </div>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Transcript and SOAP
+                </h2>
+                {(transcriptText || soap) && (
+                  <button
+                    type="button"
+                    onClick={goToReview}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    Next: SOAP & Codes
+                  </button>
+                )}
               </div>
-              {transcriptText ? (
-                <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-800">
-                  {transcriptText}
-                </pre>
-              ) : (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  No transcript available yet.
-                </div>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700">SOAP Note</p>
-              <SoapNoteViewer soap={soap} />
-            </div>
-          </section>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-700">Transcript</p>
+                  <div className="flex gap-2">
+                    {transcriptText && !soap && (
+                      <button
+                        type="button"
+                        onClick={handleGenerateSoap}
+                        disabled={generatingSoap}
+                        className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        {generatingSoap ? "Generating..." : "Generate SOAP"}
+                      </button>
+                    )}
+                    {!soap && encounterId && (
+                      <button
+                        type="button"
+                        onClick={handleGenerateMockSoap}
+                        disabled={generatingSoap}
+                        className="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        {generatingSoap ? "Generating..." : "Generate SOAP (Mock)"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {transcriptText ? (
+                  <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-800">
+                    {transcriptText}
+                  </pre>
+                ) : (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    No transcript available yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">SOAP Note</p>
+                <SoapNoteViewer soap={soap} />
+              </div>
+            </section>
+
+            <MedicalCodesViewer soap={soap} encounterId={encounterId} />
+          </>
         )}
 
         {error && (
