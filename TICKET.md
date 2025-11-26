@@ -743,32 +743,39 @@ Create mock datasets for CPT (procedure) and ICD-10 (diagnosis) codes to support
 **Title:** `feature: soap-to-codes genkit flow`
 
 **Description:**
-Create a Genkit flow that analyzes SOAP notes and extracts relevant CPT and ICD-10 medical billing codes using Gemini 2.5 Flash. The flow should match the SOAP content against mock code datasets and return codes with confidence scores.
+Create a Genkit flow that analyzes SOAP notes and matches them against existing ICD-10 and CPT codes from mock databases. The AI should intelligently match the SOAP content to the most relevant codes and return the top 3 matches for each code type with confidence scores. This is a matching/suggestion system, not a code generation system.
 
 **Requirements:**
 - Create `backend/genkit/flows/soapToCodes.ts`
-- Load mock CPT and ICD-10 codes from JSON files
-- Use Gemini to analyze SOAP note and suggest relevant codes
-- Return matched codes with confidence scores (0-1)
-- Include a tool to load mock codes: `mockCodesLoader`
-- Handle cases where no codes match
+- Load mock ICD-10 codes from `backend/genkit/data/mockIcdCodes.json`
+- Load mock CPT codes from `backend/genkit/data/mockCptCodes.json`
+- Use Gemini 2.0 Flash to analyze SOAP note and match against existing codes
+- Return top 3 ICD-10 matches with confidence scores (0-1 scale)
+- Return top 3 CPT matches with confidence scores (0-1 scale)
+- Create a tool `loadMedicalCodes` to read the JSON files
+- Handle edge cases (no good matches, low confidence)
+- Ensure output format includes: code, description, category, confidence score
 
 **Deliverables:**
 - `soapToCodes` Genkit flow
-- `mockCodesLoader` tool
+- `loadMedicalCodes` tool for reading code databases
 - Export from `backend/genkit/index.ts`
+- Proper TypeScript types for input/output
 
 **Acceptance Criteria:**
-- [ ] Flow accepts SOAP note as input
-- [ ] Returns CPT and ICD codes with confidence scores
-- [ ] Codes are validated against mock data
+- [ ] Flow accepts SOAP note text as input
+- [ ] Returns top 3 ICD-10 codes with confidence scores
+- [ ] Returns top 3 CPT codes with confidence scores
+- [ ] Codes are validated against mock data (only existing codes returned)
 - [ ] Flow is testable in Genkit Studio
-- [ ] Handles edge cases (no matches, low confidence)
+- [ ] Handles edge cases gracefully (returns empty array if no matches)
+- [ ] Confidence scores are reasonable (higher for better matches)
 
 **Branch Name:** `feature/soap-to-codes-flow`
 
 ### ASSIGNED TO
 ## [RASMUS SEPPANEN]
+
 
 ---
 
@@ -776,29 +783,58 @@ Create a Genkit flow that analyzes SOAP notes and extracts relevant CPT and ICD-
 
 ## STATUS: TODO
 
-**Title:** `feature: medical codes api`
+**Title:** `feature: medical codes api with ai matching`
 
 **Description:**
-Create backend API endpoints for generating, fetching, and updating medical codes for encounters. Integrate with the `soapToCodes` Genkit flow and persist codes in the database.
+Create backend API endpoints for matching SOAP notes to medical codes using AI, allowing manual code search/addition, and generating insurance claims. The system matches SOAP notes against existing ICD-10 and CPT codes (from JSON files), returns top 3 suggestions with confidence scores, allows users to select or manually add codes, and then generates claims based on the selected codes.
 
 **Requirements:**
+
+**Code Matching & Management:**
 - Create `backend/src/api/routes/codes.ts`
-- `POST /api/encounters/:id/codes` - Generate codes from SOAP using Genkit
-- `GET /api/encounters/:id/codes` - Fetch saved codes for encounter
-- `PUT /api/encounters/:id/codes` - Update/edit codes
-- Create `medical_codes` table in database
-- Use Zod for validation
+- `POST /api/encounters/:id/codes/match` - Use `soapToCodes` Genkit flow to match SOAP to codes
+  - Returns top 3 ICD-10 matches with confidence scores
+  - Returns top 3 CPT matches with confidence scores
+  - Does NOT save to DB (just suggestions)
+- `GET /api/encounters/:id/codes` - Fetch user-selected codes for encounter
+- `POST /api/encounters/:id/codes` - Save user-selected codes to DB
+  - Accepts array of selected codes (from AI suggestions or manual search)
+  - Validates codes exist in mock databases
+- `GET /api/codes/search?q=<query>&type=<icd|cpt>` - Manual search endpoint
+  - Search mock code databases by code or description
+  - Returns matching codes for manual selection
+- Create `medical_codes` table in database with fields:
+  - id, encounter_id, code_type (ICD/CPT), code, description, category, confidence_score, is_ai_suggested, created_at
+
+**Claims Generation:**
+- `POST /api/encounters/:id/claim` - Generate claim from selected codes
+  - Fetch encounter, patient, provider, and selected codes
+  - Format claim according to schema (diagnosis_codes, procedure_codes arrays)
+  - Calculate total_amount based on CPT codes
+  - Save to `claims` table with status 'draft'
+- `GET /api/encounters/:id/claim` - Fetch generated claim
+
+**Technical Requirements:**
+- Use Zod for validation on all endpoints
 - Apply `authMiddleware` to all routes
+- Integrate with `soapToCodes` Genkit flow
+- Load code databases from JSON files for search functionality
+- Structured 4xx errors for validation issues
 
 **Deliverables:**
-- Codes router with GET/POST/PUT endpoints
+- Codes router with match, save, search endpoints
+- Claims generation logic integrated with codes
 - Database migration for `medical_codes` table
 - Integration with `soapToCodes` flow
+- Code search functionality
 
 **Acceptance Criteria:**
-- [ ] POST generates codes and saves to DB
-- [ ] GET returns saved codes (404 if none)
-- [ ] PUT updates codes successfully
+- [ ] POST /codes/match returns top 3 ICD + top 3 CPT with confidence scores
+- [ ] GET /codes/search allows manual code lookup
+- [ ] POST /codes saves user-selected codes to DB
+- [ ] GET /codes returns saved codes (404 if none)
+- [ ] POST /claim generates claim from selected codes
+- [ ] Claim includes patient, provider, codes, and follows schema
 - [ ] All routes are auth-protected
 - [ ] Validation errors return 400 with details
 - [ ] No 5xx on happy paths
@@ -807,6 +843,7 @@ Create backend API endpoints for generating, fetching, and updating medical code
 
 ### ASSIGNED TO
 ## [RASMUS SEPPANEN]
+
 
 ---
 
@@ -817,20 +854,48 @@ Create backend API endpoints for generating, fetching, and updating medical code
 **Title:** `feature: medical codes display`
 
 **Description:**
-Create a UI component to display CPT and ICD-10 codes after SOAP generation. Allow users to review, edit, and remove codes that are based on the SOAP note before generating claims.
+Create a UI component that displays AI-suggested medical codes with confidence scores, allows users to accept/reject suggestions, and provides manual code search functionality. The component shows top 3 ICD-10 and top 3 CPT code suggestions from the AI, displays confidence scores, and lets users build their final code selection before generating claims.
 
 **Requirements:**
+
+**AI Suggestions Display:**
 - Create `MedicalCodesViewer.tsx` component
-- "Generate Codes" button (calls API, stub for now)
-- Display CPT codes section (procedure codes) with code, description, category, and confidence score
-- Display ICD-10 codes section (diagnosis codes) with code, description, category, and confidence score
-- Allow removing individual codes
-- Loading and error states
+- "Get AI Suggestions" button (calls `POST /api/encounters/:id/codes/match`)
+- Display top 3 ICD-10 suggestions with:
+  - Code number
+  - Description
+  - Category
+  - Confidence score (visual indicator: progress bar or percentage)
+  - Accept/Reject buttons
+- Display top 3 CPT suggestions with same fields
+- Loading state during AI matching
+- Error handling for API failures
+
+**Selected Codes Section:**
+- Show accepted codes in a separate "Selected Codes" section
+- Allow removing codes from selection
+- Display both ICD-10 and CPT selected codes
+- "Save Codes" button to persist selection (calls `POST /api/encounters/:id/codes`)
+
+**Manual Search:**
+- Search input field with type selector (ICD-10 / CPT)
+- "Search" button (calls `GET /api/codes/search?q=...&type=...`)
+- Display search results with same fields (code, description, category)
+- "Add" button for each search result
+- Search results appear in modal or expandable section
+
+**UI/UX:**
+- Clear visual distinction between AI suggestions and selected codes
+- Confidence score visualization (color-coded: green >80%, yellow 60-80%, orange <60%)
+- Smooth transitions when accepting/rejecting codes
 - Integrate into encounter flow after SOAP display
+- Responsive design
 
 **Deliverables:**
 - `MedicalCodesViewer.tsx` component
-- Integration in encounter pages
+- `CodeSearchModal.tsx` or inline search component
+- Integration in encounter page workflow
+- API service functions for matching and search
 
 - [] Component displays codes in organized sections
 - [] "Generate Codes" button triggers API stub call
@@ -844,44 +909,34 @@ Create a UI component to display CPT and ICD-10 codes after SOAP generation. All
 ### ASSIGNED TO
 ## [NARNI YOGA]
 
+
 ---
 
 ## 24. Ticket: Claims Generation Backend
 
-## STATUS: TODO
+## STATUS: MERGED INTO TICKET 22
 
 **Title:** `feature: claims generation backend`
 
 **Description:**
-Create backend logic to generate insurance claims from medical codes. Format claims according to CMS-1500 structure and persist in the database.
+~~Create backend logic to generate insurance claims from medical codes. Format claims according to CMS-1500 structure and persist in the database.~~
 
-**Requirements:**
-- Create `backend/src/api/routes/claims.ts`
-- `POST /api/encounters/:id/claim` - Generate claim from codes
+> [!NOTE]
+> **This ticket has been merged into Ticket 22.** Claims generation is now part of the Medical Codes API endpoints. The claim generation logic (`POST /api/encounters/:id/claim` and `GET /api/encounters/:id/claim`) is included in Ticket 22's requirements.
+
+**Original Requirements (now in Ticket 22):**
+- `POST /api/encounters/:id/claim` - Generate claim from selected codes
 - `GET /api/encounters/:id/claim` - Fetch saved claim
-- Create `claims` table in database
-- Format claim data (CMS-1500 structure)
+- Claims table already exists in database schema
+- Format claim data according to schema (diagnosis_codes, procedure_codes arrays)
 - Include patient, provider, codes, and encounter info
 - Support claim status (draft, submitted, approved, denied)
-- Use Zod for validation
 
-**Deliverables:**
-- Claims router with POST/GET endpoints
-- Database migration for `claims` table
-- Claim formatting logic
-
-**Acceptance Criteria:**
-- [ ] POST generates claim from codes and encounter data
-- [ ] Claim follows CMS-1500 structure
-- [ ] GET returns saved claim (404 if none)
-- [ ] All routes are auth-protected
-- [ ] Claim includes all required fields
-- [ ] No 5xx on happy paths
-
-**Branch Name:** `feature/claims-generation`
+**Branch Name:** ~~`feature/claims-generation`~~ (merged into `feature/medical-codes-api`)
 
 ### ASSIGNED TO
 ## [RASMUS SEPPANEN]
+
 
 ---
 
