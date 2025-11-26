@@ -36,28 +36,28 @@ const sectionInitial: Record<keyof SoapNote, string> = {
 
 export default function SoapNoteViewer({ soap }: { soap?: SoapNote | null }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 rounded-xl border border-rose-100 bg-gradient-to-b from-rose-50 to-white p-4 shadow-sm">
       {sectionOrder.map((key) => {
         const items = listify(soap?.[key]);
         return (
           <div
             key={key}
-            className="grid grid-cols-[64px_1fr] gap-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm"
+            className="grid grid-cols-[64px_1fr] gap-3 p-4 bg-white border border-rose-100 rounded-xl shadow-sm"
           >
-            <div className="flex flex-col items-center text-rose-600">
+            <div className="flex flex-col items-center justify-center rounded-lg bg-rose-50 px-2 text-rose-600">
               <span className="text-2xl font-bold">{sectionInitial[key]}</span>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-slate-800">
+              <p className="text-sm font-semibold text-rose-700">
                 {sectionLabels[key]}
               </p>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 space-y-1 text-sm text-slate-800">
+              <div className="rounded-lg border border-rose-100 bg-rose-50/60 px-4 py-3 space-y-1 text-sm text-slate-800">
                 {items.length === 0 ? (
                   <p className="text-slate-500">No data found.</p>
                 ) : (
                   items.map((line, idx) => (
                     <div key={idx} className="flex gap-2">
-                      <span className="text-rose-500 font-semibold">-</span>
+                      <span className="text-rose-500 font-semibold">•</span>
                       <span className="whitespace-pre-wrap">{line}</span>
                     </div>
                   ))

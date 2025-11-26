@@ -811,9 +811,8 @@ Create backend API endpoints for generating, fetching, and updating medical code
 ---
 
 ## 23. Ticket: Medical Codes Display Component
-
-## STATUS: TODO
-## 🟢 FRONTEND ONLY - NO BACKEND CHANGES
+## STATUS: FINISHED
+## ?? FRONTEND ONLY - NO BACKEND CHANGES
 
 **Title:** `feature: medical codes display`
 
@@ -833,13 +832,12 @@ Create a UI component to display CPT and ICD-10 codes after SOAP generation. All
 - `MedicalCodesViewer.tsx` component
 - Integration in encounter pages
 
-**Acceptance Criteria:**
-- [ ] Component displays codes in organized sections
-- [ ] "Generate Codes" button triggers API stub call
-- [ ] Loading state shown during generation
-- [ ] Codes are editable/removable
-- [ ] Error handling works
-- [ ] Integrates smoothly into encounter flow
+- [] Component displays codes in organized sections
+- [] "Generate Codes" button triggers API stub call
+- [] Loading state shown during generation
+- [] Codes are editable/removable
+- [] Error handling works
+- [] Integrates smoothly into encounter flow
 
 **Branch Name:** `feature/medical-codes-display`
 
