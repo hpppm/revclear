@@ -1,3 +1,6 @@
+// Mark as client so it can render inside client-only pages.
+"use client";
+
 type SoapNote = {
   subjective?: string;
   objective?: string;
