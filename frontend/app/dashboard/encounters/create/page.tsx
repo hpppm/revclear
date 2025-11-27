@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AudioRecorder from "@/app/components/AudioRecorder";
 import AudioUploader from "@/app/components/AudioUploader";
+import ClaimViewer from "@/app/components/ClaimViewer";
+import MedicalCodesViewer, { MedicalCode } from "@/app/components/MedicalCodesViewer";
 import SoapNoteViewer from "@/app/components/SoapNoteViewer";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
-import { Patient } from "@/app/lib/types";
-import { mockPatients } from "@/app/lib/mock/mockPatients";
+import { Claim, Patient } from "@/app/lib/types";
 
 type Step = "metadata" | "audio" | "review";
 type Transcript = { text?: string; summary?: string;[key: string]: any };
@@ -52,8 +53,17 @@ export default function EncounterPage() {
   const [transcribing, setTranscribing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingSoap, setGeneratingSoap] = useState(false);
+  const [claim, setClaim] = useState<Claim | null>(null);
+  const [generatingClaim, setGeneratingClaim] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>("Select a patient and date, then capture audio.");
+  const [codes, setCodes] = useState<MedicalCode[]>([]);
+  const [generatingCodes, setGeneratingCodes] = useState(false);
+  const [codesError, setCodesError] = useState<string | null>(null);
+  const [suggestedCodes, setSuggestedCodes] = useState<
+    Array<{ code: string; description: string; type: "CPT" | "ICD-10"; confidence: number }>
+  >([]);
 
   useEffect(() => {
     if (user) {
@@ -111,6 +121,27 @@ export default function EncounterPage() {
     [patients, metadata.patientId]
   );
 
+  const practitionerFilter = useMemo(() => {
+    let raw =
+      (user as any)?.practitionerType ||
+      (user as any)?.practitioner ||
+      (user as any)?.practitioner_type ||
+      "";
+    if (!raw && typeof window !== "undefined") {
+      raw = localStorage.getItem("practitionerType") || "";
+    }
+    const normalized = `${raw}`.toLowerCase();
+    if (normalized.includes("mental") || normalized.includes("psych")) return "mental";
+    if (normalized.includes("physical")) return "physical";
+    if (normalized.includes("speech")) return "speech";
+    return "mental";
+  }, [user]);
+
+  const allowedFiltersForViewer = useMemo(
+    () => [practitionerFilter as "mental" | "physical" | "speech"],
+    [practitionerFilter]
+  );
+
   const fetchPatients = async () => {
     setLoadingPatients(true);
     setPatientsError(null);
@@ -147,6 +178,7 @@ export default function EncounterPage() {
     setAudioUrl(null);
     setTranscript(null);
     setSoap(null);
+    setCodes([]);
     setEncounterId(null);
     setS3Key(null);
     setInfo(message || "Audio cleared. Ready to record or upload.");
@@ -172,6 +204,7 @@ export default function EncounterPage() {
     setAudioUrl(URL.createObjectURL(file));
     setTranscript(null);
     setSoap(null);
+    setCodes([]);
     setError(null);
 
     // Auto-save flow: Create encounter -> Upload audio
@@ -284,6 +317,7 @@ export default function EncounterPage() {
 
       console.log("SOAP Response:", soapData);
       setSoap(soapData);
+      setCodes([]);
       setInfo("SOAP note generated successfully.");
       setStep("review"); // Ensure review section is visible
     } catch (err: any) {
@@ -317,6 +351,7 @@ export default function EncounterPage() {
       console.log("Mock SOAP Response:", soapData);
       setSoap(soapData);
       setTranscript({ text: "[Using mock transcript for testing]" });
+      setCodes([]);
       setInfo("SOAP note generated from mock transcript.");
       setStep("review"); // Ensure review section is visible
     } catch (err: any) {
@@ -331,12 +366,217 @@ export default function EncounterPage() {
     }
   };
 
+  const handleGenerateClaim = async () => {
+    setGeneratingClaim(true);
+    setClaimError(null);
+    try {
+      if (!metadata.patientId || !selectedPatient) {
+        throw new Error("Select a patient before generating a claim.");
+      }
+
+      const claimData: Claim = {
+        claimNumber: `CLM-${Date.now()}`,
+        status: "draft",
+        dateOfService: metadata.date,
+        patient: {
+          id: metadata.patientId,
+          name: selectedPatient.name,
+          insurance: selectedPatient.insuranceType || "Not provided",
+        },
+        provider: {
+          name: metadata.provider || (user as any)?.full_name || "Provider",
+          npi: (user as any)?.licenseId || "0000000000",
+        },
+        facility: "RevClear Clinic",
+        codes: [
+          {
+            code: "99213",
+            description: "Office/outpatient visit, established patient",
+            type: "CPT",
+            amount: 150,
+          },
+          {
+            code: "I10",
+            description: "Essential (primary) hypertension",
+            type: "ICD-10",
+            amount: 0,
+          },
+        ],
+        notes: soap
+          ? "Generated from current SOAP note."
+          : "Draft claim generated without SOAP details.",
+      };
+      setClaim(claimData);
+      setInfo("Claim generated as draft. Export or adjust as needed.");
+    } catch (err: any) {
+      setClaimError(err?.message || "Failed to generate claim.");
+    } finally {
+      setGeneratingClaim(false);
+    }
+  };
+
+  const handleExportClaim = () => {
+    if (!claim) {
+      setClaimError("Generate a claim before exporting.");
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   const transcriptText =
     typeof transcript === "string"
       ? transcript
       : transcript?.text ||
       transcript?.summary ||
       JSON.stringify(transcript ?? {}, null, 2);
+
+  const buildCodeSuggestions = (): MedicalCode[] => {
+    const mental: MedicalCode[] = [
+      {
+        id: "cpt-90791",
+        code: "90791",
+        description: "Psychiatric diagnostic evaluation (mental)",
+        category: "Mental health",
+        type: "CPT",
+        confidence: 0.78,
+      },
+      {
+        id: "icd-f411",
+        code: "F41.1",
+        description: "Generalized anxiety disorder",
+        category: "Mental health",
+        type: "ICD-10",
+        confidence: 0.64,
+      },
+      {
+        id: "icd-f321",
+        code: "F32.1",
+        description: "Major depressive disorder, single episode, moderate",
+        category: "Mental health",
+        type: "ICD-10",
+        confidence: 0.59,
+      },
+    ];
+
+    const physical: MedicalCode[] = [
+      {
+        id: "cpt-97110",
+        code: "97110",
+        description: "Therapeutic exercises, strength/flexibility (physical)",
+        category: "Physical therapy",
+        type: "CPT",
+        confidence: 0.82,
+      },
+      {
+        id: "icd-m2251",
+        code: "M22.51",
+        description: "Patellofemoral disorders, left knee",
+        category: "Physical therapy",
+        type: "ICD-10",
+        confidence: 0.58,
+      },
+    ];
+
+    const speech: MedicalCode[] = [
+      {
+        id: "cpt-92507",
+        code: "92507",
+        description: "Speech-language therapy, individual (speech)",
+        category: "Speech therapy",
+        type: "CPT",
+        confidence: 0.69,
+      },
+      {
+        id: "icd-r4781",
+        code: "R47.81",
+        description: "Slurred speech",
+        category: "Speech",
+        type: "ICD-10",
+        confidence: 0.52,
+      },
+    ];
+
+    if (practitionerFilter === "physical") return physical;
+    if (practitionerFilter === "speech") return speech;
+    return mental;
+  };
+
+  const handleGenerateCodes = async () => {
+    setCodesError(null);
+    setGeneratingCodes(true);
+    return new Promise<MedicalCode[]>((resolve) => {
+      setTimeout(() => {
+        const next = buildCodeSuggestions();
+        setCodes(next);
+        setGeneratingCodes(false);
+        setInfo("Codes generated from SOAP (stubbed).");
+        resolve(next);
+      }, 200);
+    });
+  };
+
+  const handlePreviewMock = () => {
+    const mockSets: Record<
+      string,
+      {
+        transcript: string;
+        soap: Soap;
+      }
+    > = {
+      mental: {
+        transcript:
+          "Patient reports escalating anxiety before work presentations, trouble sleeping, and occasional low mood. No SI/HI. Requests coping strategies.",
+        soap: {
+          subjective:
+            "- Feels anxious before presenting; palms sweaty, heart racing.\n- Sleep fragmented; 5-6 hours/night; ruminates on work tasks.\n- Mood low 2-3 days/week; denies SI/HI.",
+          objective:
+            "- Alert, oriented x3; anxious but cooperative affect.\n- Speech clear, normal rate/volume.\n- PHQ-9 estimate: mild; GAD-7 estimate: moderate.",
+          assessment:
+            "- Generalized anxiety disorder.\n- Situational performance anxiety.\n- Mild depressive symptoms, monitor.",
+          plan:
+            "- CBT-based coping (breathing, thought reframing) + exposure practice for presentations.\n- Sleep hygiene coaching; consider short-term CBT-I tools.\n- Discuss SSRI trial if symptoms persist; follow-up in 4 weeks.",
+        },
+      },
+      physical: {
+        transcript:
+          "Patient reports left knee pain after running 5k races, dull ache 4/10, worse on stairs. No locking or giving way. Wants rehab exercises.",
+        soap: {
+          subjective:
+            "- Anterior left knee ache after runs; 4/10; worse on stairs or squats.\n- No instability, locking, or swelling reported.\n- Using ice occasionally; no formal PT.",
+          objective:
+            "- No visible swelling/erythema; mild tenderness over patellar tendon.\n- Full ROM; mild crepitus on squat; strength 4+/5 quads.\n- Negative Lachman and McMurray.",
+          assessment:
+            "- Patellofemoral pain syndrome (overuse).\n- Quadriceps/hip strength imbalance contributing.",
+          plan:
+            "- Therapeutic exercise program (closed-chain quad, hip abduction/external rotation) 3x/week.\n- Activity modification: reduce downhill volume; cadence work.\n- Ice after runs; consider patellar taping.\n- Reassess in 4-6 weeks; progress load as tolerated.",
+        },
+      },
+      speech: {
+        transcript:
+          "Patient notes slowed speech and occasional word-finding issues under stress at work calls. No swallowing difficulty. Wants pacing exercises.",
+        soap: {
+          subjective:
+            "- Speech slows during high-stress meetings; occasional word-finding pauses.\n- No dysphagia, no recent neuro events.\n- Seeks strategies to keep pace.",
+          objective:
+            "- Speech clear, intelligible; mild rate reduction under simulated stress.\n- Language intact; no cranial nerve deficits noted in brief screen.",
+          assessment:
+            "- Functional speech fluency changes under stress; no red flags for neurologic etiology.",
+          plan:
+            "- Teach paced breathing/pausing; script rehearsal for meetings.\n- Daily reading aloud with metronome for rate control.\n- Re-evaluate in 3-4 weeks; monitor for new neuro symptoms.",
+        },
+      },
+    };
+
+    const chosen = mockSets[practitionerFilter] || mockSets.mental;
+
+    setTranscript({ text: chosen.transcript });
+    setSoap(chosen.soap);
+    setCodes([]);
+    setInfo("Loaded mock preview for SOAP and code suggestions for your specialty.");
+    setStep("review");
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
@@ -531,60 +771,101 @@ export default function EncounterPage() {
           )}
         </section>
 
-        {(step === "review" || transcript || soap) && (
+        <>
           <section
             id="review-section"
-            className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-4"
+            className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-6"
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Transcript and SOAP
-              </h2>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Transcript</p>
-                <div className="flex gap-2">
-                  {transcriptText && !soap && (
-                    <button
-                      type="button"
-                      onClick={handleGenerateSoap}
-                      disabled={generatingSoap}
-                      className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                    >
-                      {generatingSoap ? "Generating..." : "Generate SOAP"}
-                    </button>
-                  )}
-                  {!soap && encounterId && (
-                    <button
-                      type="button"
-                      onClick={handleGenerateMockSoap}
-                      disabled={generatingSoap}
-                      className="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                    >
-                      {generatingSoap ? "Generating..." : "Generate SOAP (Mock)"}
-                    </button>
-                  )}
-                </div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-slate-500">Review</p>
+                <h2 className="text-2xl font-bold text-slate-900">Transcript & SOAP</h2>
+                <p className="text-sm text-slate-600">
+                  Generate the SOAP note, then review suggested codes before creating a claim.
+                </p>
               </div>
-              {transcriptText ? (
-                <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-800">
-                  {transcriptText}
-                </pre>
-              ) : (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  No transcript available yet.
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handlePreviewMock}
+                  className="inline-flex items-center rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+                >
+                  Preview SOAP (Mock)
+                </button>
+                {transcriptText && !soap && (
+                  <button
+                    type="button"
+                    onClick={handleGenerateSoap}
+                    disabled={generatingSoap}
+                    className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {generatingSoap ? "Generating..." : "Generate SOAP"}
+                  </button>
+                )}
+                {!soap && encounterId && (
+                  <button
+                    type="button"
+                    onClick={handleGenerateMockSoap}
+                    disabled={generatingSoap}
+                    className="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {generatingSoap ? "Generating..." : "Generate SOAP (Mock)"}
+                  </button>
+                )}
+                {soap && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    {transcriptText?.includes("mock transcript")
+                      ? "Mock SOAP"
+                      : "SOAP ready"}
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700">SOAP Note</p>
-              <SoapNoteViewer soap={soap} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Transcript</p>
+                {transcriptText ? (
+                  <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-800 h-full">
+                    {transcriptText}
+                  </pre>
+                ) : (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 h-full">
+                    No transcript available yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">SOAP Note</p>
+                <SoapNoteViewer soap={soap} />
+              </div>
             </div>
           </section>
-        )}
+
+          <MedicalCodesViewer
+            codes={codes}
+            loading={generatingCodes}
+            error={codesError}
+            onGenerate={handleGenerateCodes}
+            onChange={setCodes}
+            title="Suggested codes"
+            initialFilter={practitionerFilter as any}
+            allowedFilters={allowedFiltersForViewer}
+          />
+
+          <ClaimViewer
+            claim={claim}
+            generating={generatingClaim}
+            onGenerate={handleGenerateClaim}
+            onExport={handleExportClaim}
+          />
+          {claimError && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {claimError}
+            </div>
+          )}
+        </>
 
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
