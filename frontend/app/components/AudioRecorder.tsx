@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Button from "./ui/Button";
+import Badge from "./ui/Badge";
 
 type Props = {
   onRecorded: (file: File) => void;
@@ -127,48 +129,43 @@ export default function AudioRecorder({ onRecorded }: Props) {
           </p>
         </div>
         <span
-          className={`h-3 w-3 rounded-full ${
-            status === "recording" ? "bg-red-500 animate-pulse" : "bg-slate-300"
-          }`}
+          className={`h-3 w-3 rounded-full ${status === "recording" ? "bg-red-500 animate-pulse" : "bg-slate-300"
+            }`}
         />
       </div>
 
       <div className="flex items-center gap-3 text-sm text-slate-700">
         <span className="font-mono text-lg">{formattedTime}</span>
-        <span className="px-2 py-1 rounded-full border text-xs">
+        <Badge variant="neutral" size="sm" className="border">
           {status === "idle" ? "Idle" : status === "paused" ? "Paused" : "Recording"}
-        </span>
+        </Badge>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button
-          onClick={startRecording}
-          disabled={status === "recording"}
-          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
+        <Button onClick={startRecording} disabled={status === "recording"}>
           Start
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={togglePause}
           disabled={status === "idle"}
-          className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="bg-amber-500 hover:bg-amber-600"
         >
           {status === "paused" ? "Resume" : "Pause"}
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={stopAndSave}
           disabled={status === "idle"}
-          className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="bg-emerald-600 hover:bg-emerald-700"
         >
           Stop & Save
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
           onClick={discard}
           disabled={status === "idle"}
-          className="px-3 py-2 rounded-lg bg-slate-200 text-slate-800 text-sm font-semibold disabled:cursor-not-allowed"
         >
           Discard
-        </button>
+        </Button>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
