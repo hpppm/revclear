@@ -3,6 +3,8 @@ import express from "express";
 import helmet, { HelmetOptions } from "helmet";
 import cors from "cors";
 import morgan from "morgan";
+// @ts-ignore: express-rate-limit has no TS types
+import rateLimit from "express-rate-limit";
 
 import { auditLogger } from "./middleware/audit";
 import { appConfig } from "./config/appConfig";
@@ -21,7 +23,38 @@ if (appConfig.genkitEnv === "dev") {
     });
 }
 
+// --------------------------------------------------
+// CORS
+// --------------------------------------------------
 app.use(cors());
+
+// --------------------------------------------------
+// Security Monitoring (Custom Built)
+// --------------------------------------------------
+import { securityMonitor } from "./middleware/securityMonitor";
+console.log("✅ Security monitoring enabled");
+app.use(securityMonitor);
+
+// --------------------------------------------------
+// Rate Limiting
+// --------------------------------------------------
+app.use(
+  "/api/auth",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: "Too many auth requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/transcribe",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    message: "Too many transcribe requests. Try again later.",
+  })
+);
 
 /**
  * 🚀 FIX #1:
@@ -34,7 +67,7 @@ app.use("/api/transcribe", transcribeRoutes);
 /**
  * Normal middleware can now follow safely.
  */
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 const helmetOptions: HelmetOptions = {
   contentSecurityPolicy: {
@@ -66,6 +99,7 @@ const helmetOptions: HelmetOptions = {
       frameAncestors: ["'self'"],
     },
   },
+  referrerPolicy: { policy: "no-referrer" },
 };
 
 app.use(helmet(helmetOptions));
@@ -81,22 +115,25 @@ import encounterRoutes from "./api/routes/encounters";
 import claimRoutes from "./api/routes/claims";
 import meRoutes from "./api/routes/me";
 import healthRoutes from "./api/routes/health";
-import userRoutes from "./api/routes/users"; // Added userRoutes
+import userRoutes from "./api/routes/users";
 import soapRoutes from "./api/routes/soap";
 import codesRoutes from "./api/routes/codes";
 import organizationRoutes from "./api/routes/organizations";
+import securityRoutes from "./api/routes/security";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/encounters", encounterRoutes);
 app.use("/api/encounters", soapRoutes);
-app.use("/api/encounters", codesRoutes); // Medical codes & claims
-app.use("/api/codes", codesRoutes); // For /api/codes/search
+app.use("/api/encounters", codesRoutes);
+app.use("/api/codes", codesRoutes);
 app.use("/api/claims", claimRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);
-app.use("/api/users", userRoutes); // Added userRoutes
+app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
+app.use("/api/security", securityRoutes);
+
 if (!isTestEnv) {
   // Lazily load dev routes only outside test runs to avoid heavy fixtures
   const devRoutes = require("./api/routes/dev").default;
