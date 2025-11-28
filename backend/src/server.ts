@@ -97,7 +97,6 @@ app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/users", userRoutes); // Added userRoutes
 app.use("/api/organizations", organizationRoutes);
-
 if (!isTestEnv) {
   // Lazily load dev routes only outside test runs to avoid heavy fixtures
   const devRoutes = require("./api/routes/dev").default;
