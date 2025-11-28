@@ -427,7 +427,7 @@ Implement real authentication in the frontend by integrating with the backend AP
 
 ## 12. Ticket: My Profile Page
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: my profile page`
 
@@ -705,7 +705,7 @@ Implement the "Try Again" or "Regenerate" flow for SOAP notes.
 
 ## 20. Ticket: Mock Medical Codes Data
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: mock medical codes data`
 
@@ -738,7 +738,7 @@ Create mock datasets for CPT (procedure) and ICD-10 (diagnosis) codes to support
 
 ## 21. Ticket: soapToCodes Genkit Flow
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: soap-to-codes genkit flow`
 
@@ -781,7 +781,7 @@ Create a Genkit flow that analyzes SOAP notes and matches them against existing 
 
 ## 22. Ticket: Medical Codes API Endpoints
 
-## STATUS: TODO
+## STATUS: FINISHED
 
 **Title:** `feature: medical codes api with ai matching`
 

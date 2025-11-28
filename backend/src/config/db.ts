@@ -1,6 +1,30 @@
 import { Pool, PoolConfig, QueryResult, QueryResultRow } from "pg";
 import { appConfig } from "./appConfig";
 
+const userColumns = [
+  "id",
+  "cognito_id",
+  "email",
+  "full_name",
+  "role",
+  "phone",
+  "practitioner_type",
+  "license_id",
+  "license_state",
+  "npi",
+  "tax_id",
+  "clinic_name",
+  "clinic_address_street",
+  "clinic_address_city",
+  "clinic_address_state",
+  "clinic_address_zip",
+  "clinic_phone",
+  "taxonomy_code",
+  "clinic_npi",
+  "provider_role",
+  "created_at",
+].join(", ");
+
 const poolConfig: PoolConfig = {
   host: appConfig.db.host,
   port: appConfig.db.port,
@@ -37,18 +61,18 @@ export const query = <T extends QueryResultRow = QueryResultRow>(
 ): Promise<QueryResult<T>> => pool.query<T>(text, params);
 
 export const findUserByCognitoId = async (cognitoId: string) => {
-  const result = await query('SELECT id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at FROM users WHERE cognito_id = $1', [cognitoId]);
+  const result = await query(`SELECT ${userColumns} FROM users WHERE cognito_id = $1`, [cognitoId]);
   return result.rows[0];
 };
 
 export const findUserByEmail = async (email: string) => {
-  const result = await query('SELECT id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at FROM users WHERE email = $1', [email]);
+  const result = await query(`SELECT ${userColumns} FROM users WHERE email = $1`, [email]);
   return result.rows[0];
 };
 
 export const updateUserCognitoId = async (email: string, cognitoId: string) => {
   const result = await query(
-    'UPDATE users SET cognito_id = $1 WHERE email = $2 RETURNING id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at',
+    `UPDATE users SET cognito_id = $1 WHERE email = $2 RETURNING ${userColumns}`,
     [cognitoId, email]
   );
   return result.rows[0];
@@ -62,7 +86,7 @@ export const createUser = async (
   licenseId?: string
 ) => {
   const result = await query(
-    'INSERT INTO users (cognito_id, email, full_name, practitioner_type, license_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at',
+    `INSERT INTO users (cognito_id, email, full_name, practitioner_type, license_id) VALUES ($1, $2, $3, $4, $5) RETURNING ${userColumns}`,
     [cognitoId, email, fullName, practitionerType || null, licenseId || null]
   );
   return result.rows[0];
@@ -74,7 +98,7 @@ export const updateUserPractitionerInfo = async (
   licenseId?: string
 ) => {
   const result = await query(
-    'UPDATE users SET practitioner_type = $1, license_id = $2 WHERE email = $3 RETURNING id, cognito_id, email, full_name, role, practitioner_type, license_id, created_at',
+    `UPDATE users SET practitioner_type = $1, license_id = $2 WHERE email = $3 RETURNING ${userColumns}`,
     [practitionerType || null, licenseId || null, email]
   );
   return result.rows[0];

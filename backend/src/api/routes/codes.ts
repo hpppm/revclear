@@ -8,6 +8,7 @@ import { sendError } from "../../utils/httpResponses";
 import { soapToCodes } from "../../../genkit";
 import { query } from "../../config/db";
 import { getLatestAiResult } from "../../db/queries";
+import { getAuthenticatedUser } from "../../utils/auth";
 
 const router = Router();
 
@@ -94,40 +95,18 @@ const deleteMedicalCodesByEncounter = async (encounter_id: string) => {
     await query(`DELETE FROM medical_codes WHERE encounter_id = $1`, [encounter_id]);
 };
 
-const getClaimByEncounter = async (encounter_id: string) => {
-    const result = await query(
-        `SELECT * FROM claims WHERE encounter_id = $1 ORDER BY created_at DESC LIMIT 1`,
-        [encounter_id]
-    );
-    return result.rows[0];
+const requireUser = async (req: any, res: any) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+        res.status(401).json({ success: false, message: "User not authenticated" });
+        return null;
+    }
+    return user;
 };
 
-const createClaim = async (data: {
-    encounter_id: string;
-    clinician_id: string;
-    patient_id: string;
-    diagnosis_codes: string[];
-    procedure_codes: string[];
-    total_amount: number;
-    insurance_provider: string;
-    status: string;
-}) => {
-    const result = await query(
-        `INSERT INTO claims (encounter_id, clinician_id, patient_id, diagnosis_codes, procedure_codes, total_amount, insurance_provider, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING *`,
-        [
-            data.encounter_id,
-            data.clinician_id,
-            data.patient_id,
-            data.diagnosis_codes,
-            data.procedure_codes,
-            data.total_amount,
-            data.insurance_provider,
-            data.status,
-        ]
-    );
-    return result.rows[0];
+const requireOwnedEncounter = async (encounterId: string, clinicianId: string) => {
+    const result = await query(`SELECT * FROM encounters WHERE id = $1 AND clinician_id = $2`, [encounterId, clinicianId]);
+    return result.rows[0] || null;
 };
 
 // =========================================================
@@ -139,11 +118,19 @@ const createClaim = async (data: {
  * Get AI-suggested code matches from SOAP note
  */
 router.post("/:id/codes/match", authMiddleware, async (req, res) => {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
     const parsed = IdParamSchema.safeParse(req.params);
     if (!parsed.success) {
         return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
     }
     const encounterId = parsed.data.id;
+
+    const encounter = await requireOwnedEncounter(encounterId, user.id);
+    if (!encounter) {
+        return sendError(res, 404, "Encounter not found");
+    }
 
     try {
         // Get SOAP note from database
@@ -219,6 +206,9 @@ router.get("/search", authMiddleware, async (req, res) => {
  * Save user-selected codes
  */
 router.post("/:id/codes", authMiddleware, async (req, res) => {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
         return sendError(res, 400, "Invalid encounter id", parsedParams.error.issues);
@@ -231,6 +221,11 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
 
     const encounterId = parsedParams.data.id;
     const { codes } = parsedBody.data;
+
+    const encounter = await requireOwnedEncounter(encounterId, user.id);
+    if (!encounter) {
+        return sendError(res, 404, "Encounter not found");
+    }
 
     try {
         // Delete existing codes for this encounter
@@ -266,11 +261,19 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
  * Get saved codes for encounter
  */
 router.get("/:id/codes", authMiddleware, async (req, res) => {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
     const parsed = IdParamSchema.safeParse(req.params);
     if (!parsed.success) {
         return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
     }
     const encounterId = parsed.data.id;
+
+    const encounter = await requireOwnedEncounter(encounterId, user.id);
+    if (!encounter) {
+        return sendError(res, 404, "Encounter not found");
+    }
 
     try {
         const codes = await getMedicalCodesByEncounter(encounterId);
@@ -286,100 +289,6 @@ router.get("/:id/codes", authMiddleware, async (req, res) => {
     } catch (error: any) {
         console.error("[GET /codes] error", error);
         return sendError(res, 500, "Failed to fetch codes");
-    }
-});
-
-/**
- * POST /api/encounters/:id/claim
- * Generate insurance claim from selected codes
- */
-router.post("/:id/claim", authMiddleware, async (req, res) => {
-    const parsed = IdParamSchema.safeParse(req.params);
-    if (!parsed.success) {
-        return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
-    }
-    const encounterId = parsed.data.id;
-
-    try {
-        // Get encounter details
-        const encounterResult = await query(
-            `SELECT * FROM encounters WHERE id = $1`,
-            [encounterId]
-        );
-        if (encounterResult.rows.length === 0) {
-            return sendError(res, 404, "Encounter not found");
-        }
-        const encounter = encounterResult.rows[0];
-
-        // Get patient details
-        const patientResult = await query(
-            `SELECT * FROM patients WHERE id = $1`,
-            [encounter.patient_id]
-        );
-        if (patientResult.rows.length === 0) {
-            return sendError(res, 404, "Patient not found");
-        }
-        const patient = patientResult.rows[0];
-
-        // Get selected codes
-        const codes = await getMedicalCodesByEncounter(encounterId);
-        if (codes.length === 0) {
-            return sendError(res, 400, "No codes selected for this encounter");
-        }
-
-        const icdCodes = codes.filter((c) => c.code_type === "ICD").map((c) => c.code);
-        const cptCodes = codes.filter((c) => c.code_type === "CPT").map((c) => c.code);
-
-        // Mock pricing: $100 per CPT code
-        const totalAmount = cptCodes.length * 100;
-
-        // Create claim
-        const claim = await createClaim({
-            encounter_id: encounterId,
-            clinician_id: encounter.clinician_id,
-            patient_id: encounter.patient_id,
-            diagnosis_codes: icdCodes,
-            procedure_codes: cptCodes,
-            total_amount: totalAmount,
-            insurance_provider: patient.insurance_provider || "Unknown",
-            status: "draft",
-        });
-
-        return res.status(201).json({
-            success: true,
-            data: claim,
-        });
-    } catch (error: any) {
-        console.error("[POST /claim] error", error);
-        return sendError(res, 500, "Failed to generate claim");
-    }
-});
-
-/**
- * GET /api/encounters/:id/claim
- * Get claim for encounter
- */
-router.get("/:id/claim", authMiddleware, async (req, res) => {
-    const parsed = IdParamSchema.safeParse(req.params);
-    if (!parsed.success) {
-        return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
-    }
-    const encounterId = parsed.data.id;
-
-    try {
-        const claim = await getClaimByEncounter(encounterId);
-
-        if (!claim) {
-            return sendError(res, 404, "No claim found for this encounter");
-        }
-
-        return res.json({
-            success: true,
-            data: claim,
-        });
-    } catch (error: any) {
-        console.error("[GET /claim] error", error);
-        return sendError(res, 500, "Failed to fetch claim");
     }
 });
 

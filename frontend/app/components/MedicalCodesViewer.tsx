@@ -1,424 +1,391 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
-
-export type MedicalCode = {
-  id: string;
-  type: "CPT" | "ICD-10";
-  code: string;
-  description: string;
-  category: string;
-  confidence: number; // 0-100 scale
-  source?: string;
-};
-
-type SoapNote = {
-  subjective?: string;
-  objective?: string;
-  assessment?: string;
-  plan?: string;
-};
+import React, { useState, useEffect } from "react";
+import { apiClient } from "@/app/lib/api/apiClient";
+import { MedicalCode, SoapNote } from "@/app/lib/types";
+import Button from "./ui/Button";
+import Card from "./ui/Card";
+import Input from "./ui/Input";
+import Badge from "./ui/Badge";
 
 type MedicalCodesViewerProps = {
   soap?: SoapNote | null;
   encounterId?: string | null;
-  onCodesChange?: (codes: MedicalCode[]) => void;
-  defaultCodes?: MedicalCode[];
+  savedCodes?: MedicalCode[];
+  onCodesSelected?: (codes: MedicalCode[]) => void;
 };
 
-const normalizeSoap = (soap?: SoapNote | null) => {
-  if (!soap) return "";
-  return [soap.subjective, soap.objective, soap.assessment, soap.plan]
-    .filter(Boolean)
-    .join(" ");
-};
-
-const seededMockCodes = (soapText: string, specialty: string): MedicalCode[] => {
-  const lower = soapText.toLowerCase();
-  const mentionsShoulder = lower.includes("shoulder") || lower.includes("rotator");
-  const mentionsBack = lower.includes("back") || lower.includes("lumbar");
-  const mentionsSpeech = lower.includes("speech") || lower.includes("aphasia") || lower.includes("stutter");
-  const mentionsAnxiety = lower.includes("anxiety") || lower.includes("panic");
-  const mentionsDepression = lower.includes("depression") || lower.includes("mood");
-
-  const shared = {
-    mental_health: {
-      icd: mentionsAnxiety
-        ? { code: "F41.1", description: "Generalized anxiety disorder" }
-        : mentionsDepression
-        ? { code: "F32.9", description: "Major depressive disorder, single episode, unspecified" }
-        : { code: "F41.9", description: "Anxiety disorder, unspecified" },
-      icd2: { code: "Z13.89", description: "Encounter for screening, mental health" },
-      cpt: { code: "90791", description: "Psychiatric diagnostic evaluation" },
-      cpt2: { code: "90834", description: "Psychotherapy, 45 minutes with patient" },
-      label: "Mental Health",
-    },
-    physical_therapy: {
-      icd: mentionsShoulder
-        ? { code: "M75.101", description: "Unspecified rotator cuff tear or rupture" }
-        : mentionsBack
-        ? { code: "M54.50", description: "Low back pain, unspecified" }
-        : { code: "M62.81", description: "Muscle weakness (generalized)" },
-      icd2: { code: "Z74.09", description: "Limited mobility" },
-      cpt: { code: "97161", description: "PT evaluation, low complexity" },
-      cpt2: { code: "97110", description: "Therapeutic exercises" },
-      label: "Physical Therapy",
-    },
-    speech_therapy: {
-      icd: mentionsSpeech
-        ? { code: "R47.01", description: "Aphasia" }
-        : { code: "F80.0", description: "Phonological disorder" },
-      icd2: { code: "R48.2", description: "Apraxia" },
-      cpt: { code: "92523", description: "Speech sound language comprehension eval" },
-      cpt2: { code: "92507", description: "Speech/hearing therapy" },
-      label: "Speech Therapy",
-    },
-  } as const;
-
-  const bundle = shared[specialty as keyof typeof shared] || shared.mental_health;
-  const specialtyLabel = bundle.label;
-
-  return [
-    {
-      id: "icd-1",
-      type: "ICD-10",
-      code: bundle.icd.code,
-      description: bundle.icd.description,
-      category: `${specialtyLabel} / Diagnosis`,
-      confidence: 85,
-      source: "SOAP assessment",
-    },
-    {
-      id: "icd-2",
-      type: "ICD-10",
-      code: bundle.icd2.code,
-      description: bundle.icd2.description,
-      category: `${specialtyLabel} / Secondary`,
-      confidence: 72,
-      source: "SOAP assessment",
-    },
-    {
-      id: "cpt-1",
-      type: "CPT",
-      code: bundle.cpt.code,
-      description: bundle.cpt.description,
-      category: `${specialtyLabel} / Treatment`,
-      confidence: 78,
-      source: "Visit complexity",
-    },
-    {
-      id: "cpt-2",
-      type: "CPT",
-      code: bundle.cpt2.code,
-      description: bundle.cpt2.description,
-      category: `${specialtyLabel} / Plan`,
-      confidence: 65,
-      source: "SOAP plan",
-    },
-  ];
-};
-
-const mockGenerateCodes = async (
-  soapText: string,
-  encounterId?: string | null,
-  specialty?: string
-): Promise<MedicalCode[]> => {
-  // Stubbed API; swap with real endpoint when available
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!soapText.trim()) {
-        reject(new Error("SOAP content required to generate codes."));
-        return;
-      }
-      resolve(
-        seededMockCodes(soapText, specialty || "mental_health").map((code) => ({
-          ...code,
-          id: `${code.id}-${encounterId || "local"}-${Date.now()}`,
-        }))
-      );
-    }, 700);
-  });
-};
-
-const SectionHeader = ({
-  title,
-  count,
-}: {
-  title: string;
-  count: number;
-}) => (
-  <div className="flex items-center justify-between">
-    <div>
-      <p className="text-xs uppercase tracking-wide text-slate-500">
-        {title}
-      </p>
-      <p className="text-lg font-semibold text-slate-900">
-        {count} {count === 1 ? "code" : "codes"}
-      </p>
-    </div>
-  </div>
-);
-
-const CodeRow = ({
-  code,
-  onChange,
-  onRemove,
-}: {
-  code: MedicalCode;
-  onChange: (code: MedicalCode) => void;
-  onRemove: () => void;
-}) => {
-  const update = (partial: Partial<MedicalCode>) =>
-    onChange({ ...code, ...partial });
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-            {code.type}
-          </span>
-          <input
-            value={code.code}
-            onChange={(e) => update({ code: e.target.value })}
-            className="text-base font-semibold text-slate-900 border border-slate-200 rounded-md px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="text-sm text-rose-600 hover:text-rose-700"
-        >
-          Remove
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <label className="space-y-1">
-          <span className="text-xs font-medium text-slate-600">Description</span>
-          <input
-            value={code.description}
-            onChange={(e) => update({ description: e.target.value })}
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            placeholder="Describe the procedure or diagnosis"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-xs font-medium text-slate-600">Category</span>
-          <input
-            value={code.category}
-            onChange={(e) => update({ category: e.target.value })}
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            placeholder="Category"
-          />
-        </label>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between text-xs text-slate-600">
-          <span>Confidence</span>
-          <span className="font-semibold text-slate-800">
-            {code.confidence.toFixed(0)}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={code.confidence}
-          onChange={(e) => update({ confidence: Number(e.target.value) })}
-          className="accent-blue-600"
-        />
-        {code.source && (
-          <p className="text-xs text-slate-500">Source: {code.source}</p>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const MedicalCodesViewer = ({
+export default function MedicalCodesViewer({
   soap,
   encounterId,
-  onCodesChange,
-  defaultCodes = [],
-}: MedicalCodesViewerProps) => {
-  const specialties = [
-    { value: "mental_health", label: "Mental Health" },
-    { value: "physical_therapy", label: "Physical Therapy" },
-    { value: "speech_therapy", label: "Speech Therapy" },
+  savedCodes = [],
+  onCodesSelected,
+}: MedicalCodesViewerProps) {
+  const ensureType = (codes: any[], type: "ICD-10" | "CPT") =>
+    (codes || []).map((c) => ({
+      id: c.id || `${type}-${c.code}`,
+      type,
+      code: c.code,
+      description: c.description,
+      category: c.category || "Unspecified",
+      confidence: typeof c.confidence === "number" ? c.confidence : typeof c.confidence_score === "number" ? c.confidence_score : undefined,
+      source: c.is_ai_suggested ? "AI" : c.source,
+    }));
+
+  const normalizedSaved = [
+    ...ensureType(savedCodes.filter((c) => c.type === "ICD-10"), "ICD-10"),
+    ...ensureType(savedCodes.filter((c) => c.type === "CPT"), "CPT"),
   ];
 
-  const [codes, setCodes] = useState<MedicalCode[]>(defaultCodes);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [specialty, setSpecialty] = useState<string>(specialties[0].value);
-
-  const soapText = useMemo(() => normalizeSoap(soap), [soap]);
-
-  const cptCodes = useMemo(
-    () => codes.filter((c) => c.type === "CPT"),
-    [codes]
+  // Initialize candidates with saved codes
+  const [icdCandidates, setIcdCandidates] = useState<MedicalCode[]>(
+    normalizedSaved.filter((c) => c.type === "ICD-10")
   );
-  const icdCodes = useMemo(
-    () => codes.filter((c) => c.type === "ICD-10"),
-    [codes]
+  const [cptCandidates, setCptCandidates] = useState<MedicalCode[]>(
+    normalizedSaved.filter((c) => c.type === "CPT")
   );
 
+  // Initialize selection with saved codes
+  const [selectedCodes, setSelectedCodes] = useState<MedicalCode[]>(normalizedSaved);
+
+  // Sync state with savedCodes prop when it changes
   useEffect(() => {
-    if (onCodesChange) {
-      onCodesChange(codes);
+    if (savedCodes.length > 0) {
+      const normalized = [
+        ...ensureType(savedCodes.filter((c) => c.type === "ICD-10"), "ICD-10"),
+        ...ensureType(savedCodes.filter((c) => c.type === "CPT"), "CPT"),
+      ];
+      setIcdCandidates(normalized.filter((c) => c.type === "ICD-10"));
+      setCptCandidates(normalized.filter((c) => c.type === "CPT"));
+      setSelectedCodes(normalized);
+      setHasGenerated(true);
     }
-  }, [codes, onCodesChange]);
+  }, [savedCodes]);
+
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState<"icd" | "cpt">("icd");
+  const [searchResults, setSearchResults] = useState<MedicalCode[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(savedCodes.length > 0);
+
+  const sortCodes = (codes: MedicalCode[]) =>
+    [...codes].sort((a, b) => {
+      if (a.type === b.type) return a.code.localeCompare(b.code);
+      return a.type.localeCompare(b.type);
+    });
+
+  const setSelection = (codes: MedicalCode[]) => {
+    const sorted = sortCodes(codes);
+    setSelectedCodes(sorted);
+    onCodesSelected?.(sorted);
+  };
 
   const generateCodes = async () => {
+    if (!encounterId) return;
+
     setLoading(true);
-    setError(null);
     try {
-      const generated = await mockGenerateCodes(soapText, encounterId, specialty);
-      setCodes(generated);
+      const response = await apiClient.codes.match(encounterId);
+      const { icdMatches, cptMatches } = response.data.data;
+
+      setIcdCandidates(ensureType(icdMatches, "ICD-10"));
+      setCptCandidates(ensureType(cptMatches, "CPT"));
+      setHasGenerated(true);
     } catch (err: any) {
-      setError(err?.message || "Failed to generate codes.");
+      console.error("Code generation failed", err);
+      setHasGenerated(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const addCode = (type: MedicalCode["type"]) => {
-    setCodes((prev) => [
-      ...prev,
-      {
-        id: `${type}-${Date.now()}`,
-        type,
-        code: "",
-        description: "",
-        category: "",
-        confidence: 50,
-      },
-    ]);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    setSearching(true);
+    try {
+      const response = await apiClient.codes.search(searchQuery, searchType);
+      const rawResults = response.data.data || [];
+
+      // Inject type based on searchType since mock data doesn't have it
+      const resultsWithType = rawResults.map((r: any) => ({
+        ...r,
+        type: searchType === "icd" ? "ICD-10" : "CPT"
+      }));
+
+      setSearchResults(resultsWithType.map((r) => ({
+        ...r,
+        id: r.id || `${r.type}-${r.code}`,
+        category: r.category || "Unspecified",
+      })));
+    } catch (err) {
+      console.error("Search failed", err);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
-  const updateCode = (id: string, updated: MedicalCode) => {
-    setCodes((prev) => prev.map((code) => (code.id === id ? updated : code)));
+  const handleSelectCandidate = (code: MedicalCode) => {
+    const isSelected = selectedCodes.some((c) => c.code === code.code && c.type === code.type);
+    if (isSelected) {
+      setSelection(selectedCodes.filter((c) => !(c.code === code.code && c.type === code.type)));
+    } else {
+      setSelection([...selectedCodes, code]);
+    }
   };
 
-  const removeCode = (id: string) => {
-    setCodes((prev) => prev.filter((code) => code.id !== id));
+  const handleAddFromSearch = (code: MedicalCode) => {
+    // Add to candidates if not already there
+    if (code.type === "ICD-10") {
+      if (!icdCandidates.some(c => c.code === code.code)) {
+        setIcdCandidates([...icdCandidates, code]);
+      }
+    } else {
+      if (!cptCandidates.some(c => c.code === code.code)) {
+        setCptCandidates([...cptCandidates, code]);
+      }
+    }
+
+    // Select the code
+    if (!selectedCodes.some(c => c.code === code.code && c.type === code.type)) {
+      setSelection([...selectedCodes, code]);
+    }
+
+    // Do not clear search results to allow multiple selections
+    // setSearchResults([]);
+    // setSearchQuery("");
   };
+
+  const handleRemoveCode = (code: MedicalCode) => {
+    setSelection(selectedCodes.filter((c) => !(c.code === code.code && c.type === code.type)));
+  };
+
+  const CandidateCard = ({ code, isSelected, onSelect }: {
+    code: MedicalCode;
+    isSelected: boolean;
+    onSelect: () => void;
+  }) => (
+    <div
+      onClick={onSelect}
+      className={`rounded-lg border-2 p-4 cursor-pointer transition-all ${isSelected
+        ? "border-blue-500 bg-blue-50 shadow-md"
+        : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"
+        }`}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Badge variant={isSelected ? "info" : "neutral"} size="sm">
+            {code.code}
+          </Badge>
+          {typeof code.confidence === 'number' && (
+            <span className="text-xs text-slate-500">
+              {code.confidence.toFixed(0)}% confidence
+            </span>
+          )}
+        </div>
+        {isSelected && (
+          <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+      </div>
+      <p className="text-sm font-medium text-slate-900 mb-1">{code.description}</p>
+      {code.category && (
+        <p className="text-xs text-slate-500">{code.category}</p>
+      )}
+    </div>
+  );
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm p-6 space-y-5">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <Card className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-500">Billing readiness</p>
-          <h2 className="text-2xl font-bold text-slate-900">
-            CPT & ICD-10 codes
-          </h2>
+          <h3 className="text-lg font-semibold text-slate-900">Medical Codes</h3>
           <p className="text-sm text-slate-600">
-            Generate from the SOAP note, then fine-tune or remove codes before
-            creating claims. Supported specialties: Mental Health, Physical Therapy, Speech Therapy.
+            AI-generated codes from the SOAP note. Select the codes you want to apply.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-slate-600">
-            Specialty
-            <select
-              value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
-              className="ml-2 rounded-md border border-slate-200 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              {specialties.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={generateCodes}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {loading ? (
-              <>
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Generating...
-              </>
-            ) : (
-              "Generate codes"
-            )}
-          </button>
-        </div>
+        {icdCandidates.length === 0 && cptCandidates.length === 0 && (
+          <Button onClick={generateCodes} loading={loading} disabled={loading}>
+            {loading ? "Finding codes..." : "Find Codes"}
+          </Button>
+        )}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
+      {hasGenerated && icdCandidates.length === 0 && cptCandidates.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 text-amber-600 mb-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="8" y2="12" />
+              <line x1="12" x2="12.01" y1="16" y2="16" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-semibold text-amber-900 mb-1">
+            No matches found
+          </h3>
+          <p className="text-sm text-amber-700">
+            The AI couldn't find matching codes. Try manually searching for codes below.
+          </p>
         </div>
       )}
 
-      <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-700">
-        <p className="font-semibold text-slate-900">SOAP context</p>
-        <p className="text-slate-600">
-          {soapText || "No SOAP note available. Generate SOAP before coding."}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-3">
-          <SectionHeader title="ICD-10 (Diagnosis codes)" count={icdCodes.length} />
-          {icdCodes.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              No ICD-10 codes yet.
+      {(icdCandidates.length > 0 || cptCandidates.length > 0) && (
+        <div className="space-y-6">
+          {/* ICD-10 Candidates */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                ICD-10 Diagnosis Codes
+              </h4>
+              <span className="text-xs text-slate-500">
+                {selectedCodes.filter(c => c.type === "ICD-10").length} selected
+              </span>
             </div>
-          ) : (
-            icdCodes.map((code) => (
-              <CodeRow
-                key={code.id}
-                code={code}
-                onChange={(updated) => updateCode(code.id, updated)}
-                onRemove={() => removeCode(code.id)}
-              />
-            ))
-          )}
-          <button
-            type="button"
-            onClick={() => addCode("ICD-10")}
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {icdCandidates.map((code) => (
+                <CandidateCard
+                  key={`${code.type}-${code.code}`}
+                  code={code}
+                  isSelected={selectedCodes.some(c => c.code === code.code && c.type === code.type)}
+                  onSelect={() => handleSelectCandidate(code)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* CPT Candidates */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                CPT Procedure Codes
+              </h4>
+              <span className="text-xs text-slate-500">
+                {selectedCodes.filter(c => c.type === "CPT").length} selected
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {cptCandidates.map((code) => (
+                <CandidateCard
+                  key={`${code.type}-${code.code}`}
+                  code={code}
+                  isSelected={selectedCodes.some(c => c.code === code.code && c.type === code.type)}
+                  onSelect={() => handleSelectCandidate(code)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Search */}
+      <div className="border-t border-slate-200 pt-6">
+        <h4 className="text-sm font-semibold text-slate-700 mb-3">Manual Code Search</h4>
+        <div className="flex gap-2">
+          <select
+            value={searchType}
+            onChange={(e) => setSearchType(e.target.value as "icd" | "cpt")}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
           >
-            + Add ICD-10 code
-          </button>
+            <option value="icd">ICD-10 (Diagnosis)</option>
+            <option value="cpt">CPT (Procedure)</option>
+          </select>
+          <Input
+            placeholder="Search for codes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            className="flex-1"
+          />
+          <Button onClick={handleSearch} loading={searching} disabled={searching}>
+            Search
+          </Button>
         </div>
 
-        <div className="space-y-3">
-          <SectionHeader title="CPT (Procedure codes)" count={cptCodes.length} />
-          {cptCodes.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              No CPT codes yet.
-            </div>
-          ) : (
-            cptCodes.map((code) => (
-              <CodeRow
-                key={code.id}
-                code={code}
-                onChange={(updated) => updateCode(code.id, updated)}
-                onRemove={() => removeCode(code.id)}
-              />
-            ))
-          )}
-          <button
-            type="button"
-            onClick={() => addCode("CPT")}
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-          >
-            + Add CPT code
-          </button>
-        </div>
+        {searchResults.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs text-slate-500 mb-2">{searchResults.length} results found</p>
+            {searchResults.map((code) => {
+              const isAdded = selectedCodes.some(c => c.code === code.code && c.type === code.type);
+              return (
+                <div
+                  key={code.id || code.code}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="neutral" size="sm">{code.code}</Badge>
+                      <span className="text-sm font-medium text-slate-900">{code.description}</span>
+                    </div>
+                    {code.category && (
+                      <p className="text-xs text-slate-500">{code.category}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isAdded ? "secondary" : "primary"}
+                    onClick={() => !isAdded && handleAddFromSearch(code)}
+                    disabled={isAdded}
+                    className={isAdded ? "opacity-50 cursor-not-allowed" : ""}
+                  >
+                    {isAdded ? "Added" : "Add"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </section>
+
+      {/* Selected Codes List */}
+      {selectedCodes.length > 0 && (
+        <div className="border-t border-slate-200 pt-6">
+          <h4 className="text-sm font-semibold text-slate-700 mb-3">Selected Codes</h4>
+          <div className="space-y-2">
+            {selectedCodes.map((code) => (
+              <div
+                key={`${code.type}-${code.code}`}
+                className="flex items-center justify-between p-3 rounded-lg border border-blue-200 bg-blue-50"
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="info" size="sm">{code.code}</Badge>
+                    <Badge variant={code.type === "ICD-10" ? "neutral" : "info"} size="sm" className="uppercase">
+                      {code.type || "Unknown"}
+                    </Badge>
+                    <span className="text-sm font-medium text-slate-900">{code.description}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRemoveCode(code)}
+                  className="text-slate-400 hover:text-red-600 transition-colors"
+                  title="Remove code"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
   );
-};
-
-export default MedicalCodesViewer;
+}
