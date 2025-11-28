@@ -75,9 +75,8 @@ export default function AudioUploader({
       }}
       onDragLeave={() => setDragActive(false)}
       onDrop={onDrop}
-      className={`border-2 ${
-        dragActive ? "border-blue-500 bg-blue-50" : "border-dashed border-slate-300 bg-white"
-      } rounded-xl p-4 shadow transition`}
+      className={`border-2 ${dragActive ? "border-blue-500 bg-blue-50" : "border-dashed border-slate-300 bg-white"
+        } rounded-xl p-4 shadow transition`}
     >
       <p className="font-medium text-slate-900">Upload Audio</p>
       <p className="text-sm text-slate-600 mb-3">
@@ -91,7 +90,7 @@ export default function AudioUploader({
           className="hidden"
           onChange={onInputChange}
         />
-        <div className="flex items-center justify-center px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 text-blue-700 hover:bg-slate-100">
+        <div className="flex items-center justify-center px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 text-blue-700 hover:bg-slate-100 font-semibold text-sm">
           Choose a file
         </div>
       </label>

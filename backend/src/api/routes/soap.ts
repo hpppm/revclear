@@ -5,15 +5,17 @@ import { IdParamSchema } from "../../types/zod";
 import { createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
 import { speechToSoap } from "../../../genkit";
+import { query } from "../../config/db";
+import { getAuthenticatedUser } from "../../utils/auth";
 
 const router = Router();
 
 const SoapPayloadSchema = z.object({
   soap: z.object({
-    subjective: z.string().min(1, "subjective is required"),
-    objective: z.string().min(1, "objective is required"),
-    assessment: z.string().min(1, "assessment is required"),
-    plan: z.string().min(1, "plan is required"),
+    subjective: z.string().optional(),
+    objective: z.string().optional(),
+    assessment: z.string().optional(),
+    plan: z.string().optional(),
   }),
   model_version: z.string().optional(),
   confidence_score: z.number().min(0).max(1).optional(),
@@ -31,14 +33,39 @@ const parseTranscriptText = (payload: any) => {
   return JSON.stringify(payload);
 };
 
+const requireUser = async (req: any, res: any) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
+    res.status(401).json({ success: false, message: "User not authenticated" });
+    return null;
+  }
+  return user;
+};
+
+const ensureEncounterOwnership = async (encounterId: string, clinicianId: string) => {
+  const result = await query(
+    "SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2",
+    [encounterId, clinicianId]
+  );
+  return result.rows.length > 0;
+};
+
 // New endpoint specifically for testing with mock transcript
 // MUST come before POST /:id/soap to avoid route conflict
 router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
     return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
   }
   const encounterId = parsed.data.id;
+
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  if (!ownsEncounter) {
+    return sendError(res, 404, "Encounter not found");
+  }
 
   try {
     console.log(`[POST /api/encounters/:id/soap/mock] Forcing mock transcript usage`);
@@ -60,6 +87,12 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
       confidence_score: soapResult.confidence,
     });
 
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
+
     return res.status(201).json({
       success: true,
       data: saved.output_json,
@@ -77,11 +110,19 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
 });
 
 router.get("/:id/soap", authMiddleware, async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
     return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
   }
   const encounterId = parsed.data.id;
+
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  if (!ownsEncounter) {
+    return sendError(res, 404, "Encounter not found");
+  }
 
   try {
     const latest = await getLatestAiResult(encounterId, "soap_gemini");
@@ -105,11 +146,19 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
 });
 
 router.post("/:id/soap", authMiddleware, async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
     return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
   }
   const encounterId = parsed.data.id;
+
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  if (!ownsEncounter) {
+    return sendError(res, 404, "Encounter not found");
+  }
 
   try {
     // Try to get transcript from database
@@ -140,6 +189,12 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
       confidence_score: soapResult.confidence,
     });
 
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
+
     return res.status(201).json({
       success: true,
       data: saved.output_json,
@@ -156,6 +211,9 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
 });
 
 router.put("/:id/soap", authMiddleware, async (req, res) => {
+  const user = await requireUser(req, res);
+  if (!user) return;
+
   const parsedParams = IdParamSchema.safeParse(req.params);
   if (!parsedParams.success) {
     return sendError(res, 400, "Invalid encounter id", parsedParams.error.issues);
@@ -168,6 +226,11 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
   const encounterId = parsedParams.data.id;
   const { soap, model_version, confidence_score } = parsedBody.data;
 
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  if (!ownsEncounter) {
+    return sendError(res, 404, "Encounter not found");
+  }
+
   try {
     const saved = await createAiResult({
       encounter_id: encounterId,
@@ -177,6 +240,12 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
       model_version: model_version ?? "manual_edit",
       confidence_score: confidence_score ?? undefined,
     });
+
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
 
     return res.json({
       success: true,

@@ -8,6 +8,8 @@ import { authMiddleware } from "../../middleware/auth";
 import { uploadFile, getFile } from "../../config/awsS3";
 import { createAudioRecord, createAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
+import { getAuthenticatedUser } from "../../utils/auth";
+import { query } from "../../config/db";
 
 const router = Router();
 
@@ -26,6 +28,23 @@ const S3FallbackSchema = z.object({
   encounterId: z.string().uuid("Invalid encounter ID"),
 });
 
+const requireUser = async (req: any, res: any) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
+    res.status(401).json({ success: false, message: "User not authenticated" });
+    return null;
+  }
+  return user;
+};
+
+const ensureEncounterOwnership = async (encounterId: string, clinicianId: string) => {
+  const result = await query(
+    `SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2`,
+    [encounterId, clinicianId]
+  );
+  return result.rows.length > 0;
+};
+
 /**
  * @route POST /api/transcribe
  * @description Accepts an audio file for transcription or an S3 key to transcribe an existing file.
@@ -40,12 +59,21 @@ router.post(
   upload.single("audio"),
   async (req, res) => {
     try {
+      const user = await requireUser(req, res);
+      if (!user) return;
+
       let audioStream: Readable;
       let s3Key: string;
       const encounterId = req.body.encounterId; // Assuming encounterId is passed for both paths
 
       if (!encounterId) {
         return sendError(res, 400, "Encounter ID is required.");
+      }
+
+      // Ensure the encounter belongs to the authenticated clinician
+      const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+      if (!ownsEncounter) {
+        return sendError(res, 404, "Encounter not found");
       }
 
       if (req.file) {
@@ -61,6 +89,13 @@ router.post(
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
         console.log(`Backend: Uploaded audio to S3 with key: ${s3Key}`);
+
+        // Update encounter with audio_key
+        await query(
+          `UPDATE encounters SET audio_key = $1 WHERE id = $2`,
+          [s3Key, encounterId]
+        );
+        console.log(`Backend: Updated encounter ${encounterId} with audio_key: ${s3Key}`);
 
         // Create a record in audio_records table
         await createAudioRecord({
@@ -139,7 +174,7 @@ router.post(
       console.log(`Backend: Transcription successful for S3 key: ${s3Key}`);
 
       // Persist transcript to ai_results table
-      await createAiResult({
+      const aiResult = await createAiResult({
         encounter_id: encounterId,
         flow_name: "whisper_transcript",
         input_json: { s3Key },
@@ -147,6 +182,13 @@ router.post(
         model_version: transcript?.model_version || "whisper",
         confidence_score: transcript?.confidence_score,
       });
+
+      // Update encounter with transcript_result_id
+      await query(
+        `UPDATE encounters SET transcript_result_id = $1 WHERE id = $2`,
+        [aiResult.id, encounterId]
+      );
+      console.log(`Backend: Updated encounter ${encounterId} with transcript_result_id: ${aiResult.id}`);
 
       res.json({
         success: true,
@@ -161,5 +203,87 @@ router.post(
     }
   }
 );
+
+/**
+ * @route GET /api/transcribe/audio/:encounterId
+ * @description Gets a presigned URL for the audio file
+ */
+router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
+  try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const { encounterId } = req.params;
+
+    if (!encounterId) {
+      return sendError(res, 400, "Encounter ID is required.");
+    }
+
+    const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+    if (!ownsEncounter) {
+      return sendError(res, 404, "Encounter not found");
+    }
+
+    // Get the encounter to find the audio_key
+    const result = await query(
+      `SELECT audio_key FROM encounters WHERE id = $1`,
+      [encounterId]
+    );
+
+    if (result.rows.length === 0 || !result.rows[0].audio_key) {
+      return sendError(res, 404, "Audio file not found for this encounter.");
+    }
+
+    const audioKey = result.rows[0].audio_key;
+
+    // Generate presigned URL
+    const { getDownloadUrl } = await import("../../config/awsS3");
+    const audioUrl = await getDownloadUrl(audioKey, 3600); // 1 hour expiry
+
+    res.json({ audioUrl });
+  } catch (error: any) {
+    console.error("Backend: Error getting audio URL:", error);
+    sendError(res, 500, error.message || "Failed to get audio URL.");
+  }
+});
+
+/**
+ * @route GET /api/transcribe/:encounterId
+ * @description Retrieves the transcript for a given encounter
+ */
+router.get("/:encounterId", authMiddleware, async (req, res) => {
+  try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const { encounterId } = req.params;
+
+    if (!encounterId) {
+      return sendError(res, 400, "Encounter ID is required.");
+    }
+
+    const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+    if (!ownsEncounter) {
+      return sendError(res, 404, "Encounter not found");
+    }
+
+    // Query ai_results for the transcript
+    const result = await query(
+      `SELECT output_json FROM ai_results 
+       WHERE encounter_id = $1 AND flow_name = 'whisper_transcript' 
+       ORDER BY created_at DESC LIMIT 1`,
+      [encounterId]
+    );
+
+    if (result.rows.length === 0) {
+      return sendError(res, 404, "Transcript not found for this encounter.");
+    }
+
+    res.json(result.rows[0].output_json);
+  } catch (error: any) {
+    console.error("Backend: Error retrieving transcript:", error);
+    sendError(res, 500, error.message || "Failed to retrieve transcript.");
+  }
+});
 
 export default router;
