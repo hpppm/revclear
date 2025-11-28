@@ -10,6 +10,7 @@ import GenkitPanel from "./GenkitPanel";
 import LogPanel from "./LogPanel";
 import Card from "./ui/Card";
 import RdsPanel from "./RdsPanel";
+import CodesPanel from "./CodesPanel";
 
 export default function Dashboard({ user, onLogout }) {
   const [config, setConfig] = useState(null);
@@ -47,6 +48,8 @@ export default function Dashboard({ user, onLogout }) {
         return <GenkitPanel />;
       case "rds":
         return <RdsPanel />;
+      case "codes":
+        return <CodesPanel />;
       default:
         return null;
     }
@@ -148,6 +151,18 @@ export default function Dashboard({ user, onLogout }) {
             className="primary"
             type="button">
             Open Genkit Panel
+          </button>
+        </article>
+        <article className="service-card">
+          <header>
+            <span>Medical Codes</span>
+          </header>
+          <p>Test AI code matching, manual search, and claims generation.</p>
+          <button
+            onClick={() => setActivePanel("codes")}
+            className="primary"
+            type="button">
+            Open Codes Console
           </button>
         </article>
       </section>

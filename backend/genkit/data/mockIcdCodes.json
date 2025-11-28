@@ -1,0 +1,52 @@
+[
+    {
+        "code": "F41.1",
+        "description": "Generalized anxiety disorder",
+        "category": "Mental Health"
+    },
+    {
+        "code": "F32.9",
+        "description": "Major depressive disorder, single episode, unspecified",
+        "category": "Mental Health"
+    },
+    {
+        "code": "R51.9",
+        "description": "Headache, unspecified",
+        "category": "Neurological"
+    },
+    {
+        "code": "M79.3",
+        "description": "Myalgia (muscle pain)",
+        "category": "Musculoskeletal"
+    },
+    {
+        "code": "J06.9",
+        "description": "Acute upper respiratory infection, unspecified",
+        "category": "Respiratory"
+    },
+    {
+        "code": "E11.9",
+        "description": "Type 2 diabetes mellitus without complications",
+        "category": "Endocrine"
+    },
+    {
+        "code": "I10",
+        "description": "Essential (primary) hypertension",
+        "category": "Cardiovascular"
+    },
+    {
+        "code": "K21.9",
+        "description": "Gastro-esophageal reflux disease without esophagitis",
+        "category": "Digestive"
+    },
+    {
+        "code": "M25.561",
+        "description": "Pain in right knee",
+        "category": "Musculoskeletal"
+    },
+    {
+        "code": "G43.909",
+        "description": "Migraine, unspecified, not intractable, without status migrainosus",
+        "category": "Neurological"
+    }
+]

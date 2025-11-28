@@ -42,6 +42,7 @@ export const createAiResult = async (data: {
 };
 
 export const getLatestAiResult = async (encounter_id: string, flow_name: string) => {
+  console.log(`[getLatestAiResult] Querying for encounter_id=${encounter_id}, flow_name=${flow_name}`);
   const result = await query(
     `SELECT *
      FROM ai_results
@@ -50,5 +51,6 @@ export const getLatestAiResult = async (encounter_id: string, flow_name: string)
      LIMIT 1`,
     [encounter_id, flow_name]
   );
+  console.log(`[getLatestAiResult] Found ${result.rows.length} rows`);
   return result.rows[0];
 };

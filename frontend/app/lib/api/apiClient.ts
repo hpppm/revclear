@@ -7,6 +7,8 @@ import { patientsApi } from "./patients";
 import { soapApi } from "./soap";
 import { transcribeApi } from "./transcribe";
 import { usersApi } from "./users";
+import { codesApi } from "./codes";
+import { organizationsApi } from "./organizations";
 
 export const apiClient = {
     auth: authApi,
@@ -18,4 +20,6 @@ export const apiClient = {
     soap: soapApi,
     transcribe: transcribeApi,
     users: usersApi,
+    codes: codesApi,
+    organizations: organizationsApi,
 };

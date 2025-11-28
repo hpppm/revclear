@@ -1,0 +1,52 @@
+[
+    {
+        "code": "99213",
+        "description": "Office or other outpatient visit, established patient, 20-29 minutes",
+        "category": "Evaluation and Management"
+    },
+    {
+        "code": "99214",
+        "description": "Office or other outpatient visit, established patient, 30-39 minutes",
+        "category": "Evaluation and Management"
+    },
+    {
+        "code": "99203",
+        "description": "Office or other outpatient visit, new patient, 30-44 minutes",
+        "category": "Evaluation and Management"
+    },
+    {
+        "code": "90834",
+        "description": "Psychotherapy, 45 minutes",
+        "category": "Mental Health"
+    },
+    {
+        "code": "90837",
+        "description": "Psychotherapy, 60 minutes",
+        "category": "Mental Health"
+    },
+    {
+        "code": "97110",
+        "description": "Therapeutic exercises to develop strength and endurance",
+        "category": "Physical Therapy"
+    },
+    {
+        "code": "97112",
+        "description": "Neuromuscular reeducation of movement, balance, coordination",
+        "category": "Physical Therapy"
+    },
+    {
+        "code": "36415",
+        "description": "Routine venipuncture for collection of specimen(s)",
+        "category": "Laboratory"
+    },
+    {
+        "code": "80053",
+        "description": "Comprehensive metabolic panel",
+        "category": "Laboratory"
+    },
+    {
+        "code": "71045",
+        "description": "Chest X-ray, single view",
+        "category": "Radiology"
+    }
+]

@@ -25,7 +25,5 @@ This folder keeps the Genkit flows and tools used during local development with 
 
 ## Included flow & tool
 
-- `helloWorld` flow (`genkit/flows/helloWorld.ts`): greets a provided `name` (optional `mood`) using Gemini.
-- `serverTime` tool (`genkit/tools/serverTime.ts`): returns the server's ISO timestamp and UTC offset and is used inside the `helloWorld` flow.
-- `speechToSoap` flow (`genkit/flows/speechToSoap.ts`): turns an encounter transcript into a SOAP note. If `transcript` is omitted in the input, it falls back to mock data.
-- `mockTranscript` tool (`genkit/tools/mockTranscript.ts`): loads `genkit/data/mockEncounter.json` so you can test the flow without Whisper.
+- `soapToCodes` flow (`genkit/flows/soapToCodes.ts`): turns an encounter transcript into a SOAP note. If `transcript` is omitted in the input, it falls back to mock data.
+- `loadMedicalCodes` tool (`genkit/tools/loadMedicalCodes.ts`): loads `genkit/data/mockEncounter.json` so you can test the flow without Whisper.

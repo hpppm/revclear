@@ -6,4 +6,6 @@ export const patientsApi = {
     create: (data: any) => api.post("/patients", data),
     update: (id: string, data: any) => api.put(`/patients/${id}`, data),
     delete: (id: string) => api.delete(`/patients/${id}`),
+    getSubscriber: (id: string) => api.get(`/patients/${id}/subscriber`),
+    upsertSubscriber: (id: string, data: any) => api.put(`/patients/${id}/subscriber`, data),
 };
