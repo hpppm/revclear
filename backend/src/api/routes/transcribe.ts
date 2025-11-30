@@ -19,9 +19,13 @@ const upload = multer({ storage: storage });
 
 // Define the path to your Python Whisper transcription script
 const WHISPER_SCRIPT_PATH = path.join(process.cwd(), 'src', 'python', 'whisper.py');
-// Define the path to your Python executable (using venv)
-const PYTHON_EXECUTABLE_PATH = path.join(process.cwd(), 'venv', 'bin', 'python3');
 
+// Define the path to your Python executable (using venv) - cross-platform
+const isWindows = process.platform === 'win32';
+const PYTHON_EXECUTABLE_PATH = isWindows
+  ? path.join(process.cwd(), 'venv', 'Scripts', 'python.exe')
+  : path.join(process.cwd(), 'venv', 'bin', 'python3');
+  
 // Zod schema for S3 fallback request
 const S3FallbackSchema = z.object({
   s3Key: z.string().min(1, "s3Key cannot be empty"),
