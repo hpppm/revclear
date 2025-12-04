@@ -82,8 +82,8 @@ export default function SignupPage() {
       });
 
       if (response.data.AuthenticationResult) {
-        // Auto-login - Use IdToken for authentication (not AccessToken)
-        const token = response.data.AuthenticationResult.IdToken;
+        // Auto-login - Use AccessToken for API authentication
+        const token = response.data.AuthenticationResult.AccessToken; // ✅ FIXED
         localStorage.setItem("token", token);
 
         // Fetch user details with explicit token

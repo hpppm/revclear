@@ -37,7 +37,7 @@ export default function LoginPage() {
       try {
         const response = await apiClient.auth.signin({ email, password });
         const { AuthenticationResult } = response.data;
-        const token = AuthenticationResult.IdToken; // Use IdToken for authentication
+        const token = AuthenticationResult.AccessToken; // ✅ FIXED: Use AccessToken for API authentication
 
         // Temporarily set token to fetch user
         localStorage.setItem("token", token);
@@ -62,7 +62,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl bg-white p-8 shadow-lg shadow-slate-200">
+        <div className="rounded-2xl bg-white p-8 shadow-lg shadow-shadow-slate-200">
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-semibold text-slate-900">Log in</h1>
             <p className="mt-2 text-sm text-slate-500">
