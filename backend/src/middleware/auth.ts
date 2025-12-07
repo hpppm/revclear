@@ -2,8 +2,8 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { Request, Response, NextFunction } from "express";
 
 const verifier = CognitoJwtVerifier.create({
-  userPoolId: process.env.COGNITO_USER_POOL_ID!,
-  clientId: process.env.COGNITO_CLIENT_ID!,
+  userPoolId: process.env.AWS_USER_POOL_ID!,
+  clientId: process.env.AWS_CLIENT_ID!,
   tokenUse: "access",
 });
 

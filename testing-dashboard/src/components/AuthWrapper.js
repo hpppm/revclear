@@ -37,7 +37,8 @@ export default function AuthWrapper({ children }) {
    * @param {object} authResult - The AuthenticationResult from Cognito.
    */
   const handleLoginSuccess = (authResult) => {
-    const newToken = authResult.IdToken;
+    // Use the AccessToken for API authentication; IdToken is not accepted by our backend
+    const newToken = authResult.AccessToken;
     if (newToken) {
       window.localStorage.setItem("revclear-token", newToken);
       setToken(newToken);

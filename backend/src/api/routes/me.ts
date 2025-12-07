@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { QueryResultRow } from "pg";
 import { authMiddleware } from "../../middleware/auth";
 import {
   findUserByCognitoId,
@@ -39,6 +40,9 @@ router.get("/", authMiddleware, async (req, res) => {
       `[GET /api/me] Looking up user with Cognito ID: ${cognitoId}, email: ${safeEmail}`
     );
 
+    // 1. Try lookup by Cognito ID first
+    let user: QueryResultRow | null | undefined = await findUserByCognitoId(cognitoId);
+
     if (user) {
       console.log(`[GET /api/me] Found existing user by Cognito ID:`, user);
       const organization = await getUserOrganization(user.id);
@@ -56,11 +60,12 @@ router.get("/", authMiddleware, async (req, res) => {
 
     // 2. Try lookup by email if user was created earlier
     console.log(`[GET /api/me] Not found by Cognito ID. Trying email...`);
+    user = await findUserByEmail(safeEmail);
 
     if (user) {
       console.log(`[GET /api/me] Found user by email, updating Cognito ID...`);
       // Update the Cognito ID to match the current token
-      user = await updateUserCognitoId(email, cognitoId);
+      user = await updateUserCognitoId(safeEmail, cognitoId);
       const organization = await getUserOrganization(user.id);
       if (!organization) {
         return res.json({
@@ -74,48 +79,6 @@ router.get("/", authMiddleware, async (req, res) => {
       return res.json({ success: true, user, organization });
     }
 
-    console.log(`[GET /api/me] User not found, creating new user...`);
-
-    // If no user, create one
-    try {
-      const fullName = name || email; // Use 'name' if available, otherwise fallback to 'email'
-      user = await createUser(cognitoId, email, fullName);
-      // New user has no organization; signal UI to prompt org creation/join
-      return res.status(201).json({
-        success: true,
-        requiresOrganization: true,
-        message: "User created. Please create or join an organization.",
-        user,
-        organization: null,
-      });
-    } catch (createError: any) {
-      // Handle duplicate key error (user might have been created between check and insert)
-      if (createError.code === '23505') {
-        // Duplicate key - fetch the user again
-        user = await findUserByCognitoId(cognitoId);
-        if (user) {
-          const organization = await getUserOrganization(user.id);
-          if (!organization) {
-            return res.json({
-              success: true,
-              requiresOrganization: true,
-              message: "User must create or join an organization.",
-              user,
-              organization: null,
-            });
-          }
-          return res.json({ success: true, user, organization });
-        }
-        // If still no user after duplicate error, something is wrong
-        return res.status(500).json({
-          error: "Server Error",
-          message: "User creation failed with duplicate key but user not found",
-        });
-      }
-      // For other errors, throw to outer catch
-      throw createError;
-    }
-
     // 3. Create new user
     console.log(`[GET /api/me] Creating new user...`);
 
@@ -124,7 +87,13 @@ router.get("/", authMiddleware, async (req, res) => {
     const newUser = await createUser(cognitoId, safeEmail, fullName);
     const organization = await getUserOrganization(newUser.id);
 
-    return res.status(201).json({ ...newUser, organization });
+    return res.status(201).json({
+      success: true,
+      requiresOrganization: !organization,
+      message: organization ? undefined : "User created. Please create or join an organization.",
+      user: newUser,
+      organization,
+    });
 
   } catch (err: any) {
     console.error(`[GET /api/me] Error: ${err.message}`);
