@@ -134,10 +134,26 @@ app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/security", securityRoutes);
 
+import swaggerUi from "swagger-ui-express";
+import { generateOpenApiSpec } from "./config/swagger";
+
 if (!isTestEnv) {
   // Lazily load dev routes only outside test runs to avoid heavy fixtures
   const devRoutes = require("./api/routes/dev").default;
   app.use("/api/dev", devRoutes);
+
+  // Swagger Documentation
+  const swaggerSpec = generateOpenApiSpec();
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get("/docs.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.send(swaggerSpec);
+  });
+  console.log("✅ Swagger docs enabled at /docs");
+  console.log("✅ Swagger docs enabled at /docs");
 }
+
+import { errorHandler } from "./middleware/error";
+app.use(errorHandler);
 
 export default app;

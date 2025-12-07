@@ -1,5 +1,6 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { Request, Response, NextFunction } from "express";
+import { findUserByCognitoId } from "../config/db";
 
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.AWS_USER_POOL_ID!,
@@ -17,7 +18,17 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 
     const payload = await verifier.verify(token);
-    (req as any).user = payload;
+    req.auth = payload; // Attach raw JWT payload
+
+    // Resolve DB user
+    const dbUser = await findUserByCognitoId(payload.sub);
+    if (dbUser) {
+      req.user = dbUser as any; // Attach DB user
+    } else {
+      // User not found in DB (first login?)
+      // We leave req.user undefined, but req.auth is present.
+      // Downstream routes (like /me) can handle creation.
+    }
 
     next();
   } catch (err) {
