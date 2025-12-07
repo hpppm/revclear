@@ -1,16 +1,18 @@
 import { Router, Response } from "express";
-import { authMiddleware } from "../../middleware/auth";
-import { getAuthenticatedUser } from "../../utils/auth";
-import { ensureMembership, getUserOrganization } from "../../utils/organization";
-import { OrganizationSchema, JoinOrganizationSchema } from "../../types/zod";
-import { query } from "../../config/db";
 import { z } from "zod";
+import { authMiddleware } from "../../middleware/auth";
+import { query } from "../../config/db";
+import {
+  assignUserToOrganization,
+  getUserOrganization,
+} from "../../utils/organization";
+import { getAuthenticatedUser } from "../../utils/auth";
+import { JoinOrganizationSchema, OrganizationSchema } from "../../types/zod";
 
 const router = Router();
 
-const sendValidationError = (res: Response, error: z.ZodError) => {
-  return res.status(400).json({ success: false, errors: error.errors });
-};
+const sendValidationError = (res: Response, error: z.ZodError) =>
+  res.status(400).json({ success: false, errors: error.errors });
 
 const requireUser = async (req: any, res: Response) => {
   const user = await getAuthenticatedUser(req);
@@ -29,7 +31,12 @@ router.get("/me", authMiddleware, async (req, res) => {
 
     const organization = await getUserOrganization(user.id);
     if (!organization) {
-      return res.status(404).json({ success: false, message: "No organization found for user" });
+      return res.json({
+        success: true,
+        requiresOrganization: true,
+        message: "User must create or join an organization.",
+        organization: null,
+      });
     }
 
     res.json({ success: true, organization });
@@ -54,7 +61,9 @@ router.post("/", authMiddleware, async (req, res) => {
     // Prevent creating multiple orgs if already a member
     const existingOrg = await getUserOrganization(user.id);
     if (existingOrg) {
-      return res.status(400).json({ success: false, message: "User already belongs to an organization" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User already belongs to an organization" });
     }
 
     const columns = ["name"];
@@ -91,8 +100,8 @@ router.post("/", authMiddleware, async (req, res) => {
     );
     const organization = insertOrg.rows[0];
 
-    // Add membership as admin
-    await ensureMembership(organization.id, user.id, true);
+    // Assign user to organization as admin (enforces one org per user via users.organization_id)
+    await assignUserToOrganization(user.id, organization.id, true);
 
     res.status(201).json({ success: true, organization });
   } catch (error) {
@@ -117,13 +126,27 @@ router.post("/join", authMiddleware, async (req, res) => {
     const { invitationCode } = parsed.data;
 
     // Using organization id as invitation code for now
-    const orgResult = await query("SELECT * FROM organizations WHERE id = $1", [invitationCode]);
+    const orgResult = await query("SELECT * FROM organizations WHERE id = $1", [
+      invitationCode,
+    ]);
     const organization = orgResult.rows[0];
     if (!organization) {
-      return res.status(404).json({ success: false, message: "Organization not found for this code" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Organization not found for this code" });
     }
 
-    await ensureMembership(organization.id, user.id, false);
+    // Check if user already has an organization
+    const existingOrg = await getUserOrganization(user.id);
+    if (existingOrg) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "User already belongs to an organization. Leave current organization first.",
+      });
+    }
+
+    await assignUserToOrganization(user.id, organization.id, false);
 
     res.json({ success: true, organization });
   } catch (error: any) {
@@ -135,7 +158,9 @@ router.post("/join", authMiddleware, async (req, res) => {
       return sendValidationError(res, error);
     }
     console.error("[POST /api/organizations/join] Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 });
 
@@ -147,14 +172,12 @@ router.patch("/me", authMiddleware, async (req, res) => {
 
     let organization = await getUserOrganization(user.id);
 
-    // Auto-create organization if user doesn't have one
+    // Do not auto-create; require org setup explicitly
     if (!organization) {
-      const insertOrg = await query(
-        `INSERT INTO organizations (name) VALUES ($1) RETURNING *`,
-        [user.full_name ? `${user.full_name}'s Practice` : `Practice`]
-      );
-      organization = insertOrg.rows[0];
-      await ensureMembership(organization.id, user.id, true);
+      return res.status(404).json({
+        success: false,
+        message: "User is not assigned to an organization. Create or join one first.",
+      });
     }
 
     const parsed = OrganizationSchema.partial().safeParse(req.body);
@@ -206,18 +229,19 @@ router.patch("/me", authMiddleware, async (req, res) => {
     });
 
     if (sets.length === 0) {
-      return res.status(400).json({ success: false, message: "No fields to update" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields to update" });
     }
 
     values.push(organization.id);
     const updateResult = await query(
-      `UPDATE organizations SET ${sets.join(", ")} WHERE id = $${values.length} RETURNING *`,
+      `UPDATE organizations SET ${sets.join(", ")} WHERE id = $${
+        values.length
+      } RETURNING *`,
       values
     );
     const updated = updateResult.rows[0];
-
-    // Ensure membership exists (no-op if already)
-    await ensureMembership(updated.id, user.id, false);
 
     res.json({ success: true, organization: updated });
   } catch (error) {
@@ -225,7 +249,9 @@ router.patch("/me", authMiddleware, async (req, res) => {
       return sendValidationError(res, error);
     }
     console.error("[PATCH /api/organizations/me] Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 });
 
