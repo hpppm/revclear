@@ -17,6 +17,8 @@ export type MedicalCodesData = {
 const icdPath = path.resolve(process.cwd(), "genkit/data/mockIcdCodes.json");
 const cptPath = path.resolve(process.cwd(), "genkit/data/mockCptCodes.json");
 
+let cachedCodes: MedicalCodesData | null = null;
+
 export const loadMedicalCodesTool = ai.defineTool(
     {
         name: "loadMedicalCodes",
@@ -40,6 +42,10 @@ export const loadMedicalCodesTool = ai.defineTool(
         }),
     },
     async () => {
+        if (cachedCodes) {
+            return cachedCodes;
+        }
+
         const [icdRaw, cptRaw] = await Promise.all([
             fs.readFile(icdPath, "utf-8"),
             fs.readFile(cptPath, "utf-8"),
@@ -48,9 +54,11 @@ export const loadMedicalCodesTool = ai.defineTool(
         const icdCodes: MedicalCode[] = JSON.parse(icdRaw);
         const cptCodes: MedicalCode[] = JSON.parse(cptRaw);
 
-        return {
+        cachedCodes = {
             icdCodes,
             cptCodes,
         };
+
+        return cachedCodes;
     }
 );

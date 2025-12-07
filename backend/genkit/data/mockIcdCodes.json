@@ -48,5 +48,55 @@
         "code": "G43.909",
         "description": "Migraine, unspecified, not intractable, without status migrainosus",
         "category": "Neurological"
+    },
+    {
+        "code": "M54.50",
+        "description": "Low back pain, unspecified",
+        "category": "Musculoskeletal"
+    },
+    {
+        "code": "M25.519",
+        "description": "Pain in unspecified shoulder",
+        "category": "Musculoskeletal"
+    },
+    {
+        "code": "J45.40",
+        "description": "Moderate persistent asthma, uncomplicated",
+        "category": "Respiratory"
+    },
+    {
+        "code": "E78.5",
+        "description": "Hyperlipidemia, unspecified",
+        "category": "Endocrine/Metabolic"
+    },
+    {
+        "code": "F41.9",
+        "description": "Anxiety disorder, unspecified",
+        "category": "Mental Health"
+    },
+    {
+        "code": "F33.1",
+        "description": "Major depressive disorder, recurrent, moderate",
+        "category": "Mental Health"
+    },
+    {
+        "code": "R53.83",
+        "description": "Other fatigue",
+        "category": "General Symptoms"
+    },
+    {
+        "code": "K59.00",
+        "description": "Constipation, unspecified",
+        "category": "Digestive"
+    },
+    {
+        "code": "N39.0",
+        "description": "Urinary tract infection, site not specified",
+        "category": "Genitourinary"
+    },
+    {
+        "code": "Z00.00",
+        "description": "Encounter for general adult medical examination without abnormal findings",
+        "category": "Preventive"
     }
 ]

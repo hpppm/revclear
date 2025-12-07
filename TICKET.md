@@ -942,7 +942,7 @@ Create a UI component that displays AI-suggested medical codes with confidence s
 
 ## 25. Ticket: Claims Display & Export
 
-## STATUS: TODO
+## STATUS: FINISHED
 ## 🟢 FRONTEND ONLY - NO BACKEND CHANGES
 
 **Title:** `feature: claims display and export`

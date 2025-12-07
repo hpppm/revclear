@@ -536,7 +536,12 @@ router.get("/encounter/:encounterId/preview", authMiddleware, async (req, res) =
     // Get medical codes
     const codes = await getMedicalCodesByEncounter(encounterId);
     if (codes.length === 0) {
-      return res.status(400).json({ success: false, message: "No codes selected for this encounter" });
+      return res.status(200).json({
+        success: false,
+        requiresCodes: true,
+        message: "No codes selected for this encounter. Add ICD/CPT codes before previewing.",
+        data: null,
+      });
     }
 
     // Get subscriber if needed
@@ -555,4 +560,3 @@ router.get("/encounter/:encounterId/preview", authMiddleware, async (req, res) =
 });
 
 export default router;
-

@@ -48,5 +48,55 @@
         "code": "71045",
         "description": "Chest X-ray, single view",
         "category": "Radiology"
+    },
+    {
+        "code": "20552",
+        "description": "Injection(s); single or multiple trigger point(s), 1 or 2 muscle(s)",
+        "category": "Pain Management"
+    },
+    {
+        "code": "20553",
+        "description": "Injection(s); single or multiple trigger point(s), 3 or more muscles",
+        "category": "Pain Management"
+    },
+    {
+        "code": "97116",
+        "description": "Gait training therapy, per 15 minutes",
+        "category": "Physical Therapy"
+    },
+    {
+        "code": "97530",
+        "description": "Therapeutic activities, direct patient contact, per 15 minutes",
+        "category": "Physical/Occupational Therapy"
+    },
+    {
+        "code": "97535",
+        "description": "Self-care/home management training (ADLs), per 15 minutes",
+        "category": "Occupational Therapy"
+    },
+    {
+        "code": "92507",
+        "description": "Speech therapy, individual",
+        "category": "Speech Therapy"
+    },
+    {
+        "code": "11721",
+        "description": "Debridement of nail(s) by any method; 6 or more",
+        "category": "Podiatry"
+    },
+    {
+        "code": "99406",
+        "description": "Smoking and tobacco-use cessation counseling visit; intermediate, greater than 3 minutes up to 10 minutes",
+        "category": "Preventive Medicine"
+    },
+    {
+        "code": "99401",
+        "description": "Preventive medicine counseling and/or risk factor reduction intervention(s); approximately 15 minutes",
+        "category": "Preventive Medicine"
+    },
+    {
+        "code": "99457",
+        "description": "Remote physiologic monitoring treatment management services, 20 minutes of clinical staff/physician/other qualified health care professional time",
+        "category": "Remote Monitoring"
     }
 ]
