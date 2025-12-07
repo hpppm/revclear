@@ -17,7 +17,8 @@ export const codesApi = {
             codeType: c.type === "ICD-10" ? "ICD" : "CPT",
             description: c.description,
             category: c.category || "Unspecified",
-            confidence: c.confidence,
+            // Convert confidence from percentage (0-100) to decimal (0-1) for database
+            confidence: c.confidence !== undefined ? c.confidence / 100 : undefined,
             isAiSuggested: !!c.confidence, // Assume AI suggested if confidence exists
         }));
         return api.post(`/encounters/${encounterId}/codes`, { codes: payload });
