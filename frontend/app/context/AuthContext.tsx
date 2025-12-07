@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { User } from "@/app/lib/types";
 
@@ -9,6 +9,7 @@ interface AuthContextType {
     user: User | null;
     token: string | null;
     isLoading: boolean;
+    requiresOrganization: boolean;
     login: (token: string, user: User) => void;
     logout: () => void;
     checkAuth: () => Promise<void>;
@@ -20,7 +21,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [requiresOrganization, setRequiresOrganization] = useState(false);
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         checkAuth();
@@ -33,31 +36,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 // Verify token and get user details
                 const response = await apiClient.me.getProfile();
-                setUser(response.data);
-            } catch (error) {
-                console.error("Auth check failed:", error);
-                logout();
+                const payload = response.data || {};
+                const fetchedUser = payload.user ?? payload;
+                const organization = payload.organization ?? fetchedUser.organization ?? null;
+                const needsOrg = payload.requiresOrganization === true || !organization;
+
+                setUser({ ...fetchedUser, organization });
+                setRequiresOrganization(needsOrg);
+
+                if (needsOrg && pathname !== "/dashboard") {
+                    router.push("/dashboard");
+                }
+            } catch (error: any) {
+                // Only log if it's not a 401 (unauthorized) error
+                // 401 is expected when token is invalid/expired
+                if (error?.response?.status !== 401) {
+                    console.error("Auth check failed:", error);
+                }
+                // Clear invalid token
+                localStorage.removeItem("token");
+                setToken(null);
+                setUser(null);
+                setRequiresOrganization(false);
             }
         }
         setIsLoading(false);
     };
 
-    const login = (newToken: string, newUser: User) => {
+    const login = (newToken: string, newUser: User | any) => {
         localStorage.setItem("token", newToken);
         setToken(newToken);
-        setUser(newUser);
-        router.push("/dashboard");
+        const payload: any = newUser || {};
+        const fetchedUser = payload.user ?? payload;
+        const organization = payload.organization ?? fetchedUser.organization ?? null;
+        const needsOrg = payload.requiresOrganization === true || !organization;
+        setUser({ ...fetchedUser, organization });
+        setRequiresOrganization(needsOrg);
+        router.push(needsOrg ? "/dashboard" : "/dashboard");
     };
 
     const logout = () => {
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
+        setRequiresOrganization(false);
         router.push("/login");
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isLoading, login, logout, checkAuth }}>
+        <AuthContext.Provider value={{ user, token, isLoading, requiresOrganization, login, logout, checkAuth }}>
             {children}
         </AuthContext.Provider>
     );

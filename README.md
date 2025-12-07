@@ -1,49 +1,54 @@
-# RevClear
+# **RevClear**
 
-Healthcare claims processing and transcription platform with AI-powered audio transcription.
+AI-assisted medical claims and speech transcription platform for secure healthcare billing workflows.
 
-##  Quick Start
+---
+
+## **Security Framework Baseline**
+
+We apply part of the required controls from:  
+- **HIPAA** – encrypted storage and protection of PHI/PII  
+- **NIST CSF** – Protect, Detect, Respond, Recover across system lifecycle  
+- **OWASP API Security** – secure API communication and prevent common API risks  
 
 
- 🔐 Authentication (Amazon Cognito)
+---
 
+## **Platform Overview**
 
-### 👤 IAM Roles
-Tenant Access
+### 🔐 **Authentication**
+- Amazon Cognito for secure user identity
+- JWT-based API authentication
 
+### 👤 **Access Control**
+- IAM roles for tenant separation
+- **RBAC currently enforced**  
 
-### 🗄️ Data Storage (DynamoDB)
-- mental_health_patients
-- physical_therapy_patients
-- speech_therapy_patients
+### 🗄️ **Data Storage**
+- Encrypted medical + billing data in **AWS RDS (PostgreSQL)**
 
-### 📦 File Storage (S3)
-- `${S3_MAIN_BUCKET}` (tenant data)
-- `${S3_LOGS_BUCKET}` (CloudTrail logs)
-- `${S3_RAW_BUCKET}` (raw uploads)
-- `${S3_EXPORTS_BUCKET}` (data exports)
-- `${S3_AI_DATA_BUCKET}` (AI processing)
+### 📦 **File Storage**
+- Encrypted transcripts and audio files in **Amazon S3**
 
-### 🔍 Audit Trail (CloudTrail)
-- Trail: `${CLOUDTRAIL_NAME}`
-- Logs: `${CLOUDTRAIL_LOG_BUCKET}/AWSLogs/${AWS_ACCOUNT_ID}`
+### 🤖 **External AI Processing**
+- **Genkit AI runs outside our environment**  
+- Restricted with encrypted data handling and vendor controls
 
-### 🔒 Encryption (KMS)
-- All DynamoDB tables encrypted
-- All S3 buckets encrypted
+### 🔍 **Audit Logging**
+- System events logged through **AWS CloudTrail**
+- API + middleware logs monitored via **AWS CloudWatch**
 
-## Environment Variables
+### 🔒 **Encryption**
+- All data encrypted using **AWS KMS**
+- RDS + S3 encrypted at rest (AES-256)
 
-Key variables:
-- `AWS_ACCOUNT_ID` - Your AWS account ID
-- `API_GATEWAY_ID` - API Gateway endpoint ID
-- `S3_MAIN_BUCKET` - Main S3 bucket name
-- `COGNITO_USER_POOL_ID` - Cognito user pool ID
+---
 
-## Troubleshooting
+## **Environment Variables**
 
-**Lambda fails:** Check IAM role permissions  
-**Transcribe errors:** Verify audio format (wav, mp3, flac)  
-**Review UI not loading:** Update API_ENDPOINT in review.html
-
-**Last Updated:** 2025-11-18
+Required variables:
+- `AWS_ACCOUNT_ID`
+- `S3_MAIN_BUCKET`
+- `COGNITO_USER_POOL_ID`
+- `RDS_ENDPOINT` (PostgreSQL)
+- `API_GATEWAY_ID`
