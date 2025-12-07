@@ -32,6 +32,10 @@ const S3FallbackSchema = z.object({
   encounterId: z.string().uuid("Invalid encounter ID"),
 });
 
+const TranscriptUpdateSchema = z.object({
+  text: z.string().min(1, "Transcript text is required"),
+});
+
 const requireUser = async (req: any, res: any) => {
   const user = await getAuthenticatedUser(req);
   if (!user) {
@@ -287,6 +291,57 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
   } catch (error: any) {
     console.error("Backend: Error retrieving transcript:", error);
     sendError(res, 500, error.message || "Failed to retrieve transcript.");
+  }
+});
+
+/**
+ * @route PUT /api/transcribe/:encounterId
+ * @description Save/overwrite transcript text for an encounter (e.g., after manual edits).
+ */
+router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
+  try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const { encounterId } = req.params;
+    if (!encounterId) {
+      return sendError(res, 400, "Encounter ID is required.");
+    }
+
+    const parsedBody = TranscriptUpdateSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return sendError(res, 400, "Invalid transcript payload", parsedBody.error.issues);
+    }
+
+    const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+    if (!ownsEncounter) {
+      return sendError(res, 404, "Encounter not found");
+    }
+
+    // Persist edited transcript as a new ai_results row
+    const aiResult = await createAiResult({
+      encounter_id: encounterId,
+      flow_name: "whisper_transcript",
+      input_json: { source: "manual_edit" },
+      output_json: { text: parsedBody.data.text },
+      model_version: "manual_edit",
+      confidence_score: undefined,
+    });
+
+    // Update encounter pointer to latest transcript
+    await query(
+      `UPDATE encounters SET transcript_result_id = $1 WHERE id = $2`,
+      [aiResult.id, encounterId]
+    );
+
+    return res.json({
+      success: true,
+      transcript: aiResult.output_json,
+      aiResultId: aiResult.id,
+    });
+  } catch (error: any) {
+    console.error("Backend: Error saving transcript:", error);
+    sendError(res, 500, error.message || "Failed to save transcript.");
   }
 });
 

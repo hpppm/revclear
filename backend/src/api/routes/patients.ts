@@ -46,8 +46,15 @@ router.get("/", authMiddleware, async (req, res) => {
     const user = await requireUser(req, res);
     if (!user) return;
 
-    const organization = await requireOrganization(user, res);
-    if (!organization) return;
+    const organization = await getUserOrganization(user.id);
+    if (!organization) {
+      return res.json({
+        success: true,
+        requiresOrganization: true,
+        message: "User must join or create an organization first",
+        data: [],
+      });
+    }
 
     const result = await query(
       "SELECT * FROM patients WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC",

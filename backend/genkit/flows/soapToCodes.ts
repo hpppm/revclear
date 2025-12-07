@@ -1,6 +1,6 @@
 import { z } from "genkit";
-import { ai } from "../config";
 import { loadMedicalCodesTool } from "../tools/loadMedicalCodes";
+import { ai } from "../config";
 
 
 const CodeMatchSchema = z.object({
@@ -26,13 +26,11 @@ export const soapToCodes = ai.defineFlow(
         inputSchema: SoapToCodesInputSchema,
         outputSchema: SoapToCodesOutputSchema,
     },
-    async (input) => {
+    async (input: z.infer<typeof SoapToCodesInputSchema>) => {
         console.log(`[soapToCodes] Analyzing SOAP note (length: ${input.soapNote.length})`);
 
-        // Load available medical codes
+        // Load available medical codes (cached in-memory)
         const { icdCodes, cptCodes } = await loadMedicalCodesTool({});
-
-        console.log(`[soapToCodes] Loaded ${icdCodes.length} ICD codes and ${cptCodes.length} CPT codes`);
 
         // Create formatted lists for the AI prompt
         const icdList = icdCodes
@@ -42,7 +40,7 @@ export const soapToCodes = ai.defineFlow(
             .map((c) => `${c.code}: ${c.description} (${c.category})`)
             .join("\n");
 
-        const prompt = `You are a medical coding expert. Your task is to match a SOAP note to the most relevant ICD-10 diagnosis codes and CPT procedure codes from the available databases.
+        const prompt = `You are a medical coding expert. Match the SOAP note to the most relevant ICD-10 diagnosis codes and CPT procedure codes ONLY from the lists provided.
 
 SOAP NOTE:
 ${input.soapNote}
@@ -54,15 +52,11 @@ AVAILABLE CPT CODES (Procedures):
 ${cptList}
 
 INSTRUCTIONS:
-1. Analyze the SOAP note carefully
-2. Match the content to the TOP 3 most relevant ICD-10 codes from the list above
-3. Match the content to the TOP 3 most relevant CPT codes from the list above
-4. For each match, provide a confidence score (0-1) based on how well it matches the SOAP content
-5. ONLY return codes that exist in the lists above - do not invent new codes
-6. Order matches by confidence (highest first)
-7. You need to return at least 3 matches for each code type (ICD and CPT)
-
-Return your matches in the specified JSON format.`;
+1) Return up to 3 ICD-10 and up to 3 CPT codes that best match the SOAP content.
+2) For each match, include a confidence score (0-1) based on fit.
+3) Only return codes from the provided lists. Do not invent codes.
+4) Order matches by confidence (highest first).
+Return JSON matching the schema.`;
 
         const { output } = await ai.generate({
             model: ai.options.model,
@@ -70,33 +64,37 @@ Return your matches in the specified JSON format.`;
             output: { schema: SoapToCodesOutputSchema },
         });
 
-        console.log(`[soapToCodes] Generated matches:`, JSON.stringify(output, null, 2));
-
         const result = output ?? {
             icdMatches: [],
             cptMatches: [],
-            model_version: "gemini-2.5-flash",
+            model_version: ai.options.model || "unknown",
         };
 
-        // Validate that returned codes exist in our databases
+        // Validate that returned codes exist in our databases and clamp confidence to [0,1]
         const validIcdCodes = new Set(icdCodes.map((c) => c.code));
         const validCptCodes = new Set(cptCodes.map((c) => c.code));
 
-        const validatedIcdMatches = result.icdMatches.filter((match) =>
-            validIcdCodes.has(match.code)
-        );
-        const validatedCptMatches = result.cptMatches.filter((match) =>
-            validCptCodes.has(match.code)
-        );
+        const normalizeMatches = (matches: z.infer<typeof SoapToCodesOutputSchema>["icdMatches"], valid: Set<string>) =>
+            (matches || [])
+                .filter((m) => valid.has(m.code))
+                .map((m) => ({
+                    ...m,
+                    confidence: Math.max(0, Math.min(1, Number(m.confidence))),
+                }))
+                .sort((a, b) => b.confidence - a.confidence)
+                .slice(0, 3);
+
+        const validatedIcd = normalizeMatches(result.icdMatches, validIcdCodes);
+        const validatedCpt = normalizeMatches(result.cptMatches, validCptCodes);
 
         console.log(
-            `[soapToCodes] Validated: ${validatedIcdMatches.length} ICD, ${validatedCptMatches.length} CPT`
+            `[soapToCodes] Validated: ${validatedIcd.length} ICD, ${validatedCpt.length} CPT`
         );
 
         return {
-            icdMatches: validatedIcdMatches,
-            cptMatches: validatedCptMatches,
-            model_version: result.model_version || "gemini-2.5-flash",
+            icdMatches: validatedIcd,
+            cptMatches: validatedCpt,
+            model_version: typeof result.model_version === "string" ? result.model_version : (ai.options.model as string) || "unknown",
         };
     }
 );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
@@ -33,7 +34,8 @@ const mapPatient = (p: any): Patient => ({
 });
 
 export default function DashboardHome() {
-    const { user, isLoading: authLoading } = useAuth();
+    const router = useRouter();
+    const { user, isLoading: authLoading, requiresOrganization } = useAuth();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [orgLoading, setOrgLoading] = useState(true);
     const [orgError, setOrgError] = useState<string | null>(null);
@@ -72,7 +74,11 @@ export default function DashboardHome() {
         try {
             const response = await apiClient.organizations.getCurrent();
             const org = extractOrganization(response);
-            setOrganization(org);
+            if ((response.data && response.data.requiresOrganization) || !org) {
+                setOrganization(null);
+            } else {
+                setOrganization(org);
+            }
         } catch (error: any) {
             // 404/empty means no organization yet; treat gracefully
             if (error?.response?.status === 404) {
@@ -132,7 +138,7 @@ export default function DashboardHome() {
         } catch (error: any) {
             console.error("Failed to create organization", error);
             let message = "Could not create organization.";
-             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
                 message = error.response.data.errors
                     .map((err: any) => `${err.path.join(".")}: ${err.message}`)
                     .join(", ");
@@ -163,7 +169,7 @@ export default function DashboardHome() {
         } catch (error: any) {
             console.error("Failed to join organization", error);
             let message = "Could not join organization.";
-             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
                 message = error.response.data.errors
                     .map((err: any) => `${err.path.join(".")}: ${err.message}`)
                     .join(", ");
@@ -280,8 +286,8 @@ export default function DashboardHome() {
                                     <p className="text-blue-100/80 text-sm">Timezone · {organization.timezone}</p>
                                 )}
                                 <p className="text-blue-100/80 text-sm">
-                                    {(organization.billing_phone || organization.phone) 
-                                        ? `Phone · ${organization.billing_phone || organization.phone}` 
+                                    {(organization.billing_phone || organization.phone)
+                                        ? `Phone · ${organization.billing_phone || organization.phone}`
                                         : "Clinic contact pending"}
                                 </p>
                             </div>
@@ -306,151 +312,160 @@ export default function DashboardHome() {
                         </div>
                     </div>
                 ) : (
-                        <div className="rounded-3xl bg-white shadow-sm border border-slate-200 p-8">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                                <div className="lg:col-span-2 space-y-4">
-                                    <div>
-                                        <p className="text-sm text-slate-500">Welcome to RevClear</p>
-                                        <h2 className="text-2xl font-semibold text-slate-900">
-                                            Set up your clinic workspace
-                                        </h2>
-                                        <p className="text-slate-600 mt-1">
-                                            Create a new clinic or join with an invitation code from an existing organization.
-                                            You can start adding patients as soon as you have a home clinic.
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3">
-                                        <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1">
-                                            HIPAA-friendly defaults
-                                        </span>
-                                        <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1">
-                                            Multi-clinician ready
-                                        </span>
-                                    </div>
-                                    {orgError && (
-                                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-                                            {orgError}
-                                        </div>
-                                    )}
+                    <div className="rounded-3xl bg-white shadow-sm border border-slate-200 p-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                            <div className="lg:col-span-2 space-y-4">
+                                <div>
+                                    <p className="text-sm text-slate-500">Welcome to RevClear</p>
+                                    <h2 className="text-2xl font-semibold text-slate-900">
+                                        Set up your clinic workspace
+                                    </h2>
+                                    <p className="text-slate-600 mt-1">
+                                        Create a new clinic or join with an invitation code from an existing organization.
+                                        You can start adding patients as soon as you have a home clinic.
+                                    </p>
                                 </div>
-                                <div className="space-y-4">
-                                    <form onSubmit={handleCreate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                        <p className="text-sm font-semibold text-slate-900">Create a clinic</p>
-                                        <p className="text-sm text-slate-600 mb-3">
-                                            Pick a name so your team recognizes it.
-                                        </p>
-                                        <input
-                                            value={orgName}
-                                            onChange={(e) => setOrgName(e.target.value)}
-                                            placeholder="Clinic name"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="mt-3 w-full rounded-lg bg-slate-900 text-white text-sm font-semibold py-2.5 hover:bg-slate-800 transition disabled:opacity-50"
-                                            disabled={isCreating}
-                                        >
-                                            {isCreating ? "Creating..." : "Create organization"}
-                                        </button>
-                                    </form>
-                                    <form onSubmit={handleJoin} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                        <p className="text-sm font-semibold text-slate-900">Join with invite</p>
-                                        <p className="text-sm text-slate-600 mb-3">
-                                            Enter the code shared by your clinic.
-                                        </p>
-                                        <input
-                                            value={inviteCode}
-                                            onChange={(e) => setInviteCode(e.target.value)}
-                                            placeholder="Invitation code"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="mt-3 w-full rounded-lg border border-slate-900 text-slate-900 text-sm font-semibold py-2.5 hover:bg-slate-900 hover:text-white transition disabled:opacity-50"
-                                            disabled={isJoining}
-                                        >
-                                            {isJoining ? "Joining..." : "Join organization"}
-                                        </button>
-                                    </form>
+                                <div className="flex flex-wrap gap-3">
+                                    <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1">
+                                        HIPAA-friendly defaults
+                                    </span>
+                                    <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1">
+                                        Multi-clinician ready
+                                    </span>
                                 </div>
+                                {orgError && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                                        {orgError}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-4">
+                                <form onSubmit={handleCreate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p className="text-sm font-semibold text-slate-900">Create an organization</p>
+                                    <p className="text-sm text-slate-600 mb-3">
+                                        Pick a name so your team recognizes it.
+                                    </p>
+                                    <input
+                                        value={orgName}
+                                        onChange={(e) => setOrgName(e.target.value)}
+                                        placeholder="Clinic name"
+                                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="mt-3 w-full rounded-lg bg-slate-900 text-white text-sm font-semibold py-2.5 hover:bg-slate-800 transition disabled:opacity-50"
+                                        disabled={isCreating}
+                                    >
+                                        {isCreating ? "Creating..." : "Create organization"}
+                                    </button>
+                                </form>
+                                <form onSubmit={handleJoin} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <p className="text-sm font-semibold text-slate-900">Join with invite</p>
+                                    <p className="text-sm text-slate-600 mb-3">
+                                        Enter the code shared by your clinic.
+                                    </p>
+                                    <input
+                                        value={inviteCode}
+                                        onChange={(e) => setInviteCode(e.target.value)}
+                                        placeholder="Invitation code"
+                                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="mt-3 w-full rounded-lg border border-slate-900 text-slate-900 text-sm font-semibold py-2.5 hover:bg-slate-900 hover:text-white transition disabled:opacity-50"
+                                        disabled={isJoining}
+                                    >
+                                        {isJoining ? "Joining..." : "Join organization"}
+                                    </button>
+                                </form>
                             </div>
                         </div>
+                    </div>
                 )}
 
-                        {organization && (
-                            <section className="mt-10 space-y-4">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                    <div>
-                                        <p className="text-sm text-slate-500">Patients</p>
-                                        <h3 className="text-xl font-semibold text-slate-900">
-                                            Registered patients in {organization.name}
-                                        </h3>
-                                        <p className="text-slate-600">
-                                            Quick access to charts and encounters for your clinic.
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Link
-                                            href="/dashboard/patients/add"
-                                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-                                        >
-                                            Add patient
-                                        </Link>
-                                    </div>
-                                </div>
+                {organization && (
+                    <section className="mt-10 space-y-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                                <p className="text-sm text-slate-500">Patients</p>
+                                <h3 className="text-xl font-semibold text-slate-900">
+                                    Registered patients in {organization.name}
+                                </h3>
+                                <p className="text-slate-600">
+                                    Quick access to charts and encounters for your clinic.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Link
+                                    href="/dashboard/patients/add"
+                                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+                                >
+                                    Add patient
+                                </Link>
+                            </div>
+                        </div>
 
-                                <div className="grid grid-cols-1 gap-4">
-                                    {patientsLoading ? (
-                                        <div className="p-6 text-slate-600 text-center bg-white rounded-2xl border border-slate-200">Loading patients...</div>
-                                    ) : patientsError ? (
-                                        <div className="p-6 text-red-700 bg-red-50 border border-red-100 rounded-2xl">
-                                            {patientsError}
-                                        </div>
-                                    ) : patients.length === 0 ? (
-                                        <div className="p-6 text-slate-600 text-center bg-white rounded-2xl border border-slate-200">
-                                            No patients yet. Add your first patient to get started.
-                                        </div>
-                                    ) : (
-                                        patients.map((p) => {
-                                            const dob = p.dob ? new Date(p.dob).toLocaleDateString() : "—";
-                                            return (
-                                                <Link
-                                                    key={p.id}
-                                                    href={`/dashboard/patients/${p.id}`}
-                                                    className="block group"
-                                                >
-                                                    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm transition hover:shadow-md hover:border-blue-300 cursor-pointer">
-                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                                            <div className="md:col-span-1">
-                                                                <p className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                                                    {p.name}
-                                                                </p>
-                                                                <p className="text-sm text-slate-500 mt-1">
-                                                                    DOB: {dob}
-                                                                </p>
-                                                            </div>
-                                                            <div className="md:col-span-1">
-                                                                <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Phone</p>
-                                                                <p className="text-sm text-slate-700 font-medium mt-0.5">{p.phone || "—"}</p>
-                                                            </div>
-                                                            <div className="md:col-span-1">
-                                                                <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Insurance</p>
-                                                                <p className="text-sm text-slate-700 font-medium mt-0.5">{p.insuranceType || "—"}</p>
-                                                            </div>
-                                                            <div className="md:col-span-1">
-                                                                <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Member ID</p>
-                                                                <p className="text-sm text-slate-700 font-medium mt-0.5">{p.insuranceId || "—"}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </Link>
-                                            );
-                                        })
-                                    )}
+                        <div className="grid grid-cols-1 gap-4">
+                            {patientsLoading ? (
+                                <div className="p-6 text-slate-600 text-center bg-white rounded-2xl border border-slate-200">Loading patients...</div>
+                            ) : patientsError ? (
+                                <div className="p-6 text-red-700 bg-red-50 border border-red-100 rounded-2xl">
+                                    {patientsError}
                                 </div>
-                            </section>
-                        )}
-                    </div>
-                    </div>
-            );
+                            ) : patients.length === 0 ? (
+                                <div className="p-6 text-slate-600 text-center bg-white rounded-2xl border border-slate-200">
+                                    No patients yet. Add your first patient to get started.
+                                </div>
+                            ) : (
+                                patients.map((p) => {
+                                    const dob = p.dob ? new Date(p.dob).toLocaleDateString() : "—";
+                                    return (
+                                        <Link
+                                            key={p.id}
+                                            href={`/dashboard/patients/${p.id}`}
+                                            className="block group"
+                                        >
+                                            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm transition hover:shadow-md hover:border-blue-300 cursor-pointer">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                                    <div className="md:col-span-1">
+                                                        <p className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                                            {p.name}
+                                                        </p>
+                                                        <p className="text-sm text-slate-500 mt-1">
+                                                            DOB: {dob}
+                                                        </p>
+                                                    </div>
+                                                    <div className="md:col-span-1">
+                                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Phone</p>
+                                                        <p className="text-sm text-slate-700 font-medium mt-0.5">{p.phone || "—"}</p>
+                                                    </div>
+                                                    <div className="md:col-span-1">
+                                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Insurance</p>
+                                                        {p.insuranceType === "SELF_PAY" || !p.insuranceType ? (
+                                                            <span className="inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-md text-xs font-semibold text-amber-700">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                Self-Pay
+                                                            </span>
+                                                        ) : (
+                                                            <p className="text-sm text-slate-700 font-medium mt-0.5">{p.insuranceType}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="md:col-span-1">
+                                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Member ID</p>
+                                                        <p className="text-sm text-slate-700 font-medium mt-0.5">{p.insuranceId || "—"}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </section>
+                )}
+            </div>
+        </div>
+    );
 }

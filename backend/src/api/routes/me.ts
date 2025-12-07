@@ -39,24 +39,81 @@ router.get("/", authMiddleware, async (req, res) => {
       `[GET /api/me] Looking up user with Cognito ID: ${cognitoId}, email: ${safeEmail}`
     );
 
-    // 1. Try lookup by Cognito ID
-    const userBySub = await findUserByCognitoId(cognitoId);
-    if (userBySub) {
-      const organization = await getUserOrganization(userBySub.id);
-      return res.json({ ...userBySub, organization });
+    if (user) {
+      console.log(`[GET /api/me] Found existing user by Cognito ID:`, user);
+      const organization = await getUserOrganization(user.id);
+      if (!organization) {
+        return res.json({
+          success: true,
+          requiresOrganization: true,
+          message: "User must create or join an organization.",
+          user,
+          organization: null,
+        });
+      }
+      return res.json({ success: true, user, organization });
     }
 
     // 2. Try lookup by email if user was created earlier
     console.log(`[GET /api/me] Not found by Cognito ID. Trying email...`);
 
-    const userByEmail = await findUserByEmail(safeEmail);
-    if (userByEmail) {
-      console.log(`[GET /api/me] Found user by email. Updating Cognito ID...`);
+    if (user) {
+      console.log(`[GET /api/me] Found user by email, updating Cognito ID...`);
+      // Update the Cognito ID to match the current token
+      user = await updateUserCognitoId(email, cognitoId);
+      const organization = await getUserOrganization(user.id);
+      if (!organization) {
+        return res.json({
+          success: true,
+          requiresOrganization: true,
+          message: "User must create or join an organization.",
+          user,
+          organization: null,
+        });
+      }
+      return res.json({ success: true, user, organization });
+    }
 
-      const updated = await updateUserCognitoId(safeEmail, cognitoId);
-      const organization = await getUserOrganization(updated.id);
+    console.log(`[GET /api/me] User not found, creating new user...`);
 
-      return res.json({ ...updated, organization });
+    // If no user, create one
+    try {
+      const fullName = name || email; // Use 'name' if available, otherwise fallback to 'email'
+      user = await createUser(cognitoId, email, fullName);
+      // New user has no organization; signal UI to prompt org creation/join
+      return res.status(201).json({
+        success: true,
+        requiresOrganization: true,
+        message: "User created. Please create or join an organization.",
+        user,
+        organization: null,
+      });
+    } catch (createError: any) {
+      // Handle duplicate key error (user might have been created between check and insert)
+      if (createError.code === '23505') {
+        // Duplicate key - fetch the user again
+        user = await findUserByCognitoId(cognitoId);
+        if (user) {
+          const organization = await getUserOrganization(user.id);
+          if (!organization) {
+            return res.json({
+              success: true,
+              requiresOrganization: true,
+              message: "User must create or join an organization.",
+              user,
+              organization: null,
+            });
+          }
+          return res.json({ success: true, user, organization });
+        }
+        // If still no user after duplicate error, something is wrong
+        return res.status(500).json({
+          error: "Server Error",
+          message: "User creation failed with duplicate key but user not found",
+        });
+      }
+      // For other errors, throw to outer catch
+      throw createError;
     }
 
     // 3. Create new user
@@ -110,14 +167,7 @@ router.patch("/", authMiddleware, async (req, res) => {
     "license_state",
     "npi",
     "tax_id",
-    "clinic_name",
-    "clinic_address_street",
-    "clinic_address_city",
-    "clinic_address_state",
-    "clinic_address_zip",
-    "clinic_phone",
     "taxonomy_code",
-    "clinic_npi",
     "provider_role",
   ];
 
@@ -139,13 +189,7 @@ router.patch("/", authMiddleware, async (req, res) => {
 
   try {
     const result = await query(
-      `UPDATE users 
-       SET ${setFragments.join(", ")} 
-       WHERE cognito_id = $${values.length}
-       RETURNING id, cognito_id, email, full_name, role, phone, practitioner_type, license_id, 
-                 license_state, npi, tax_id, clinic_name, clinic_address_street, clinic_address_city, 
-                 clinic_address_state, clinic_address_zip, clinic_phone, taxonomy_code, clinic_npi, 
-                 provider_role, created_at`,
+      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at`,
       values
     );
 
