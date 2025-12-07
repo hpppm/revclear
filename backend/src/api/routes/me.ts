@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth";
-import { findUserByCognitoId, findUserByEmail, updateUserCognitoId, createUser, query } from "../../config/db";
+import {
+  findUserByCognitoId,
+  findUserByEmail,
+  updateUserCognitoId,
+  createUser,
+  query,
+} from "../../config/db";
 import { UpdateUserSchema } from "../../types/zod";
 import { getUserOrganization } from "../../utils/organization";
 
@@ -8,24 +14,30 @@ const router = Router();
 
 /**
  * @route GET /api/me
- * @description Get the current user's profile. Creates the user if they don't exist.
+ * @description Get the current user's profile. Creates the user if none exists.
  * @access Private
  */
 router.get("/", authMiddleware, async (req, res) => {
   const cognitoId = req.user?.sub;
-  const email = req.user?.email;
-  const name = req.user?.name; // Assuming 'name' is available in the decoded token
+  const emailFromToken = req.user?.email;
+  const nameFromToken = req.user?.name;
 
-  if (!cognitoId || !email) {
+  // Stop early if Cognito ID is missing
+  if (!cognitoId) {
     return res.status(401).json({
       error: "Unauthorized",
-      message: "User Cognito ID or email not found in token.",
+      message: "Cognito ID (sub) not found in token.",
     });
   }
 
+  // Fallback email so DB functions always get a real string
+  const safeEmail: string =
+    emailFromToken || `${cognitoId}@placeholder.local`;
+
   try {
-    console.log(`[GET /api/me] Looking up user with Cognito ID: ${cognitoId}, email: ${email}`);
-    let user = await findUserByCognitoId(cognitoId);
+    console.log(
+      `[GET /api/me] Looking up user with Cognito ID: ${cognitoId}, email: ${safeEmail}`
+    );
 
     if (user) {
       console.log(`[GET /api/me] Found existing user by Cognito ID:`, user);
@@ -42,9 +54,8 @@ router.get("/", authMiddleware, async (req, res) => {
       return res.json({ success: true, user, organization });
     }
 
-    // Fallback: Try to find by email (in case Cognito ID changed)
-    console.log(`[GET /api/me] User not found by Cognito ID, trying email lookup...`);
-    user = await findUserByEmail(email);
+    // 2. Try lookup by email if user was created earlier
+    console.log(`[GET /api/me] Not found by Cognito ID. Trying email...`);
 
     if (user) {
       console.log(`[GET /api/me] Found user by email, updating Cognito ID...`);
@@ -104,12 +115,23 @@ router.get("/", authMiddleware, async (req, res) => {
       // For other errors, throw to outer catch
       throw createError;
     }
-  } catch (err) {
-    const error = err as Error;
-    console.error(`[GET /api/me] Error: ${error.message}`);
-    return res
-      .status(500)
-      .json({ error: "Server Error", message: error.message });
+
+    // 3. Create new user
+    console.log(`[GET /api/me] Creating new user...`);
+
+    const fullName = nameFromToken || safeEmail;
+
+    const newUser = await createUser(cognitoId, safeEmail, fullName);
+    const organization = await getUserOrganization(newUser.id);
+
+    return res.status(201).json({ ...newUser, organization });
+
+  } catch (err: any) {
+    console.error(`[GET /api/me] Error: ${err.message}`);
+    return res.status(500).json({
+      error: "Server Error",
+      message: err.message,
+    });
   }
 });
 
@@ -122,7 +144,10 @@ router.patch("/", authMiddleware, async (req, res) => {
   const cognitoId = req.user?.sub;
 
   if (!cognitoId) {
-    return res.status(401).json({ error: "Unauthorized", message: "User Cognito ID not found in token." });
+    return res.status(401).json({
+      error: "Unauthorized",
+      message: "User Cognito ID not found in token.",
+    });
   }
 
   const parsed = UpdateUserSchema.safeParse(req.body);
@@ -170,17 +195,21 @@ router.patch("/", authMiddleware, async (req, res) => {
 
     const updatedUser = result.rows[0];
     if (!updatedUser) {
-      return res.status(404).json({ error: "Not Found", message: "User not found." });
+      return res.status(404).json({
+        error: "Not Found",
+        message: "User not found.",
+      });
     }
 
     const organization = await getUserOrganization(updatedUser.id);
     return res.json({ ...updatedUser, organization });
-  } catch (err) {
-    const error = err as Error;
-    console.error(`[PATCH /api/me] Error: ${error.message}`);
-    return res
-      .status(500)
-      .json({ error: "Server Error", message: error.message });
+
+  } catch (err: any) {
+    console.error(`[PATCH /api/me] Error: ${err.message}`);
+    return res.status(500).json({
+      error: "Server Error",
+      message: err.message,
+    });
   }
 });
 

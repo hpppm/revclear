@@ -29,11 +29,8 @@ const poolConfig: PoolConfig = {
   connectionTimeoutMillis: appConfig.db.connectionTimeoutMillis,
 };
 
-// Force SSL for debugging 'no encryption' error
+// Force SSL (Heroku-style)
 poolConfig.ssl = { rejectUnauthorized: false };
-// if (appConfig.db.ssl) {
-//   poolConfig.ssl = { rejectUnauthorized: false };
-// }
 
 console.log("DB Config:", {
   host: poolConfig.host,
@@ -53,13 +50,24 @@ export const query = <T extends QueryResultRow = QueryResultRow>(
   params?: any[]
 ): Promise<QueryResult<T>> => pool.query<T>(text, params);
 
+// ------------------------------------------------------------
+// Users
+// ------------------------------------------------------------
+
 export const findUserByCognitoId = async (cognitoId: string) => {
-  const result = await query(`SELECT ${userColumns} FROM users WHERE cognito_id = $1`, [cognitoId]);
+  const result = await query(
+    `SELECT ${userColumns} FROM users WHERE cognito_id = $1`,
+    [cognitoId]
+  );
   return result.rows[0];
 };
 
-export const findUserByEmail = async (email: string) => {
-  const result = await query(`SELECT ${userColumns} FROM users WHERE email = $1`, [email]);
+export const findUserByEmail = async (email?: string) => {
+  if (!email) return null; // NEW: Avoid invalid query when email missing
+  const result = await query(
+    `SELECT ${userColumns} FROM users WHERE email = $1`,
+    [email]
+  );
   return result.rows[0];
 };
 
@@ -71,20 +79,33 @@ export const updateUserCognitoId = async (email: string, cognitoId: string) => {
   return result.rows[0];
 };
 
+// NEW: safer user creation that handles missing email
 export const createUser = async (
   cognitoId: string,
-  email: string,
-  fullName: string,
+  email?: string,
+  fullName?: string,
   practitionerType?: string,
   licenseId?: string
 ) => {
+  const safeEmail = email || `${cognitoId}@auto.local`;
+  const safeName = fullName || "Unknown User";
+
   const result = await query(
-    `INSERT INTO users (cognito_id, email, full_name, practitioner_type, license_id) VALUES ($1, $2, $3, $4, $5) RETURNING ${userColumns}`,
-    [cognitoId, email, fullName, practitionerType || null, licenseId || null]
+    `INSERT INTO users (cognito_id, email, full_name, practitioner_type, license_id)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING ${userColumns}`,
+    [
+      cognitoId,
+      safeEmail,
+      safeName,
+      practitionerType || null,
+      licenseId || null,
+    ]
   );
   return result.rows[0];
 };
 
+// No change needed, but safe
 export const updateUserPractitionerInfo = async (
   email: string,
   practitionerType?: string,
