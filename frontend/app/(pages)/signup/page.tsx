@@ -87,7 +87,8 @@ export default function SignupPage() {
       });
 
       if (response.data.AuthenticationResult) {
-        const token = response.data.AuthenticationResult.IdToken;
+        // Auto-login - Use AccessToken for API authentication
+        const token = response.data.AuthenticationResult.AccessToken; // ✅ FIXED
         localStorage.setItem("token", token);
 
         const userResponse = await apiClient.me.getProfile();

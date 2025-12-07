@@ -39,7 +39,7 @@ export default function LoginPage() {
       try {
         const response = await apiClient.auth.signin({ email, password });
         const { AuthenticationResult } = response.data;
-        const token = AuthenticationResult.IdToken;
+        const token = AuthenticationResult.AccessToken; // ✅ FIXED: Use AccessToken for API authentication
 
         // Temporarily set token to fetch user
         localStorage.setItem("token", token);
