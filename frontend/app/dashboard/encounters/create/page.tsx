@@ -22,6 +22,17 @@ const allowedAudioTypes = [
   "audio/m4a",
 ];
 
+const extractTranscriptText = (t: any): string => {
+  if (!t) return "";
+  if (typeof t === "string") return t;
+  if (t.text !== undefined) return t.text ?? "";
+  if (t.summary !== undefined) return t.summary ?? "";
+  if (Array.isArray(t.segments)) {
+    return t.segments.map((s: any) => s?.text ?? "").join(" ").trim();
+  }
+  return typeof t === "object" ? JSON.stringify(t) : "";
+};
+
 export default function EncounterPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -63,6 +74,8 @@ export default function EncounterPage() {
   const [uploading, setUploading] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [transcript, setTranscript] = useState<any | null>(null);
+  const [transcriptDraft, setTranscriptDraft] = useState<string>("");
+  const [savingTranscript, setSavingTranscript] = useState(false);
 
   // Step 3: SOAP State
   const [soap, setSoap] = useState<any | null>(null);
@@ -184,6 +197,7 @@ export default function EncounterPage() {
                 console.log("Transcript response:", transcriptRes.data);
                 if (transcriptRes.data) {
                   setTranscript(transcriptRes.data);
+                  setTranscriptDraft(extractTranscriptText(transcriptRes.data));
                 }
               } catch (err) {
                 console.error("Failed to load transcript", err);
@@ -404,6 +418,7 @@ export default function EncounterPage() {
       const receivedSoap = res.data?.soap || res.data?.data?.soap || null;
 
       setTranscript(receivedTranscript);
+      setTranscriptDraft(extractTranscriptText(receivedTranscript));
       setSoap(receivedSoap);
     } catch (err: any) {
       console.error("Transcription failed", err);
@@ -432,31 +447,11 @@ export default function EncounterPage() {
     }
   };
 
-  const handleGenerateMockSoap = async () => {
-    if (!encounterId) {
-      return;
-    }
-
-    setGeneratingSoap(true);
-
-    try {
-      const res = await apiClient.soap.generateFromMockTranscript(encounterId);
-      const responseData = res.data?.data || res.data;
-      const soapData = responseData?.soap || responseData;
-
-      setSoap(soapData);
-      setTranscript({ text: "[Using mock transcript for testing]" });
-    } catch (err: any) {
-      console.error("Mock SOAP generation failed", err);
-    } finally {
-      setGeneratingSoap(false);
-    }
-  };
-
   const clearAudioState = () => {
     setAudioFile(null);
     setAudioUrl(null);
     setTranscript(null);
+    setTranscriptDraft("");
     setSoap(null);
   };
 
@@ -488,6 +483,23 @@ export default function EncounterPage() {
       console.error("Failed to save codes", err);
     } finally {
       setSavingCodes(false);
+    }
+  };
+
+  const handleSaveTranscript = async () => {
+    if (!encounterId) return;
+    const text = transcriptDraft.trim();
+    if (!text) return;
+
+    setSavingTranscript(true);
+    try {
+      await apiClient.transcribe.saveTranscript(encounterId, text);
+      setTranscript({ text });
+      setSoap(null); // force regeneration from edited transcript
+    } catch (err) {
+      console.error("Failed to save transcript", err);
+    } finally {
+      setSavingTranscript(false);
     }
   };
 
@@ -563,6 +575,10 @@ export default function EncounterPage() {
           audioUrl={audioUrl}
           s3Key={s3Key}
           transcript={transcript}
+          transcriptDraft={transcriptDraft}
+          onTranscriptDraftChange={setTranscriptDraft}
+          onSaveTranscript={handleSaveTranscript}
+          savingTranscript={savingTranscript}
           uploading={uploading}
           transcribing={transcribing}
           onAudioSelected={handleAudioSelected}
@@ -586,7 +602,6 @@ export default function EncounterPage() {
           soap={soap}
           generatingSoap={generatingSoap}
           onGenerateSoap={handleGenerateSoap}
-          onGenerateMockSoap={handleGenerateMockSoap}
           onSaveSoap={handleSaveSoap}
         />
       ),

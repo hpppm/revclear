@@ -28,7 +28,12 @@ export default function MedicalCodesViewer({
       code: c.code,
       description: c.description,
       category: c.category || "Unspecified",
-      confidence: typeof c.confidence === "number" ? c.confidence : typeof c.confidence_score === "number" ? c.confidence_score : undefined,
+      confidence:
+        typeof c.confidence === "number"
+          ? Math.round(c.confidence * 100)
+          : typeof c.confidence_score === "number"
+          ? Math.round(c.confidence_score * 100)
+          : undefined,
       source: c.is_ai_suggested ? "AI" : c.source,
     }));
 
@@ -211,11 +216,9 @@ export default function MedicalCodesViewer({
             AI-generated codes from the SOAP note. Select the codes you want to apply.
           </p>
         </div>
-        {icdCandidates.length === 0 && cptCandidates.length === 0 && (
-          <Button onClick={generateCodes} loading={loading} disabled={loading}>
-            {loading ? "Finding codes..." : "Find Codes"}
-          </Button>
-        )}
+        <Button onClick={generateCodes} loading={loading} disabled={loading}>
+          {loading ? "Finding codes..." : "Find Codes"}
+        </Button>
       </div>
 
       {hasGenerated && icdCandidates.length === 0 && cptCandidates.length === 0 && (

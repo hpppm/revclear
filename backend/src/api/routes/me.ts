@@ -30,7 +30,16 @@ router.get("/", authMiddleware, async (req, res) => {
     if (user) {
       console.log(`[GET /api/me] Found existing user by Cognito ID:`, user);
       const organization = await getUserOrganization(user.id);
-      return res.json({ ...user, organization });
+      if (!organization) {
+        return res.json({
+          success: true,
+          requiresOrganization: true,
+          message: "User must create or join an organization.",
+          user,
+          organization: null,
+        });
+      }
+      return res.json({ success: true, user, organization });
     }
 
     // Fallback: Try to find by email (in case Cognito ID changed)
@@ -42,7 +51,16 @@ router.get("/", authMiddleware, async (req, res) => {
       // Update the Cognito ID to match the current token
       user = await updateUserCognitoId(email, cognitoId);
       const organization = await getUserOrganization(user.id);
-      return res.json({ ...user, organization });
+      if (!organization) {
+        return res.json({
+          success: true,
+          requiresOrganization: true,
+          message: "User must create or join an organization.",
+          user,
+          organization: null,
+        });
+      }
+      return res.json({ success: true, user, organization });
     }
 
     console.log(`[GET /api/me] User not found, creating new user...`);
@@ -51,15 +69,31 @@ router.get("/", authMiddleware, async (req, res) => {
     try {
       const fullName = name || email; // Use 'name' if available, otherwise fallback to 'email'
       user = await createUser(cognitoId, email, fullName);
-      const organization = await getUserOrganization(user.id);
-      return res.status(201).json({ ...user, organization }); // Return 201 for resource creation
+      // New user has no organization; signal UI to prompt org creation/join
+      return res.status(201).json({
+        success: true,
+        requiresOrganization: true,
+        message: "User created. Please create or join an organization.",
+        user,
+        organization: null,
+      });
     } catch (createError: any) {
       // Handle duplicate key error (user might have been created between check and insert)
       if (createError.code === '23505') {
         // Duplicate key - fetch the user again
         user = await findUserByCognitoId(cognitoId);
         if (user) {
-          return res.json(user);
+          const organization = await getUserOrganization(user.id);
+          if (!organization) {
+            return res.json({
+              success: true,
+              requiresOrganization: true,
+              message: "User must create or join an organization.",
+              user,
+              organization: null,
+            });
+          }
+          return res.json({ success: true, user, organization });
         }
         // If still no user after duplicate error, something is wrong
         return res.status(500).json({
@@ -108,14 +142,7 @@ router.patch("/", authMiddleware, async (req, res) => {
     "license_state",
     "npi",
     "tax_id",
-    "clinic_name",
-    "clinic_address_street",
-    "clinic_address_city",
-    "clinic_address_state",
-    "clinic_address_zip",
-    "clinic_phone",
     "taxonomy_code",
-    "clinic_npi",
     "provider_role",
   ];
 
@@ -137,7 +164,7 @@ router.patch("/", authMiddleware, async (req, res) => {
 
   try {
     const result = await query(
-      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, phone, practitioner_type, license_id, license_state, npi, tax_id, clinic_name, clinic_address_street, clinic_address_city, clinic_address_state, clinic_address_zip, clinic_phone, taxonomy_code, clinic_npi, provider_role, created_at`,
+      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at`,
       values
     );
 
