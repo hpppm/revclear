@@ -5,6 +5,7 @@ services:
       target: builder
     ports:
       - "4000:4000"
+      - "4001:4001"
     env_file:
       - ./backend/.env
     environment:
@@ -14,7 +15,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-    command: npm run dev
+    command: sh -c "npm run build:genkit && genkit start --non-interactive --port 4001 -- npm run dev"
     develop:
       watch:
         - action: sync
