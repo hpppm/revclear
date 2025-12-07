@@ -22,4 +22,23 @@ api.interceptors.request.use(
     }
 );
 
+// Response interceptor to handle errors gracefully
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // Suppress 401 errors from appearing in console
+        // These are expected when user is not authenticated
+        if (error?.response?.status === 401) {
+            // Create a clean error object without the full axios error details
+            const cleanError = {
+                response: error.response,
+                message: error.message,
+                status: 401
+            };
+            return Promise.reject(cleanError);
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

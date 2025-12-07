@@ -9,7 +9,6 @@ interface SoapGenerationStepProps {
     soap: any;
     generatingSoap: boolean;
     onGenerateSoap: () => void;
-    onGenerateMockSoap: () => void;
     onSaveSoap?: (soap: any) => Promise<void>;
 }
 
@@ -18,7 +17,6 @@ export default function SoapGenerationStep({
     soap,
     generatingSoap,
     onGenerateSoap,
-    onGenerateMockSoap,
     onSaveSoap,
 }: SoapGenerationStepProps) {
     const [isEditing, setIsEditing] = useState(false);
@@ -116,15 +114,6 @@ export default function SoapGenerationStep({
                                             disabled={generatingSoap}
                                         >
                                             Generate SOAP
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={onGenerateMockSoap}
-                                            disabled={generatingSoap}
-                                            className="bg-purple-600 text-white hover:bg-purple-700"
-                                        >
-                                            Generate SOAP (Mock)
                                         </Button>
                                     </>
                                 ) : isEditing ? (
