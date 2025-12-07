@@ -1,10 +1,10 @@
 import { jwtDecode } from 'jwt-decode';
 
 /**
- * Decodes a Cognito ID token to extract the user's email address.
+ * Decodes a Cognito token (Access or ID) to extract a friendly identifier.
  *
- * @param {string} token The JWT ID token from Cognito.
- * @returns {string|null} The user's email if the token is valid and contains an email, otherwise null.
+ * @param {string} token The JWT token from Cognito.
+ * @returns {string|null} The user's email/username if the token contains one, otherwise null.
  */
 export const decodeEmailFromToken = (token) => {
   if (!token) {
@@ -15,9 +15,14 @@ export const decodeEmailFromToken = (token) => {
     // Decode the JWT. The result is a JSON object with the token's claims.
     const decodedToken = jwtDecode(token);
 
-    // Cognito ID tokens contain the email in the 'email' claim.
-    if (decodedToken && typeof decodedToken.email === 'string') {
-      return decodedToken.email;
+    // Prefer the email claim (present in ID tokens), otherwise fall back to username (present in Access tokens)
+    if (decodedToken) {
+      if (typeof decodedToken.email === 'string') {
+        return decodedToken.email;
+      }
+      if (typeof decodedToken.username === 'string') {
+        return decodedToken.username;
+      }
     }
 
     return null;
