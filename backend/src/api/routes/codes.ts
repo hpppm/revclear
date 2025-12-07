@@ -32,6 +32,7 @@ const SaveCodesSchema = z.object({
             description: z.string(),
             category: z.string(),
             confidence: z.number().min(0).max(1).optional(),
+            confidence_score: z.number().min(0).max(1).optional(),
             isAiSuggested: z.boolean().optional(),
         })
     ),
@@ -234,14 +235,15 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
         // Save new codes
         const savedCodes = [];
         for (const code of codes) {
+            const confidence = code.confidence ?? code.confidence_score ?? undefined;
             const saved = await saveMedicalCode({
                 encounter_id: encounterId,
                 code_type: code.codeType,
                 code: code.code,
                 description: code.description,
                 category: code.category,
-                confidence_score: code.confidence,
-                is_ai_suggested: code.isAiSuggested ?? false,
+                confidence_score: confidence,
+                is_ai_suggested: code.isAiSuggested ?? (confidence !== undefined ? true : false),
             });
             savedCodes.push(saved);
         }

@@ -6,20 +6,13 @@ export const UserSchema = z.object({
   full_name: z.string().min(1, "Full name is required"),
   role: z.string().optional(),
   phone: z.string().optional(),
-  // Provider billing fields
+  // Personal provider credentials (NOT clinic information)
   npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional(),
   tax_id: z.string().optional(),
-  clinic_name: z.string().optional(),
-  clinic_address_street: z.string().optional(),
-  clinic_address_city: z.string().optional(),
-  clinic_address_state: z.string().length(2, "State must be 2 letters").optional(),
-  clinic_address_zip: z.string().regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code").optional(),
-  clinic_phone: z.string().optional(),
   taxonomy_code: z
     .string()
     .regex(/^[A-Za-z0-9]{10}$/, "Taxonomy code must be 10 alphanumeric characters")
     .optional(),
-  clinic_npi: z.string().regex(/^\d{10}$/, "Clinic NPI must be 10 digits").optional(),
   provider_role: z.enum(["rendering", "billing", "both"]).optional(),
   practitioner_type: z.string().optional(),
   license_id: z.string().optional(),
@@ -71,7 +64,8 @@ export const PatientSchema = z.object({
   full_name: z.string().min(1, "Full name is required"),
   dob: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "DOB must be in YYYY-MM-DD format")
+    .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    .transform((val) => val ? val.split('T')[0] : val)
     .optional(),
   gender: z.enum(["M", "F", "U", "O"]).optional(),
   phone: z.string().optional(),
