@@ -32,6 +32,7 @@ We apply part of the required controls from:
 
 ### 🤖 **External AI Processing**
 - **Genkit AI runs outside our environment**  
+- local python whisper
 - Restricted with encrypted data handling and vendor controls
 
 ### 🔍 **Audit Logging**

@@ -41,7 +41,7 @@ console.log("DB Config:", {
 
 const pool = new Pool(poolConfig);
 
-pool.on("error", (err) => {
+pool.on("error", (err: Error) => {
   console.error("Unexpected PostgreSQL pool error", err);
 });
 

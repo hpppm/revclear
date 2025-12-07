@@ -20,6 +20,10 @@ const EnvSchema = z.object({
   AWS_USER_POOL_ID: z.string().min(1).optional(),
   AWS_CLIENT_ID: z.string().min(1).optional(),
 
+  TEST_EMAIL_DOMAIN: z.string().optional(),
+  AUTO_CONFIRM_SIGNUP: z.string().optional(),
+  AUTO_LOGIN_AFTER_SIGNUP: z.string().optional(),
+
   GENKIT_ENV: z.string().optional(),
 });
 
@@ -56,6 +60,11 @@ export const appConfig = {
   cognito: {
     userPoolId: env.AWS_USER_POOL_ID,
     clientId: env.AWS_CLIENT_ID,
+  },
+  auth: {
+    testEmailDomain: env.TEST_EMAIL_DOMAIN || "@localhost.dev",
+    autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
+    autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
   },
   genkitEnv: env.GENKIT_ENV,
 };

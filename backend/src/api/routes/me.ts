@@ -19,9 +19,9 @@ const router = Router();
  * @access Private
  */
 router.get("/", authMiddleware, async (req, res) => {
-  const cognitoId = req.user?.sub;
-  const emailFromToken = req.user?.email;
-  const nameFromToken = req.user?.name;
+  const cognitoId = req.auth?.sub;
+  const emailFromToken = req.auth?.email as string | undefined;
+  const nameFromToken = req.auth?.name as string | undefined;
 
   // Stop early if Cognito ID is missing
   if (!cognitoId) {
@@ -36,15 +36,11 @@ router.get("/", authMiddleware, async (req, res) => {
     emailFromToken || `${cognitoId}@placeholder.local`;
 
   try {
-    console.log(
-      `[GET /api/me] Looking up user with Cognito ID: ${cognitoId}, email: ${safeEmail}`
-    );
-
-    // 1. Try lookup by Cognito ID first
-    let user: QueryResultRow | null | undefined = await findUserByCognitoId(cognitoId);
+    // 1. Check if middleware already resolved the user
+    let user: QueryResultRow | null | undefined = req.user;
 
     if (user) {
-      console.log(`[GET /api/me] Found existing user by Cognito ID:`, user);
+      console.log(`[GET /api/me] User resolved by middleware:`, user.id);
       const organization = await getUserOrganization(user.id);
       if (!organization) {
         return res.json({
@@ -58,8 +54,8 @@ router.get("/", authMiddleware, async (req, res) => {
       return res.json({ success: true, user, organization });
     }
 
-    // 2. Try lookup by email if user was created earlier
-    console.log(`[GET /api/me] Not found by Cognito ID. Trying email...`);
+    // 2. If not found by middleware, try lookup by email (legacy/migration case)
+    console.log(`[GET /api/me] User not found by middleware (Cognito ID mismatch?). Trying email...`);
     user = await findUserByEmail(safeEmail);
 
     if (user) {
@@ -110,7 +106,7 @@ router.get("/", authMiddleware, async (req, res) => {
  * @access Private
  */
 router.patch("/", authMiddleware, async (req, res) => {
-  const cognitoId = req.user?.sub;
+  const cognitoId = req.auth?.sub;
 
   if (!cognitoId) {
     return res.status(401).json({

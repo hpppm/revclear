@@ -1,30 +1,37 @@
 import { z } from "zod";
+import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
+import { registry } from "../config/swagger";
+
+extendZodWithOpenApi(z);
 
 // User/Provider Schemas
 export const UserSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  full_name: z.string().min(1, "Full name is required"),
-  role: z.string().optional(),
-  phone: z.string().optional(),
+  email: z.string().email("Invalid email address").openapi({ example: "doctor@example.com" }),
+  full_name: z.string().min(1, "Full name is required").openapi({ example: "Dr. John Doe" }),
+  role: z.string().optional().openapi({ example: "clinician" }),
+  phone: z.string().optional().openapi({ example: "555-123-4567" }),
   // Personal provider credentials (NOT clinic information)
-  npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional(),
-  tax_id: z.string().optional(),
+  npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional().openapi({ example: "1234567890" }),
+  tax_id: z.string().optional().openapi({ example: "12-3456789" }),
   taxonomy_code: z
     .string()
     .regex(/^[A-Za-z0-9]{10}$/, "Taxonomy code must be 10 alphanumeric characters")
-    .optional(),
-  provider_role: z.enum(["rendering", "billing", "both"]).optional(),
-  practitioner_type: z.string().optional(),
-  license_id: z.string().optional(),
-  license_state: z.string().optional(),
-});
+    .optional()
+    .openapi({ example: "207Q00000X" }),
+  provider_role: z.enum(["rendering", "billing", "both"]).optional().openapi({ example: "rendering" }),
+  practitioner_type: z.string().optional().openapi({ example: "Physician" }),
+  license_id: z.string().optional().openapi({ example: "MD12345" }),
+  license_state: z.string().optional().openapi({ example: "NY" }),
+}).openapi("User");
+
+registry.register("User", UserSchema);
 
 export const UpdateUserSchema = UserSchema.partial();
 
 // Organization Schemas
 export const OrganizationSchema = z.object({
-  name: z.string().min(1, "Organization name is required"),
-  npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional(),
+  name: z.string().min(1, "Organization name is required").openapi({ example: "City Medical Group" }),
+  npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional().openapi({ example: "9876543210" }),
   tax_id: z.string().optional(),
   address_line1: z.string().optional(),
   address_line2: z.string().optional(),
@@ -53,7 +60,9 @@ export const OrganizationSchema = z.object({
   fee_schedule: z.any().optional(),
   payer_enrollments: z.any().optional(),
   billing_defaults: z.any().optional(),
-});
+}).openapi("Organization");
+
+registry.register("Organization", OrganizationSchema);
 
 export const JoinOrganizationSchema = z.object({
   invitationCode: z.string().min(1, "Invitation code is required"),
@@ -61,13 +70,14 @@ export const JoinOrganizationSchema = z.object({
 
 // Patient Schemas (align with schema: full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number)
 export const PatientSchema = z.object({
-  full_name: z.string().min(1, "Full name is required"),
+  full_name: z.string().min(1, "Full name is required").openapi({ example: "Jane Doe" }),
   dob: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
     .transform((val) => val ? val.split('T')[0] : val)
-    .optional(),
-  gender: z.enum(["M", "F", "U", "O"]).optional(),
+    .optional()
+    .openapi({ example: "1980-01-01" }),
+  gender: z.enum(["M", "F", "U", "O"]).optional().openapi({ example: "F" }),
   phone: z.string().optional(),
   email: z.string().email("Invalid email address").optional(),
   // Address fields
@@ -85,7 +95,9 @@ export const PatientSchema = z.object({
   insurance_relationship: z.enum(["self", "spouse", "child", "other"]).optional(),
   subscriber_id: z.string().uuid().optional(),
   plan_name: z.string().optional(),
-});
+}).openapi("Patient");
+
+registry.register("Patient", PatientSchema);
 
 export const CreatePatientSchema = PatientSchema.extend({
   // full_name required; rest optional
@@ -120,17 +132,20 @@ export const EncounterSchema = z.object({
     .regex(
       /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/,
       "date_of_service must be in YYYY-MM-DD or ISO format"
-    ),
+    )
+    .openapi({ example: "2023-10-27" }),
   clinician_id: z.string().uuid().optional(),
   transcript_result_id: z.string().uuid().optional().nullable(),
   soap_result_id: z.string().uuid().optional().nullable(),
-  status: z.string().optional(),
+  status: z.string().optional().openapi({ example: "completed" }),
   // Billing fields
-  place_of_service: z.string().regex(/^[0-9]{2}$/, "POS must be 2-digit code").optional(),
+  place_of_service: z.string().regex(/^[0-9]{2}$/, "POS must be 2-digit code").optional().openapi({ example: "11" }),
   audio_key: z.string().optional(),
   encounter_type: z.string().optional(),
   chief_complaint: z.string().optional(),
-});
+}).openapi("Encounter");
+
+registry.register("Encounter", EncounterSchema);
 
 export const CreateEncounterSchema = EncounterSchema.extend({
   // patient_id and date_of_service required; rest optional

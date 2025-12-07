@@ -1,143 +1,16 @@
 import { Router } from "express";
-import {
-  signUpUser,
-  confirmSignUp,
-  signInUser,
-  adminConfirmSignUp,
-  signOutUser,
-  refreshAuthTokens,
-  forgotPassword,
-  confirmForgotPassword,
-} from "../../config/awsCognito";
-import { createUser, updateUserPractitionerInfo } from "../../config/db";
+import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 
 const router = Router();
-const allowedEmailDomain = (process.env.TEST_EMAIL_DOMAIN || "@localhost.dev").toLowerCase();
-const autoConfirmSignups = (process.env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false";
-const autoLoginAfterSignup = (process.env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false";
-
-function isAllowedEmail(email?: string) {
-  if (!email) return false;
-  return email.toLowerCase().endsWith(allowedEmailDomain);
-}
-
-async function buildSignupResponse(email: string, password: string, baseMessage: string) {
-  const autoConfirmResult: { enabled: boolean; success?: boolean; error?: string } = {
-    enabled: autoConfirmSignups,
-  };
-  const autoLoginResult: { enabled: boolean; success?: boolean; error?: string } = {
-    enabled: autoLoginAfterSignup,
-  };
-  let authenticationResult: any;
-
-  if (autoConfirmSignups) {
-    try {
-      await adminConfirmSignUp(email);
-      autoConfirmResult.success = true;
-    } catch (confirmError: any) {
-      if (confirmError.name === 'NotAuthorizedException' && confirmError.message.includes('Current status is CONFIRMED')) {
-        // User is already confirmed, proceed as success
-        autoConfirmResult.success = true;
-      } else {
-        console.warn("Auto confirm failed; user must confirm manually:", confirmError);
-        autoConfirmResult.success = false;
-        autoConfirmResult.error =
-          confirmError?.message || "Failed to auto confirm user.";
-      }
-    }
-  }
-
-  if (autoLoginAfterSignup) {
-    if (!autoConfirmSignups || autoConfirmResult.success !== false) {
-      try {
-        const loginResponse = await signInUser(email, password);
-        authenticationResult = loginResponse.AuthenticationResult;
-        autoLoginResult.success = true;
-      } catch (loginError: any) {
-        console.warn("Auto login after signup failed:", loginError);
-        autoLoginResult.success = false;
-        autoLoginResult.error =
-          loginError?.message || "Failed to auto login user.";
-      }
-    } else {
-      autoLoginResult.success = false;
-      autoLoginResult.error = "Skipped auto login because confirmation failed.";
-    }
-  }
-
-  const messages = [baseMessage];
-  if (autoConfirmSignups) {
-    messages.push(
-      autoConfirmResult.success
-        ? "Account auto-confirmed for testing."
-        : "Auto confirmation failed; please confirm manually using the code from Cognito."
-    );
-  } else {
-    messages.push(
-      "Check your inbox for the verification code to confirm the account."
-    );
-  }
-  if (autoLoginAfterSignup && autoLoginResult.success) {
-    messages.push("Authentication tokens are included for immediate dashboard access.");
-  } else if (autoLoginAfterSignup && autoLoginResult.error) {
-    messages.push("Automatic login failed; try signing in manually.");
-  }
-
-  return {
-    message: messages.join(" "),
-    autoConfirm: autoConfirmResult,
-    autoLogin: autoLoginResult,
-    AuthenticationResult: authenticationResult,
-  };
-}
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
   const { email, password, attributes, practitionerType, licenseId } = req.body;
-  if (!isAllowedEmail(email)) {
-    return res.status(400).json({
-      error: `Email must end with ${allowedEmailDomain} for testing`,
-    });
-  }
+
   try {
-    const response = await signUpUser(email, password, attributes);
-
-    if (response.UserSub) {
-      try {
-        await createUser(
-          response.UserSub,
-          email,
-          attributes.name || "Unknown",
-          practitionerType,
-          licenseId
-        );
-        console.log(`User ${email} stored in DB with Cognito ID ${response.UserSub}`);
-      } catch (dbError: any) {
-        console.error("Failed to store user in DB:", dbError);
-        // If user already exists (duplicate key), update their practitioner info
-        if (dbError.code === '23505') {
-          try {
-            await updateUserPractitionerInfo(email, practitionerType, licenseId);
-            console.log(`Updated practitioner info for existing user ${email}`);
-          } catch (updateError) {
-            console.error("Failed to update practitioner info:", updateError);
-          }
-        }
-        // Optional: Decide if we should fail the request or just log it. 
-        // For now, we log it but allow the response to proceed as the user is created in Cognito.
-      }
-    }
-
-    const payload = await buildSignupResponse(
-      email,
-      password,
-      "User signed up successfully."
-    );
-    res.status(200).json({
-      ...payload,
-      response,
-    });
+    const result = await AuthService.signup(email, password, attributes, practitionerType, licenseId);
+    res.status(200).json(result);
   } catch (error: any) {
     console.error("Sign-up error:", error);
     if (error.name === 'InvalidPasswordException') {
@@ -161,13 +34,8 @@ router.post("/signup", async (req, res) => {
 // Confirm sign-up route
 router.post("/confirm-signup", async (req, res) => {
   const { email, code } = req.body;
-  if (!isAllowedEmail(email)) {
-    return res.status(400).json({
-      error: `Email must end with ${allowedEmailDomain} for testing`,
-    });
-  }
   try {
-    const response = await confirmSignUp(email, code);
+    const response = await AuthService.confirmSignup(email, code);
     res.status(200).json({ message: "Account confirmed successfully.", response });
   } catch (error: any) {
     console.error("Confirm sign-up error:", error);
@@ -178,47 +46,24 @@ router.post("/confirm-signup", async (req, res) => {
 // Sign-in route
 router.post("/signin", async (req, res) => {
   const { email, password } = req.body;
-  if (!isAllowedEmail(email)) {
-    return res.status(400).json({
-      error: `Email must end with ${allowedEmailDomain} for testing`,
-    });
-  }
   try {
-    const response = await signInUser(email, password);
-    // In a real application, you would typically return the tokens to the client
+    const response = await AuthService.signin(email, password);
+
+    // Check if auto-confirmation happened (internal flag)
+    if ((response as any)._autoConfirmed) {
+      return res.status(200).json({
+        message: "User was auto-confirmed and signed in successfully for testing.",
+        autoConfirm: { enabled: true, success: true },
+        AuthenticationResult: response.AuthenticationResult,
+      });
+    }
+
     res.status(200).json({
       message: "User signed in successfully.",
       AuthenticationResult: response.AuthenticationResult,
     });
   } catch (error: any) {
     console.error("Sign-in error:", error);
-    if (error.name === "UserNotConfirmedException" && autoConfirmSignups) {
-      try {
-        await adminConfirmSignUp(email);
-        const response = await signInUser(email, password);
-        return res.status(200).json({
-          message:
-            "User was auto-confirmed and signed in successfully for testing.",
-          autoConfirm: { enabled: true, success: true },
-          AuthenticationResult: response.AuthenticationResult,
-        });
-      } catch (confirmError: any) {
-        if (confirmError.name === 'NotAuthorizedException' && confirmError.message.includes('Current status is CONFIRMED')) {
-          // User is already confirmed, retry sign-in
-          const response = await signInUser(email, password);
-          return res.status(200).json({
-            message: "User signed in successfully.",
-            AuthenticationResult: response.AuthenticationResult,
-          });
-        }
-        console.warn("Auto confirm during sign-in failed:", confirmError);
-        return res.status(400).json({
-          error: "User is not confirmed. Please verify the account via Cognito.",
-          details: confirmError?.message || error.message,
-          autoConfirm: { enabled: true, success: false },
-        });
-      }
-    }
     if (error.name === 'InvalidParameterException' && error.message.includes('USER_PASSWORD_AUTH flow not enabled')) {
       return res.status(400).json({
         error: "Authentication flow not enabled.",
@@ -226,6 +71,15 @@ router.post("/signin", async (req, res) => {
         originalError: error.message,
       });
     }
+    // Handle auto-confirm failure specifically if needed, but AuthService throws if it fails
+    if (error.name === "UserNotConfirmedException") {
+      return res.status(400).json({
+        error: "User is not confirmed. Please verify the account via Cognito.",
+        details: error.message,
+        autoConfirm: { enabled: true, success: false },
+      });
+    }
+
     res.status(400).json({ error: error.message || "Failed to sign in user." });
   }
 });
@@ -237,12 +91,11 @@ router.post("/signout", authMiddleware, async (req, res) => {
     if (!authHeader) {
       return res.status(401).json({ error: "Authorization header is missing." });
     }
-    // The token is expected to be in the format "Bearer <token>"
     const accessToken = authHeader.split(" ")[1];
     if (!accessToken) {
       return res.status(401).json({ error: "Access token is missing from Authorization header." });
     }
-    await signOutUser(accessToken);
+    await AuthService.signout(accessToken);
     res.status(200).json({ message: "User signed out successfully." });
   } catch (error: any) {
     console.error("Sign-out error:", error);
@@ -257,7 +110,7 @@ router.post("/refresh-token", async (req, res) => {
     return res.status(400).json({ error: "Refresh token is required." });
   }
   try {
-    const response = await refreshAuthTokens(refreshToken);
+    const response = await AuthService.refreshToken(refreshToken);
     res.status(200).json({
       message: "Tokens refreshed successfully.",
       AuthenticationResult: response.AuthenticationResult,
@@ -275,7 +128,7 @@ router.post("/forgot-password", async (req, res) => {
     return res.status(400).json({ error: "Email is required." });
   }
   try {
-    await forgotPassword(email);
+    await AuthService.forgotPassword(email);
     res.status(200).json({ message: "Password reset code sent successfully. Check your email." });
   } catch (error: any) {
     console.error("Forgot password error:", error);
@@ -290,7 +143,7 @@ router.post("/confirm-forgot-password", async (req, res) => {
     return res.status(400).json({ error: "Email, code, and newPassword are required." });
   }
   try {
-    await confirmForgotPassword(email, code, newPassword);
+    await AuthService.confirmForgotPassword(email, code, newPassword);
     res.status(200).json({ message: "Password has been reset successfully." });
   } catch (error: any) {
     console.error("Confirm forgot password error:", error);
