@@ -1,13 +1,15 @@
 import { Router } from 'express';
 import { getSecurityStats } from '../../middleware/securityMonitor';
+import { authMiddleware } from '../../middleware/auth';
 
 const router = Router();
 
 /**
  * GET /api/security/stats
  * Returns security monitoring statistics
+ * @access Private - requires authentication
  */
-router.get('/stats', (req, res) => {
+router.get('/stats', authMiddleware, (req, res) => {
   try {
     const stats = getSecurityStats();
     res.json({

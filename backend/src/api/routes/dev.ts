@@ -5,6 +5,7 @@ import statusRoutes from "./dev/status";
 import dynamodbRoutes from "./dev/dynamodb";
 import genkitRoutes from "./dev/genkit";
 import dbRoutes from "./dev/db";
+import { authMiddleware } from "../../middleware/auth";
 
 // Imports needed for the new /config route
 import { userPoolId, clientId } from "../../config/awsCognito";
@@ -37,8 +38,8 @@ function buildDashboardConfig() {
 
 // --- Route Registration ---
 
-// New /config route
-router.get("/config", (_req, res) => {
+// New /config route (protected)
+router.get("/config", authMiddleware, (_req, res) => {
   try {
     res.json({ success: true, config: buildDashboardConfig() });
   } catch (error: any) {
