@@ -56,6 +56,79 @@ app.use(
   })
 );
 
+// Rate limiting for other API routes
+app.use(
+  "/api/patients",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: "Too many patient requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/encounters",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: "Too many encounter requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/claims",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: "Too many claim requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/organizations",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: "Too many organization requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/me",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: "Too many profile requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/users",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: "Too many user requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/codes",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: "Too many code requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/security",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: "Too many security requests. Try again later.",
+  })
+);
+
 /**
  * 🚀 FIX #1:
  * Register /api/transcribe BEFORE express.json(), helmet, auditLogger, etc.
@@ -137,10 +210,14 @@ app.use("/api/security", securityRoutes);
 import swaggerUi from "swagger-ui-express";
 import { generateOpenApiSpec } from "./config/swagger";
 
-if (!isTestEnv) {
-  // Lazily load dev routes only outside test runs to avoid heavy fixtures
+// Dev routes and Swagger docs only available in development environment
+const isDevelopment = appConfig.env === "development";
+
+if (isDevelopment && !isTestEnv) {
+  // Lazily load dev routes only in development to avoid exposure in production
   const devRoutes = require("./api/routes/dev").default;
   app.use("/api/dev", devRoutes);
+  console.log("⚠️  Dev routes enabled at /api/dev (development only)");
 
   // Swagger Documentation
   const swaggerSpec = generateOpenApiSpec();
@@ -149,7 +226,6 @@ if (!isTestEnv) {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
   });
-  console.log("✅ Swagger docs enabled at /docs");
   console.log("✅ Swagger docs enabled at /docs");
 }
 

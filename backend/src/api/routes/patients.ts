@@ -7,13 +7,23 @@ import { CreatePatientSchema, UpdatePatientSchema, IdParamSchema, UpsertSubscrib
 const router = Router();
 
 // GET all patients for the authenticated clinician (scoped to organization)
+// @query {number} limit - Max results (default 50, max 100)
+// @query {number} offset - Skip results (default 0)
 router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
   try {
-    const patients = await PatientService.findAll(
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
+    const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
+    
+    const { data: patients, total } = await PatientService.findAll(
       req.organization!.id,
-      req.user!.id
+      req.user!.id,
+      { limit, offset }
     );
-    res.json({ success: true, data: patients });
+    res.json({
+      success: true,
+      data: patients,
+      pagination: { limit, offset, total, hasMore: offset + patients.length < total }
+    });
   } catch (error) {
     next(error);
   }

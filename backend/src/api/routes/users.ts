@@ -6,14 +6,28 @@ const router = Router();
 
 /**
  * @route GET /api/users
- * @description Get a list of all users. (Authorization TBD)
+ * @description Get a paginated list of all users. (Authorization TBD)
  * @access Private (requires authMiddleware)
+ * @query {number} limit - Max results (default 50, max 100)
+ * @query {number} offset - Skip results (default 0)
  */
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    // TODO: Add more robust authorization here. For now, any authenticated user can list all.
-    const result = await query('SELECT id, cognito_id, email, full_name, role, created_at FROM users');
-    return res.json(result.rows);
+    // Note: Consider adding admin role check for production
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
+    const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
+    
+    const result = await query(
+      'SELECT id, cognito_id, email, full_name, role, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+    const countResult = await query('SELECT COUNT(*) as total FROM users');
+    const total = parseInt(countResult.rows[0].total);
+    
+    return res.json({
+      data: result.rows,
+      pagination: { limit, offset, total, hasMore: offset + result.rows.length < total }
+    });
   } catch (err) {
     const error = err as Error;
     console.error(`[GET /api/users] Error: ${error.message}`);

@@ -73,7 +73,7 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
       console.error('Failed to write to audit log file:', error);
     }
 
-    // TODO: Integrate with Cloud Logging for production deployments
+    // Note: Production deployments should integrate with Cloud Logging
     // if (process.env.NODE_ENV === 'production') {
     //   sendToCloudLogging(entry);
     // }

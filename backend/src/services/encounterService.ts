@@ -1,6 +1,11 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
 
+interface PaginationOptions {
+    limit?: number;
+    offset?: number;
+}
+
 export class EncounterService {
     private static async getEncounterColumns() {
         const result = await query<{ column_name: string }>(
@@ -9,12 +14,21 @@ export class EncounterService {
         return result.rows.map((r: { column_name: string }) => r.column_name);
     }
 
-    static async findAll(organizationId: string, clinicianId: string) {
-        const result = await query(
-            "SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC",
+    static async findAll(organizationId: string, clinicianId: string, options?: PaginationOptions) {
+        const limit = options?.limit ?? 50;
+        const offset = options?.offset ?? 0;
+        
+        const countResult = await query(
+            "SELECT COUNT(*) as total FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))",
             [organizationId, clinicianId]
         );
-        return result.rows;
+        const total = parseInt(countResult.rows[0].total);
+        
+        const result = await query(
+            "SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC LIMIT $3 OFFSET $4",
+            [organizationId, clinicianId, limit, offset]
+        );
+        return { data: result.rows, total };
     }
 
     static async findById(id: string, organizationId: string, clinicianId: string) {

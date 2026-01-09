@@ -7,13 +7,23 @@ import { CreateClaimSchema, UpdateClaimSchema, IdParamSchema } from "../../types
 const router = Router();
 
 // GET all claims (scoped to organization)
+// @query {number} limit - Max results (default 50, max 100)
+// @query {number} offset - Skip results (default 0)
 router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
   try {
-    const claims = await ClaimService.findAll(
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
+    const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
+    
+    const { data: claims, total } = await ClaimService.findAll(
       req.organization!.id,
-      req.user!.id
+      req.user!.id,
+      { limit, offset }
     );
-    res.json({ success: true, data: claims });
+    res.json({
+      success: true,
+      data: claims,
+      pagination: { limit, offset, total, hasMore: offset + claims.length < total }
+    });
   } catch (error) {
     next(error);
   }
