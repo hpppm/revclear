@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { User } from "@/app/lib/types";
+import logger from "@/app/lib/logger";
 
 interface AuthContextType {
     user: User | null;
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Only log if it's not a 401 (unauthorized) error
                 // 401 is expected when token is invalid/expired
                 if (error?.response?.status !== 401) {
-                    console.error("Auth check failed:", error);
+                    logger.error("Auth check failed:", error);
                 }
                 // Clear invalid token
                 localStorage.removeItem("token");

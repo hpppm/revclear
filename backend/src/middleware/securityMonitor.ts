@@ -8,7 +8,7 @@ interface RequestMetrics {
   userAgent: string;
   statusCode: number;
   durationMs: number;
-  user: string;
+  userId: string;
 }
 
 // In-memory storage for request metrics (last 1000 requests)
@@ -25,17 +25,73 @@ const requestRates = new Map<string, { count: number; windowStart: Date }>();
 const RATE_LIMIT_THRESHOLD = 100;
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 
+// Blocked IPs (temporary ban for severe violations)
+const blockedIPs = new Map<string, Date>();
+const BLOCK_DURATION = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Sanitize URL to remove potential attack payloads from logs
+ */
+function sanitizeUrl(url: string): string {
+  if (!url) return '';
+  // Truncate excessively long URLs (potential DoS via logs)
+  const truncated = url.length > 500 ? url.substring(0, 500) + '...[truncated]' : url;
+  // Remove potential script injections from logs
+  return truncated.replace(/<[^>]*>/g, '[removed]');
+}
+
+/**
+ * Extract client IP safely
+ */
+function getClientIP(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    // Take the first IP and validate it's reasonable
+    const ip = forwarded.split(',')[0].trim();
+    if (ip && ip.length < 50) return ip;
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
+/**
+ * Check if IP is currently blocked
+ */
+function isBlocked(ip: string): boolean {
+  const blockedUntil = blockedIPs.get(ip);
+  if (!blockedUntil) return false;
+  if (Date.now() > blockedUntil.getTime()) {
+    blockedIPs.delete(ip);
+    return false;
+  }
+  return true;
+}
+
 /**
  * Security monitoring middleware
  * Tracks requests and detects suspicious patterns
  */
 export function securityMonitor(req: Request, res: Response, next: NextFunction) {
-  console.log('🔍 [Security Monitor] Request:', req.method, req.originalUrl);
   const start = performance.now();
-  const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+  const ipAddress = getClientIP(req);
+
+  // Check if IP is blocked
+  if (isBlocked(ipAddress)) {
+    return res.status(403).json({ error: 'Access temporarily blocked due to suspicious activity' });
+  }
+
+  // Early threat detection on request (before processing)
+  const sanitizedUrl = sanitizeUrl(req.originalUrl);
+  if (hasSQLInjectionPattern(req.originalUrl) || hasXSSPattern(req.originalUrl)) {
+    console.warn(`🚨 [SECURITY] Blocked malicious request from ${ipAddress}`);
+    blockIP(ipAddress);
+    return res.status(400).json({ error: 'Invalid request' });
+  }
 
   // Track request rate
-  trackRequestRate(ipAddress);
+  const rateExceeded = trackRequestRate(ipAddress);
+  if (rateExceeded) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
 
   res.on('finish', () => {
     const durationMs = Math.round(performance.now() - start);
@@ -43,20 +99,17 @@ export function securityMonitor(req: Request, res: Response, next: NextFunction)
     const metrics: RequestMetrics = {
       timestamp: new Date().toISOString(),
       method: req.method,
-      url: req.originalUrl,
+      url: sanitizedUrl,
       ipAddress,
-      userAgent: req.headers['user-agent'] || 'unknown',
+      userAgent: (req.headers['user-agent'] || 'unknown').substring(0, 200),
       statusCode: res.statusCode,
       durationMs,
-      user: (req as any).user?.email || 'anonymous'
+      // Never log email/PII - use ID only
+      userId: (req as any).user?.id || 'anonymous'
     };
-
-    console.log('📊 [Security Monitor] Storing request:', metrics.method, metrics.url, 'Status:', metrics.statusCode);
     
     // Store in history (circular buffer)
     requestHistory.push(metrics);
-    console.log('📊 [Security Monitor] Total requests tracked:', requestHistory.length);
-    
     if (requestHistory.length > MAX_HISTORY) {
       requestHistory.shift();
     }
@@ -69,22 +122,34 @@ export function securityMonitor(req: Request, res: Response, next: NextFunction)
 }
 
 /**
- * Track request rate for an IP address
+ * Block an IP temporarily
  */
-function trackRequestRate(ip: string) {
+function blockIP(ip: string) {
+  blockedIPs.set(ip, new Date(Date.now() + BLOCK_DURATION));
+  console.error(`🚨 [SECURITY] IP blocked: ${ip}`);
+}
+
+/**
+ * Track request rate for an IP address
+ * Returns true if rate limit exceeded
+ */
+function trackRequestRate(ip: string): boolean {
   const now = new Date();
   const existing = requestRates.get(ip);
 
   if (!existing || now.getTime() - existing.windowStart.getTime() > RATE_LIMIT_WINDOW) {
     // Start new window
     requestRates.set(ip, { count: 1, windowStart: now });
+    return false;
   } else {
     // Increment count in current window
     existing.count++;
     
     if (existing.count > RATE_LIMIT_THRESHOLD) {
-      console.warn(`🚨 [SECURITY] Rate limit exceeded: ${ip} made ${existing.count} requests in 1 minute`);
+      console.warn(`🚨 [SECURITY] Rate limit exceeded: ${ip}`);
+      return true;
     }
+    return false;
   }
 }
 
@@ -97,28 +162,19 @@ function detectThreats(metrics: RequestMetrics) {
     trackFailedAuth(metrics.ipAddress);
   }
 
-  // Detect potential SQL injection attempts
-  if (hasSQLInjectionPattern(metrics.url)) {
-    console.warn(`🚨 [SECURITY] Potential SQL injection attempt from ${metrics.ipAddress}: ${metrics.url}`);
-  }
-
-  // Detect potential XSS attempts
-  if (hasXSSPattern(metrics.url)) {
-    console.warn(`🚨 [SECURITY] Potential XSS attempt from ${metrics.ipAddress}: ${metrics.url}`);
-  }
-
   // Detect scanning behavior (many 404s)
   const recent404s = requestHistory.filter(
     r => r.ipAddress === metrics.ipAddress && r.statusCode === 404
   ).length;
   
   if (recent404s > 20) {
-    console.warn(`🚨 [SECURITY] Potential scanning detected from ${metrics.ipAddress}: ${recent404s} 404 errors`);
+    console.warn(`🚨 [SECURITY] Potential scanning detected from ${metrics.ipAddress}`);
+    blockIP(metrics.ipAddress);
   }
 
   // Detect slow requests (potential DoS)
-  if (metrics.durationMs > 5000) {
-    console.warn(`⚠️  [PERFORMANCE] Slow request detected: ${metrics.method} ${metrics.url} took ${metrics.durationMs}ms`);
+  if (metrics.durationMs > 10000) {
+    console.warn(`⚠️ [PERFORMANCE] Slow request: ${metrics.method} ${metrics.url.substring(0, 50)} took ${metrics.durationMs}ms`);
   }
 }
 
@@ -138,7 +194,8 @@ function trackFailedAuth(ip: string) {
     existing.lastAttempt = now;
 
     if (existing.count >= FAILED_AUTH_THRESHOLD) {
-      console.error(`🚨 [SECURITY] BRUTE FORCE DETECTED: ${ip} has ${existing.count} failed auth attempts in 5 minutes`);
+      console.error(`🚨 [SECURITY] Brute force detected from ${ip}`);
+      blockIP(ip);
     }
   }
 }
@@ -147,18 +204,24 @@ function trackFailedAuth(ip: string) {
  * Check for SQL injection patterns
  */
 function hasSQLInjectionPattern(url: string): boolean {
+  if (!url) return false;
   const sqlPatterns = [
     /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
     /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
     /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
     /((\%27)|(\'))union/i,
     /exec(\s|\+)+(s|x)p\w+/i,
+    /select\s+.*\s+from/i,
+    /insert\s+into/i,
+    /delete\s+from/i,
+    /drop\s+(table|database)/i,
   ];
   
   try {
+    const decoded = decodeURIComponent(url);
+    return sqlPatterns.some(pattern => pattern.test(decoded));
+  } catch {
     return sqlPatterns.some(pattern => pattern.test(url));
-  } catch (e) {
-    return false;
   }
 }
 
@@ -166,28 +229,33 @@ function hasSQLInjectionPattern(url: string): boolean {
  * Check for XSS patterns
  */
 function hasXSSPattern(url: string): boolean {
+  if (!url) return false;
   const xssPatterns = [
-    /<script[^>]*>.*?<\/script>/gi,
+    /<script[^>]*>/gi,
     /javascript:/gi,
     /onerror\s*=/gi,
     /onload\s*=/gi,
+    /onclick\s*=/gi,
+    /onmouseover\s*=/gi,
     /<iframe/gi,
+    /<object/gi,
+    /<embed/gi,
+    /eval\s*\(/gi,
+    /document\.(cookie|write|location)/gi,
   ];
   
   try {
-    return xssPatterns.some(pattern => pattern.test(decodeURIComponent(url)));
-  } catch (e) {
-    return false;
+    const decoded = decodeURIComponent(url);
+    return xssPatterns.some(pattern => pattern.test(decoded));
+  } catch {
+    return xssPatterns.some(pattern => pattern.test(url));
   }
 }
 
 /**
- * Get security statistics
+ * Get security statistics (sanitized for API response)
  */
 export function getSecurityStats() {
-  console.log('📊 [getSecurityStats] Called! requestHistory length:', requestHistory.length);
-  console.log('📊 [getSecurityStats] failedAuthAttempts size:', failedAuthAttempts.size);
-  
   const now = new Date();
   const last5Minutes = now.getTime() - 5 * 60 * 1000;
   
@@ -195,22 +263,16 @@ export function getSecurityStats() {
     r => new Date(r.timestamp).getTime() > last5Minutes
   );
 
-  const stats = {
+  return {
     totalRequests: requestHistory.length,
     recentRequests: recentRequests.length,
-    failedAuthAttempts: Array.from(failedAuthAttempts.entries()).map(([ip, data]) => ({
-      ip,
-      count: data.count,
-      lastAttempt: data.lastAttempt.toISOString()
-    })),
+    failedAuthAttempts: failedAuthAttempts.size,
+    blockedIPs: blockedIPs.size,
     topIPs: getTopIPs(recentRequests),
     statusCodes: getStatusCodeDistribution(recentRequests),
     averageResponseTime: calculateAverageResponseTime(recentRequests),
     slowestEndpoints: getSlowestEndpoints(recentRequests)
   };
-  
-  console.log('📊 [getSecurityStats] Returning stats:', JSON.stringify(stats, null, 2));
-  return stats;
 }
 
 function getTopIPs(requests: RequestMetrics[]) {

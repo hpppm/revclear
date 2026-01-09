@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -129,7 +130,7 @@ export default function EncounterPage() {
         .getById(id)
         .then(async (res) => {
           const data = res.data?.data || res.data;
-          console.log("Refresh recovery - encounter data:", data);
+          logger.log("Refresh recovery - encounter data:", data);
           if (data) {
             // Restore patient and encounter metadata
             const encounterDate = data.date_of_service?.split("T")[0];
@@ -149,30 +150,30 @@ export default function EncounterPage() {
             }
 
             // Restore audio
-            console.log("Checking for audio_key:", data.audio_key, "Full data:", data);
+            logger.log("Checking for audio_key:", data.audio_key, "Full data:", data);
             if (data.audio_key) {
-              console.log("Restoring audio with key:", data.audio_key);
+              logger.log("Restoring audio with key:", data.audio_key);
               setS3Key(data.audio_key);
               // Fetch presigned URL for audio playback
               try {
                 const audioUrlRes = await apiClient.transcribe.getAudioUrl(id);
-                console.log("Audio URL response:", audioUrlRes.data);
+                logger.log("Audio URL response:", audioUrlRes.data);
                 if (audioUrlRes.data?.audioUrl) {
                   setAudioUrl(audioUrlRes.data.audioUrl);
                 }
               } catch (err) {
-                console.error("Failed to load audio URL", err);
+                logger.error("Failed to load audio URL", err);
               }
             } else {
-              console.log("No audio_key found in encounter data");
+              logger.log("No audio_key found in encounter data");
             }
 
             // Restore SOAP if it exists
             if (data.soap_result_id) {
-              console.log("Restoring SOAP with result_id:", data.soap_result_id);
+              logger.log("Restoring SOAP with result_id:", data.soap_result_id);
               try {
                 const soapRes = await apiClient.soap.getForEncounter(id);
-                console.log("SOAP response:", soapRes.data);
+                logger.log("SOAP response:", soapRes.data);
 
                 // Extract the actual SOAP object from the response
                 // Response structure: { success: true, data: { soap: {...}, ... }, ... }
@@ -180,30 +181,30 @@ export default function EncounterPage() {
 
                 if (soapData) {
                   setSoap(soapData);
-                  console.log("SOAP set successfully:", soapData);
+                  logger.log("SOAP set successfully:", soapData);
                 }
               } catch (err) {
-                console.error("Failed to load SOAP", err);
+                logger.error("Failed to load SOAP", err);
               }
             } else {
-              console.log("No soap_result_id found in encounter");
+              logger.log("No soap_result_id found in encounter");
             }
 
             // Restore transcript if it exists
             if (data.transcript_result_id) {
-              console.log("Restoring transcript with result_id:", data.transcript_result_id);
+              logger.log("Restoring transcript with result_id:", data.transcript_result_id);
               try {
                 const transcriptRes = await apiClient.transcribe.getByEncounterId(id);
-                console.log("Transcript response:", transcriptRes.data);
+                logger.log("Transcript response:", transcriptRes.data);
                 if (transcriptRes.data) {
                   setTranscript(transcriptRes.data);
                   setTranscriptDraft(extractTranscriptText(transcriptRes.data));
                 }
               } catch (err) {
-                console.error("Failed to load transcript", err);
+                logger.error("Failed to load transcript", err);
               }
             } else {
-              console.log("No transcript_result_id found in encounter");
+              logger.log("No transcript_result_id found in encounter");
             }
 
             // Restore medical codes
@@ -211,20 +212,20 @@ export default function EncounterPage() {
               const codesRes = await apiClient.codes.getSaved(id);
               const codesData = codesRes.data?.data || [];
               if (codesData) {
-                console.log("Restoring medical codes:", codesData);
+                logger.log("Restoring medical codes:", codesData);
                 setSavedCodes(codesData);
                 setSelectedCodes(codesData);
               }
             } catch (err) {
               // It's okay if no codes exist yet
-              console.log("No saved codes found or failed to load");
+              logger.log("No saved codes found or failed to load");
             }
 
             setLoading(false);
           }
         })
         .catch((error) => {
-          console.error("Failed to load encounter", error);
+          logger.error("Failed to load encounter", error);
           setError("Failed to load encounter");
           setLoading(false);
         });
@@ -259,7 +260,7 @@ export default function EncounterPage() {
         setMetadata((prev) => ({ ...prev, subscriber: null, relationship: "self" }));
       }
     } catch (err) {
-      console.error("Failed to load subscriber", err);
+      logger.error("Failed to load subscriber", err);
       setSubscriberError("Failed to load subscriber info");
     } finally {
       setSubscriberLoading(false);
@@ -291,7 +292,7 @@ export default function EncounterPage() {
         subscriber_id: saved?.id,
       });
     } catch (err) {
-      console.error("Failed to save subscriber", err);
+      logger.error("Failed to save subscriber", err);
       setSubscriberError("Failed to save subscriber info");
       throw err;
     } finally {
@@ -344,7 +345,7 @@ export default function EncounterPage() {
 
       setPatients(mappedPatients);
     } catch (err) {
-      console.error("Patient fetch failed.", err);
+      logger.error("Patient fetch failed.", err);
       setPatients([]);
       setPatientsError("Failed to load patients. Please try again.");
     } finally {
@@ -394,7 +395,7 @@ export default function EncounterPage() {
       if (!key) throw new Error("Failed to get S3 key from upload");
       setS3Key(key);
     } catch (err: any) {
-      console.error("Save failed", err);
+      logger.error("Save failed", err);
     } finally {
       setUploading(false);
     }
@@ -421,7 +422,7 @@ export default function EncounterPage() {
       setTranscriptDraft(extractTranscriptText(receivedTranscript));
       setSoap(receivedSoap);
     } catch (err: any) {
-      console.error("Transcription failed", err);
+      logger.error("Transcription failed", err);
     } finally {
       setTranscribing(false);
     }
@@ -441,7 +442,7 @@ export default function EncounterPage() {
 
       setSoap(soapData);
     } catch (err: any) {
-      console.error("SOAP generation failed", err);
+      logger.error("SOAP generation failed", err);
     } finally {
       setGeneratingSoap(false);
     }
@@ -478,9 +479,9 @@ export default function EncounterPage() {
     try {
       await apiClient.codes.save(encounterId, selectedCodes);
       setSavedCodes(selectedCodes);
-      console.log("Codes saved successfully");
+      logger.log("Codes saved successfully");
     } catch (err) {
-      console.error("Failed to save codes", err);
+      logger.error("Failed to save codes", err);
     } finally {
       setSavingCodes(false);
     }
@@ -497,7 +498,7 @@ export default function EncounterPage() {
       setTranscript({ text });
       setSoap(null); // force regeneration from edited transcript
     } catch (err) {
-      console.error("Failed to save transcript", err);
+      logger.error("Failed to save transcript", err);
     } finally {
       setSavingTranscript(false);
     }
@@ -512,7 +513,7 @@ export default function EncounterPage() {
       });
       setSoap(updatedSoap);
     } catch (err) {
-      console.error("Failed to save SOAP note", err);
+      logger.error("Failed to save SOAP note", err);
       throw err;
     }
   };
@@ -653,7 +654,7 @@ export default function EncounterPage() {
               setClaimDraft(res.data?.data || res.data);
             }
           } catch (err) {
-            console.error("Failed to save claim", err);
+            logger.error("Failed to save claim", err);
           }
         }
 

@@ -2,12 +2,15 @@ import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../utils/AppError";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 export const errorHandler = (
     err: Error,
     req: Request,
     res: Response,
-    next: NextFunction
+    _next: NextFunction
 ) => {
+    // Operational errors (expected) - return message to client
     if (err instanceof AppError) {
         return res.status(err.statusCode).json({
             success: false,
@@ -15,17 +18,24 @@ export const errorHandler = (
         });
     }
 
+    // Validation errors - return structured validation feedback
     if (err instanceof ZodError) {
         return res.status(400).json({
             success: false,
             message: "Validation Error",
-            errors: err.errors,
+            errors: err.errors.map(e => ({
+                field: e.path.join('.'),
+                message: e.message
+            })),
         });
     }
 
-    console.error("Unexpected Error:", err);
+    // Log unexpected errors server-side (never expose to client)
+    console.error(`[ERROR] ${req.method} ${req.originalUrl}:`, isDevelopment ? err : err.message);
+
+    // Generic error response - never leak internal details
     return res.status(500).json({
         success: false,
-        message: "Internal Server Error",
+        message: "An unexpected error occurred",
     });
 };
