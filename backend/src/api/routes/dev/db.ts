@@ -30,11 +30,9 @@ router.get("/health", async (_req, res) => {
       data: row,
     });
   } catch (error: any) {
-    console.error("Database health check failed:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to reach PostgreSQL",
-      error: error?.message,
+      message: "Database connection failed",
     });
   }
 });
@@ -69,8 +67,7 @@ router.post("/patients", async (req, res) => {
     const result = await query(insertQuery, values);
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error: any) {
-    console.error("Create patient failed:", error);
-    res.status(500).json({ success: false, message: error?.message || "Create failed" });
+    res.status(500).json({ success: false, message: "Failed to create patient" });
   }
 });
 
@@ -110,8 +107,7 @@ router.get("/patients", async (req, res) => {
 
     res.json({ success: true, data: result.rows });
   } catch (error: any) {
-    console.error("Read patients failed:", error);
-    res.status(500).json({ success: false, message: error?.message || "Read failed" });
+    res.status(500).json({ success: false, message: "Failed to read patients" });
   }
 });
 
@@ -161,8 +157,7 @@ router.put("/patients/:id", async (req, res) => {
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error: any) {
-    console.error("Update patient failed:", error);
-    res.status(500).json({ success: false, message: error?.message || "Update failed" });
+    res.status(500).json({ success: false, message: "Failed to update patient" });
   }
 });
 
@@ -186,8 +181,7 @@ router.delete("/patients/:id", async (req, res) => {
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error: any) {
-    console.error("Delete patient failed:", error);
-    res.status(500).json({ success: false, message: error?.message || "Delete failed" });
+    res.status(500).json({ success: false, message: "Failed to delete patient" });
   }
 });
 

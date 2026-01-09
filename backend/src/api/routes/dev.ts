@@ -2,7 +2,6 @@ import { Router } from "express";
 import s3Routes from "./dev/s3";
 import cognitoRoutes from "./dev/cognito";
 import statusRoutes from "./dev/status";
-import dynamodbRoutes from "./dev/dynamodb";
 import genkitRoutes from "./dev/genkit";
 import dbRoutes from "./dev/db";
 import { authMiddleware } from "../../middleware/auth";
@@ -10,7 +9,6 @@ import { authMiddleware } from "../../middleware/auth";
 // Imports needed for the new /config route
 import { userPoolId, clientId } from "../../config/awsCognito";
 import { bucketName } from "../../config/awsS3";
-import { testTableName } from "../../config/awsDynamoDb";
 
 const router = Router();
 
@@ -31,7 +29,6 @@ function buildDashboardConfig() {
     userPoolId,
     clientId,
     bucketName: bucketName || null,
-    testTableName: testTableName || null,
     dashboardS3File,
   };
 }
@@ -43,10 +40,10 @@ router.get("/config", authMiddleware, (_req, res) => {
   try {
     res.json({ success: true, config: buildDashboardConfig() });
   } catch (error: any) {
-    console.error("Failed to load dashboard config:", error);
+    // Don't leak error details
     res.status(500).json({
       success: false,
-      error: error?.message || "Dashboard config is unavailable.",
+      error: "Dashboard config is unavailable.",
     });
   }
 });
@@ -55,7 +52,6 @@ router.get("/config", authMiddleware, (_req, res) => {
 router.use("/s3", s3Routes);
 router.use("/cognito", cognitoRoutes);
 router.use("/status", statusRoutes);
-router.use("/dynamodb", dynamodbRoutes);
 router.use("/genkit", genkitRoutes);
 router.use("/db", dbRoutes);
 

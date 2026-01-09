@@ -42,7 +42,7 @@ router.get("/me", authMiddleware, async (req, res) => {
     res.json({ success: true, organization });
   } catch (error) {
     console.error("[GET /api/organizations/me] Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Failed to fetch organization" });
   }
 });
 

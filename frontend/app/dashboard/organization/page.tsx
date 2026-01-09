@@ -9,6 +9,7 @@ import Card from "@/app/components/ui/Card";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization } from "@/app/lib/types";
+import logger from "@/app/lib/logger";
 
 export default function OrganizationProfilePage() {
     const { user, checkAuth, isLoading: authLoading } = useAuth();
@@ -106,7 +107,7 @@ export default function OrganizationProfilePage() {
             };
             setOrganization(extractOrg(response));
         } catch (error) {
-            console.error("Failed to load organization", error);
+            logger.error("Failed to load organization", error);
             setError("Failed to load organization details.");
         } finally {
             setLoading(false);
@@ -138,7 +139,7 @@ export default function OrganizationProfilePage() {
             // Optionally checkAuth if organization info is attached to user object in context
             // await checkAuth(); 
         } catch (error: any) {
-            console.error("Failed to save organization", error);
+            logger.error("Failed to save organization", error);
             let message = "Could not save organization.";
             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
                 message = error.response.data.errors

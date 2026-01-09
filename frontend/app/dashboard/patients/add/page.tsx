@@ -7,6 +7,7 @@ import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 
 import BackButton from "@/app/components/ui/BackButton";
 
@@ -58,7 +59,7 @@ export default function AddPatientPage() {
       await apiClient.patients.create(dataToSubmit);
       router.push("/dashboard"); // Navigate to dashboard after saving
     } catch (error) {
-      console.error("Failed to create patient", error);
+      logger.error("Failed to create patient", error);
       const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
       setError(message);
     } finally {

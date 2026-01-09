@@ -207,7 +207,7 @@ router.post(
 
     } catch (error: any) {
       console.error("Backend: Transcription processing error:", error);
-      sendError(res, 500, error.message || "Failed to process audio file.");
+      sendError(res, 500, "Failed to process audio file");
     }
   }
 );
@@ -251,7 +251,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
     res.json({ audioUrl });
   } catch (error: any) {
     console.error("Backend: Error getting audio URL:", error);
-    sendError(res, 500, error.message || "Failed to get audio URL.");
+    sendError(res, 500, "Failed to get audio URL");
   }
 });
 
@@ -290,7 +290,7 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
     res.json(result.rows[0].output_json);
   } catch (error: any) {
     console.error("Backend: Error retrieving transcript:", error);
-    sendError(res, 500, error.message || "Failed to retrieve transcript.");
+    sendError(res, 500, "Failed to retrieve transcript");
   }
 });
 
@@ -341,7 +341,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
     });
   } catch (error: any) {
     console.error("Backend: Error saving transcript:", error);
-    sendError(res, 500, error.message || "Failed to save transcript.");
+    sendError(res, 500, "Failed to save transcript");
   }
 });
 
