@@ -4,6 +4,7 @@ import path from "path";
 
 const AUDIT_LOG_FILE = path.join(__dirname, '../../audit.log');
 
+// Auth/token related keys
 const SENSITIVE_QUERY_KEYS = [
   "password",
   "token",
@@ -13,8 +14,13 @@ const SENSITIVE_QUERY_KEYS = [
   "accesstoken",
   "idtoken",
   "refreshtoken",
+  "apikey",
+  "api_key",
 ];
+
+// Request body sensitive keys (auth + PHI/PII)
 const SENSITIVE_BODY_KEYS = [
+  // Auth/credentials
   "password",
   "token",
   "authorization",
@@ -24,16 +30,55 @@ const SENSITIVE_BODY_KEYS = [
   "accesstoken",
   "idtoken",
   "refreshtoken",
+  "apikey",
+  "api_key",
+  // PHI/PII fields - HIPAA compliance
+  "ssn",
+  "social_security",
+  "socialsecurity",
+  "social_security_number",
+  "insurance_id",
+  "insuranceid",
+  "member_id",
+  "memberid",
+  "dob",
+  "date_of_birth",
+  "dateofbirth",
+  "birthdate",
+  "birth_date",
+  "diagnosis",
+  "diagnoses",
+  "diagnosis_codes",
+  "procedure_codes",
+  "medical_record",
+  "medicalrecord",
+  "mrn",
+  "transcript",
+  "soap",
+  "soap_note",
+  "subjective",
+  "objective",
+  "assessment",
+  "plan",
+  "notes",
+  "clinical_notes",
 ];
 
-function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: string[]) {
+// Fields that should be partially masked (show last 4 chars)
+const PARTIAL_MASK_KEYS = ["phone", "phone_number", "phonenumber", "fax"];
+
+function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: string[], partialMaskKeys: string[] = []) {
   if (!obj) return obj;
   const clone: Record<string, any> = {};
   for (const key of Object.keys(obj)) {
-    if (sensitiveKeys.includes(key.toLowerCase())) {
-      clone[key] = "[redacted]";
+    const lowerKey = key.toLowerCase();
+    if (sensitiveKeys.includes(lowerKey)) {
+      clone[key] = "[REDACTED]";
+    } else if (partialMaskKeys.includes(lowerKey) && typeof obj[key] === "string") {
+      const val = obj[key] as string;
+      clone[key] = val.length > 4 ? "****" + val.slice(-4) : "[REDACTED]";
     } else if (typeof obj[key] === "object" && obj[key] !== null) {
-      clone[key] = sanitizeObject(obj[key], sensitiveKeys);
+      clone[key] = sanitizeObject(obj[key], sensitiveKeys, partialMaskKeys);
     } else {
       clone[key] = obj[key];
     }
@@ -50,33 +95,29 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
 
     const entry = {
       timestamp: new Date().toISOString(),
-      user: req.user?.uid || "anonymous",
+      userId: req.user?.id || "anonymous",
       method: req.method,
       url: (req.originalUrl || req.url).split("?")[0],
       ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
       statusCode: res.statusCode,
       durationMs: duration.toFixed(2),
       query: sanitizeObject(req.query as Record<string, any>, SENSITIVE_QUERY_KEYS),
-      body: sanitizeObject(req.body as Record<string, any>, SENSITIVE_BODY_KEYS),
+      body: sanitizeObject(req.body as Record<string, any>, SENSITIVE_BODY_KEYS, PARTIAL_MASK_KEYS),
     };
 
     const logMessage = JSON.stringify(entry);
 
-    // Log to console for local development
-    console.log(`[AUDIT] ${logMessage}`);
+    // Log to console in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[AUDIT] ${logMessage}`);
+    }
 
     // Append to local audit file
     try {
       await fs.appendFile(AUDIT_LOG_FILE, logMessage + '\n');
     } catch (error) {
-      console.error('Failed to write to audit log file:', error);
+      // Silent fail - don't expose file system errors
     }
-
-    // TODO: Integrate with Cloud Logging for production deployments
-    // if (process.env.NODE_ENV === 'production') {
-    //   sendToCloudLogging(entry);
-    // }
   });
 
   next();

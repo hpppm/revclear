@@ -92,10 +92,10 @@ router.get("/", authMiddleware, async (req, res) => {
     });
 
   } catch (err: any) {
-    console.error(`[GET /api/me] Error: ${err.message}`);
+    console.error(`[GET /api/me] Error:`, err.message);
     return res.status(500).json({
       error: "Server Error",
-      message: err.message,
+      message: "Failed to fetch user profile",
     });
   }
 });
@@ -170,10 +170,10 @@ router.patch("/", authMiddleware, async (req, res) => {
     return res.json({ ...updatedUser, organization });
 
   } catch (err: any) {
-    console.error(`[PATCH /api/me] Error: ${err.message}`);
+    console.error(`[PATCH /api/me] Error:`, err.message);
     return res.status(500).json({
       error: "Server Error",
-      message: err.message,
+      message: "Failed to update user profile",
     });
   }
 });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
@@ -37,30 +38,28 @@ export default function EncounterSummaryPage() {
             // Fetch encounter
             const encounterRes = await apiClient.encounters.getById(encounterId);
             const encounterData = encounterRes.data?.data || encounterRes.data;
-            console.log("Encounter data:", encounterData);
+            logger.log("Encounter loaded");
             setEncounter(encounterData);
 
             // Fetch claim
             try {
                 const claimRes = await apiClient.encounters.previewClaim(encounterId);
                 const claimData = claimRes.data?.data || claimRes.data;
-                console.log("Claim data:", claimData);
+                logger.log("Claim loaded");
                 setClaim(claimData);
             } catch (err) {
-                console.log("No claim found:", err);
+                logger.log("No claim found");
             }
 
             // Fetch transcript if available
             if (encounterData.transcript_result_id) {
                 try {
                     const transcriptRes = await apiClient.transcribe.getByEncounterId(encounterId);
-                    console.log("Full transcript response:", transcriptRes.data);
-                    // The transcript is in the 'text' field
                     const transcriptData = transcriptRes.data?.text || transcriptRes.data?.data?.text || "";
-                    console.log("Transcript data:", transcriptData);
+                    logger.log("Transcript loaded");
                     setTranscript(transcriptData);
                 } catch (err) {
-                    console.log("Failed to load transcript:", err);
+                    logger.log("Failed to load transcript");
                 }
             }
 
@@ -68,17 +67,15 @@ export default function EncounterSummaryPage() {
             if (encounterData.soap_result_id) {
                 try {
                     const soapRes = await apiClient.soap.getForEncounter(encounterId);
-                    console.log("Full SOAP response:", soapRes.data);
                     const soapData = soapRes.data?.data || soapRes.data;
-                    console.log("SOAP data:", soapData);
-                    // SOAP data is nested under a 'soap' property
+                    logger.log("SOAP loaded");
                     setSoap(soapData?.soap || soapData);
                 } catch (err) {
-                    console.log("Failed to load SOAP:", err);
+                    logger.log("Failed to load SOAP");
                 }
             }
         } catch (err) {
-            console.error("Failed to load encounter data", err);
+            logger.error("Failed to load encounter data");
         } finally {
             setLoading(false);
         }
@@ -98,7 +95,7 @@ export default function EncounterSummaryPage() {
                 router.push(`/dashboard/patients/${encounter.patient_id}`);
             }, 3000);
         } catch (err) {
-            console.error("Failed to submit claim", err);
+            logger.error("Failed to submit claim");
             setSubmitting(false);
         }
     };

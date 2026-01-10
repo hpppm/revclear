@@ -3,6 +3,7 @@
 import AudioRecorder from "../AudioRecorder";
 import AudioUploader from "../AudioUploader";
 import Button from "../ui/Button";
+import logger from "@/app/lib/logger";
 
 interface TranscriptionStepProps {
     audioFile: File | null;
@@ -55,7 +56,7 @@ export default function TranscriptionStep({
         );
     })();
 
-    console.log("TranscriptionStep render:", { audioFile, audioUrl, s3Key, transcript, transcriptText });
+    logger.log("TranscriptionStep render:", { audioFile, audioUrl, s3Key, transcript, transcriptText });
 
     return (
         <div className="space-y-6">

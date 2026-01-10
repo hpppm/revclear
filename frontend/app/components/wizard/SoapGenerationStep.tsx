@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Button from "../ui/Button";
 import SoapNoteViewer from "../SoapNoteViewer";
+import logger from "@/app/lib/logger";
 
 interface SoapGenerationStepProps {
     transcript: any;
@@ -46,7 +47,7 @@ export default function SoapGenerationStep({
             await onSaveSoap(editedSoap);
             setIsEditing(false);
         } catch (error) {
-            console.error("Failed to save SOAP note", error);
+            logger.error("Failed to save SOAP note", error);
         } finally {
             setSaving(false);
         }
