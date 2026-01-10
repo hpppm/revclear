@@ -45,7 +45,6 @@ revclear/
 │
 ├── terraform/                  # AWS Infrastructure as Code
 ├── Demo/                       # Interactive workflow demo (static HTML)
-├── codeql-custom-queries-javascript/  # Security scanning queries
 │
 ├── docs/                       # Project documentation hub
 │   ├── workflow/              # Development process docs
@@ -55,6 +54,7 @@ revclear/
 │   ├── agents/                # AI agent skills & prompts
 │   │   ├── prompts/           # Reusable prompt templates
 │   │   └── skills/            # Copilot agent skills
+│   ├── codeql/                # Security scanning queries
 │   └── workflows/             # GitHub Actions
 │
 └── [Root Files]

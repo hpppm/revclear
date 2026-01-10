@@ -12,10 +12,13 @@ docs/
 │   ├── TICKET_STRUCTURE.md     # How to create tickets
 │   └── TICKET_EXAMPLES.md      # Example tickets & history
 └── architecture/               # System architecture docs
-    └── (see backend/docs/ for detailed architecture)
+    └── OVERVIEW.md             # System design & data flow
 ```
 
 ## Quick Links
+
+### Architecture
+- [Architecture Overview](architecture/OVERVIEW.md) - System design, data flow, components
 
 ### Workflow & Processes
 - [Quick Start Guide](workflow/QUICK_START_GUIDE.md) - Git workflow, environment setup
