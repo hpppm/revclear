@@ -4,6 +4,55 @@ AI-assisted medical claims and speech transcription platform for secure healthca
 
 ---
 
+## **Quick Start**
+
+```bash
+# Clone and setup
+git clone <repo-url>
+cd revclear
+
+# Backend (port 3005)
+cd backend && npm install && npm run dev
+
+# Frontend (port 3000) - in another terminal
+cd frontend && npm install && npm run dev
+
+# Or use Docker for full stack
+docker-compose up
+```
+
+See [docs/workflow/QUICK_START_GUIDE.md](docs/workflow/QUICK_START_GUIDE.md) for detailed setup.
+
+---
+
+## **Project Structure**
+
+```
+revclear/
+├── backend/           # Express + TypeScript API
+├── frontend/          # Next.js App Router
+├── testing-dashboard/ # Reference AWS helper implementation
+├── terraform/         # AWS Infrastructure as Code
+├── Demo/              # Interactive workflow demo
+├── docs/              # Project documentation
+│   └── workflow/      # Development process guides
+└── .github/agents/    # AI agent skills & prompts
+```
+
+---
+
+## **Documentation**
+
+| Document | Description |
+|----------|-------------|
+| [CLAUDE.md](CLAUDE.md) | AI assistant guidance |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [docs/](docs/) | Full documentation hub |
+| [Backend Docs](backend/docs/) | API & database documentation |
+
+---
+
 ## **Security Framework Baseline**
 
 We apply part of the required controls from:  
@@ -53,3 +102,11 @@ Required variables:
 - `COGNITO_USER_POOL_ID`
 - `RDS_ENDPOINT` (PostgreSQL)
 - `API_GATEWAY_ID`
+
+See `.env.example` for full list.
+
+---
+
+## **License**
+
+MIT License - see [LICENSE](LICENSE) for details.

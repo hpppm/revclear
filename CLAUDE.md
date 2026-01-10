@@ -1,10 +1,72 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) and other AI assistants when working with code in this repository.
 
 ## Project Overview
 
-RevClear is an AI-assisted medical claims and speech transcription platform for healthcare billing workflows. It handles PHI/PII and must comply with HIPAA, NIST CSF, and OWASP API security requirements.
+**RevClear** is an AI-assisted medical claims and speech transcription platform for healthcare billing workflows. It handles PHI/PII and must comply with HIPAA, NIST CSF, and OWASP API security requirements.
+
+### Key Capabilities
+- Audio transcription (Whisper) → SOAP note generation (Gemini AI)
+- Medical code matching (ICD-10/CPT) from clinical documentation
+- Claims management with payer validation
+- Multi-tenant organization support with RBAC
+
+---
+
+## Project Structure
+
+```
+revclear/
+├── backend/                    # Express + TypeScript API (port 3005)
+│   ├── src/                   # Main application source
+│   │   ├── api/routes/        # REST endpoints
+│   │   ├── services/          # Business logic layer
+│   │   ├── middleware/        # Auth, audit, security
+│   │   ├── config/            # AWS clients, DB config
+│   │   └── utils/             # Helpers & utilities
+│   ├── genkit/                # AI flows (Gemini)
+│   │   └── flows/             # speechToSoap, soapToCodes
+│   ├── docs/                  # Backend documentation
+│   │   ├── db/                # SQL migrations & schema
+│   │   └── DATA_SECURITY.md   # PHI encryption specs
+│   └── tests/                 # Jest test suites
+│
+├── frontend/                   # Next.js App Router (port 3000)
+│   ├── app/                   # Pages & components
+│   │   ├── (pages)/           # Route groups
+│   │   ├── components/        # Reusable UI
+│   │   ├── dashboard/         # Main app dashboard
+│   │   └── context/           # React contexts
+│   └── documentation/         # Frontend API docs
+│
+├── testing-dashboard/          # Reference implementation for AWS helpers
+│   └── DASH_WORKFLOW.md       # ⚠️ READ FIRST - do-not-modify rules
+│
+├── terraform/                  # AWS Infrastructure as Code
+├── Demo/                       # Interactive workflow demo (static HTML)
+├── codeql-custom-queries-javascript/  # Security scanning queries
+│
+├── docs/                       # Project documentation hub
+│   ├── workflow/              # Development process docs
+│   └── architecture/          # System design docs
+│
+├── .github/
+│   ├── agents/                # AI agent skills & prompts
+│   │   ├── prompts/           # Reusable prompt templates
+│   │   └── skills/            # Copilot agent skills
+│   └── workflows/             # GitHub Actions
+│
+└── [Root Files]
+    ├── CLAUDE.md              # This file - AI guidance
+    ├── README.md              # Project overview
+    ├── CONTRIBUTING.md        # Contribution guidelines
+    ├── CHANGELOG.md           # Version history
+    ├── docker-compose.yml     # Full stack containers
+    └── LICENSE                # MIT License
+```
+
+---
 
 ## Development Commands
 
@@ -46,6 +108,8 @@ npm run build:genkit        # Compile Genkit flows
 # Genkit dev UI launches automatically with docker-compose
 ```
 
+---
+
 ## Architecture
 
 ### Multi-Tenant Healthcare Platform
@@ -76,6 +140,8 @@ npm run build:genkit        # Compile Genkit flows
 - **Read this first**: `DASH_WORKFLOW.md` - Documents do-not-modify expectations
 - Proxies API calls to backend via Next.js rewrites
 
+---
+
 ## Critical Patterns
 
 ### Route Ordering
@@ -98,29 +164,106 @@ Required in `backend/.env`:
 
 Test email domains must end with `@localhost.dev` (override via `TEST_EMAIL_DOMAIN`).
 
+---
+
 ## Security Constraints
 
-This is a **HIPAA-regulated healthcare application**:
-- Never log PHI/PII (patient names, SSN, transcripts, SOAP notes)
-- All database queries must use parameterized statements (no string interpolation)
+⚠️ **This is a HIPAA-regulated healthcare application**
+
+### PHI/PII Handling
+- **Never log**: Patient names, SSN, transcripts, SOAP notes, medical codes
+- **Always use**: Parameterized SQL statements (no string interpolation)
+- **Encryption**: AES-256-GCM for sensitive columns (see `backend/docs/DATA_SECURITY.md`)
+
+### API Security
 - Auth failures: 401 (missing/invalid token), 403 (wrong organization)
 - No stack traces or internal details in API responses
-- AES-256-GCM encryption for sensitive columns (see `backend/docs/DATA_SECURITY.md`)
+- All endpoints rate-limited appropriately
+
+### Compliance References
+- HIPAA Security Rule
+- NIST Cybersecurity Framework (CSF)
+- OWASP API Security Top 10
+
+---
+
+## AI Agent Skills
+
+The project includes Copilot agent skills in `.github/agents/skills/`:
+
+| Skill | Purpose |
+|-------|---------|
+| `security-audit.md` | Scan for vulnerabilities before release |
+| `api-inventory.md` | Catalog all API endpoints with auth status |
+| `dead-code-finder.md` | Find orphaned files and unused exports |
+| `dependency-analyzer.md` | Check for unused/misplaced npm packages |
+| `tech-stack-scanner.md` | Generate technology overview |
+| `public-release-checklist.md` | Pre-release verification checklist |
+
+Use these skills when:
+- Preparing for a release
+- Auditing security posture
+- Cleaning up technical debt
+- Onboarding new team members
+
+---
 
 ## Branch & Commit Conventions
 
-Branch naming: `[type]/description` where type is: feature, bug, ui, chore, documentation, devops
+### Branch Naming
+Format: `[type]/description`
+- `feature/` - New features
+- `bug/` - Bug fixes
+- `ui/` - UI/UX changes
+- `chore/` - Maintenance
+- `documentation/` - Docs updates
+- `devops/` - CI/CD, infrastructure
 
-Commit format: `[type]: short description`
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation
-- `refactor:` - Code refactoring
-- `chore:` - Maintenance
+### Commit Format
+```
+[type]: short description
+
+feat:     New feature
+fix:      Bug fix
+docs:     Documentation
+refactor: Code refactoring
+chore:    Maintenance
+test:     Adding tests
+style:    Formatting only
+```
+
+---
 
 ## Testing Dashboard Rules
 
 The `testing-dashboard/` app is the canonical reference for AWS helper flows. Per `DASH_WORKFLOW.md`:
-- Treat as **read-only** except for explicitly requested features
+
+- ⚠️ Treat as **read-only** except for explicitly requested features
 - Do not rename IDs, change DOM structure, or alter request semantics
 - Changes must be documented in DASH_WORKFLOW.md and coordinated with frontend team
+
+---
+
+## Quick Reference
+
+### Important Files to Read First
+1. `backend/docs/BACKEND_REVCLEAR_v1.1.0.md` - Full backend API documentation
+2. `backend/docs/DATA_SECURITY.md` - PHI encryption and security
+3. `testing-dashboard/DASH_WORKFLOW.md` - Dashboard modification rules
+4. `docs/workflow/TICKET_STRUCTURE.md` - How to create tickets
+
+### Database
+- Schema: `backend/docs/db/revclear_schema_current.sql`
+- Migrations: `backend/docs/db/0*.sql` files
+
+### API Routes
+All routes in `backend/src/api/routes/`:
+- `auth.ts` - Login, signup, token refresh
+- `patients.ts` - Patient CRUD
+- `encounters.ts` - Encounter management
+- `claims.ts` - Claims lifecycle
+- `transcribe.ts` - Audio upload & processing
+- `soap.ts` - SOAP note generation
+- `organizations.ts` - Multi-tenant management
+- `me.ts` - Current user profile
+- `health.ts` - Health checks
