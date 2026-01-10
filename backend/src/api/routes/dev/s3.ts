@@ -29,8 +29,7 @@ router.post("/upload", authMiddleware, async (req, res) => {
     );
     res.json({ success: true, bucket: bucketName, result });
   } catch (error: any) {
-    console.error("S3 upload error:", error);
-    res.status(500).json({ error: error.message || "Failed to upload to S3" });
+    res.status(500).json({ error: "Failed to upload file" });
   }
 });
 
@@ -41,10 +40,7 @@ router.get("/list", authMiddleware, async (req, res) => {
     const result = await listFiles(prefix);
     res.json({ success: true, prefix, result });
   } catch (error: any) {
-    console.error("S3 list error:", error);
-    res
-      .status(500)
-      .json({ error: error.message || "Failed to list S3 objects" });
+    res.status(500).json({ error: "Failed to list files" });
   }
 });
 
@@ -63,10 +59,7 @@ router.post("/download-url", authMiddleware, async (req, res) => {
     );
     res.json({ success: true, key, url });
   } catch (error: any) {
-    console.error("S3 download URL error:", error);
-    res
-      .status(500)
-      .json({ error: error.message || "Failed to create download URL" });
+    res.status(500).json({ error: "Failed to generate download URL" });
   }
 });
 
@@ -82,10 +75,7 @@ router.delete("/object", authMiddleware, async (req, res) => {
     const result = await deleteFile(key);
     res.json({ success: true, deletedKey: key, result });
   } catch (error: any) {
-    console.error("S3 delete error:", error);
-    res
-      .status(500)
-      .json({ error: error.message || "Failed to delete S3 object" });
+    res.status(500).json({ error: "Failed to delete file" });
   }
 });
 

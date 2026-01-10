@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization, Patient } from "@/app/lib/types";
+import logger from "@/app/lib/logger";
 
 type ApiOrganizationPayload = {
     data?: any;
@@ -105,7 +106,7 @@ export default function DashboardHome() {
             const mapped = Array.isArray(rawPatients) ? rawPatients.map(mapPatient) : [];
             setPatients(mapped);
         } catch (error) {
-            console.error("Failed to fetch patients", error);
+            logger.error("Failed to fetch patients", error);
             setPatientsError("Failed to load patients. Please try again.");
         } finally {
             setPatientsLoading(false);
@@ -118,7 +119,7 @@ export default function DashboardHome() {
             const count = response.data?.data?.length || 0;
             setEncountersCount(count);
         } catch (error) {
-            console.error("Failed to fetch encounters", error);
+            logger.error("Failed to fetch encounters", error);
         }
     };
 
@@ -136,7 +137,7 @@ export default function DashboardHome() {
             setOrganization(org);
             setOrgName("");
         } catch (error: any) {
-            console.error("Failed to create organization", error);
+            logger.error("Failed to create organization", error);
             let message = "Could not create organization.";
             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
                 message = error.response.data.errors
@@ -167,7 +168,7 @@ export default function DashboardHome() {
             setOrganization(org);
             setInviteCode("");
         } catch (error: any) {
-            console.error("Failed to join organization", error);
+            logger.error("Failed to join organization", error);
             let message = "Could not join organization.";
             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
                 message = error.response.data.errors

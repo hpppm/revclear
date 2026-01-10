@@ -165,7 +165,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
         });
     } catch (error: any) {
         console.error("[POST /codes/match] error", error);
-        return sendError(res, 500, error.message || "Failed to match codes");
+        return sendError(res, 500, "Failed to match codes");
     }
 });
 

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { bucketName } from "../../../config/awsS3";
 import { clientId, userPoolId } from "../../../config/awsCognito";
-import { testTableName } from "../../../config/awsDynamoDb";
 import { authMiddleware } from "../../../middleware/auth";
 
 const router = Router();
@@ -17,10 +16,6 @@ router.get("/", authMiddleware, (_req, res) => {
       userPoolId,
       clientId,
       configured: Boolean(userPoolId && clientId),
-    },
-    awsDynamoDb: {
-      testTableName,
-      configured: Boolean(testTableName),
     },
   };
 

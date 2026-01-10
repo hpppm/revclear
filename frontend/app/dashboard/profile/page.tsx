@@ -8,6 +8,7 @@ import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 
 export default function ProfilePage() {
     const { user, logout, checkAuth } = useAuth();
@@ -74,7 +75,7 @@ export default function ProfilePage() {
             await checkAuth();
             setIsEditing(false);
         } catch (error) {
-            console.error("Failed to save profile", error);
+            logger.error("Failed to save profile", error);
             const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to save profile";
             setError(message);
         } finally {

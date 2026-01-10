@@ -105,7 +105,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
     });
   } catch (error: any) {
     console.error("[POST /api/encounters/:id/soap/mock] error", error);
-    return sendError(res, 500, error.message || "Failed to generate SOAP note from mock");
+    return sendError(res, 500, "Failed to generate SOAP note");
   }
 });
 
@@ -206,7 +206,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
     });
   } catch (error: any) {
     console.error("[POST /api/encounters/:id/soap] error", error);
-    return sendError(res, 500, error.message || "Failed to generate SOAP note");
+    return sendError(res, 500, "Failed to generate SOAP note");
   }
 });
 

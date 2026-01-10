@@ -7,6 +7,7 @@ import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient, Encounter } from "@/app/lib/types";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
+import logger from "@/app/lib/logger";
 
 const mapPatientResponse = (data: any): Patient => ({
     id: data.id,
@@ -67,7 +68,7 @@ export default function PatientProfilePage() {
             setEncounters(encountersData);
 
         } catch (err) {
-            console.error("Failed to load patient profile", err);
+            logger.error("Failed to load patient profile", err);
             setError("Failed to load patient details.");
         } finally {
             setLoading(false);
@@ -96,7 +97,7 @@ export default function PatientProfilePage() {
             setPatient(editedPatient);
             setEditMode(false);
         } catch (err) {
-            console.error("Failed to update patient", err);
+            logger.error("Failed to update patient", err);
             alert("Failed to update patient");
         } finally {
             setSaving(false);
@@ -147,7 +148,7 @@ export default function PatientProfilePage() {
             await apiClient.encounters.delete(id);
             setEncounters((prev) => prev.filter((e) => e.id !== id));
         } catch (err) {
-            console.error("Failed to delete encounter", err);
+            logger.error("Failed to delete encounter", err);
             // Optionally set a temporary error state for deleting
         } finally {
             setDeletingId(null);

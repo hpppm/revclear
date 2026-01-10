@@ -1,14 +1,28 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
 
+interface PaginationOptions {
+    limit?: number;
+    offset?: number;
+}
+
 export class PatientService {
-    static async findAll(organizationId: string, clinicianId: string) {
-        const result = await query(
-            "SELECT * FROM patients WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC",
+    static async findAll(organizationId: string, clinicianId: string, options?: PaginationOptions) {
+        const limit = options?.limit ?? 50;
+        const offset = options?.offset ?? 0;
+        
+        const countResult = await query(
+            "SELECT COUNT(*) as total FROM patients WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))",
             [organizationId, clinicianId]
         );
+        const total = parseInt(countResult.rows[0].total);
+        
+        const result = await query(
+            "SELECT * FROM patients WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC LIMIT $3 OFFSET $4",
+            [organizationId, clinicianId, limit, offset]
+        );
         const enriched = await Promise.all(result.rows.map(this.enrichPatientWithSubscriber));
-        return enriched;
+        return { data: enriched, total };
     }
 
     static async findById(id: string, organizationId: string, clinicianId: string) {
