@@ -32,12 +32,10 @@ const poolConfig: PoolConfig = {
 // Force SSL (Heroku-style)
 poolConfig.ssl = { rejectUnauthorized: false };
 
-console.log("DB Config:", {
-  host: poolConfig.host,
-  user: poolConfig.user,
-  database: poolConfig.database,
-  ssl: poolConfig.ssl,
-});
+// SECURITY: Only log DB connection info in development (no credentials)
+if (process.env.NODE_ENV === "development") {
+  console.log("DB Config: connected to", poolConfig.database);
+}
 
 const pool = new Pool(poolConfig);
 
