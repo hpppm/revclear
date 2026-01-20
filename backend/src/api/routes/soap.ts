@@ -76,7 +76,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
       transcript: "", // Empty string forces mock usage
     });
 
-    console.log(`[POST /api/encounters/:id/soap/mock] SOAP Result:`, JSON.stringify(soapResult, null, 2));
+    // SECURITY: Do not log SOAP results - they contain PHI (clinical diagnoses, treatment plans)
 
     const saved = await createAiResult({
       encounter_id: encounterId,
@@ -178,7 +178,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
       transcript: transcriptText,
     });
 
-    console.log(`[POST /api/encounters/:id/soap] SOAP Result:`, JSON.stringify(soapResult, null, 2));
+    // SECURITY: Do not log SOAP results - they contain PHI (clinical diagnoses, treatment plans)
 
     const saved = await createAiResult({
       encounter_id: encounterId,

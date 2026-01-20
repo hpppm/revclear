@@ -5,6 +5,7 @@ import statusRoutes from "./dev/status";
 import genkitRoutes from "./dev/genkit";
 import dbRoutes from "./dev/db";
 import { authMiddleware } from "../../middleware/auth";
+import { getAuthenticatedUser } from "../../utils/auth";
 
 // Imports needed for the new /config route
 import { userPoolId, clientId } from "../../config/awsCognito";
@@ -35,9 +36,16 @@ function buildDashboardConfig() {
 
 // --- Route Registration ---
 
-// New /config route (protected)
-router.get("/config", authMiddleware, (_req, res) => {
+// SECURITY: /config route restricted to admin users only (exposes AWS infrastructure details)
+router.get("/config", authMiddleware, async (req, res) => {
   try {
+    const user = await getAuthenticatedUser(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        error: "Admin access required for dev config",
+      });
+    }
     res.json({ success: true, config: buildDashboardConfig() });
   } catch (error: any) {
     // Don't leak error details
