@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { query } from "../../../config/db";
 import { authMiddleware } from "../../../middleware/auth";
+import { getAuthenticatedUser } from "../../../utils/auth";
 
 type PatientInsertPayload = {
   full_name: string;
@@ -20,6 +21,19 @@ const router = Router();
 // Protect all dev DB routes
 router.use(authMiddleware);
 
+// SECURITY: Admin-only middleware for dev patient CRUD routes
+// These routes bypass organization_id scoping - restrict to admins only
+const adminOnly = async (req: Request, res: Response, next: NextFunction) => {
+  const user = await getAuthenticatedUser(req);
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access required for dev database operations",
+    });
+  }
+  next();
+};
+
 router.get("/health", async (_req, res) => {
   try {
     const result = await query<{ ok: number }>("SELECT 1 as ok");
@@ -37,8 +51,8 @@ router.get("/health", async (_req, res) => {
   }
 });
 
-// Create patient
-router.post("/patients", async (req, res) => {
+// Create patient (admin only - bypasses organization scoping)
+router.post("/patients", adminOnly, async (req, res) => {
   const payload = req.body as PatientInsertPayload;
   if (!payload?.full_name) {
     return res.status(400).json({ success: false, message: "full_name is required" });
@@ -71,8 +85,8 @@ router.post("/patients", async (req, res) => {
   }
 });
 
-// Read patients (single by id or list)
-router.get("/patients", async (req, res) => {
+// Read patients (single by id or list) - admin only
+router.get("/patients", adminOnly, async (req, res) => {
   const patientId = (req.query.patientId as string) || null;
   const limit = req.query.limit ? Number(req.query.limit) : 5;
 
@@ -111,8 +125,8 @@ router.get("/patients", async (req, res) => {
   }
 });
 
-// Update patient
-router.put("/patients/:id", async (req, res) => {
+// Update patient (admin only - bypasses organization scoping)
+router.put("/patients/:id", adminOnly, async (req, res) => {
   const patientId = req.params.id;
   const payload = req.body as PatientUpdatePayload;
 
@@ -161,8 +175,8 @@ router.put("/patients/:id", async (req, res) => {
   }
 });
 
-// Delete patient
-router.delete("/patients/:id", async (req, res) => {
+// Delete patient (admin only - bypasses organization scoping)
+router.delete("/patients/:id", adminOnly, async (req, res) => {
   const patientId = req.params.id;
 
   try {
