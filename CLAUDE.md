@@ -267,3 +267,65 @@ All routes in `backend/src/api/routes/`:
 - `organizations.ts` - Multi-tenant management
 - `me.ts` - Current user profile
 - `health.ts` - Health checks
+
+
+## Global Claude Rules (revclear)
+
+Always apply the following rules unless explicitly overridden:
+
+| Rule | Purpose |
+|------|---------|
+| @.claude/rules/coding-style.md | Immutability, file organization, error handling |
+| @.claude/rules/security.md | Security checks, secret management, response protocol |
+| @.claude/rules/git-workflow.md | Commit format, PR workflow, feature implementation |
+| @.claude/rules/testing.md | 80% coverage requirement, TDD workflow |
+| @.claude/rules/agents.md | Agent orchestration and parallel execution |
+| @.claude/rules/hooks.md | Pre/Post tool hooks and auto-accept permissions |
+| @.claude/rules/patterns.md | API response format, custom hooks, repository pattern |
+| @.claude/rules/performance.md | Model selection, context management, ultrathink |
+
+---
+
+## Available Agents
+
+| Agent | Purpose | When to Use |
+|-------|---------|-------------|
+| @.claude/agents/planner.md | Implementation planning | Complex features, refactoring |
+| @.claude/agents/architect.md | System design & scalability | Architectural decisions |
+| @.claude/agents/tdd-guide.md | Test-driven development | New features, bug fixes (80%+ coverage) |
+| @.claude/agents/code-reviewer.md | Code quality review | After writing code |
+| @.claude/agents/security-reviewer.md | Security vulnerability detection | Before commits, auth/API changes |
+| @.claude/agents/build-error-resolver.md | Fix build/TypeScript errors | When build fails |
+| @.claude/agents/e2e-runner.md | Playwright E2E testing | Critical user flows |
+| @.claude/agents/refactor-cleaner.md | Dead code cleanup | Code maintenance, unused exports |
+| @.claude/agents/doc-updater.md | Documentation & codemaps | Updating docs/CODEMAPS |
+
+---
+
+## Available Skills
+
+| Skill | Purpose |
+|-------|---------|
+| @.claude/skills/backend-patterns.md | Backend architecture patterns (API, repository, caching) |
+| @.claude/skills/frontend-patterns.md | React/Next.js patterns (hooks, state, performance) |
+| @.claude/skills/tdd-workflow/SKILL.md | TDD Red-Green-Refactor workflow |
+| @.claude/skills/security-review/SKILL.md | Security vulnerability checklist |
+| @.claude/skills/coding-standards.md | Code quality standards |
+| @.claude/skills/clickhouse-io.md | ClickHouse database patterns |
+
+---
+
+## Available Commands (Slash Commands)
+
+| Command | Purpose |
+|---------|---------|
+| /plan | Create implementation plan, wait for user confirm |
+| /tdd | Enforce test-driven development workflow |
+| /code-review | Run code review on recent changes |
+| /build-fix | Fix build and TypeScript errors |
+| /e2e | Generate and run E2E tests with Playwright |
+| /refactor-clean | Find and remove dead code |
+| /test-coverage | Check and improve test coverage |
+| /update-docs | Update documentation |
+| /update-codemaps | Regenerate codemaps from code
+
