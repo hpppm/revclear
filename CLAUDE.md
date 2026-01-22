@@ -174,16 +174,39 @@ Test email domains must end with `@localhost.dev` (override via `TEST_EMAIL_DOMA
 - **Never log**: Patient names, SSN, transcripts, SOAP notes, medical codes
 - **Always use**: Parameterized SQL statements (no string interpolation)
 - **Encryption**: AES-256-GCM for sensitive columns (see `backend/docs/DATA_SECURITY.md`)
+- **Encryption must fail loudly**: PHI encryption/decryption throws errors if key is missing (never returns plaintext)
+- **Mask PII in logs**: Email addresses must be masked (e.g., `us***@example.com`)
 
 ### API Security
 - Auth failures: 401 (missing/invalid token), 403 (wrong organization)
 - No stack traces or internal details in API responses
 - All endpoints rate-limited appropriately
+- AI endpoints (SOAP/codes) have stricter rate limits (10/min)
+- CORS configured with explicit origin whitelist (set `ALLOWED_ORIGINS` env var)
+- Security headers: `Cache-Control: no-store` on all API responses
+
+### Dev Routes Security
+- All dev routes (`/api/dev/*`) require **admin role** in addition to authentication
+- Dev routes are only available in development environment
+- S3 and Cognito dev routes log unauthorized access attempts
+
+### Input Validation
+- All user inputs validated with Zod schemas
+- File uploads limited: 50MB max, audio/* MIME types only
+- SQL field names whitelisted to prevent injection via dynamic queries
 
 ### Compliance References
-- HIPAA Security Rule
+- HIPAA Security Rule (45 CFR Part 160, 162, 164)
 - NIST Cybersecurity Framework (CSF)
 - OWASP API Security Top 10
+
+### Security Review Process
+Before committing code that touches auth, PHI, or user input:
+1. Run the security-reviewer agent: `@.claude/agents/security-reviewer.md`
+2. Check for hardcoded secrets with `grep -r "api[_-]?key\|password\|secret" --include="*.ts"`
+3. Verify all inputs are validated with Zod
+4. Ensure no PHI is logged
+5. Run `npm audit` to check dependencies
 
 ---
 
