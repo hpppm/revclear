@@ -1,27 +1,64 @@
-# Environment variables and secrets
+# Environment variables and secrets - ALL VARIANTS
 .env
+.env.*
+*.env
 .env.local
 .env.*.local
-*.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+testing-dashboard/.env
+testing-dashboard/.env.*
 
-# AWS credentials
+# AWS credentials and config
 .aws/
 aws-credentials.json
 *credentials*.json
+*-credentials.json
+credentials.csv
+accessKeys.csv
 
-# Firebase service account keys
+# Firebase/GCP service account keys
 *firebase*.json
 *serviceAccount*.json
+*service-account*.json
+*gcp-key*.json
 
-# Database credentials
+# Database credentials and dumps
 database.config.js
 db-credentials.json
+*.sql.backup
+*.dump
+*.sql.gz
 
-# API keys and tokens
+# API keys, tokens, and secrets
 *api-key*
 *api_key*
+*apikey*
 *secret*
+*-secret*
 *token*
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+id_rsa
+id_rsa.pub
+*.ppk
+
+# PHI and sensitive data
+*phi*
+*patient*
+*medical-records*
+encryption-key*
+master-key*
 
 # Node modules
 node_modules/
@@ -83,6 +120,7 @@ TODO-personal.md
 *.tfstate.*
 *.tfvars
 *.tfvars.json
+!terraform.tfvars.example
 .terraform.lock.hcl
 crash.log
 crash.*.log
@@ -100,19 +138,19 @@ terraform.rc
 # Lambda deployment packages
 backend/lambdas/*.zip
 *.zip
-
-# AWS audit reports
-*_audit_*.txt
-revclear_audit_*.txt
-
-# Environment files - ALL variants should be ignored
-.env.production
-.env.production.local
-
-# Lambda builds
 lambda_whisper/
 whisper_layer/
+
+# AWS audit reports and configs
+*_audit_*.txt
+revclear_audit_*.txt
 trust.json
 
-AGENTS.md
+# Private documentation (keep these out of repo)
 GEMINI.md
+*-private.md
+
+# Docker secrets
+docker-compose.override.yml
+.docker/
+*docker-compose.prod.yml
