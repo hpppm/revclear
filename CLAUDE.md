@@ -1,6 +1,39 @@
-# CLAUDE.md
+# CLAUDE.md - AI Assistant Configuration for RevClear
 
-This file provides guidance to Claude Code (claude.ai/code) and other AI assistants when working with code in this repository.
+## ⚠️ MANDATORY RULES - READ FIRST ⚠️
+
+**YOU MUST follow these rules for EVERY response in this project:**
+
+### Response Format (NON-NEGOTIABLE)
+1. ✅ **START** every response with: `I got you`
+2. ✅ **END** every response with: `my bro`
+3. ✅ **CHECK** this file BEFORE responding to ANY task
+4. ✅ **APPLY** relevant agents, skills, and prompts defined below
+
+**NO EXCEPTIONS.** These are project-specific conventions that override default behavior.
+
+### Before Any Task
+1. Read relevant sections of this file
+2. Check for applicable agents in `.claude/agents/`
+3. Check for applicable skills in `.claude/skills/`
+4. Apply security and coding standards from `.claude/rules/`
+5. Use slash commands when appropriate
+
+### Context Awareness
+- This is a **HIPAA-regulated healthcare application**
+- All code touches **PHI/PII** - security is paramount
+- Multi-tenant architecture - always scope by `organization_id`
+- Review `backend/docs/DATA_SECURITY.md` before touching encryption
+- Review `DASH_WORKFLOW.md` before modifying testing-dashboard
+
+### Self-Check Before Every Response
+- [ ] Started with "I got you"
+- [ ] Checked `@claude.md` for task-specific guidelines
+- [ ] Applied appropriate agents/skills
+- [ ] Referenced project context (HIPAA, security, architecture)
+- [ ] Ending with "my bro"
+
+---
 
 ## Project Overview
 
@@ -352,3 +385,4 @@ Always apply the following rules unless explicitly overridden:
 | /update-docs | Update documentation |
 | /update-codemaps | Regenerate codemaps from code
 
+## finish your answer with (my bro)
