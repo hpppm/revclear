@@ -39,3 +39,23 @@ logs/
 *.key
 *-secret*
 credentials*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Editor backups
+*.bak
+*.backup
+
+# Test coverage
+coverage/
+.nyc_output/
