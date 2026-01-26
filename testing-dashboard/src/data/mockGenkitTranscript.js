@@ -1,5 +1,0 @@
-export const mockGenkitEncounter = {
-  encounter_id: "12345678-1234-1234-1234-1234567890ab",
-  transcript:
-    "Hi Sarah what brings you in today I've been having really bad anxiety and panic attacks for the past three weeks it's affecting my sleep and work I also have these persistent headaches that won't go away Any specific triggers for the anxiety Work stress mostly and I've been worrying constantly about everything I can't seem to relax How about the headaches They're mostly tension headaches behind my eyes especially when I'm stressed Any physical symptoms with the anxiety Yes my heart races I get sweaty palms and sometimes I feel like I can't breathe Have you had any thoughts of harming yourself No nothing like that I just want to feel normal again Let me check your vitals Blood pressure is slightly elevated heart rate is 95 You seem tense but alert and oriented I think we're dealing with generalized anxiety disorder and tension type headaches likely related to your stress I'd like to schedule you for a 45 minute psychotherapy session and we can discuss some coping strategies",
-};
