@@ -150,6 +150,7 @@ trust.json
 # Private documentation (keep these out of repo)
 GEMINI.md
 *-private.md
+.claude
 
 # Docker secrets
 docker-compose.override.yml
