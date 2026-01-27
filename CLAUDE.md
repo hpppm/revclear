@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-say hey boos when I call you
+say hey lalo when I call you
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
