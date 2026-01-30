@@ -15,7 +15,7 @@ if (phiEncryptionKey && phiEncryptionKey !== 'your-256-bit-hex-key' && /^[0-9a-f
 export function encryptPHI(data: string): string {
   if (!key) {
     console.error('PHI_ENCRYPTION_KEY is not configured. Cannot encrypt PHI.');
-    return data; // Return original data or throw error
+    throw new Error('PHI encryption is required but not configured. Refusing to store unencrypted data.');
   }
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
@@ -28,7 +28,7 @@ export function encryptPHI(data: string): string {
 export function decryptPHI(payload: string): string {
   if (!key) {
     console.error('PHI_ENCRYPTION_KEY is not configured. Cannot decrypt PHI.');
-    return payload; // Return original payload or throw error
+    throw new Error('PHI decryption key not configured. Cannot access encrypted data.');
   }
   try {
     const [ivStr, tagStr, encrypted] = payload.split(":");
@@ -41,6 +41,6 @@ export function decryptPHI(payload: string): string {
     const message =
       error instanceof Error ? error.message : "Unknown PHI decrypt error";
     console.error("Failed to decrypt PHI:", message);
-    return payload; // Return original payload or throw error
+    throw new Error('PHI decryption failed. Data may be corrupted or key mismatch.');
   }
 }

@@ -1,331 +1,161 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) and other AI assistants when working with code in this repository.
+say hey lalo when I call you
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-**RevClear** is an AI-assisted medical claims and speech transcription platform for healthcare billing workflows. It handles PHI/PII and must comply with HIPAA, NIST CSF, and OWASP API security requirements.
-
-### Key Capabilities
-- Audio transcription (Whisper) → SOAP note generation (Gemini AI)
-- Medical code matching (ICD-10/CPT) from clinical documentation
-- Claims management with payer validation
-- Multi-tenant organization support with RBAC
-
----
-
-## Project Structure
-
-```
-revclear/
-├── backend/                    # Express + TypeScript API (port 3005)
-│   ├── src/                   # Main application source
-│   │   ├── api/routes/        # REST endpoints
-│   │   ├── services/          # Business logic layer
-│   │   ├── middleware/        # Auth, audit, security
-│   │   ├── config/            # AWS clients, DB config
-│   │   └── utils/             # Helpers & utilities
-│   ├── genkit/                # AI flows (Gemini)
-│   │   └── flows/             # speechToSoap, soapToCodes
-│   ├── docs/                  # Backend documentation
-│   │   ├── db/                # SQL migrations & schema
-│   │   └── DATA_SECURITY.md   # PHI encryption specs
-│   └── tests/                 # Jest test suites
-│
-├── frontend/                   # Next.js App Router (port 3000)
-│   ├── app/                   # Pages & components
-│   │   ├── (pages)/           # Route groups
-│   │   ├── components/        # Reusable UI
-│   │   ├── dashboard/         # Main app dashboard
-│   │   └── context/           # React contexts
-│   └── documentation/         # Frontend API docs
-│
-├── testing-dashboard/          # Reference implementation for AWS helpers
-│   └── DASH_WORKFLOW.md       # ⚠️ READ FIRST - do-not-modify rules
-│
-├── terraform/                  # AWS Infrastructure as Code
-├── Demo/                       # Interactive workflow demo (static HTML)
-│
-├── docs/                       # Project documentation hub
-│   ├── workflow/              # Development process docs
-│   └── architecture/          # System design docs
-│
-├── .github/
-│   ├── agents/                # AI agent skills & prompts
-│   │   ├── prompts/           # Reusable prompt templates
-│   │   └── skills/            # Copilot agent skills
-│   ├── codeql/                # Security scanning queries
-│   └── workflows/             # GitHub Actions
-│
-└── [Root Files]
-    ├── CLAUDE.md              # This file - AI guidance
-    ├── README.md              # Project overview
-    ├── CONTRIBUTING.md        # Contribution guidelines
-    ├── CHANGELOG.md           # Version history
-    ├── docker-compose.yml     # Full stack containers
-    └── LICENSE                # MIT License
-```
-
----
-
-## Development Commands
-
-### Backend (Express + TypeScript, port 3005)
-```bash
-cd backend
-npm install
-npm run dev                 # Development server with hot reload
-npm run build               # Compile TypeScript
-npm test                    # Run Jest tests
-npm run depcheck            # Check for unused dependencies
-```
-
-### Frontend (Next.js, port 3000)
-```bash
-cd frontend
-npm install
-npm run dev
-npm run build
-npm run lint
-```
-
-### Testing Dashboard (Next.js, port 3000)
-```bash
-cd testing-dashboard
-npm install
-npm run dev
-```
-
-### Docker (Full Stack)
-```bash
-docker-compose up           # Backend on 4000, Genkit on 4001, Frontend on 3000
-```
-
-### Genkit AI Flows
-```bash
-cd backend
-npm run build:genkit        # Compile Genkit flows
-# Genkit dev UI launches automatically with docker-compose
-```
-
----
+RevClear is an AI-assisted medical claims and speech transcription platform for healthcare billing workflows. It processes clinical encounter audio, generates SOAP notes via AI, and produces medical billing codes (ICD-10/CPT).
 
 ## Architecture
 
-### Multi-Tenant Healthcare Platform
-- **Authentication**: AWS Cognito with JWT verification via `authMiddleware`
-- **Multi-tenancy**: All PHI queries scoped by `organization_id`. Users belong to exactly one organization.
-- **Database**: PostgreSQL (RDS) with schema migrations in `backend/docs/db/`
-
-### Backend Structure (`backend/src/`)
-- `server.ts` - Express app with middleware ordering (CORS → security → rate limiting → routes → error handler)
-- `api/routes/` - REST endpoints: auth, patients, encounters, claims, transcribe, soap, organizations, me, health
-- `services/` - Business logic layer: authService, patientService, encounterService, claimService
-- `middleware/` - auth.ts (JWT verification), audit.ts, securityMonitor.ts, error.ts
-- `config/` - appConfig (Zod-validated env), AWS clients (Cognito, S3, RDS)
-
-### AI Processing (`backend/genkit/`)
-- `flows/speechToSoap.ts` - Converts Whisper transcripts to SOAP notes via Gemini
-- `flows/soapToCodes.ts` - Matches SOAP notes to ICD-10/CPT codes
-- Uses Google Genkit with `gemini-2.5-flash` model
-- Results stored in `ai_results` table with `flow_name` identifier
-
-### Frontend Structure (`frontend/app/`)
-- Next.js App Router with `(pages)/` route groups (landing, login, signup)
-- `components/` - AudioRecorder, AudioUploader, SoapNoteViewer, MedicalCodesViewer
-- `dashboard/` - Main application dashboard
-
-### Testing Dashboard (`testing-dashboard/`)
-- Reference implementation for `/api/dashboard/*` helpers
-- **Read this first**: `DASH_WORKFLOW.md` - Documents do-not-modify expectations
-- Proxies API calls to backend via Next.js rewrites
-
----
-
-## Critical Patterns
-
-### Route Ordering
-`/api/transcribe` must be registered BEFORE `express.json()` middleware to allow multipart/form-data parsing.
-
-### Rate Limiting
-Different limits per endpoint: auth (10/min), transcribe (5/min), patients/encounters/claims (60/min), organizations/me/users (30/min).
-
-### Data Flow
-1. Audio uploaded via `/api/transcribe` → S3 storage + `audio_records` table
-2. Whisper transcription → `ai_results` (flow_name='whisper_transcript')
-3. SOAP generation via Genkit → `ai_results` (flow_name='soap_gemini')
-4. Claims created from SOAP → `claims` table with status workflow
-
-### Environment Variables
-Required in `backend/.env`:
-- `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
-- `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_USER_POOL_ID`, `AWS_CLIENT_ID`
-- `GEMINI_API_KEY` or `GOOGLE_API_KEY` (for Genkit)
-
-Test email domains must end with `@localhost.dev` (override via `TEST_EMAIL_DOMAIN`).
-
----
-
-## Security Constraints
-
-⚠️ **This is a HIPAA-regulated healthcare application**
-
-### PHI/PII Handling
-- **Never log**: Patient names, SSN, transcripts, SOAP notes, medical codes
-- **Always use**: Parameterized SQL statements (no string interpolation)
-- **Encryption**: AES-256-GCM for sensitive columns (see `backend/docs/DATA_SECURITY.md`)
-
-### API Security
-- Auth failures: 401 (missing/invalid token), 403 (wrong organization)
-- No stack traces or internal details in API responses
-- All endpoints rate-limited appropriately
-
-### Compliance References
-- HIPAA Security Rule
-- NIST Cybersecurity Framework (CSF)
-- OWASP API Security Top 10
-
----
-
-## AI Agent Skills
-
-The project includes Copilot agent skills in `.github/agents/skills/`:
-
-| Skill | Purpose |
-|-------|---------|
-| `security-audit.md` | Scan for vulnerabilities before release |
-| `api-inventory.md` | Catalog all API endpoints with auth status |
-| `dead-code-finder.md` | Find orphaned files and unused exports |
-| `dependency-analyzer.md` | Check for unused/misplaced npm packages |
-| `tech-stack-scanner.md` | Generate technology overview |
-| `public-release-checklist.md` | Pre-release verification checklist |
-
-Use these skills when:
-- Preparing for a release
-- Auditing security posture
-- Cleaning up technical debt
-- Onboarding new team members
-
----
-
-## Branch & Commit Conventions
-
-### Branch Naming
-Format: `[type]/description`
-- `feature/` - New features
-- `bug/` - Bug fixes
-- `ui/` - UI/UX changes
-- `chore/` - Maintenance
-- `documentation/` - Docs updates
-- `devops/` - CI/CD, infrastructure
-
-### Commit Format
 ```
-[type]: short description
-
-feat:     New feature
-fix:      Bug fix
-docs:     Documentation
-refactor: Code refactoring
-chore:    Maintenance
-test:     Adding tests
-style:    Formatting only
+revclear/
+├── backend/           # Express + TypeScript API (port 3005)
+│   ├── src/           # Main application code
+│   │   ├── api/routes/  # REST API endpoints
+│   │   ├── config/      # AWS, database, app configuration
+│   │   ├── middleware/  # Auth, audit, security, error handling
+│   │   ├── services/    # Business logic (patient, encounter, claim)
+│   │   └── db/          # Database queries
+│   └── genkit/        # Genkit AI flows (Gemini integration)
+│       ├── flows/       # speechToSoap, soapToCodes
+│       └── tools/       # Mock transcript, medical code loaders
+├── frontend/          # Next.js 16 App Router (port 3000)
+│   └── app/
+│       ├── (pages)/     # Auth pages (login, signup, landing)
+│       ├── dashboard/   # Main app views
+│       ├── components/  # UI and wizard components
+│       ├── context/     # AuthContext for JWT management
+│       └── lib/api/     # API client modules matching backend routes
+└── docs/              # Operational runbook
 ```
 
----
+### Key Data Flow
 
-## Testing Dashboard Rules
+1. **Audio Upload** → S3 storage → Whisper transcription
+2. **Transcript** → `speechToSoap` Genkit flow → SOAP note
+3. **SOAP Note** → `soapToCodes` Genkit flow → ICD-10/CPT codes
+4. **Medical Codes** → Claim generation → EDI submission
 
-The `testing-dashboard/` app is the canonical reference for AWS helper flows. Per `DASH_WORKFLOW.md`:
+### Database (PostgreSQL via AWS RDS)
 
-- ⚠️ Treat as **read-only** except for explicitly requested features
-- Do not rename IDs, change DOM structure, or alter request semantics
-- Changes must be documented in DASH_WORKFLOW.md and coordinated with frontend team
+Core tables: `users`, `organizations`, `patients`, `encounters`, `claims`, `medical_codes`, `ai_results`, `audio_records`, `audit_log`
 
----
+- Users belong to one organization
+- Encounters link patients to clinicians with AI result references
+- Claims support CMS-1500 (professional) and UB-04 (institutional) formats
+- All PHI tables have audit triggers
 
-## Quick Reference
+Schema: `backend/docs/db/revclear_schema_current.sql`
 
-### Important Files to Read First
-1. `backend/docs/BACKEND_REVCLEAR_v1.1.0.md` - Full backend API documentation
-2. `backend/docs/DATA_SECURITY.md` - PHI encryption and security
-3. `testing-dashboard/DASH_WORKFLOW.md` - Dashboard modification rules
-4. `docs/workflow/TICKET_STRUCTURE.md` - How to create tickets
+### Authentication
 
-### Database
-- Schema: `backend/docs/db/revclear_schema_current.sql`
-- Migrations: `backend/docs/db/0*.sql` files
+- AWS Cognito for user identity (JWT access tokens)
+- Backend verifies tokens via `aws-jwt-verify`
+- Frontend stores token in localStorage, uses `AuthContext` for state
 
-### API Routes
-All routes in `backend/src/api/routes/`:
-- `auth.ts` - Login, signup, token refresh
-- `patients.ts` - Patient CRUD
-- `encounters.ts` - Encounter management
-- `claims.ts` - Claims lifecycle
-- `transcribe.ts` - Audio upload & processing
-- `soap.ts` - SOAP note generation
-- `organizations.ts` - Multi-tenant management
-- `me.ts` - Current user profile
-- `health.ts` - Health checks
+## Build and Development Commands
 
+### Backend
 
-## Global Claude Rules (revclear)
+```bash
+cd backend
+npm install
+npm run dev              # Start dev server (nodemon + ts-node)
+npm run build            # Compile TypeScript
+npm run build:genkit     # Compile Genkit flows
+npm test                 # Run Jest tests
+```
 
-Always apply the following rules unless explicitly overridden:
+Backend defaults to port 3005 (override with `PORT` env var).
 
-| Rule | Purpose |
-|------|---------|
-| @.claude/rules/coding-style.md | Immutability, file organization, error handling |
-| @.claude/rules/security.md | Security checks, secret management, response protocol |
-| @.claude/rules/git-workflow.md | Commit format, PR workflow, feature implementation |
-| @.claude/rules/testing.md | 80% coverage requirement, TDD workflow |
-| @.claude/rules/agents.md | Agent orchestration and parallel execution |
-| @.claude/rules/hooks.md | Pre/Post tool hooks and auto-accept permissions |
-| @.claude/rules/patterns.md | API response format, custom hooks, repository pattern |
-| @.claude/rules/performance.md | Model selection, context management, ultrathink |
+### Frontend
 
----
+```bash
+cd frontend
+npm install
+npm run dev              # Start Next.js dev server
+npm run build            # Production build
+npm run lint             # ESLint
+```
 
-## Available Agents
+### Docker (Full Stack)
 
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| @.claude/agents/planner.md | Implementation planning | Complex features, refactoring |
-| @.claude/agents/architect.md | System design & scalability | Architectural decisions |
-| @.claude/agents/tdd-guide.md | Test-driven development | New features, bug fixes (80%+ coverage) |
-| @.claude/agents/code-reviewer.md | Code quality review | After writing code |
-| @.claude/agents/security-reviewer.md | Security vulnerability detection | Before commits, auth/API changes |
-| @.claude/agents/build-error-resolver.md | Fix build/TypeScript errors | When build fails |
-| @.claude/agents/e2e-runner.md | Playwright E2E testing | Critical user flows |
-| @.claude/agents/refactor-cleaner.md | Dead code cleanup | Code maintenance, unused exports |
-| @.claude/agents/doc-updater.md | Documentation & codemaps | Updating docs/CODEMAPS |
+```bash
+docker-compose up        # Backend on 4000, Genkit UI on 4001, Frontend on 3000
+```
 
----
+## Environment Variables
 
-## Available Skills
+Copy `.env.example` to `.env` in the backend directory. Required:
 
-| Skill | Purpose |
-|-------|---------|
-| @.claude/skills/backend-patterns.md | Backend architecture patterns (API, repository, caching) |
-| @.claude/skills/frontend-patterns.md | React/Next.js patterns (hooks, state, performance) |
-| @.claude/skills/tdd-workflow/SKILL.md | TDD Red-Green-Refactor workflow |
-| @.claude/skills/security-review/SKILL.md | Security vulnerability checklist |
-| @.claude/skills/coding-standards.md | Code quality standards |
-| @.claude/skills/clickhouse-io.md | ClickHouse database patterns |
+- `AWS_REGION`, `AWS_ACCOUNT_ID`
+- `AWS_S3_BUCKET` - audio/transcript storage
+- `AWS_COGNITO_USER_POOL_ID`, `AWS_COGNITO_CLIENT_ID` - auth
+- `DATABASE_URL` or individual `DB_*` params - PostgreSQL
+- `GOOGLE_GENAI_API_KEY` or `GEMINI_API_KEY` - Genkit AI
+- `PHI_ENCRYPTION_KEY` - 32-byte hex for PHI encryption
 
----
+Frontend: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3005/api`)
 
-## Available Commands (Slash Commands)
+## API Routes
 
-| Command | Purpose |
-|---------|---------|
-| /plan | Create implementation plan, wait for user confirm |
-| /tdd | Enforce test-driven development workflow |
-| /code-review | Run code review on recent changes |
-| /build-fix | Fix build and TypeScript errors |
-| /e2e | Generate and run E2E tests with Playwright |
-| /refactor-clean | Find and remove dead code |
-| /test-coverage | Check and improve test coverage |
-| /update-docs | Update documentation |
-| /update-codemaps | Regenerate codemaps from code
+All backend routes under `/api`:
 
+- `/auth` - Cognito signup/login
+- `/me` - Current user profile
+- `/patients` - CRUD for patient records
+- `/encounters` - Encounter management
+- `/encounters/:id/soap` - SOAP note generation
+- `/encounters/:id/codes` - Medical code matching
+- `/claims` - Claim lifecycle
+- `/transcribe` - Audio upload (Multer, registered before body parsers)
+- `/health` - Health checks
+- `/organizations` - Organization management
+- `/users` - User management (admin)
+- `/security` - Security monitoring
+- `/dev/*` - Dev-only routes (development environment)
+
+Swagger docs available at `/docs` in development mode.
+
+## Genkit AI Flows
+
+Located in `backend/genkit/`:
+
+- `speechToSoap` - Converts transcript to SOAP note using Gemini
+- `soapToCodes` - Matches SOAP content to ICD-10/CPT codes from loaded code sets
+
+Default model: `gemini-2.5-flash`
+
+Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
+
+## Security Considerations
+
+- HIPAA compliance: PHI encrypted at rest (AES-256 via KMS)
+- Rate limiting on all API routes (see `server.ts`)
+- Security monitoring middleware tracks suspicious patterns
+- Audit logging via PostgreSQL triggers
+- CORS restricted to allowed origins
+- Helmet for security headers
+
+## Testing
+
+Backend tests use Jest with ts-jest:
+
+```bash
+cd backend
+npm test                           # All tests
+npx jest tests/specific.test.ts   # Single test file
+```
+
+Test setup in `backend/tests/setupEnv.ts`.
+
+## Code Patterns
+
+- **API routes**: Express routers with Zod validation schemas
+- **Database**: Raw SQL via `pg` with parameterized queries
+- **Frontend API**: Axios client modules in `frontend/app/lib/api/`
+- **State**: React Context for auth, component-local state elsewhere
+- **Styling**: Tailwind CSS 4
+  say thank you when at the end of your response 
