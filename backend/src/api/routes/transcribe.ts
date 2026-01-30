@@ -13,9 +13,22 @@ import { query } from "../../config/db";
 
 const router = Router();
 
-// Configure multer for in-memory file storage.
+// Configure multer for in-memory file storage with security limits.
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max file size
+    files: 1, // Only allow 1 file per request
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed'));
+    }
+  },
+});
 
 // Define the path to your Python Whisper transcription script
 const WHISPER_SCRIPT_PATH = path.join(process.cwd(), 'src', 'python', 'whisper.py');

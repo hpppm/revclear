@@ -6,6 +6,22 @@ interface PaginationOptions {
     offset?: number;
 }
 
+// Whitelist of allowed fields for patient updates - security measure against SQL injection
+const ALLOWED_PATIENT_FIELDS = [
+    'full_name', 'dob', 'gender', 'phone', 'email',
+    'address_street', 'address_city', 'address_state', 'address_zip',
+    'insurance_provider', 'insurance_policy_number', 'insurance_member_id',
+    'insurance_group_number', 'insurance_payer_id', 'insurance_payer_name',
+    'insurance_relationship', 'subscriber_id', 'plan_name'
+];
+
+// Whitelist of allowed fields for subscriber updates
+const ALLOWED_SUBSCRIBER_FIELDS = [
+    'first_name', 'last_name', 'dob', 'gender', 'phone', 'email',
+    'address_street', 'address_city', 'address_state', 'address_zip',
+    'relationship', 'policy_number', 'group_number', 'member_id'
+];
+
 export class PatientService {
     static async findAll(organizationId: string, clinicianId: string, options?: PaginationOptions) {
         const limit = options?.limit ?? 50;
@@ -86,14 +102,19 @@ export class PatientService {
             throw new AppError("Patient not found", 404);
         }
 
-        const fields = Object.entries(data).map(
+        // Filter to only allowed fields to prevent SQL injection via field names
+        const safeEntries = Object.entries(data).filter(([key]) =>
+            ALLOWED_PATIENT_FIELDS.includes(key)
+        );
+
+        if (safeEntries.length === 0) {
+            throw new AppError("No valid fields to update", 400);
+        }
+
+        const fields = safeEntries.map(
             ([key], index) => `${key} = $${index + 1}`
         );
-        const values = Object.values(data);
-
-        if (fields.length === 0) {
-            throw new AppError("No fields to update", 400);
-        }
+        const values = safeEntries.map(([, value]) => value);
 
         const queryText = `UPDATE patients SET ${fields.join(", ")} WHERE id = $${fields.length + 1} RETURNING *`;
         const result = await query(queryText, [...values, id]);
@@ -129,11 +150,14 @@ export class PatientService {
         let subscriber;
         const relationship = data.relationship || "other";
         if (currentSubscriberId) {
-            // Update existing
-            const fields = Object.entries(data).map(
+            // Update existing - filter to allowed fields only
+            const safeEntries = Object.entries(data).filter(([key]) =>
+                ALLOWED_SUBSCRIBER_FIELDS.includes(key)
+            );
+            const fields = safeEntries.map(
                 ([key], index) => `${key} = $${index + 1}`
             );
-            const values = Object.values(data);
+            const values = safeEntries.map(([, value]) => value);
             const updated = await query(
                 `UPDATE insurance_subscribers SET ${fields.join(", ")} WHERE id = $${fields.length + 1} RETURNING *`,
                 [...values, currentSubscriberId]
@@ -144,17 +168,19 @@ export class PatientService {
                 [relationship, patientId]
             );
         } else {
-            // Create new
+            // Create new - filter to allowed fields only
             const columns = ["patient_id"];
             const values: any[] = [patientId];
             const placeholders = ["$1"];
             let idx = 2;
-            Object.entries(data).forEach(([key, value]) => {
-                columns.push(key);
-                placeholders.push(`$${idx}`);
-                values.push(value);
-                idx += 1;
-            });
+            Object.entries(data)
+                .filter(([key]) => ALLOWED_SUBSCRIBER_FIELDS.includes(key))
+                .forEach(([key, value]) => {
+                    columns.push(key);
+                    placeholders.push(`$${idx}`);
+                    values.push(value);
+                    idx += 1;
+                });
             const inserted = await query(
                 `INSERT INTO insurance_subscribers (${columns.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`,
                 values

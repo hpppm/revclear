@@ -1,10 +1,62 @@
+# Environment variables - ALL VARIANTS
+.env
+.env.*
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production
+.env.production.local
+
 
 # Python virtual environment
 venv/
+env/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 
-# Python virtual environment
-venv/
-__pycache__/
-*.pyc
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+.genkit/
+
+# Logs
+*.log
+logs/
+
+# Database dumps
+*.sql.backup
+*.dump
+
+# Secrets and keys
+*.pem
+*.key
+*-secret*
+credentials*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Editor backups
+*.bak
+*.backup
+
+# Test coverage
+coverage/
+.nyc_output/

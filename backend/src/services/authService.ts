@@ -45,13 +45,15 @@ export class AuthService {
                     practitionerType,
                     licenseId
                 );
-                console.log(`User ${email} stored in DB with Cognito ID ${response.UserSub}`);
+                const maskedEmail = email.replace(/(?<=.{2}).(?=.*@)/g, '*');
+                console.log(`User ${maskedEmail} stored in DB with Cognito ID ${response.UserSub}`);
             } catch (dbError: any) {
                 console.error("Failed to store user in DB:", dbError);
                 if (dbError.code === '23505') { // Duplicate key
                     try {
                         await updateUserPractitionerInfo(email, practitionerType, licenseId);
-                        console.log(`Updated practitioner info for existing user ${email}`);
+                        const maskedEmailUpdate = email.replace(/(?<=.{2}).(?=.*@)/g, '*');
+                        console.log(`Updated practitioner info for existing user ${maskedEmailUpdate}`);
                     } catch (updateError) {
                         console.error("Failed to update practitioner info:", updateError);
                     }

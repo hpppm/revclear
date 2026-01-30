@@ -5,6 +5,7 @@
     "outDir": "../dist/genkit",
     "module": "commonjs",
     "target": "ES2020",
+    "ignoreDeprecations": "6.0",
     "noEmitOnError": true
   },
   "include": ["./**/*.ts"]
