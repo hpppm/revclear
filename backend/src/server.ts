@@ -24,9 +24,29 @@ if (appConfig.genkitEnv === "dev") {
 }
 
 // --------------------------------------------------
-// CORS
+// CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'http://localhost:3005',
+  'https://revclear.tech',
+  'https://www.revclear.tech',
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
 
 // --------------------------------------------------
 // Security Monitoring (Custom Built)
@@ -129,6 +149,26 @@ app.use(
   })
 );
 
+// Rate limiting for AI endpoints (SOAP generation and code matching)
+// These are expensive operations that call external AI APIs
+app.use(
+  "/api/encounters/:id/soap",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: "Too many SOAP generation requests. Try again later.",
+  })
+);
+
+app.use(
+  "/api/encounters/:id/codes",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: "Too many code matching requests. Try again later.",
+  })
+);
+
 /**
  * 🚀 FIX #1:
  * Register /api/transcribe BEFORE express.json(), helmet, auditLogger, etc.
@@ -178,6 +218,15 @@ const helmetOptions: HelmetOptions = {
 app.use(helmet(helmetOptions));
 app.use(morgan("combined"));
 app.use(auditLogger);
+
+// Security headers for API responses - prevent caching of sensitive data
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+});
 
 /**
  * Register ALL OTHER routes AFTER middleware

@@ -1,38 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
-      "Bash(npm run dev)",
-      "Bash(npm run build)",
-      "Bash(npm run lint)",
-      "Bash(npm run lint:*)",
-      "Bash(npm test)",
-      "Bash(npm test:*)",
-      "Bash(npm run test)",
-      "Bash(npm run test:*)",
-      "Bash(npm install)",
-      "Bash(npm ci)",
-      "Bash(npm audit)",
-      "Bash(npm run depcheck)",
-      "Bash(npx tsc --noEmit)",
-      "Bash(npx tsc --noEmit *)",
-      "Bash(npx eslint *)",
-      "Bash(npx playwright test *)",
-      "Bash(npx knip)",
-      "Bash(npx depcheck)",
-      "Bash(npx ts-prune)",
-      "Bash(git status)",
-      "Bash(git status *)",
-      "Bash(git diff)",
-      "Bash(git diff *)",
-      "Bash(git log *)",
-      "Bash(git branch *)",
-      "Bash(git show *)",
-      "Bash(docker-compose *)",
-      "Bash(ls *)",
-      "Bash(pwd)",
-      "Bash(cd *)"
-    ],
-    "deny": []
+      "Bash(npm test)"
+    ]
   }
 }
