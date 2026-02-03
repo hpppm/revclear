@@ -43,14 +43,12 @@ export default function OrganizationProfilePage() {
         billing_postal_code: "",
         billing_phone: "",
         default_place_of_service: "",
-        // EDI/SFTP
+        // EDI/SFTP (credentials excluded for security)
         edi_sender_id: "",
         edi_receiver_id: "",
         edi_sftp_host: "",
         edi_sftp_username: "",
-        edi_sftp_password: "",
         edi_sftp_port: "",
-        edi_sftp_private_key: "",
     });
 
     useEffect(() => {
@@ -85,9 +83,8 @@ export default function OrganizationProfilePage() {
                 edi_receiver_id: organization.edi_receiver_id || "",
                 edi_sftp_host: organization.edi_sftp_host || "",
                 edi_sftp_username: organization.edi_sftp_username || "",
-                edi_sftp_password: organization.edi_sftp_password || "",
                 edi_sftp_port: organization.edi_sftp_port?.toString() || "",
-                edi_sftp_private_key: organization.edi_sftp_private_key || "",
+                // SECURITY: Credentials excluded - managed securely on server
             });
         }
     }, [organization]);
@@ -387,28 +384,20 @@ export default function OrganizationProfilePage() {
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_port: e.target.value })}
                                             />
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                        <div className="mt-4">
                                             <Input
                                                 label="SFTP Username"
                                                 value={formData.edi_sftp_username}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_username: e.target.value })}
                                             />
-                                            <Input
-                                                label="SFTP Password"
-                                                type="password"
-                                                value={formData.edi_sftp_password}
-                                                onChange={(e) => setFormData({ ...formData, edi_sftp_password: e.target.value })}
-                                            />
                                         </div>
-                                        <div className="mt-4">
-                                            <Input
-                                                label="SFTP Private Key"
-                                                value={formData.edi_sftp_private_key}
-                                                onChange={(e: any) => setFormData({ ...formData, edi_sftp_private_key: e.target.value })}
-                                                variant="textarea"
-                                                rows={4}
-                                                placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                                            />
+                                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p className="text-sm text-blue-900 font-medium">
+                                                🔒 SFTP Credentials
+                                            </p>
+                                            <p className="text-sm text-blue-700 mt-1">
+                                                SFTP passwords and private keys are managed securely on the server. Contact your administrator to update credentials.
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -508,6 +497,10 @@ export default function OrganizationProfilePage() {
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Username</label>
                                         <p className="text-slate-900 font-medium">{organization.edi_sftp_username || "—"}</p>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Credentials</label>
+                                        <p className="text-slate-700 text-sm">🔒 Credentials managed securely on server</p>
                                     </div>
                                 </div>
                             </div>
