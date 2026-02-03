@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
@@ -40,7 +41,7 @@ export default function ReviewClaimStep({
             updateValidation(preview);
             await hydrateWithDefaults(preview);
         } catch (err: any) {
-            console.error("Failed to build claim preview", err);
+            logger.error("Failed to build claim preview");
             setError("Failed to build claim preview. Please try again.");
         } finally {
             setLoading(false);
@@ -338,7 +339,7 @@ export default function ReviewClaimStep({
             onClaimChange?.(next);
             updateValidation(next);
         } catch (err) {
-            console.warn("Prefill failed", err);
+            logger.warn("Prefill failed");
         } finally {
             setPrefilling(false);
         }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
+import logger from "@/app/lib/logger";
 
 type FieldErrors = {
   email?: string;
@@ -50,7 +51,7 @@ export default function LoginPage() {
 
         login(token, user);
       } catch (error: any) {
-        console.error("Login failed:", error);
+        logger.error("Login failed");
         const errorMessage = error.response?.data?.error || error.response?.data?.details || "Invalid email or password";
         setErrors({
           form: errorMessage,

@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 
 type Step = "REQUEST" | "CONFIRM";
 
@@ -47,7 +48,7 @@ export default function ForgotPasswordPage() {
       setMessage("If an account exists, a reset code has been sent to your email.");
     } catch (error: any) {
       // Even if it fails, we often don't want to reveal it, but here we can show a generic error
-      console.error("Forgot password request failed:", error);
+      logger.error("Forgot password request failed");
       // For UX, we might still move to the next step or show a message
       // mimicking the backend behavior which returns 200 usually.
       setStep("CONFIRM");
@@ -84,7 +85,7 @@ export default function ForgotPasswordPage() {
         router.push("/login");
       }, 2000);
     } catch (error: any) {
-      console.error("Confirm forgot password failed:", error);
+      logger.error("Confirm forgot password failed");
       const errorMessage =
         error.response?.data?.error || "Invalid code or password requirements not met.";
       setErrors({ form: errorMessage });
