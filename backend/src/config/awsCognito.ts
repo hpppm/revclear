@@ -11,6 +11,7 @@ import {
   GlobalSignOutCommand,
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
+  AdminUpdateUserAttributesCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -194,6 +195,25 @@ export async function adminConfirmSignUp(email: string) {
   const command = new AdminConfirmSignUpCommand({
     UserPoolId: userPoolId,
     Username: email,
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
+ * Admin mark email as verified.
+ * Crucial for auto-confirmed users to be able to receive forgot-password emails.
+ */
+export async function adminMarkEmailVerified(email: string) {
+  const command = new AdminUpdateUserAttributesCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+    UserAttributes: [
+      {
+        Name: 'email_verified',
+        Value: 'true',
+      },
+    ],
   });
 
   return cognitoClient.send(command);
