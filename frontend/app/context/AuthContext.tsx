@@ -31,6 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const checkAuth = async () => {
+        // SECURITY RISK: localStorage is XSS-vulnerable. Any XSS exposes all tokens.
+        // TODO: Switch to httpOnly cookies (requires backend changes)
+        // Mitigation: Strict CSP (see next.config.ts)
         const storedToken = localStorage.getItem("token");
         if (storedToken) {
             setToken(storedToken);
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const login = (newToken: string, newUser: User | any) => {
+        // SECURITY RISK: localStorage is XSS-vulnerable. See checkAuth for details.
         localStorage.setItem("token", newToken);
         setToken(newToken);
         const payload: any = newUser || {};
@@ -97,4 +101,16 @@ export function useAuth() {
         throw new Error("useAuth must be used within an AuthProvider");
     }
     return context;
+}
+
+// UI-only authorization checks (backend enforces actual authorization)
+export function useAuthorization() {
+    const { user } = useAuth();
+    return {
+        isAdmin: user?.role === 'admin',
+        isClinician: user?.role === 'clinician',
+        isBillingStaff: user?.role === 'billing_staff',
+        canManageOrganization: user?.role === 'admin',
+        canManageUsers: user?.role === 'admin',
+    };
 }
