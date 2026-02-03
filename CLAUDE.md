@@ -132,12 +132,51 @@ Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
 
 ## Security Considerations
 
-- HIPAA compliance: PHI encrypted at rest (AES-256 via KMS)
-- Rate limiting on all API routes (see `server.ts`)
-- Security monitoring middleware tracks suspicious patterns
-- Audit logging via PostgreSQL triggers
-- CORS restricted to allowed origins
-- Helmet for security headers
+### HIPAA Compliance
+- PHI encrypted at rest (AES-256 via KMS)
+- HTTPS enforced in production (`server.ts` middleware)
+- SSL/TLS for database connections (strict verification in production)
+- No PHI in console logs (SOAP notes, patient data, diagnoses)
+- Audit logging via PostgreSQL triggers on all PHI tables
+
+### Authentication & Authorization
+- AWS Cognito for user identity (JWT access tokens, `tokenUse: "access"`)
+- Backend verifies tokens via `aws-jwt-verify` in `middleware/auth.ts`
+- Organization-scoped data access: all queries filter by `organization_id`
+- Admin checks via `is_org_admin` flag (users route, security route)
+- Frontend uses `useAuthorization()` hook for UI-only role checks (defense-in-depth)
+- **Known risk**: JWT stored in localStorage (XSS-vulnerable); mitigated by CSP headers
+- **TODO**: Migrate to httpOnly cookie authentication
+
+### API Security
+- Rate limiting on all API routes (see `server.ts`) - IP-based via `express-rate-limit`
+- Security monitoring middleware (`securityMonitor.ts`) detects SQL injection, XSS, brute force
+- CORS restricted to allowed origins; production requires `Origin` header
+- Helmet for security headers (CSP, X-Frame-Options, etc.)
+- No-cache headers on all `/api` responses
+- Dev routes disabled unless `NODE_ENV !== 'production'`
+
+### Data Minimization
+- **NEVER** use `RETURNING *` or `SELECT *` in queries that return data to clients
+- Organization responses strip `edi_sftp_password` and `edi_sftp_private_key` via `stripSensitiveOrgFields()`
+- User queries return explicit column lists (no password hashes, no internal IDs)
+- Encounters use server-side `patient_id` filtering (never client-side)
+
+### Security Patterns to Follow
+- All new routes MUST use `authMiddleware` + `requireOrganization`
+- All data queries MUST scope by `organization_id` AND `clinician_id`
+- Use `stripSensitiveOrgFields()` when returning organization data
+- Validate all inputs with Zod schemas
+- Use parameterized SQL queries (never string interpolation)
+- Error messages to clients must be generic (no stack traces, no internal details)
+- Frontend response validation via Zod schemas in `frontend/app/lib/validation/schemas.ts`
+
+### Frontend Security (CSP + Defense-in-Depth)
+- Content-Security-Policy headers configured in `frontend/next.config.ts`
+- X-Frame-Options: DENY, X-Content-Type-Options: nosniff
+- API error messages sanitized in `frontend/app/lib/api/axios.ts`
+- SFTP credentials never displayed in frontend (managed server-side only)
+- `useAuthorization()` hook in `AuthContext.tsx` for role-based UI visibility
 
 ## Testing
 

@@ -1,10 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { User } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
+
+// HIPAA §164.312(a)(2)(iii): Automatic logoff after 15 minutes of inactivity
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
 interface AuthContextType {
     user: User | null;
@@ -25,10 +28,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [requiresOrganization, setRequiresOrganization] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
+    const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         checkAuth();
     }, []);
+
+    // HIPAA: Automatic session timeout on inactivity
+    const resetIdleTimer = useCallback(() => {
+        if (idleTimerRef.current) {
+            clearTimeout(idleTimerRef.current);
+        }
+        // Only set timer if user is authenticated
+        if (token) {
+            idleTimerRef.current = setTimeout(() => {
+                logger.warn("Session timed out due to inactivity");
+                performLogout();
+                router.push("/login?reason=timeout");
+            }, IDLE_TIMEOUT_MS);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        if (!token) return;
+
+        const activityEvents = ["mousedown", "keydown", "scroll", "touchstart"];
+        activityEvents.forEach(event =>
+            window.addEventListener(event, resetIdleTimer, { passive: true })
+        );
+        resetIdleTimer();
+
+        return () => {
+            if (idleTimerRef.current) {
+                clearTimeout(idleTimerRef.current);
+            }
+            activityEvents.forEach(event =>
+                window.removeEventListener(event, resetIdleTimer)
+            );
+        };
+    }, [token, resetIdleTimer]);
 
     const checkAuth = async () => {
         // SECURITY RISK: localStorage is XSS-vulnerable. Any XSS exposes all tokens.
@@ -55,13 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Only log if it's not a 401 (unauthorized) error
                 // 401 is expected when token is invalid/expired
                 if (error?.response?.status !== 401) {
-                    logger.error("Auth check failed:", error);
+                    logger.error("Auth check failed");
                 }
                 // Clear invalid token
-                localStorage.removeItem("token");
-                setToken(null);
-                setUser(null);
-                setRequiresOrganization(false);
+                clearSensitiveData();
             }
         }
         setIsLoading(false);
@@ -80,11 +115,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push(needsOrg ? "/dashboard" : "/dashboard");
     };
 
-    const logout = () => {
+    // Clear all sensitive data from browser storage
+    const clearSensitiveData = () => {
         localStorage.removeItem("token");
+        localStorage.removeItem("practitionerType");
         setToken(null);
         setUser(null);
         setRequiresOrganization(false);
+        if (idleTimerRef.current) {
+            clearTimeout(idleTimerRef.current);
+            idleTimerRef.current = null;
+        }
+    };
+
+    const performLogout = () => {
+        clearSensitiveData();
+    };
+
+    const logout = () => {
+        performLogout();
         router.push("/login");
     };
 

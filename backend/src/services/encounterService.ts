@@ -4,6 +4,7 @@ import { AppError } from "../utils/AppError";
 interface PaginationOptions {
     limit?: number;
     offset?: number;
+    patientId?: string;
 }
 
 export class EncounterService {
@@ -17,16 +18,28 @@ export class EncounterService {
     static async findAll(organizationId: string, clinicianId: string, options?: PaginationOptions) {
         const limit = options?.limit ?? 50;
         const offset = options?.offset ?? 0;
-        
+        const patientId = options?.patientId;
+
+        // Build WHERE clause with optional patient_id filter
+        const baseWhere = "(organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))";
+        const params: any[] = [organizationId, clinicianId];
+
+        let whereClause = baseWhere;
+        if (patientId) {
+            params.push(patientId);
+            whereClause += ` AND patient_id = $${params.length}`;
+        }
+
         const countResult = await query(
-            "SELECT COUNT(*) as total FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))",
-            [organizationId, clinicianId]
+            `SELECT COUNT(*) as total FROM encounters WHERE ${whereClause}`,
+            params
         );
         const total = parseInt(countResult.rows[0].total);
-        
+
+        const queryParams = [...params, limit, offset];
         const result = await query(
-            "SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC LIMIT $3 OFFSET $4",
-            [organizationId, clinicianId, limit, offset]
+            `SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE ${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            queryParams
         );
         return { data: result.rows, total };
     }

@@ -29,8 +29,10 @@ const poolConfig: PoolConfig = {
   connectionTimeoutMillis: appConfig.db.connectionTimeoutMillis,
 };
 
-// Force SSL (Heroku-style)
-poolConfig.ssl = { rejectUnauthorized: false };
+// SSL configuration: strict verification in production, relaxed in development
+poolConfig.ssl = process.env.NODE_ENV === 'production'
+  ? { rejectUnauthorized: true, ...(process.env.DB_SSL_CA ? { ca: process.env.DB_SSL_CA } : {}) }
+  : { rejectUnauthorized: false };
 
 // SECURITY: Only log DB connection info in development (no credentials)
 if (process.env.NODE_ENV === "development") {

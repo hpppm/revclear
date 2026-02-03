@@ -35,6 +35,20 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // HIPAA: Prevent PHI from being cached and visible via browser back button after logout
+      {
+        source: '/dashboard/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, private',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+        ],
+      },
     ];
   },
 };

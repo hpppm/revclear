@@ -35,8 +35,13 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
+    // In production, require origin header to prevent CSRF
+    if (!origin) {
+      if (appConfig.env === 'production') {
+        return callback(new Error('Origin header required'), false);
+      }
+      return callback(null, true); // Allow in dev/test only
+    }
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -47,6 +52,16 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
+
+// --------------------------------------------------
+// HTTPS Enforcement (production only)
+// --------------------------------------------------
+app.use((req, res, next) => {
+  if (appConfig.env === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.status(403).json({ error: 'HTTPS required for all API requests' });
+  }
+  next();
+});
 
 // --------------------------------------------------
 // Security Monitoring (Custom Built)
@@ -260,7 +275,7 @@ import swaggerUi from "swagger-ui-express";
 import { generateOpenApiSpec } from "./config/swagger";
 
 // Dev routes and Swagger docs only available in development environment
-const isDevelopment = appConfig.env === "development";
+const isDevelopment = appConfig.env === "development" && process.env.NODE_ENV !== "production";
 
 if (isDevelopment && !isTestEnv) {
   // Lazily load dev routes only in development to avoid exposure in production

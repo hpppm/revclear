@@ -11,6 +11,14 @@ import { JoinOrganizationSchema, OrganizationSchema } from "../../types/zod";
 
 const router = Router();
 
+// SECURITY: Strip sensitive fields from organization responses to prevent credential exposure
+const SENSITIVE_ORG_FIELDS = ['edi_sftp_password', 'edi_sftp_private_key'] as const;
+function stripSensitiveOrgFields(org: any): any {
+  if (!org) return org;
+  const { edi_sftp_password, edi_sftp_private_key, ...safeOrg } = org;
+  return safeOrg;
+}
+
 const sendValidationError = (res: Response, error: z.ZodError) =>
   res.status(400).json({ success: false, errors: error.errors });
 
@@ -39,7 +47,7 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
-    res.json({ success: true, organization });
+    res.json({ success: true, organization: stripSensitiveOrgFields(organization) });
   } catch (error) {
     console.error("[GET /api/organizations/me] Error:", error);
     res.status(500).json({ success: false, message: "Failed to fetch organization" });
@@ -103,7 +111,7 @@ router.post("/", authMiddleware, async (req, res) => {
     // Assign user to organization as admin (enforces one org per user via users.organization_id)
     await assignUserToOrganization(user.id, organization.id, true);
 
-    res.status(201).json({ success: true, organization });
+    res.status(201).json({ success: true, organization: stripSensitiveOrgFields(organization) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
@@ -126,7 +134,8 @@ router.post("/join", authMiddleware, async (req, res) => {
     const { invitationCode } = parsed.data;
 
     // Using organization id as invitation code for now
-    const orgResult = await query("SELECT * FROM organizations WHERE id = $1", [
+    // SECURITY: Only select non-sensitive fields
+    const orgResult = await query("SELECT id, name, npi, city, state FROM organizations WHERE id = $1", [
       invitationCode,
     ]);
     const organization = orgResult.rows[0];
@@ -148,7 +157,7 @@ router.post("/join", authMiddleware, async (req, res) => {
 
     await assignUserToOrganization(user.id, organization.id, false);
 
-    res.json({ success: true, organization });
+    res.json({ success: true, organization: stripSensitiveOrgFields(organization) });
   } catch (error: any) {
     if (error?.code === "23505") {
       // Unique violation on membership
@@ -243,7 +252,7 @@ router.patch("/me", authMiddleware, async (req, res) => {
     );
     const updated = updateResult.rows[0];
 
-    res.json({ success: true, organization: updated });
+    res.json({ success: true, organization: stripSensitiveOrgFields(updated) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);

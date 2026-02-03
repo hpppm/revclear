@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
+import logger from "@/app/lib/logger";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -72,8 +73,6 @@ export default function SignupPage() {
       return;
     }
 
-    localStorage.setItem("practitionerType", form.practitioner);
-
     setIsLoading(true);
     try {
       const response = await apiClient.auth.signup({
@@ -100,7 +99,7 @@ export default function SignupPage() {
         setTimeout(() => router.push("/login"), 2000);
       }
     } catch (error: any) {
-      console.error("Signup failed:", error);
+      logger.error("Signup failed");
       const errorData = error.response?.data;
       let errorMessage = "Signup failed. Please try again.";
 
