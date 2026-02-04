@@ -13,7 +13,7 @@ import type { NextRequest } from "next/server";
  * - Adds it to CSP header
  * - Makes it available via x-nonce header for client-side access
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Generate a cryptographically secure nonce
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
