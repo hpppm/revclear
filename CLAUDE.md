@@ -133,6 +133,7 @@ Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
 ## Security Considerations
 
 ### HIPAA Compliance
+
 - PHI encrypted at rest (AES-256 via KMS)
 - HTTPS enforced in production (`server.ts` middleware)
 - SSL/TLS for database connections (strict verification in production)
@@ -140,15 +141,71 @@ Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
 - Audit logging via PostgreSQL triggers on all PHI tables
 
 ### Authentication & Authorization
+
 - AWS Cognito for user identity (JWT access tokens, `tokenUse: "access"`)
 - Backend verifies tokens via `aws-jwt-verify` in `middleware/auth.ts`
+- **Role-Based Access Control (RBAC)**: Roles derived from Cognito User Pool groups
 - Organization-scoped data access: all queries filter by `organization_id`
-- Admin checks via `is_org_admin` flag (users route, security route)
+- Admin checks via Cognito `Admin` group membership (not database flags)
 - Frontend uses `useAuthorization()` hook for UI-only role checks (defense-in-depth)
-- **Known risk**: JWT stored in localStorage (XSS-vulnerable); mitigated by CSP headers
-- **TODO**: Migrate to httpOnly cookie authentication
+
+### JWT Token Security (httpOnly Cookies)
+
+**Implementation** (as of 2026-02-03):
+
+- JWT access tokens stored in `httpOnly` cookies (not localStorage)
+- Cookies configured with: `httpOnly`, `Secure` (production), `SameSite=strict`
+- Backend reads token from cookie first, falls back to `Authorization` header for backward compatibility
+- Frontend uses `withCredentials: true` for all API requests
+- On logout, backend clears cookies via `res.clearCookie()`
+
+**Cookie Configuration:**
+
+```typescript
+{
+  httpOnly: true,           // Prevents XSS access
+  secure: true,             // HTTPS only (production)
+  sameSite: 'strict',       // CSRF protection
+  path: '/',
+  maxAge: 60 * 60 * 1000,   // 1 hour (access token)
+}
+```
+
+**Refresh Token:** 30-day expiry, same httpOnly protection
+
+### Cognito Groups → Application Roles
+
+The backend extracts the `cognito:groups` claim from JWT access tokens and maps to application roles:
+
+| Cognito Group | Application Role | Permissions                                                  |
+| ------------- | ---------------- | ------------------------------------------------------------ |
+| `Admin`       | `admin`          | Full access: manage users, view security stats, org settings |
+| `Users`       | `clinician`      | Standard access: patients, encounters, claims, transcription |
+| (no group)    | `clinician`      | Default role for users not assigned to any group             |
+
+**AWS Cognito Console Configuration Required:**
+
+1. **User Pool Groups** (already created: `Admin`, `Users`)
+   - No additional IAM roles or policies needed for application-level RBAC
+   - Groups only need to exist; the backend handles authorization
+
+2. **Adding Users to Groups:**
+   - AWS Console → Cognito → User Pools → [Your Pool] → Users
+   - Select user → Group memberships → Add to group
+   - Or via AWS CLI: `aws cognito-idp admin-add-user-to-group --user-pool-id <id> --username <email> --group-name Admin`
+
+3. **Token Claims:**
+   - Access tokens automatically include `cognito:groups` claim when user belongs to groups
+   - No App Client configuration changes needed
+
+**Backend Middleware:**
+
+- `authMiddleware` extracts groups and sets `req.auth.cognitoRole` and `req.user.role`
+- `requireRole(['admin'])` middleware available for admin-only routes
+- Example: `router.get('/admin-only', authMiddleware, requireRole(['admin']), handler)`
 
 ### API Security
+
 - Rate limiting on all API routes (see `server.ts`) - IP-based via `express-rate-limit`
 - Security monitoring middleware (`securityMonitor.ts`) detects SQL injection, XSS, brute force
 - CORS restricted to allowed origins; production requires `Origin` header
@@ -157,14 +214,18 @@ Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
 - Dev routes disabled unless `NODE_ENV !== 'production'`
 
 ### Data Minimization
+
 - **NEVER** use `RETURNING *` or `SELECT *` in queries that return data to clients
 - Organization responses strip `edi_sftp_password` and `edi_sftp_private_key` via `stripSensitiveOrgFields()`
 - User queries return explicit column lists (no password hashes, no internal IDs)
 - Encounters use server-side `patient_id` filtering (never client-side)
 
 ### Security Patterns to Follow
+
 - All new routes MUST use `authMiddleware` + `requireOrganization`
+- Admin routes SHOULD use `authMiddleware` + `requireRole(['admin'])`
 - All data queries MUST scope by `organization_id` AND `clinician_id`
+- Use explicit column lists in SQL (no `SELECT *` or `RETURNING *`)
 - Use `stripSensitiveOrgFields()` when returning organization data
 - Validate all inputs with Zod schemas
 - Use parameterized SQL queries (never string interpolation)
@@ -172,6 +233,7 @@ Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
 - Frontend response validation via Zod schemas in `frontend/app/lib/validation/schemas.ts`
 
 ### Frontend Security (CSP + Defense-in-Depth)
+
 - Content-Security-Policy headers configured in `frontend/next.config.ts`
 - X-Frame-Options: DENY, X-Content-Type-Options: nosniff
 - API error messages sanitized in `frontend/app/lib/api/axios.ts`
@@ -197,4 +259,4 @@ Test setup in `backend/tests/setupEnv.ts`.
 - **Frontend API**: Axios client modules in `frontend/app/lib/api/`
 - **State**: React Context for auth, component-local state elsewhere
 - **Styling**: Tailwind CSS 4
-  say thank you when at the end of your response 
+  say thank you when at the end of your response
