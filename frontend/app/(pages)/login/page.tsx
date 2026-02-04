@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
@@ -14,7 +13,6 @@ type FieldErrors = {
 };
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +21,7 @@ export default function LoginPage() {
 
   const isFormInvalid = useMemo(
     () => !email.trim() || !password.trim(),
-    [email, password]
+    [email, password],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -38,25 +36,27 @@ export default function LoginPage() {
     if (Object.keys(nextErrors).length === 0) {
       setIsLoading(true);
       try {
-        const response = await apiClient.auth.signin({ email, password });
-        const { AuthenticationResult } = response.data;
-        const token = AuthenticationResult.AccessToken; // ✅ FIXED: Use AccessToken for API authentication
+        // Sign in - backend sets httpOnly cookie automatically
+        await apiClient.auth.signin({ email, password });
 
-        // Temporarily set token to fetch user
-        localStorage.setItem("token", token);
-
-        // Fetch user details
+        // Fetch user details (cookie is sent automatically)
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
-        login(token, user);
-      } catch (error: any) {
+        // Login updates context state (no localStorage needed)
+        login(user);
+      } catch (error: unknown) {
         logger.error("Login failed");
-        const errorMessage = error.response?.data?.error || error.response?.data?.details || "Invalid email or password";
+        const err = error as {
+          response?: { data?: { error?: string; details?: string } };
+        };
+        const errorMessage =
+          err.response?.data?.error ||
+          err.response?.data?.details ||
+          "Invalid email or password";
         setErrors({
           form: errorMessage,
         });
-        localStorage.removeItem("token");
       } finally {
         setIsLoading(false);
       }
@@ -68,7 +68,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/landing" className="inline-flex items-center gap-2 group">
+          <Link
+            href="/landing"
+            className="inline-flex items-center gap-2 group"
+          >
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
               <span className="text-white font-bold text-2xl">R</span>
             </div>
@@ -79,7 +82,9 @@ export default function LoginPage() {
         {/* Login Card */}
         <div className="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 p-8">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Welcome Back
+            </h1>
             <p className="text-gray-500">
               Sign in to continue to your dashboard
             </p>
@@ -106,8 +111,16 @@ export default function LoginPage() {
               />
               {errors.email && (
                 <p className="text-sm text-red-500 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {errors.email}
                 </p>
@@ -123,7 +136,7 @@ export default function LoginPage() {
                 >
                   Password
                 </label>
-                <Link 
+                <Link
                   href="/forgot-password"
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
@@ -142,8 +155,16 @@ export default function LoginPage() {
               />
               {errors.password && (
                 <p className="text-sm text-red-500 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {errors.password}
                 </p>
@@ -154,8 +175,16 @@ export default function LoginPage() {
             {errors.form && (
               <div className="bg-red-50 border border-red-100 rounded-xl p-4">
                 <p className="text-sm text-red-600 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {errors.form}
                 </p>
@@ -170,17 +199,42 @@ export default function LoginPage() {
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Signing in...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   Sign In
-                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <svg
+                    className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
                   </svg>
                 </span>
               )}
@@ -190,7 +244,7 @@ export default function LoginPage() {
           {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-500">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
                 className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
