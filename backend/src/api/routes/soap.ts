@@ -42,10 +42,11 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
-const ensureEncounterOwnership = async (encounterId: string, clinicianId: string) => {
+// SECURITY: Check both clinician_id and organization_id for proper scoping
+const ensureEncounterOwnership = async (encounterId: string, clinicianId: string, organizationId?: string) => {
   const result = await query(
-    "SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2",
-    [encounterId, clinicianId]
+    "SELECT id FROM encounters WHERE id = $1 AND (clinician_id = $2 OR organization_id = $3)",
+    [encounterId, clinicianId, organizationId || null]
   );
   return result.rows.length > 0;
 };
@@ -62,7 +63,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -119,7 +120,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -155,7 +156,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -226,7 +227,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
   const encounterId = parsedParams.data.id;
   const { soap, model_version, confidence_score } = parsedBody.data;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }

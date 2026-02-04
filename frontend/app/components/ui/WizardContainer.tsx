@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import logger from "@/app/lib/logger";
 import Card from "./Card";
 import Button from "./Button";
 import StepIndicator from "./StepIndicator";
@@ -60,7 +61,7 @@ export default function WizardContainer({
                 onComplete();
             }
         } catch (error) {
-            console.error("Error in step transition:", error);
+            logger.error("Error in step transition");
         } finally {
             setIsTransitioning(false);
         }
@@ -80,7 +81,7 @@ export default function WizardContainer({
                 setCurrentStep(currentStep - 1);
             }
         } catch (error) {
-            console.error("Error in step transition:", error);
+            logger.error("Error in step transition");
         } finally {
             setIsTransitioning(false);
         }

@@ -3,6 +3,7 @@ import express from "express";
 import helmet, { HelmetOptions } from "helmet";
 import cors from "cors";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 // @ts-ignore: express-rate-limit has no TS types
 import rateLimit from "express-rate-limit";
 
@@ -11,6 +12,9 @@ import { appConfig } from "./config/appConfig";
 
 const app = express();
 const isTestEnv = appConfig.env === "test" || process.env.JEST_WORKER_ID;
+
+// Cookie parser for httpOnly JWT cookies
+app.use(cookieParser());
 
 // Load Genkit flows/tools in dev mode so the CLI Dev UI can attach.
 if (appConfig.genkitEnv === "dev") {
@@ -26,27 +30,49 @@ if (appConfig.genkitEnv === "dev") {
 // --------------------------------------------------
 // CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-  'http://localhost:3000',
-  'http://localhost:3005',
-  'https://revclear.tech',
-  'https://www.revclear.tech',
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
+  "http://localhost:3000",
+  "http://localhost:3005",
+  "https://revclear.tech",
+  "https://www.revclear.tech",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    console.warn(`[CORS] Blocked request from origin: ${origin}`);
-    return callback(new Error('Not allowed by CORS'), false);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // In production, require origin header to prevent CSRF
+      if (!origin) {
+        if (appConfig.env === "production") {
+          return callback(new Error("Origin header required"), false);
+        }
+        return callback(null, true); // Allow in dev/test only
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"), false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  }),
+);
+
+// --------------------------------------------------
+// HTTPS Enforcement (production only)
+// --------------------------------------------------
+app.use((req, res, next) => {
+  if (
+    appConfig.env === "production" &&
+    req.headers["x-forwarded-proto"] !== "https"
+  ) {
+    return res
+      .status(403)
+      .json({ error: "HTTPS required for all API requests" });
+  }
+  next();
+});
 
 // --------------------------------------------------
 // Security Monitoring (Custom Built)
@@ -64,7 +90,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 10,
     message: "Too many auth requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -73,7 +99,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 5,
     message: "Too many transcribe requests. Try again later.",
-  })
+  }),
 );
 
 // Rate limiting for other API routes
@@ -83,7 +109,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 60,
     message: "Too many patient requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -92,7 +118,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 60,
     message: "Too many encounter requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -101,7 +127,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 60,
     message: "Too many claim requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -110,7 +136,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 30,
     message: "Too many organization requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -119,7 +145,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 30,
     message: "Too many profile requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -128,7 +154,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 30,
     message: "Too many user requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -137,7 +163,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 60,
     message: "Too many code requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -146,7 +172,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 10,
     message: "Too many security requests. Try again later.",
-  })
+  }),
 );
 
 // Rate limiting for AI endpoints (SOAP generation and code matching)
@@ -157,7 +183,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 10,
     message: "Too many SOAP generation requests. Try again later.",
-  })
+  }),
 );
 
 app.use(
@@ -166,7 +192,7 @@ app.use(
     windowMs: 60 * 1000,
     max: 10,
     message: "Too many code matching requests. Try again later.",
-  })
+  }),
 );
 
 /**
@@ -220,11 +246,14 @@ app.use(morgan("combined"));
 app.use(auditLogger);
 
 // Security headers for API responses - prevent caching of sensitive data
-app.use('/api', (req, res, next) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.set('Surrogate-Control', 'no-store');
+app.use("/api", (req, res, next) => {
+  res.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  );
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  res.set("Surrogate-Control", "no-store");
   next();
 });
 
@@ -260,7 +289,8 @@ import swaggerUi from "swagger-ui-express";
 import { generateOpenApiSpec } from "./config/swagger";
 
 // Dev routes and Swagger docs only available in development environment
-const isDevelopment = appConfig.env === "development";
+const isDevelopment =
+  appConfig.env === "development" && process.env.NODE_ENV !== "production";
 
 if (isDevelopment && !isTestEnv) {
   // Lazily load dev routes only in development to avoid exposure in production

@@ -19,28 +19,86 @@ function getVerifier() {
   return verifier;
 }
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+/**
+ * Map Cognito group names to application roles.
+ * Cognito groups: "Admin", "Users"
+ * Application roles: "admin", "clinician", "billing_staff"
+ *
+ * IMPORTANT: Cognito group membership is the source of truth for roles.
+ * The `cognito:groups` claim is automatically included in access tokens
+ * when a user belongs to a Cognito User Pool group.
+ */
+function mapCognitoGroupsToRole(groups: string[] | undefined): string {
+  if (!groups || groups.length === 0) {
+    return "clinician"; // Default role for users not in any group
+  }
+  // Admin group takes precedence
+  if (groups.includes("Admin")) {
+    return "admin";
+  }
+  // Users group maps to clinician
+  if (groups.includes("Users")) {
+    return "clinician";
+  }
+  return "clinician"; // Default fallback
+}
+
+export const authMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const jwtVerifier = getVerifier();
     if (!jwtVerifier) {
       console.error("[Auth] Cognito not configured");
-      return res.status(503).json({ error: "Authentication service unavailable" });
+      return res
+        .status(503)
+        .json({ error: "Authentication service unavailable" });
     }
 
-    const authHeader = req.headers.authorization || "";
-    const [type, token] = authHeader.split(" ");
+    // Try to get token from httpOnly cookie first (more secure)
+    // Fall back to Authorization header for backward compatibility
+    let token: string | undefined;
 
-    if (type !== "Bearer" || !token) {
+    if (req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
+    } else {
+      const authHeader = req.headers.authorization || "";
+      const [type, headerToken] = authHeader.split(" ");
+      if (type === "Bearer" && headerToken) {
+        token = headerToken;
+      }
+    }
+
+    if (!token) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
     const payload = await jwtVerifier.verify(token);
-    req.auth = payload; // Attach raw JWT payload
+
+    // Extract Cognito groups from JWT and map to application role
+    // The `cognito:groups` claim contains an array of group names
+    const cognitoGroups = (payload as any)["cognito:groups"] as
+      | string[]
+      | undefined;
+    const cognitoRole = mapCognitoGroupsToRole(cognitoGroups);
+
+    // Attach JWT payload with derived role
+    req.auth = {
+      ...payload,
+      cognitoGroups,
+      cognitoRole,
+    } as any;
 
     // Resolve DB user
     const dbUser = await findUserByCognitoId(payload.sub);
     if (dbUser) {
-      req.user = dbUser as any; // Attach DB user
+      // Merge Cognito role with DB user (Cognito is authoritative for role)
+      req.user = {
+        ...dbUser,
+        role: cognitoRole, // Cognito groups override DB role
+      } as any;
     }
     // If no DB user, req.user stays undefined - routes like /me can handle creation
 
@@ -48,8 +106,34 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   } catch (err: any) {
     // Don't leak JWT verification details
     const isExpired = err?.message?.includes("expired");
-    return res.status(401).json({ 
-      error: isExpired ? "Token expired" : "Invalid token" 
+    return res.status(401).json({
+      error: isExpired ? "Token expired" : "Invalid token",
     });
   }
+};
+
+/**
+ * Middleware to require specific roles for route access.
+ * Must be used AFTER authMiddleware.
+ *
+ * @param allowedRoles - Array of roles that can access the route
+ * @example router.get('/admin-only', authMiddleware, requireRole(['admin']), handler)
+ */
+export const requireRole = (allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userRole = req.user?.role || (req.auth as any)?.cognitoRole;
+
+    if (!userRole) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "You do not have permission to access this resource",
+      });
+    }
+
+    next();
+  };
 };
