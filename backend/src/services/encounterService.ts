@@ -2,38 +2,69 @@ import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
 
 interface PaginationOptions {
-    limit?: number;
-    offset?: number;
+  limit?: number;
+  offset?: number;
+  patientId?: string;
 }
 
+// Explicit column list for encounter queries - data minimization security measure
+const ENCOUNTER_SELECT_COLUMNS = `
+    id, patient_id, clinician_id, organization_id, date_of_service,
+    transcript_result_id, soap_result_id, status, place_of_service,
+    encounter_type, chief_complaint, created_at, updated_at
+`
+  .replace(/\s+/g, " ")
+  .trim();
+
 export class EncounterService {
-    private static async getEncounterColumns() {
-        const result = await query<{ column_name: string }>(
-            `SELECT column_name FROM information_schema.columns WHERE table_name = 'encounters'`
-        );
-        return result.rows.map((r: { column_name: string }) => r.column_name);
+  private static async getEncounterColumns() {
+    const result = await query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'encounters'`,
+    );
+    return result.rows.map((r: { column_name: string }) => r.column_name);
+  }
+
+  static async findAll(
+    organizationId: string,
+    clinicianId: string,
+    options?: PaginationOptions,
+  ) {
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+    const patientId = options?.patientId;
+
+    // Build WHERE clause with optional patient_id filter
+    const baseWhere =
+      "(organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))";
+    const params: any[] = [organizationId, clinicianId];
+
+    let whereClause = baseWhere;
+    if (patientId) {
+      params.push(patientId);
+      whereClause += ` AND patient_id = $${params.length}`;
     }
 
-    static async findAll(organizationId: string, clinicianId: string, options?: PaginationOptions) {
-        const limit = options?.limit ?? 50;
-        const offset = options?.offset ?? 0;
-        
-        const countResult = await query(
-            "SELECT COUNT(*) as total FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))",
-            [organizationId, clinicianId]
-        );
-        const total = parseInt(countResult.rows[0].total);
-        
-        const result = await query(
-            "SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC LIMIT $3 OFFSET $4",
-            [organizationId, clinicianId, limit, offset]
-        );
-        return { data: result.rows, total };
-    }
+    const countResult = await query(
+      `SELECT COUNT(*) as total FROM encounters WHERE ${whereClause}`,
+      params,
+    );
+    const total = parseInt(countResult.rows[0].total);
 
-    static async findById(id: string, organizationId: string, clinicianId: string) {
-        const result = await query(
-            `SELECT e.id,
+    const queryParams = [...params, limit, offset];
+    const result = await query(
+      `SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE ${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      queryParams,
+    );
+    return { data: result.rows, total };
+  }
+
+  static async findById(
+    id: string,
+    organizationId: string,
+    clinicianId: string,
+  ) {
+    const result = await query(
+      `SELECT e.id,
               e.patient_id,
               e.clinician_id,
               e.organization_id,
@@ -52,108 +83,123 @@ export class EncounterService {
        WHERE e.id = $1 AND (e.organization_id = $2 OR (e.organization_id IS NULL AND e.clinician_id = $3))
        ORDER BY ar.created_at DESC
        LIMIT 1`,
-            [id, organizationId, clinicianId]
-        );
-        return result.rows[0] || null;
+      [id, organizationId, clinicianId],
+    );
+    return result.rows[0] || null;
+  }
+
+  static async create(data: any, organizationId: string, clinicianId: string) {
+    // Check if patient_id exists AND belongs to the organization
+    const patientCheck = await query(
+      "SELECT id FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
+      [data.patient_id, organizationId, clinicianId],
+    );
+    if (patientCheck.rows.length === 0) {
+      throw new AppError("Patient not found", 404);
     }
 
-    static async create(data: any, organizationId: string, clinicianId: string) {
-        // Check if patient_id exists AND belongs to the organization
-        const patientCheck = await query(
-            "SELECT id FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
-            [data.patient_id, organizationId, clinicianId]
-        );
-        if (patientCheck.rows.length === 0) {
-            throw new AppError("Patient not found", 404);
-        }
+    const availableColumns = await this.getEncounterColumns();
+    const columns = [
+      "patient_id",
+      "date_of_service",
+      "clinician_id",
+      "organization_id",
+    ];
+    const values: any[] = [
+      data.patient_id,
+      data.date_of_service,
+      clinicianId,
+      organizationId,
+    ];
+    const placeholders = ["$1", "$2", "$3", "$4"];
+    let idx = 5;
 
-        const availableColumns = await this.getEncounterColumns();
-        const columns = ["patient_id", "date_of_service", "clinician_id", "organization_id"];
-        const values: any[] = [data.patient_id, data.date_of_service, clinicianId, organizationId];
-        const placeholders = ["$1", "$2", "$3", "$4"];
-        let idx = 5;
+    const optionalFields: Record<string, any> = {
+      transcript_result_id: data.transcript_result_id,
+      soap_result_id: data.soap_result_id,
+      status: data.status,
+      encounter_type: data.encounter_type,
+      chief_complaint: data.chief_complaint,
+    };
 
-        const optionalFields: Record<string, any> = {
-            transcript_result_id: data.transcript_result_id,
-            soap_result_id: data.soap_result_id,
-            status: data.status,
-            encounter_type: data.encounter_type,
-            chief_complaint: data.chief_complaint,
-        };
-
-        for (const [key, value] of Object.entries(optionalFields)) {
-            if (value !== undefined && availableColumns.includes(key)) {
-                columns.push(key);
-                placeholders.push(`$${idx}`);
-                values.push(value);
-                idx += 1;
-            }
-        }
-
-        const insertQuery = `INSERT INTO encounters (${columns.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING *`;
-        const result = await query(insertQuery, values);
-        return result.rows[0];
+    for (const [key, value] of Object.entries(optionalFields)) {
+      if (value !== undefined && availableColumns.includes(key)) {
+        columns.push(key);
+        placeholders.push(`$${idx}`);
+        values.push(value);
+        idx += 1;
+      }
     }
 
-    static async update(id: string, data: any, organizationId: string, clinicianId: string) {
-        // If patient_id is being updated, validate it first
-        if (data.patient_id) {
-            const patientCheck = await query(
-                "SELECT id FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
-                [data.patient_id, organizationId, clinicianId]
-            );
-            if (patientCheck.rows.length === 0) {
-                throw new AppError("Patient not found", 404);
-            }
-        }
+    const insertQuery = `INSERT INTO encounters (${columns.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING ${ENCOUNTER_SELECT_COLUMNS}`;
+    const result = await query(insertQuery, values);
+    return result.rows[0];
+  }
 
-        // Verify encounter ownership before updating
-        const encounterOwner = await query(
-            "SELECT id FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
-            [id, organizationId, clinicianId]
-        );
-        if (encounterOwner.rows.length === 0) {
-            throw new AppError("Encounter not found", 404);
-        }
-
-        const availableColumns = await this.getEncounterColumns();
-        const entries = Object.entries(data).filter(
-            ([key, value]) =>
-                value !== undefined &&
-                key !== "clinician_id" &&
-                availableColumns.includes(key)
-        );
-
-        if (entries.length === 0) {
-            throw new AppError("No fields to update", 400);
-        }
-
-        const fields = entries
-            .map(([fieldName], i) => `${fieldName} = $${i + 1}`)
-            .join(", ");
-        const values = entries.map(([, value]) => value);
-
-        const result = await query(
-            `UPDATE encounters SET ${fields} WHERE id = $${values.length + 1} RETURNING *`,
-            [...values, id]
-        );
-
-        if (result.rows.length === 0) {
-            throw new AppError("Encounter not found", 404);
-        }
-
-        return result.rows[0];
+  static async update(
+    id: string,
+    data: any,
+    organizationId: string,
+    clinicianId: string,
+  ) {
+    // If patient_id is being updated, validate it first
+    if (data.patient_id) {
+      const patientCheck = await query(
+        "SELECT id FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
+        [data.patient_id, organizationId, clinicianId],
+      );
+      if (patientCheck.rows.length === 0) {
+        throw new AppError("Patient not found", 404);
+      }
     }
 
-    static async delete(id: string, organizationId: string, clinicianId: string) {
-        const result = await query(
-            "DELETE FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3)) RETURNING id",
-            [id, organizationId, clinicianId]
-        );
-
-        if (result.rowCount === 0) {
-            throw new AppError("Encounter not found", 404);
-        }
-        return true;
+    // Verify encounter ownership before updating
+    const encounterOwner = await query(
+      "SELECT id FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
+      [id, organizationId, clinicianId],
+    );
+    if (encounterOwner.rows.length === 0) {
+      throw new AppError("Encounter not found", 404);
     }
+
+    const availableColumns = await this.getEncounterColumns();
+    const entries = Object.entries(data).filter(
+      ([key, value]) =>
+        value !== undefined &&
+        key !== "clinician_id" &&
+        availableColumns.includes(key),
+    );
+
+    if (entries.length === 0) {
+      throw new AppError("No fields to update", 400);
+    }
+
+    const fields = entries
+      .map(([fieldName], i) => `${fieldName} = $${i + 1}`)
+      .join(", ");
+    const values = entries.map(([, value]) => value);
+
+    const result = await query(
+      `UPDATE encounters SET ${fields} WHERE id = $${values.length + 1} RETURNING ${ENCOUNTER_SELECT_COLUMNS}`,
+      [...values, id],
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError("Encounter not found", 404);
+    }
+
+    return result.rows[0];
+  }
+
+  static async delete(id: string, organizationId: string, clinicianId: string) {
+    const result = await query(
+      "DELETE FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3)) RETURNING id",
+      [id, organizationId, clinicianId],
+    );
+
+    if (result.rowCount === 0) {
+      throw new AppError("Encounter not found", 404);
+    }
+    return true;
+  }
 }

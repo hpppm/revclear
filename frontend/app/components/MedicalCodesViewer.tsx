@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 import { MedicalCode, SoapNote } from "@/app/lib/types";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
@@ -98,7 +99,7 @@ export default function MedicalCodesViewer({
       setCptCandidates(ensureType(cptMatches, "CPT"));
       setHasGenerated(true);
     } catch (err: any) {
-      console.error("Code generation failed", err);
+      logger.error("Code generation failed");
       setHasGenerated(true);
     } finally {
       setLoading(false);
@@ -125,7 +126,7 @@ export default function MedicalCodesViewer({
         category: r.category || "Unspecified",
       })));
     } catch (err) {
-      console.error("Search failed", err);
+      logger.error("Search failed");
       setSearchResults([]);
     } finally {
       setSearching(false);
