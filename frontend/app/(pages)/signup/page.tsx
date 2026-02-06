@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
+import logger from "@/app/lib/logger";
 
 export default function SignupPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  // Clear any existing auth state when visiting signup
+  // Clear any legacy localStorage tokens when visiting signup
+  // (authentication now uses httpOnly cookies)
   useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.removeItem("token");
     }
   });
@@ -72,8 +74,6 @@ export default function SignupPage() {
       return;
     }
 
-    localStorage.setItem("practitionerType", form.practitioner);
-
     setIsLoading(true);
     try {
       const response = await apiClient.auth.signup({
@@ -87,20 +87,20 @@ export default function SignupPage() {
       });
 
       if (response.data.AuthenticationResult) {
-        // Auto-login - Use AccessToken for API authentication
-        const token = response.data.AuthenticationResult.AccessToken; // ✅ FIXED
-        localStorage.setItem("token", token);
-
+        // Auto-login - cookies are set by the backend
+        // Fetch user profile to complete login
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
-        login(token, user);
+        login(user);
       } else {
-        setError("Account created! Please check your email for verification code.");
+        setError(
+          "Account created! Please check your email for verification code.",
+        );
         setTimeout(() => router.push("/login"), 2000);
       }
     } catch (error: any) {
-      console.error("Signup failed:", error);
+      logger.error("Signup failed");
       const errorData = error.response?.data;
       let errorMessage = "Signup failed. Please try again.";
 
@@ -142,7 +142,10 @@ export default function SignupPage() {
       <div className="w-full max-w-2xl">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/landing" className="inline-flex items-center gap-2 group">
+          <Link
+            href="/landing"
+            className="inline-flex items-center gap-2 group"
+          >
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
               <span className="text-white font-bold text-2xl">R</span>
             </div>
@@ -153,7 +156,9 @@ export default function SignupPage() {
         {/* Signup Card */}
         <div className="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 p-8">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Create Your Account
+            </h1>
             <p className="text-gray-500">
               Join thousands of clinicians automating their workflow
             </p>
@@ -206,9 +211,13 @@ export default function SignupPage() {
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 appearance-none"
                   required
                 >
-                  <option value="" className="text-gray-400">Select specialty</option>
+                  <option value="" className="text-gray-400">
+                    Select specialty
+                  </option>
                   {practitionerTypes.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -247,7 +256,9 @@ export default function SignupPage() {
               {passwordStrength && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-medium ${getStrengthColor()}`}>
+                    <span
+                      className={`text-xs font-medium ${getStrengthColor()}`}
+                    >
                       Password strength: {passwordStrength}
                     </span>
                   </div>
@@ -261,28 +272,54 @@ export default function SignupPage() {
 
               {/* Password Requirements */}
               <div className="bg-gray-50 border border-gray-100 rounded-lg p-3 mt-2">
-                <p className="text-xs text-gray-500 font-medium mb-2">Password must contain:</p>
+                <p className="text-xs text-gray-500 font-medium mb-2">
+                  Password must contain:
+                </p>
                 <ul className="text-xs text-gray-500 space-y-1">
                   <li className="flex items-center gap-2">
-                    <span className={form.password.length >= 8 ? "text-green-500" : "text-gray-300"}>
+                    <span
+                      className={
+                        form.password.length >= 8
+                          ? "text-green-500"
+                          : "text-gray-300"
+                      }
+                    >
                       {form.password.length >= 8 ? "✓" : "○"}
                     </span>
                     At least 8 characters
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className={/[A-Z]/.test(form.password) ? "text-green-500" : "text-gray-300"}>
+                    <span
+                      className={
+                        /[A-Z]/.test(form.password)
+                          ? "text-green-500"
+                          : "text-gray-300"
+                      }
+                    >
                       {/[A-Z]/.test(form.password) ? "✓" : "○"}
                     </span>
                     One uppercase letter
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className={/[0-9]/.test(form.password) ? "text-green-500" : "text-gray-300"}>
+                    <span
+                      className={
+                        /[0-9]/.test(form.password)
+                          ? "text-green-500"
+                          : "text-gray-300"
+                      }
+                    >
                       {/[0-9]/.test(form.password) ? "✓" : "○"}
                     </span>
                     One number
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className={/[^A-Za-z0-9]/.test(form.password) ? "text-green-500" : "text-gray-300"}>
+                    <span
+                      className={
+                        /[^A-Za-z0-9]/.test(form.password)
+                          ? "text-green-500"
+                          : "text-gray-300"
+                      }
+                    >
                       {/[^A-Za-z0-9]/.test(form.password) ? "✓" : "○"}
                     </span>
                     One special character (!@#$%)
@@ -310,8 +347,16 @@ export default function SignupPage() {
             {error && (
               <div className="bg-red-50 border border-red-100 rounded-xl p-4">
                 <p className="text-sm text-red-600 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {error}
                 </p>
@@ -326,17 +371,42 @@ export default function SignupPage() {
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Creating account...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   Create Account
-                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <svg
+                    className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
                   </svg>
                 </span>
               )}
@@ -345,7 +415,10 @@ export default function SignupPage() {
             {/* Sign In Link */}
             <p className="text-center text-gray-500">
               Already have an account?{" "}
-              <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              <Link
+                href="/login"
+                className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+              >
                 Sign In
               </Link>
             </p>
@@ -354,7 +427,8 @@ export default function SignupPage() {
 
         {/* Footer */}
         <p className="text-center text-gray-400 text-xs mt-8">
-          By creating an account, you agree to our Terms of Service and Privacy Policy
+          By creating an account, you agree to our Terms of Service and Privacy
+          Policy
         </p>
       </div>
     </div>

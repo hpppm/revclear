@@ -25,27 +25,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Suppress SES_UNCAUGHT_EXCEPTION errors
-              (function() {
-                const originalError = console.error;
-                console.error = function(...args) {
-                  if (args[0]?.includes?.('SES_UNCAUGHT_EXCEPTION')) {
-                    return;
-                  }
-                  originalError.apply(console, args);
-                };
-              })();
-            `,
-          }}
-        />
+        {/* Error suppression script moved to external file for CSP compliance */}
+        <script src="/suppress-errors.js" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <AuthProvider>{children}</AuthProvider>
       </body>

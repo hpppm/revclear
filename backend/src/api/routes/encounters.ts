@@ -9,15 +9,17 @@ const router = Router();
 // GET all encounters (scoped to organization)
 // @query {number} limit - Max results (default 50, max 100)
 // @query {number} offset - Skip results (default 0)
+// @query {string} patient_id - Optional: filter encounters by patient UUID
 router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
     const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
-    
+    const patientId = req.query.patient_id as string | undefined;
+
     const { data: encounters, total } = await EncounterService.findAll(
       req.organization!.id,
       req.user!.id,
-      { limit, offset }
+      { limit, offset, patientId }
     );
     res.json({
       success: true,

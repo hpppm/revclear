@@ -7,6 +7,7 @@ import {
     refreshAuthTokens,
     forgotPassword,
     confirmForgotPassword,
+    adminMarkEmailVerified,
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
@@ -73,6 +74,9 @@ export class AuthService {
         if (this.autoConfirmSignups) {
             try {
                 await adminConfirmSignUp(email);
+                // Also mark email as verified so password reset works
+                await adminMarkEmailVerified(email);
+                
                 autoConfirmResult.success = true;
             } catch (confirmError: any) {
                 if (confirmError.name === 'NotAuthorizedException' && confirmError.message.includes('Current status is CONFIRMED')) {
