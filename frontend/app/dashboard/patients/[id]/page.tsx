@@ -60,11 +60,9 @@ export default function PatientProfilePage() {
             setPatient(mappedPatient);
             setEditedPatient(mappedPatient);
 
-            // Fetch Encounters
-            const encountersResponse = await apiClient.encounters.getAll();
-            let encountersData = encountersResponse.data?.data || [];
-            // Filter by patientId (ideally backend should handle this filter)
-            encountersData = encountersData.filter((e: Encounter) => e.patient_id === patientId);
+            // Fetch Encounters - backend filters by patient_id for security
+            const encountersResponse = await apiClient.encounters.getAllByPatient(patientId);
+            const encountersData = encountersResponse.data?.data || [];
             setEncounters(encountersData);
 
         } catch (err) {
