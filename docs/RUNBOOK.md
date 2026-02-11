@@ -37,8 +37,8 @@ This runbook provides operational procedures for deploying, monitoring, and main
       │           │           │              │
       ▼           ▼           ▼              ▼
 ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────────┐
-│ AWS RDS  │ │ AWS S3  │ │ Cognito  │ │ Genkit/Gemini│
-│PostgreSQL│ │ Storage │ │  Auth    │ │   AI Flow    │
+│ AWS RDS  │ │ AWS S3  │ │ Cognito  │ │ Ollama / API │
+│PostgreSQL│ │ Storage │ │  Auth    │ │  AI Provider │
 └──────────┘ └─────────┘ └──────────┘ └──────────────┘
 ```
 
@@ -82,10 +82,7 @@ npm ci  # Use ci for production (uses lock file)
 # 4. Build TypeScript
 npm run build
 
-# 5. Build Genkit flows
-npm run build:genkit
-
-# 6. Restart service
+# 5. Restart service
 pm2 restart revclear-backend
 # OR
 systemctl restart revclear-backend
@@ -160,10 +157,10 @@ curl -H "Authorization: Bearer <token>" \
 # 4. Critical endpoint test
 curl https://your-backend-url/api/patients?limit=1
 
-# 5. Genkit AI flow test
-curl -X POST https://your-backend-url/api/soap \
+# 5. AI SOAP flow test
+curl -X POST https://your-backend-url/api/encounters/<encounter-id>/soap \
   -H "Content-Type: application/json" \
-  -d '{"transcript": "test"}'
+  -b "<auth-cookie>"
 ```
 
 ---
@@ -264,7 +261,7 @@ aws logs tail /aws/lambda/revclear-api --follow
 | `AUTHENTICATION_BYPASS_ATTEMPT` | CRITICAL | Security review |
 | `RATE_LIMIT_EXCEEDED` | WARNING | Review traffic patterns |
 | `S3_UPLOAD_FAILED` | WARNING | Check S3 permissions |
-| `GENKIT_API_ERROR` | WARNING | Check Gemini API status |
+| `AI_PROVIDER_ERROR` | WARNING | Check Ollama/API provider status |
 
 ---
 
@@ -356,31 +353,27 @@ echo $JWT_SECRET  # Should be set
 # 4. Clear user sessions if needed
 ```
 
-### Issue 4: Genkit/Gemini API Errors
+### Issue 4: AI Provider Errors
 
 **Symptoms:**
 - SOAP note generation fails
-- Logs show "Genkit API error"
+- Logs show provider request errors
 
 **Diagnosis:**
 ```bash
-# Check API key
-echo $GOOGLE_GENAI_API_KEY
+# Check Ollama endpoint
+echo $OLLAMA_BASE_URL
 
-# Test API directly
-curl -H "Authorization: Bearer $GOOGLE_GENAI_API_KEY" \
-  https://generativelanguage.googleapis.com/v1/models
+# Test provider directly
+curl $OLLAMA_BASE_URL/api/tags
 ```
 
 **Fix:**
 ```bash
-# 1. Verify API key is valid and not expired
-# 2. Check API quota/rate limits
-# 3. Verify Genkit environment setting
-echo $GENKIT_ENV  # Should be 'dev' or 'prod'
-
-# 4. Restart Genkit service
-docker-compose restart genkit
+# 1. Verify OLLAMA_BASE_URL and model env values
+# 2. Ensure model is installed (ollama pull <model>)
+# 3. Restart Ollama service if needed
+# 4. Check /api/health/ai for detailed provider status
 ```
 
 ### Issue 5: High Memory Usage
