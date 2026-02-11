@@ -9,21 +9,36 @@ import { Encounter, Organization, Patient } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
 type ApiOrganizationPayload = {
-    data?: any;
+    data?: unknown;
     organization?: Organization;
 };
 
-const extractOrganization = (payload: ApiOrganizationPayload | any): Organization | null => {
-    if (!payload) return null;
+const extractOrganization = (payload: ApiOrganizationPayload | unknown): Organization | null => {
+    if (!payload || typeof payload !== "object") return null;
     // Support shapes: { data: { organization } }, { data }, or direct object
-    if (payload.data?.organization) return payload.data.organization as Organization;
-    if (payload.data?.data) return payload.data.data as Organization;
-    if (payload.data) return payload.data as Organization;
-    if (payload.organization) return payload.organization as Organization;
+    const typed = payload as { data?: unknown; organization?: Organization };
+    if (typed.data && typeof typed.data === "object") {
+        const data = typed.data as { organization?: Organization; data?: Organization };
+        if (data.organization) return data.organization;
+        if (data.data) return data.data;
+    }
+    if (typed.organization) return typed.organization;
     return payload as Organization;
 };
 
-const mapPatient = (p: any): Patient => ({
+type RawPatient = {
+    id: string;
+    full_name?: string;
+    name?: string;
+    age?: number;
+    dob?: string;
+    phone?: string;
+    insurance_provider?: string;
+    insurance_policy_number?: string;
+    diagnosis?: string;
+};
+
+const mapPatient = (p: RawPatient): Patient => ({
     id: p.id,
     name: p.full_name || p.name,
     age: p.age || 0,
@@ -102,16 +117,19 @@ export default function DashboardHome() {
             } else {
                 setOrganization(org);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             // 404/empty means no organization yet; treat gracefully
-            if (error?.response?.status === 404) {
+            const status = typeof error === "object" && error !== null && "response" in error
+                ? (error as { response?: { status?: number } }).response?.status
+                : undefined;
+            if (status === 404) {
                 setOrganization(null);
             } else {
-                setOrgError(
-                    error?.response?.data?.message ||
-                    error?.response?.data?.error ||
-                    "Unable to load organization."
-                );
+                const message = typeof error === "object" && error !== null && "response" in error
+                    ? ((error as { response?: { data?: { message?: string; error?: string } } }).response?.data?.message
+                        || (error as { response?: { data?: { message?: string; error?: string } } }).response?.data?.error)
+                    : undefined;
+                setOrgError(message || "Unable to load organization.");
                 setOrganization(null);
             }
         } finally {
@@ -164,17 +182,20 @@ export default function DashboardHome() {
             const org = extractOrganization(response);
             setOrganization(org);
             setOrgName("");
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error("Failed to create organization", error);
             let message = "Could not create organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+            const responseData = typeof error === "object" && error !== null && "response" in error
+                ? (error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }>; message?: string; error?: string } } }).response?.data
+                : undefined;
+            if (responseData?.errors && Array.isArray(responseData.errors)) {
+                message = responseData.errors
+                    .map((err) => `${err.path.join(".")}: ${err.message}`)
                     .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
-            } else if (error?.response?.data?.error) {
-                message = error.response.data.error;
+            } else if (responseData?.message) {
+                message = responseData.message;
+            } else if (responseData?.error) {
+                message = responseData.error;
             }
             setOrgError(message);
         } finally {
@@ -195,17 +216,20 @@ export default function DashboardHome() {
             const org = extractOrganization(response);
             setOrganization(org);
             setInviteCode("");
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error("Failed to join organization", error);
             let message = "Could not join organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+            const responseData = typeof error === "object" && error !== null && "response" in error
+                ? (error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }>; message?: string; error?: string } } }).response?.data
+                : undefined;
+            if (responseData?.errors && Array.isArray(responseData.errors)) {
+                message = responseData.errors
+                    .map((err) => `${err.path.join(".")}: ${err.message}`)
                     .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
-            } else if (error?.response?.data?.error) {
-                message = error.response.data.error;
+            } else if (responseData?.message) {
+                message = responseData.message;
+            } else if (responseData?.error) {
+                message = responseData.error;
             }
             setOrgError(message);
         } finally {

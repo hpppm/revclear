@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
+import { Claim, Encounter, SoapNote } from "@/app/lib/types";
 
 export default function EncounterSummaryPage() {
     const params = useParams();
     const router = useRouter();
     const encounterId = params?.id as string;
 
-    const [encounter, setEncounter] = useState<any>(null);
-    const [claim, setClaim] = useState<any>(null);
+    const [encounter, setEncounter] = useState<Encounter | null>(null);
+    const [claim, setClaim] = useState<Claim | null>(null);
     const [transcript, setTranscript] = useState<string>("");
-    const [soap, setSoap] = useState<any>(null);
+    const [soap, setSoap] = useState<SoapNote | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showAnimation, setShowAnimation] = useState(false);
@@ -26,29 +27,24 @@ export default function EncounterSummaryPage() {
     const [soapExpanded, setSoapExpanded] = useState(false);
     const [claimExpanded, setClaimExpanded] = useState(false);
 
-    useEffect(() => {
-        if (encounterId) {
-            fetchEncounterData();
-        }
-    }, [encounterId]);
-
-    const fetchEncounterData = async () => {
+    const fetchEncounterData = useCallback(async () => {
+        if (!encounterId) return;
         setLoading(true);
         try {
             // Fetch encounter
             const encounterRes = await apiClient.encounters.getById(encounterId);
-            const encounterData = encounterRes.data?.data || encounterRes.data;
+            const encounterData = (encounterRes.data?.data || encounterRes.data) as Encounter;
             logger.log("Encounter loaded");
             setEncounter(encounterData);
 
             // Fetch claim
             try {
                 const claimRes = await apiClient.encounters.previewClaim(encounterId);
-                const claimData = claimRes.data?.data || claimRes.data;
+                const claimData = (claimRes.data?.data || claimRes.data) as Claim;
                 logger.log("Claim loaded");
                 setClaim(claimData);
-            } catch (err) {
-                logger.log("No claim found");
+            } catch (error) {
+                logger.log("No claim found", error);
             }
 
             // Fetch transcript if available
@@ -58,8 +54,8 @@ export default function EncounterSummaryPage() {
                     const transcriptData = transcriptRes.data?.text || transcriptRes.data?.data?.text || "";
                     logger.log("Transcript loaded");
                     setTranscript(transcriptData);
-                } catch (err) {
-                    logger.log("Failed to load transcript");
+                } catch (error) {
+                    logger.log("Failed to load transcript", error);
                 }
             }
 
@@ -67,21 +63,26 @@ export default function EncounterSummaryPage() {
             if (encounterData.soap_result_id) {
                 try {
                     const soapRes = await apiClient.soap.getForEncounter(encounterId);
-                    const soapData = soapRes.data?.data || soapRes.data;
+                    const soapData = (soapRes.data?.data || soapRes.data) as { soap?: SoapNote } | SoapNote;
                     logger.log("SOAP loaded");
-                    setSoap(soapData?.soap || soapData);
-                } catch (err) {
-                    logger.log("Failed to load SOAP");
+                    setSoap("soap" in soapData ? soapData.soap ?? null : soapData);
+                } catch (error) {
+                    logger.log("Failed to load SOAP", error);
                 }
             }
-        } catch (err) {
-            logger.error("Failed to load encounter data");
+        } catch (error) {
+            logger.error("Failed to load encounter data", error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [encounterId]);
+
+    useEffect(() => {
+        void fetchEncounterData();
+    }, [fetchEncounterData]);
 
     const handleSubmit = async () => {
+        if (!encounter) return;
         setSubmitting(true);
         try {
             // If a claim exists, mark it as submitted
@@ -102,8 +103,8 @@ export default function EncounterSummaryPage() {
             setTimeout(() => {
                 router.push(`/dashboard/patients/${encounter.patient_id}`);
             }, 3000);
-        } catch (err) {
-            logger.error("Failed to submit claim");
+        } catch (error) {
+            logger.error("Failed to submit claim", error);
             setSubmitting(false);
         }
     };

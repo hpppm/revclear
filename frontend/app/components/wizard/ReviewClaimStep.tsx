@@ -1,13 +1,70 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { Claim, ClaimLineItem, Organization, Patient, User } from "@/app/lib/types";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import Input from "../ui/Input";
 
+type Address = {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+};
+
+type Subscriber = {
+    relationship?: string;
+    full_name?: string;
+    dob?: string;
+    gender?: string;
+    member_id?: string;
+    group_number?: string;
+    address?: Address;
+    address_street?: string;
+    address_city?: string;
+    address_state?: string;
+    address_zip?: string;
+};
+
+type Provider = {
+    name?: string;
+    npi?: string;
+    organization_npi?: string;
+    tax_id?: string;
+    phone?: string;
+    taxonomy_code?: string;
+    place_of_service?: string;
+    address?: Address;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    address_street?: string;
+    address_city?: string;
+    address_state?: string;
+    address_zip?: string;
+};
+
+type ClaimDraft = Claim &
+    Record<string, unknown> & {
+        line_items?: ClaimLineItem[];
+        rendering_provider?: Provider;
+        billing_provider?: Provider;
+        service_facility?: Provider;
+        subscriber?: Subscriber;
+        subscriber_relationship?: string;
+        patient_id?: string;
+        date_of_service?: string;
+        service_date_start?: string;
+        service_date_end?: string;
+        procedure_codes?: string[];
+        total_amount?: number;
+    };
+
 interface ReviewClaimStepProps {
     encounterId: string | null;
-    onClaimChange?: (claim: any) => void;
+    onClaimChange?: (claim: ClaimDraft) => void;
     onValidationChange?: (isValid: boolean) => void;
 }
 
@@ -16,61 +73,44 @@ export default function ReviewClaimStep({
     onClaimChange,
     onValidationChange,
 }: ReviewClaimStepProps) {
-    const [claim, setClaim] = useState<any>(null);
+    const [claim, setClaim] = useState<ClaimDraft | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
-    const [prefilling, setPrefilling] = useState(false);
 
-    useEffect(() => {
-        if (encounterId) {
-            fetchClaimPreview();
-        }
-    }, [encounterId]);
-
-    const fetchClaimPreview = async () => {
-        if (!encounterId) return;
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await apiClient.encounters.previewClaim(encounterId);
-            const preview = res.data.data;
-            setClaim(preview);
-            onClaimChange?.(preview);
-            updateValidation(preview);
-            await hydrateWithDefaults(preview);
-        } catch (err: any) {
-            console.error("Failed to build claim preview", err);
-            setError("Failed to build claim preview. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleUpdateClaim = (field: string, value: any) => {
-        setClaim((prev: any) => {
-            return { ...prev, [field]: value };
+    const handleUpdateClaim = (field: string, value: unknown) => {
+        setClaim((prev) => {
+            const base = prev || ({} as ClaimDraft);
+            return { ...base, [field]: value } as ClaimDraft;
         });
     };
 
-    const handleUpdateNested = (parent: string, field: string, value: any) => {
-        setClaim((prev: any) => {
+    const handleUpdateNested = (parent: string, field: string, value: unknown) => {
+        setClaim((prev) => {
+            const base = prev || ({} as ClaimDraft);
+            const nested = typeof base[parent] === "object" && base[parent] !== null
+                ? (base[parent] as Record<string, unknown>)
+                : {};
             return {
-                ...prev,
-                [parent]: { ...(prev?.[parent] || {}), [field]: value }
+                ...base,
+                [parent]: { ...nested, [field]: value },
             };
         });
     };
 
-    const handleUpdateLineItem = (index: number, field: string, value: any) => {
-        setClaim((prev: any) => {
-            const newLineItems = [...(prev.line_items || [])];
-            newLineItems[index] = { ...newLineItems[index], [field]: value };
+    const handleUpdateLineItem = (index: number, field: keyof ClaimLineItem, value: unknown) => {
+        setClaim((prev) => {
+            const base = prev || ({} as ClaimDraft);
+            const newLineItems = [...(base.line_items || [])];
+            newLineItems[index] = { ...newLineItems[index], [field]: value } as ClaimLineItem;
 
             // Recalculate total
-            const newTotal = newLineItems.reduce((sum: number, item: any) => sum + Number(item.charge_amount || 0), 0);
+            const newTotal = newLineItems.reduce(
+                (sum, item) => sum + Number(item.charge_amount || 0),
+                0
+            );
 
-            return { ...prev, line_items: newLineItems, total_amount: newTotal };
+            return { ...base, line_items: newLineItems, total_amount: newTotal };
         });
     };
 
@@ -80,7 +120,7 @@ export default function ReviewClaimStep({
             onClaimChange?.(claim);
             updateValidation(claim);
         }
-    }, [claim]);
+    }, [claim, onClaimChange, updateValidation]);
 
     const parsePointerList = (value: string) =>
         value
@@ -102,18 +142,18 @@ export default function ReviewClaimStep({
         handleUpdateLineItem(index, "modifiers", mods);
     };
 
-    const requiredAddressMissing = (addressObj: any) => {
+    const requiredAddressMissing = useCallback((addressObj: unknown) => {
         if (!addressObj) return true;
         // If backend sends a combined address string and it is non-empty, treat it as present.
         if (typeof addressObj === "string") {
             return addressObj.trim().length === 0;
         }
         if (typeof addressObj !== "object") return true;
-        const { street, city, state, zip } = addressObj as any;
+        const { street, city, state, zip } = addressObj as Address;
         return !street || !city || !state || !zip;
-    };
+    }, []);
 
-    const updateValidation = (current: any) => {
+    const updateValidation = useCallback((current: ClaimDraft | null) => {
         const errs: string[] = [];
         if (!current) {
             setValidationErrors(errs);
@@ -122,7 +162,7 @@ export default function ReviewClaimStep({
         }
 
         const hasCpt = (current.procedure_codes?.length || 0) > 0
-            || (current.line_items || []).some((li: any) => li.procedure_code);
+            || (current.line_items || []).some((li) => li.procedure_code);
         if (!hasCpt) errs.push("At least one CPT/procedure code is required.");
 
         if (!current.rendering_provider?.npi) {
@@ -163,7 +203,7 @@ export default function ReviewClaimStep({
         }
 
         const icdPointersMissing = (current.line_items || []).some(
-            (li: any) => (li.procedure_code || hasCpt) && (!li.diagnosis_pointers || li.diagnosis_pointers.length === 0)
+            (li) => (li.procedure_code || hasCpt) && (!li.diagnosis_pointers || li.diagnosis_pointers.length === 0)
         );
         if (icdPointersMissing) {
             errs.push("ICD diagnosis pointers are required on each service line with a CPT code.");
@@ -171,11 +211,10 @@ export default function ReviewClaimStep({
 
         setValidationErrors(errs);
         onValidationChange?.(errs.length === 0);
-    };
+    }, [onValidationChange, requiredAddressMissing]);
 
-    const hydrateWithDefaults = async (preview: any) => {
+    const hydrateWithDefaults = useCallback(async (preview: ClaimDraft | null) => {
         if (!preview) return;
-        setPrefilling(true);
         try {
             const [meResp, patientResp, subscriberResp] = await Promise.allSettled([
                 apiClient.me.getProfile(),
@@ -183,17 +222,17 @@ export default function ReviewClaimStep({
                 preview.patient_id ? apiClient.patients.getSubscriber(preview.patient_id) : Promise.resolve(null),
             ]);
 
-            const profile: any = meResp.status === "fulfilled" ? (meResp.value.data?.data || meResp.value.data || meResp.value) : null;
-            const patient: any =
-                patientResp.status === "fulfilled" && patientResp.value
-                    ? (patientResp.value.data?.data || patientResp.value.data || patientResp.value)
-                    : null;
-            const subscriber: any =
-                subscriberResp.status === "fulfilled" && subscriberResp.value
-                    ? (subscriberResp.value.data?.data || subscriberResp.value.data || subscriberResp.value)
-                    : null;
+            const profile = meResp.status === "fulfilled"
+                ? ((meResp.value.data?.data || meResp.value.data || meResp.value) as (User & { organization?: Organization }) | null)
+                : null;
+            const patient = patientResp.status === "fulfilled" && patientResp.value
+                ? ((patientResp.value.data?.data || patientResp.value.data || patientResp.value) as Patient | null)
+                : null;
+            const subscriber = subscriberResp.status === "fulfilled" && subscriberResp.value
+                ? ((subscriberResp.value.data?.data || subscriberResp.value.data || subscriberResp.value) as Subscriber | null)
+                : null;
 
-            const mergeIfMissing = (target: any, source: any, keys: string[]) => {
+            const mergeIfMissing = (target: Record<string, unknown>, source: Record<string, unknown> | null, keys: string[]) => {
                 if (!source) return;
                 keys.forEach((key) => {
                     if (target[key] === undefined || target[key] === null || target[key] === "") {
@@ -202,7 +241,7 @@ export default function ReviewClaimStep({
                 });
             };
 
-            const next = { ...preview };
+            const next: ClaimDraft = { ...preview };
 
             // Default DOS to encounter date if missing
             if (!next.service_date_start && next.date_of_service) {
@@ -214,7 +253,7 @@ export default function ReviewClaimStep({
 
             // Billing provider defaults from organization (profile.organization)
             next.billing_provider = { ...(next.billing_provider || {}) };
-            const org = profile?.organization || {};
+            const org = profile?.organization || ({} as Organization);
 
             if (!next.billing_provider.name && org.billing_name) next.billing_provider.name = org.billing_name;
             if (!next.billing_provider.npi && org.billing_npi) next.billing_provider.npi = org.billing_npi;
@@ -321,7 +360,10 @@ export default function ReviewClaimStep({
                 if (!next.subscriber.address_zip) next.subscriber.address_zip = patient.address_zip;
             } else if (subscriber) {
                 next.subscriber = { ...(next.subscriber || {}) };
-                mergeIfMissing(next.subscriber, subscriber, [
+                mergeIfMissing(
+                    next.subscriber as Record<string, unknown>,
+                    subscriber as Record<string, unknown>,
+                    [
                     "full_name",
                     "dob",
                     "gender",
@@ -331,18 +373,42 @@ export default function ReviewClaimStep({
                     "address_city",
                     "address_state",
                     "address_zip",
-                ]);
+                    ]
+                );
             }
 
             setClaim(next);
             onClaimChange?.(next);
             updateValidation(next);
-        } catch (err) {
-            console.warn("Prefill failed", err);
-        } finally {
-            setPrefilling(false);
+        } catch (error) {
+            console.warn("Prefill failed", error);
         }
-    };
+    }, [onClaimChange, updateValidation]);
+
+    const fetchClaimPreview = useCallback(async () => {
+        if (!encounterId) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await apiClient.encounters.previewClaim(encounterId);
+            const preview = res.data.data as ClaimDraft;
+            setClaim(preview);
+            onClaimChange?.(preview);
+            updateValidation(preview);
+            await hydrateWithDefaults(preview);
+        } catch (error) {
+            console.error("Failed to build claim preview", error);
+            setError("Failed to build claim preview. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    }, [encounterId, hydrateWithDefaults, onClaimChange, updateValidation]);
+
+    useEffect(() => {
+        if (encounterId) {
+            void fetchClaimPreview();
+        }
+    }, [encounterId, fetchClaimPreview]);
 
     if (!encounterId) {
         return (
@@ -743,7 +809,7 @@ export default function ReviewClaimStep({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                            {claim.line_items?.map((item: any, index: number) => (
+                            {claim.line_items?.map((item, index: number) => (
                                 <tr key={index} className="bg-white">
                                     <td className="px-4 py-3 text-slate-500">{item.line_number}</td>
                                     <td className="px-4 py-3">

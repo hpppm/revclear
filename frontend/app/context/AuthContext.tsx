@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
-import { User } from "@/app/lib/types";
+import { Organization, User } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
 interface AuthContextType {
@@ -18,6 +18,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+type AuthPayload = Partial<User> & {
+    user?: User;
+    organization?: Organization | null;
+    requiresOrganization?: boolean;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
@@ -26,11 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
-    useEffect(() => {
-        checkAuth();
-    }, []);
-
-    const checkAuth = async () => {
+    const checkAuth = useCallback(async () => {
         const storedToken = localStorage.getItem("token");
         if (storedToken) {
             setToken(storedToken);
@@ -48,10 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (needsOrg && pathname !== "/dashboard") {
                     router.push("/dashboard");
                 }
-            } catch (error: any) {
+            } catch (error: unknown) {
                 // Only log if it's not a 401 (unauthorized) error
                 // 401 is expected when token is invalid/expired
-                if (error?.response?.status !== 401) {
+                const status = typeof error === "object" && error !== null && "response" in error
+                    ? (error as { response?: { status?: number } }).response?.status
+                    : undefined;
+                if (status !== 401) {
                     logger.error("Auth check failed:", error);
                 }
                 // Clear invalid token
@@ -62,12 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }
         setIsLoading(false);
-    };
+    }, [pathname, router]);
 
-    const login = (newToken: string, newUser: User | any) => {
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void checkAuth();
+    }, [checkAuth]);
+
+    const login = (newToken: string, newUser: User | AuthPayload) => {
         localStorage.setItem("token", newToken);
         setToken(newToken);
-        const payload: any = newUser || {};
+        const payload: AuthPayload = newUser || {};
         const fetchedUser = payload.user ?? payload;
         const organization = payload.organization ?? fetchedUser.organization ?? null;
         const needsOrg = payload.requiresOrganization === true || !organization;

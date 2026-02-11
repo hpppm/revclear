@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 
@@ -29,8 +30,11 @@ export default function ForgotPasswordPage() {
       await apiClient.auth.forgotPassword(email.trim());
       setStep("confirm");
       setSuccess("Verification code sent to your email.");
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.response?.data?.message || "Failed to send code.");
+    } catch (error: unknown) {
+      const responseData = typeof error === "object" && error !== null && "response" in error
+        ? (error as { response?: { data?: { error?: string; message?: string } } }).response?.data
+        : undefined;
+      setError(responseData?.error || responseData?.message || "Failed to send code.");
     } finally {
       setLoading(false);
     }
@@ -48,12 +52,15 @@ export default function ForgotPasswordPage() {
     try {
       await apiClient.auth.confirmForgotPassword({
         email: email.trim(),
-        confirmationCode: code.trim(),
-        password: newPassword.trim(),
+        code: code.trim(),
+        newPassword: newPassword.trim(),
       });
       setSuccess("Password updated. You can sign in now.");
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.response?.data?.message || "Failed to reset password.");
+    } catch (error: unknown) {
+      const responseData = typeof error === "object" && error !== null && "response" in error
+        ? (error as { response?: { data?: { error?: string; message?: string } } }).response?.data
+        : undefined;
+      setError(responseData?.error || responseData?.message || "Failed to reset password.");
     } finally {
       setLoading(false);
     }
@@ -65,11 +72,14 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <Link href="/landing" className="inline-flex items-center gap-3">
             {!logoError ? (
-              <img
+              <Image
                 src={LOGO_FULL}
                 alt="RevClear"
+                width={160}
+                height={40}
                 className="h-10 w-auto object-contain rc-logo-hover rc-logo-float"
                 onError={() => setLogoError(true)}
+                priority
               />
             ) : (
               <span className="text-2xl font-semibold text-slate-900">RevClear</span>

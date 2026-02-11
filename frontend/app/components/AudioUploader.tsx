@@ -27,18 +27,21 @@ export default function AudioUploader({
   const [message, setMessage] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
-  const validateFile = (file: File) => {
-    if (!file) return "No file selected.";
-    const tooLarge = file.size / 1024 / 1024 > maxSizeMB;
-    if (tooLarge) {
-      return `File is too large. Max size is ${maxSizeMB}MB.`;
-    }
-    const isAllowed = accept.includes(file.type) || file.type.startsWith("audio/");
-    if (!isAllowed) {
-      return "Unsupported audio type. Please use mp3, wav, m4a, or webm.";
-    }
-    return null;
-  };
+  const validateFile = useCallback(
+    (file: File) => {
+      if (!file) return "No file selected.";
+      const tooLarge = file.size / 1024 / 1024 > maxSizeMB;
+      if (tooLarge) {
+        return `File is too large. Max size is ${maxSizeMB}MB.`;
+      }
+      const isAllowed = accept.includes(file.type) || file.type.startsWith("audio/");
+      if (!isAllowed) {
+        return "Unsupported audio type. Please use mp3, wav, m4a, or webm.";
+      }
+      return null;
+    },
+    [accept, maxSizeMB]
+  );
 
   const handleFile = useCallback(
     (file?: File) => {
@@ -52,7 +55,7 @@ export default function AudioUploader({
       setFileName(file.name);
       onFileSelect(file);
     },
-    [onFileSelect]
+    [onFileSelect, validateFile]
   );
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,5 +1,3 @@
-import Card from "./ui/Card";
-
 type SoapNote = {
   subjective?: string;
   objective?: string;

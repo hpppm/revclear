@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
@@ -9,7 +9,30 @@ import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import logger from "@/app/lib/logger";
 
-const mapPatientResponse = (data: any): Patient => ({
+type RawPatient = {
+    id: string;
+    full_name?: string;
+    name?: string;
+    age?: number;
+    dob?: string;
+    gender?: string;
+    phone?: string;
+    email?: string;
+    insurance_provider?: string;
+    insurance_policy_number?: string;
+    insurance_member_id?: string;
+    insurance_group_number?: string;
+    insurance_payer_id?: string;
+    insurance_payer_name?: string;
+    insurance_relationship?: "self" | "spouse" | "child" | "other";
+    plan_name?: string;
+    address_street?: string;
+    address_city?: string;
+    address_state?: string;
+    address_zip?: string;
+};
+
+const mapPatientResponse = (data: RawPatient): Patient => ({
     id: data.id,
     name: data.full_name || data.name,
     age: data.age || 0,
@@ -38,19 +61,12 @@ export default function PatientProfilePage() {
     const [patient, setPatient] = useState<Patient | null>(null);
     const [encounters, setEncounters] = useState<Encounter[]>([]);
     const [loading, setLoading] = useState(true);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
 
-    useEffect(() => {
-        if (patientId) {
-            fetchData();
-        }
-    }, [patientId]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             // Fetch Patient
@@ -67,13 +83,19 @@ export default function PatientProfilePage() {
             encountersData = encountersData.filter((e: Encounter) => e.patient_id === patientId);
             setEncounters(encountersData);
 
-        } catch (err) {
-            logger.error("Failed to load patient profile", err);
+        } catch (error) {
+            logger.error("Failed to load patient profile", error);
             setError("Failed to load patient details.");
         } finally {
             setLoading(false);
         }
-    };
+    }, [patientId]);
+
+    useEffect(() => {
+        if (patientId) {
+            void fetchData();
+        }
+    }, [patientId, fetchData]);
 
     const handleSave = async () => {
         if (!editedPatient) return;
@@ -143,15 +165,12 @@ export default function PatientProfilePage() {
     };
 
     const handleDelete = async (id: string) => {
-        setDeletingId(id);
         try {
             await apiClient.encounters.delete(id);
             setEncounters((prev) => prev.filter((e) => e.id !== id));
-        } catch (err) {
-            logger.error("Failed to delete encounter", err);
+        } catch (error) {
+            logger.error("Failed to delete encounter", error);
             // Optionally set a temporary error state for deleting
-        } finally {
-            setDeletingId(null);
         }
     };
 
@@ -247,7 +266,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <select
                                         value={editedPatient.gender || "U"}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
+                                        onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value })}
                                         className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
                                     >
                                         <option value="M">Male</option>

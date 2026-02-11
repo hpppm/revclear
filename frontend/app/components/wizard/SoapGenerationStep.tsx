@@ -1,16 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Button from "../ui/Button";
 import SoapNoteViewer from "../SoapNoteViewer";
 import logger from "@/app/lib/logger";
+import { SoapNote } from "@/app/lib/types";
+
+type TranscriptPayload =
+    | string
+    | {
+          text?: string;
+          summary?: string;
+      }
+    | Record<string, unknown>
+    | null;
 
 interface SoapGenerationStepProps {
-    transcript: any;
-    soap: any;
+    transcript: TranscriptPayload;
+    soap: SoapNote | null;
     generatingSoap: boolean;
     onGenerateSoap: () => void;
-    onSaveSoap?: (soap: any) => Promise<void>;
+    onSaveSoap?: (soap: SoapNote) => Promise<void>;
 }
 
 export default function SoapGenerationStep({
@@ -21,7 +31,7 @@ export default function SoapGenerationStep({
     onSaveSoap,
 }: SoapGenerationStepProps) {
     const [isEditing, setIsEditing] = useState(false);
-    const [editedSoap, setEditedSoap] = useState<any>(null);
+    const [editedSoap, setEditedSoap] = useState<SoapNote | null>(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -41,7 +51,7 @@ export default function SoapGenerationStep({
     };
 
     const handleSave = async () => {
-        if (!onSaveSoap) return;
+        if (!onSaveSoap || !editedSoap) return;
         setSaving(true);
         try {
             await onSaveSoap(editedSoap);
@@ -53,9 +63,9 @@ export default function SoapGenerationStep({
         }
     };
 
-    const handleFieldChange = (field: string, value: string) => {
-        setEditedSoap((prev: any) => ({
-            ...prev,
+    const handleFieldChange = (field: keyof SoapNote, value: string) => {
+        setEditedSoap((prev) => ({
+            ...(prev || {}),
             [field]: value,
         }));
     };
@@ -65,13 +75,13 @@ export default function SoapGenerationStep({
         if (typeof transcript === "string") return transcript;
 
         // Handle explicit empty text result from Whisper
-        if (transcript.text === "") {
+        if (typeof transcript === "object" && transcript && "text" in transcript && transcript.text === "") {
             return "No speech detected in the audio file.";
         }
 
         return (
-            transcript.text ||
-            transcript.summary ||
+            (typeof transcript === "object" && transcript && "text" in transcript ? transcript.text : undefined) ||
+            (typeof transcript === "object" && transcript && "summary" in transcript ? transcript.summary : undefined) ||
             JSON.stringify(transcript ?? {}, null, 2)
         );
     })();

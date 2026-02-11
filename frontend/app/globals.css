@@ -11,6 +11,9 @@
   --rc-accent: #0f766e;
   --rc-accent-strong: #0b5f59;
   --rc-gold: #d4a84e;
+  --font-source-sans: "Source Sans 3";
+  --font-dm-serif: "DM Serif Display";
+  --font-source-mono: "Source Code Pro";
 }
 
 @theme inline {

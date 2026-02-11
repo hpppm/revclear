@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import { Patient, MedicalCode } from "@/app/lib/types";
+import { MedicalCode, Patient, SoapNote, User } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import WizardContainer from "@/app/components/ui/WizardContainer";
@@ -23,15 +23,45 @@ const allowedAudioTypes = [
   "audio/m4a",
 ];
 
-const extractTranscriptText = (t: any): string => {
+type TranscriptPayload = {
+  text?: string;
+  summary?: string;
+  segments?: Array<{ text?: string }>;
+} | string | null;
+
+type Subscriber = {
+  full_name?: string;
+  dob?: string;
+  gender?: string;
+  phone?: string;
+  address_street?: string;
+  address_city?: string;
+  address_state?: string;
+  address_zip?: string;
+  insurance_id?: string;
+  insurance_group_number?: string;
+};
+
+type EncounterMetadata = {
+  patientId: string;
+  date: string;
+  provider: string;
+  encounterType?: string;
+  chiefComplaint?: string;
+  relationship?: "self" | "spouse" | "child" | "other";
+  subscriber?: Subscriber | null;
+  patientName?: string;
+};
+
+const extractTranscriptText = (t: TranscriptPayload): string => {
   if (!t) return "";
   if (typeof t === "string") return t;
-  if (t.text !== undefined) return t.text ?? "";
-  if (t.summary !== undefined) return t.summary ?? "";
-  if (Array.isArray(t.segments)) {
-    return t.segments.map((s: any) => s?.text ?? "").join(" ").trim();
+  if ("text" in t && t.text !== undefined) return t.text ?? "";
+  if ("summary" in t && t.summary !== undefined) return t.summary ?? "";
+  if ("segments" in t && Array.isArray(t.segments)) {
+    return t.segments.map((s) => s?.text ?? "").join(" ").trim();
   }
-  return typeof t === "object" ? JSON.stringify(t) : "";
+  return JSON.stringify(t);
 };
 
 export default function EncounterPage() {
@@ -41,20 +71,8 @@ export default function EncounterPage() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [encounterId, setEncounterId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Step 1: Patient Details State
-  const [metadata, setMetadata] = useState<{
-    patientId: string;
-    date: string;
-    provider: string;
-    encounterType?: string;
-    chiefComplaint?: string;
-    relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
-    patientName?: string;
-  }>({
+  const [metadata, setMetadata] = useState<EncounterMetadata>({
     patientId: "",
     date: new Date().toISOString().split("T")[0],
     provider: "",
@@ -74,39 +92,34 @@ export default function EncounterPage() {
   const [s3Key, setS3Key] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const [transcript, setTranscript] = useState<any | null>(null);
+  const [transcript, setTranscript] = useState<TranscriptPayload | null>(null);
   const [transcriptDraft, setTranscriptDraft] = useState<string>("");
   const [savingTranscript, setSavingTranscript] = useState(false);
 
   // Step 3: SOAP State
-  const [soap, setSoap] = useState<any | null>(null);
+  const [soap, setSoap] = useState<SoapNote | null>(null);
   const [generatingSoap, setGeneratingSoap] = useState(false);
 
   // Step 4: Medical Codes State
   const [savedCodes, setSavedCodes] = useState<MedicalCode[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<MedicalCode[]>([]);
-  const [savingCodes, setSavingCodes] = useState(false);
-  const [claimDraft, setClaimDraft] = useState<any>(null);
-  const [claimValid, setClaimValid] = useState(false);
+  const [claimDraft, setClaimDraft] = useState<Record<string, unknown> | null>(null);
   const hasLoadedRef = useRef(false);
 
   const handleCodesSelected = (codes: MedicalCode[]) => {
     setSelectedCodes(codes);
   };
 
-  const handleClaimChange = (claim: any) => {
+  const handleClaimChange = (claim: Record<string, unknown>) => {
     setClaimDraft(claim);
   };
 
   useEffect(() => {
     if (user) {
+      const typedUser = user as User;
       setMetadata((prev) => ({
         ...prev,
-        provider:
-          (user as any).full_name ||
-          (user as any).name ||
-          (user as any).email ||
-          "",
+        provider: typedUser.full_name || typedUser.name || typedUser.email || "",
       }));
     }
   }, [user]);
@@ -123,8 +136,6 @@ export default function EncounterPage() {
     if (id && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
       setEncounterId(id);
-      setLoading(true);
-
       // Fetch encounter data to restore state
       apiClient.encounters
         .getById(id)
@@ -216,22 +227,16 @@ export default function EncounterPage() {
                 setSavedCodes(codesData);
                 setSelectedCodes(codesData);
               }
-            } catch (err) {
+            } catch {
               // It's okay if no codes exist yet
               logger.log("No saved codes found or failed to load");
             }
 
-            setLoading(false);
           }
         })
         .catch((error) => {
           logger.error("Failed to load encounter", error);
-          setError("Failed to load encounter");
-          setLoading(false);
         });
-
-    } else {
-      setLoading(false);
     }
 
     // Restore step from URL
@@ -259,8 +264,8 @@ export default function EncounterPage() {
       } else {
         setMetadata((prev) => ({ ...prev, subscriber: null, relationship: "self" }));
       }
-    } catch (err) {
-      logger.error("Failed to load subscriber", err);
+    } catch (error) {
+      logger.error("Failed to load subscriber", error);
       setSubscriberError("Failed to load subscriber info");
     } finally {
       setSubscriberLoading(false);
@@ -320,10 +325,30 @@ export default function EncounterPage() {
       const response = await apiClient.patients.getAll();
       const rawPatients = response.data?.data || [];
 
+      type RawPatient = {
+        id: string;
+        full_name?: string;
+        age?: number;
+        dob?: string;
+        phone?: string;
+        email?: string;
+        insurance_provider?: string;
+        insurance_policy_number?: string;
+        insurance_group_number?: string;
+        insurance_payer_id?: string;
+        insurance_payer_name?: string;
+        insurance_relationship?: "self" | "spouse" | "child" | "other";
+        plan_name?: string;
+        diagnosis?: string;
+        address_street?: string;
+        address_city?: string;
+        address_state?: string;
+        address_zip?: string;
+      };
       const mappedPatients: Patient[] = Array.isArray(rawPatients)
-        ? rawPatients.map((p: any) => ({
+        ? (rawPatients as RawPatient[]).map((p) => ({
           id: p.id,
-          name: p.full_name,
+          name: p.full_name || "",
           age: p.age || 0,
           dob: p.dob,
           phone: p.phone,
@@ -394,8 +419,8 @@ export default function EncounterPage() {
 
       if (!key) throw new Error("Failed to get S3 key from upload");
       setS3Key(key);
-    } catch (err: any) {
-      logger.error("Save failed", err);
+    } catch (error: unknown) {
+      logger.error("Save failed", error);
     } finally {
       setUploading(false);
     }
@@ -421,8 +446,8 @@ export default function EncounterPage() {
       setTranscript(receivedTranscript);
       setTranscriptDraft(extractTranscriptText(receivedTranscript));
       setSoap(receivedSoap);
-    } catch (err: any) {
-      logger.error("Transcription failed", err);
+    } catch (error: unknown) {
+      logger.error("Transcription failed", error);
     } finally {
       setTranscribing(false);
     }
@@ -444,8 +469,8 @@ export default function EncounterPage() {
       await apiClient.encounters.update(encounterId, {
         status: "ready_for_review",
       });
-    } catch (err: any) {
-      logger.error("SOAP generation failed", err);
+    } catch (error: unknown) {
+      logger.error("SOAP generation failed", error);
     } finally {
       setGeneratingSoap(false);
     }
@@ -478,15 +503,12 @@ export default function EncounterPage() {
   const handleSaveCodes = async () => {
     if (!encounterId) return;
 
-    setSavingCodes(true);
     try {
       await apiClient.codes.save(encounterId, selectedCodes);
       setSavedCodes(selectedCodes);
       logger.log("Codes saved successfully");
     } catch (err) {
       logger.error("Failed to save codes", err);
-    } finally {
-      setSavingCodes(false);
     }
   };
 
@@ -507,7 +529,7 @@ export default function EncounterPage() {
     }
   };
 
-  const handleSaveSoap = async (updatedSoap: any) => {
+  const handleSaveSoap = async (updatedSoap: SoapNote) => {
     if (!encounterId) return;
 
     try {
@@ -635,11 +657,10 @@ export default function EncounterPage() {
       name: "Review Claim",
       description: "Review and finalize",
       component: (
-        <ReviewClaimStep
-          encounterId={encounterId}
-          onClaimChange={handleClaimChange}
-          onValidationChange={setClaimValid}
-        />
+            <ReviewClaimStep
+              encounterId={encounterId}
+              onClaimChange={handleClaimChange}
+            />
       ),
       canGoNext: true,
       onNext: async () => {

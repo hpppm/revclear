@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
+import { Encounter } from "@/app/lib/types";
 
 type TaskItem = {
     id: string;
@@ -78,8 +80,8 @@ export default function DashboardLayout({
         try {
             const response = await apiClient.encounters.getAll();
             const raw = response.data?.data || response.data || [];
-            const items = (Array.isArray(raw) ? raw : [])
-                .map((encounter: any) => {
+            const items = (Array.isArray(raw) ? (raw as Encounter[]) : [])
+                .map((encounter) => {
                     const meta = statusMeta[encounter.status];
                     if (!meta) return null;
                     return {
@@ -107,6 +109,7 @@ export default function DashboardLayout({
             { label: "Dashboard", href: "/dashboard" },
             { label: "Patients", href: "/dashboard/patients" },
             { label: "Encounters", href: "/dashboard/encounters" },
+            { label: "Organization", href: "/dashboard/organization" },
             { label: "Invoices", href: "/dashboard/invoices" },
             { label: "Claims", href: "/dashboard/claims" },
             { label: "Submitted", href: "/dashboard/submitted" },
@@ -287,11 +290,14 @@ function LogoFull() {
         );
     }
     return (
-        <img
+        <Image
             src={LOGO_FULL}
             alt="RevClear"
+            width={140}
+            height={32}
             className="h-8 w-auto object-contain rc-logo-hover rc-logo-float"
             onError={() => setHasError(true)}
+            priority
         />
     );
 }

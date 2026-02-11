@@ -5,11 +5,20 @@ import AudioUploader from "../AudioUploader";
 import Button from "../ui/Button";
 import logger from "@/app/lib/logger";
 
+type TranscriptPayload =
+    | string
+    | {
+          text?: string;
+          summary?: string;
+      }
+    | Record<string, unknown>
+    | null;
+
 interface TranscriptionStepProps {
     audioFile: File | null;
     audioUrl: string | null;
     s3Key: string | null;
-    transcript: any;
+    transcript: TranscriptPayload;
     transcriptDraft: string;
     onTranscriptDraftChange: (value: string) => void;
     onSaveTranscript: () => void;
@@ -45,13 +54,13 @@ export default function TranscriptionStep({
         if (typeof transcript === "string") return transcript;
 
         // Handle explicit empty text result from Whisper
-        if (transcript.text === "") {
+        if (typeof transcript === "object" && transcript && "text" in transcript && transcript.text === "") {
             return "No speech detected in the audio file.";
         }
 
         return (
-            transcript.text ||
-            transcript.summary ||
+            (typeof transcript === "object" && transcript && "text" in transcript ? transcript.text : undefined) ||
+            (typeof transcript === "object" && transcript && "summary" in transcript ? transcript.summary : undefined) ||
             JSON.stringify(transcript, null, 2)
         );
     })();
@@ -200,7 +209,7 @@ export default function TranscriptionStep({
 
                     {!transcript && !transcribing && (
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Click "Transcribe Audio" to generate a transcript.
+                            Click &quot;Transcribe Audio&quot; to generate a transcript.
                         </div>
                     )}
                 </div>

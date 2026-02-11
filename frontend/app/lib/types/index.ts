@@ -58,9 +58,9 @@ export interface Organization {
     edi_sftp_password?: string;
     edi_sftp_port?: number;
     edi_sftp_private_key?: string;
-    fee_schedule?: Record<string, any>;
-    payer_enrollments?: Record<string, any>;
-    billing_defaults?: Record<string, any>;
+  fee_schedule?: Record<string, unknown>;
+  payer_enrollments?: Record<string, unknown>;
+  billing_defaults?: Record<string, unknown>;
 }
 
 export interface OrganizationMembership {

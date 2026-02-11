@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
@@ -11,14 +12,13 @@ export default function SignupPage() {
   const { login } = useAuth();
   const [logoError, setLogoError] = useState(false);
   const LOGO_FULL = "/revclear-logo/vector/default.svg";
-  const LOGO_MARK = "/revclear-logo/vector/isolated-layout.svg";
 
   // Clear any existing auth state when visiting signup
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
     }
-  });
+  }, []);
 
   const [form, setForm] = useState({
     name: "",
@@ -52,7 +52,7 @@ export default function SignupPage() {
     return "Strong";
   }
 
-  function handleChange(e: any) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
 
@@ -102,9 +102,11 @@ export default function SignupPage() {
         setError("Account created! Please check your email for verification code.");
         setTimeout(() => router.push("/login"), 2000);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Signup failed:", error);
-      const errorData = error.response?.data;
+      const errorData = typeof error === "object" && error !== null && "response" in error
+        ? (error as { response?: { data?: { code?: string; error?: string; message?: string; policy?: string } } }).response?.data
+        : undefined;
       let errorMessage = "Signup failed. Please try again.";
 
       if (errorData?.code === "USER_ALREADY_EXISTS") {
@@ -164,11 +166,14 @@ export default function SignupPage() {
                 <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-full bg-slate-200" />
                 <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
                   {!logoError ? (
-                    <img
+                    <Image
                       src={LOGO_FULL}
                       alt="RevClear"
+                      width={180}
+                      height={72}
                       className="h-[72px] w-auto -mt-4 object-contain"
                       onError={() => setLogoError(true)}
+                      priority
                     />
                   ) : (
                     <span className="text-xl font-semibold text-slate-900">RevClear</span>

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { MedicalCode } from "@/app/lib/types";
+import { MedicalCode, SoapNote } from "@/app/lib/types";
 import MedicalCodesViewer from "../MedicalCodesViewer";
 
 interface MedicalCodesStepProps {
     encounterId: string | null;
-    soap: any;
+    soap: SoapNote | null;
     savedCodes?: MedicalCode[];
     onSelectionChange?: (codes: MedicalCode[]) => void;
 }

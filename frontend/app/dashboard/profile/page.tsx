@@ -17,24 +17,23 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [formData, setFormData] = useState({
-        phone: (user as any)?.phone || "",
-        practitioner_type: (user as any)?.practitioner_type || "",
-        license_id: (user as any)?.license_id || "",
-        license_state: (user as any)?.license_state || "",
-        npi: (user as any)?.npi || "",
-        taxonomy_code: (user as any)?.taxonomy_code || "",
+        phone: user?.phone || "",
+        practitioner_type: user?.practitioner_type || "",
+        license_id: user?.license_id || "",
+        license_state: user?.license_state || "",
+        npi: user?.npi || "",
+        taxonomy_code: user?.taxonomy_code || "",
     });
-    const [showAdvanced, setShowAdvanced] = useState(false);
 
     useEffect(() => {
         if (user) {
             setFormData({
-                phone: (user as any)?.phone || "",
-                practitioner_type: (user as any)?.practitioner_type || "",
-                license_id: (user as any)?.license_id || "",
-                license_state: (user as any)?.license_state || "",
-                npi: (user as any)?.npi || "",
-                taxonomy_code: (user as any)?.taxonomy_code || "",
+                phone: user?.phone || "",
+                practitioner_type: user?.practitioner_type || "",
+                license_id: user?.license_id || "",
+                license_state: user?.license_state || "",
+                npi: user?.npi || "",
+                taxonomy_code: user?.taxonomy_code || "",
             });
         }
     }, [user]);
@@ -66,7 +65,7 @@ export default function ProfilePage() {
                     acc[key] = value;
                 }
                 return acc;
-            }, {} as Record<string, any>);
+            }, {} as Record<string, unknown>);
 
             // Update user profile
             await apiClient.me.updateProfile(cleanUserPayload);
@@ -74,9 +73,12 @@ export default function ProfilePage() {
             // Refresh auth to get updated data
             await checkAuth();
             setIsEditing(false);
-        } catch (error) {
+        } catch (error: unknown) {
             logger.error("Failed to save profile", error);
-            const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to save profile";
+            const responseData = typeof error === "object" && error !== null && "response" in error
+                ? (error as { response?: { data?: { message?: string; error?: string } } }).response?.data
+                : undefined;
+            const message = responseData?.message || responseData?.error || "Failed to save profile";
             setError(message);
         } finally {
             setSaving(false);
@@ -95,14 +97,6 @@ export default function ProfilePage() {
             </div>
         );
     }
-
-    const createdDate = user.created_at
-        ? new Date(user.created_at).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        })
-        : "N/A";
 
     return (
         <div className="space-y-4">
@@ -136,7 +130,7 @@ export default function ProfilePage() {
                                     <h2 className="text-2xl font-bold">{user.full_name}</h2>
                                     <p className="text-slate-200 capitalize">{user.role || "User"}</p>
                                     <p className="text-slate-300 text-sm mt-1">
-                                        {(user as any)?.organization?.name ? `Organization: ${(user as any).organization.name}` : "No Primary Organization"}
+                                        {user.organization?.name ? `Organization: ${user.organization.name}` : "No Primary Organization"}
                                     </p>
                                 </div>
                             </div>
@@ -233,7 +227,7 @@ export default function ProfilePage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Phone</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).phone || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{user.phone || "—"}</p>
                                     </div>
                                 </div>
                             </div>
@@ -244,23 +238,23 @@ export default function ProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Practitioner Type</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).practitioner_type || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{user.practitioner_type || "—"}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Taxonomy Code</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).taxonomy_code || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{user.taxonomy_code || "—"}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">License ID</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).license_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{user.license_id || "—"}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">License State</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).license_state || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{user.license_state || "—"}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Individual NPI</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).npi || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{user.npi || "—"}</p>
                                     </div>
                                 </div>
                             </div>
@@ -278,10 +272,10 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                                     <p className="text-sm font-semibold text-slate-900">
-                                        {(user as any)?.organization?.name || "No organization linked"}
+                                        {user.organization?.name || "No organization linked"}
                                     </p>
                                     <p className="text-sm text-slate-600 mt-1">
-                                        {(user as any)?.organization?.name
+                                        {user.organization?.name
                                             ? "Update clinic details and billing info from Organization settings."
                                             : "Create or join a clinic to unlock patient workflows."}
                                     </p>
@@ -290,7 +284,7 @@ export default function ProfilePage() {
                                             href="/dashboard/organization"
                                             className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                                         >
-                                            {(user as any)?.organization?.name ? "View organization" : "Set up organization"}
+                                            {user.organization?.name ? "View organization" : "Set up organization"}
                                         </Link>
                                     </div>
                                 </div>

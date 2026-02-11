@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { MedicalCode, SoapNote } from "@/app/lib/types";
 import Button from "./ui/Button";
@@ -21,21 +21,31 @@ export default function MedicalCodesViewer({
   savedCodes = [],
   onCodesSelected,
 }: MedicalCodesViewerProps) {
-  const ensureType = (codes: any[], type: "ICD-10" | "CPT") =>
-    (codes || []).map((c) => ({
-      id: c.id || `${type}-${c.code}`,
-      type,
-      code: c.code,
-      description: c.description,
-      category: c.category || "Unspecified",
-      confidence:
-        typeof c.confidence === "number"
-          ? Math.round(c.confidence * 100)
-          : typeof c.confidence_score === "number"
-          ? Math.round(c.confidence_score * 100)
-          : undefined,
-      source: c.is_ai_suggested ? "AI" : c.source,
-    }));
+  void soap;
+
+  type RawCode = Partial<MedicalCode> & {
+    confidence_score?: number;
+    is_ai_suggested?: boolean;
+  };
+
+  const ensureType = useCallback(
+    (codes: RawCode[], type: "ICD-10" | "CPT") =>
+      (codes || []).map((c) => ({
+        id: c.id || `${type}-${c.code}`,
+        type,
+        code: c.code,
+        description: c.description,
+        category: c.category || "Unspecified",
+        confidence:
+          typeof c.confidence === "number"
+            ? Math.round(c.confidence * 100)
+            : typeof c.confidence_score === "number"
+            ? Math.round(c.confidence_score * 100)
+            : undefined,
+        source: c.is_ai_suggested ? "AI" : c.source,
+      })),
+    []
+  );
 
   const normalizedSaved = [
     ...ensureType(savedCodes.filter((c) => c.type === "ICD-10"), "ICD-10"),
@@ -65,7 +75,7 @@ export default function MedicalCodesViewer({
       setSelectedCodes(normalized);
       setHasGenerated(true);
     }
-  }, [savedCodes]);
+  }, [ensureType, savedCodes]);
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,8 +107,8 @@ export default function MedicalCodesViewer({
       setIcdCandidates(ensureType(icdMatches, "ICD-10"));
       setCptCandidates(ensureType(cptMatches, "CPT"));
       setHasGenerated(true);
-    } catch (err: any) {
-      console.error("Code generation failed", err);
+    } catch (error) {
+      console.error("Code generation failed", error);
       setHasGenerated(true);
     } finally {
       setLoading(false);
@@ -111,10 +121,10 @@ export default function MedicalCodesViewer({
     setSearching(true);
     try {
       const response = await apiClient.codes.search(searchQuery, searchType);
-      const rawResults = response.data.data || [];
+      const rawResults = (response.data.data || []) as RawCode[];
 
       // Inject type based on searchType since mock data doesn't have it
-      const resultsWithType = rawResults.map((r: any) => ({
+      const resultsWithType = rawResults.map((r) => ({
         ...r,
         type: searchType === "icd" ? "ICD-10" : "CPT"
       }));
@@ -244,7 +254,7 @@ export default function MedicalCodesViewer({
             No matches found
           </h3>
           <p className="text-sm text-amber-700">
-            The AI couldn't find matching codes. Try manually searching for codes below.
+            The AI could not find matching codes. Try manually searching for codes below.
           </p>
         </div>
       )}

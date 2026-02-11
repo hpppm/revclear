@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
@@ -12,8 +11,7 @@ import { Organization } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
 export default function OrganizationProfilePage() {
-    const { user, checkAuth, isLoading: authLoading } = useAuth();
-    const router = useRouter();
+    const { user, isLoading: authLoading } = useAuth();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -97,13 +95,16 @@ export default function OrganizationProfilePage() {
         try {
             const response = await apiClient.organizations.getCurrent();
             // Helper to extract org same as dashboard
-            const extractOrg = (payload: any) => {
-                if (!payload) return null;
-                if (payload.data?.organization) return payload.data.organization;
-                if (payload.data?.data) return payload.data.data;
-                if (payload.data) return payload.data;
-                if (payload.organization) return payload.organization;
-                return payload;
+            const extractOrg = (payload: unknown) => {
+                if (!payload || typeof payload !== "object") return null;
+                const typed = payload as { data?: unknown; organization?: Organization };
+                if (typed.data && typeof typed.data === "object") {
+                    const data = typed.data as { organization?: Organization; data?: Organization };
+                    if (data.organization) return data.organization;
+                    if (data.data) return data.data;
+                }
+                if (typed.organization) return typed.organization;
+                return payload as Organization;
             };
             setOrganization(extractOrg(response));
         } catch (error) {
@@ -118,7 +119,7 @@ export default function OrganizationProfilePage() {
         setSaving(true);
         setError(null);
         try {
-            const payload: Record<string, any> = {};
+            const payload: Record<string, unknown> = {};
             Object.entries(formData).forEach(([key, value]) => {
                 if (typeof value === "string") {
                     const trimmed = value.trim();
@@ -138,15 +139,18 @@ export default function OrganizationProfilePage() {
             setIsEditing(false);
             // Optionally checkAuth if organization info is attached to user object in context
             // await checkAuth(); 
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error("Failed to save organization", error);
             let message = "Could not save organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+            const responseData = typeof error === "object" && error !== null && "response" in error
+                ? (error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }>; message?: string } } }).response?.data
+                : undefined;
+            if (responseData?.errors && Array.isArray(responseData.errors)) {
+                message = responseData.errors
+                    .map((err) => `${err.path.join(".")}: ${err.message}`)
                     .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
+            } else if (responseData?.message) {
+                message = responseData.message;
             }
             setError(message);
         } finally {
@@ -202,7 +206,7 @@ export default function OrganizationProfilePage() {
                          <div>
                             <h1 className="text-3xl font-bold text-slate-900">Organization Profile</h1>
                             <p className="text-slate-600 mt-2">
-                                Manage your clinic's details, billing profile, and integration settings.
+                                Manage your clinic details, billing profile, and integration settings.
                             </p>
                          </div>
                          {!isEditing && (
@@ -404,7 +408,9 @@ export default function OrganizationProfilePage() {
                                             <Input
                                                 label="SFTP Private Key"
                                                 value={formData.edi_sftp_private_key}
-                                                onChange={(e: any) => setFormData({ ...formData, edi_sftp_private_key: e.target.value })}
+                                                onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                                                    setFormData({ ...formData, edi_sftp_private_key: e.target.value })
+                                                }
                                                 variant="textarea"
                                                 rows={4}
                                                 placeholder="-----BEGIN RSA PRIVATE KEY-----"

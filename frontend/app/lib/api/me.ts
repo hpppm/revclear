@@ -1,6 +1,8 @@
 import api from "./axios";
 
+type ProfilePayload = Record<string, unknown>;
+
 export const meApi = {
     getProfile: () => api.get("/me"),
-    updateProfile: (payload: Record<string, any>) => api.patch("/me", payload),
+    updateProfile: (payload: ProfilePayload) => api.patch("/me", payload),
 };

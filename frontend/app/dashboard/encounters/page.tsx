@@ -30,9 +30,17 @@ export default function EncountersPage() {
         }
 
         if (patientsRes.status === "fulfilled") {
+          type RawPatient = {
+            id: string;
+            full_name?: string;
+            name?: string;
+            age?: number;
+            dob?: string;
+            phone?: string;
+          };
           const rawPatients = patientsRes.value.data?.data || [];
           const mapped = Array.isArray(rawPatients)
-            ? rawPatients.map((p: any) => ({
+            ? (rawPatients as RawPatient[]).map((p) => ({
                 id: p.id,
                 name: p.full_name || p.name,
                 age: p.age || 0,

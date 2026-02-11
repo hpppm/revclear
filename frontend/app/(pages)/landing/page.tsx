@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -14,11 +15,14 @@ export default function LandingPage() {
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-3">
             {!logoError ? (
-            <img
+            <Image
               src={LOGO_FULL}
               alt="RevClear"
+              width={160}
+              height={48}
               className="h-12 w-auto object-contain rc-logo-hover rc-logo-float"
               onError={() => setLogoError(true)}
+              priority
             />
             ) : (
               <span className="text-xl font-semibold text-slate-900">RevClear</span>

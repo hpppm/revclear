@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
@@ -45,11 +46,14 @@ export default function LoginPage() {
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
         login(token, user);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Login failed:", error);
+        const responseData = typeof error === "object" && error !== null && "response" in error
+          ? (error as { response?: { data?: { error?: string; details?: string } } }).response?.data
+          : undefined;
         const errorMessage =
-          error.response?.data?.error ||
-          error.response?.data?.details ||
+          responseData?.error ||
+          responseData?.details ||
           "Invalid email or password";
         setErrors({
           form: errorMessage,
@@ -74,11 +78,14 @@ export default function LoginPage() {
         <div className="w-full rounded-3xl border border-slate-200/70 bg-white/90 p-8 shadow-[0_20px_60px_rgba(76,29,149,0.1)] backdrop-blur">
           <div className="flex items-center justify-center">
             {!logoError ? (
-              <img
+              <Image
                 src={LOGO_FULL}
                 alt="RevClear"
+                width={160}
+                height={48}
                 className="h-12 w-auto object-contain"
                 onError={() => setLogoError(true)}
+                priority
               />
             ) : (
               <span className="text-lg font-semibold text-slate-900">RevClear</span>

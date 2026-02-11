@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
@@ -58,9 +57,12 @@ export default function AddPatientPage() {
 
       await apiClient.patients.create(dataToSubmit);
       router.push("/dashboard/patients"); // Navigate to patients list after saving
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error("Failed to create patient", error);
-      const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
+      const responseData = typeof error === "object" && error !== null && "response" in error
+        ? (error as { response?: { data?: { message?: string; error?: string } } }).response?.data
+        : undefined;
+      const message = responseData?.message || responseData?.error || "Failed to create patient";
       setError(message);
     } finally {
       setSaving(false);

@@ -6,17 +6,32 @@ import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import { Patient } from "@/app/lib/types";
 
+type Subscriber = {
+  full_name?: string;
+  dob?: string;
+  gender?: string;
+  phone?: string;
+  address_street?: string;
+  address_city?: string;
+  address_state?: string;
+  address_zip?: string;
+  insurance_id?: string;
+  insurance_group_number?: string;
+};
+
+type PatientMetadata = {
+  date: string;
+  patientId: string;
+  provider: string;
+  encounterType?: string;
+  chiefComplaint?: string;
+  relationship?: "self" | "spouse" | "child" | "other";
+  subscriber?: Subscriber | null;
+};
+
 interface PatientDetailsStepProps {
-  metadata: {
-    date: string;
-    patientId: string;
-    provider: string;
-    encounterType?: string;
-    chiefComplaint?: string;
-    relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
-  };
-  setMetadata: (metadata: any) => void;
+  metadata: PatientMetadata;
+  setMetadata: (metadata: PatientMetadata) => void;
   patients: Patient[];
   loadingPatients: boolean;
   patientsError: string | null;
@@ -42,7 +57,7 @@ export default function PatientDetailsStep({
     [patients, metadata.patientId]
   );
 
-  const handleSubscriberChange = (field: string, value: any) => {
+  const handleSubscriberChange = (field: keyof Subscriber, value: string) => {
     setMetadata({
       ...metadata,
       subscriber: { ...(metadata.subscriber || {}), [field]: value },
