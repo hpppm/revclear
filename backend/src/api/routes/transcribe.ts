@@ -10,6 +10,7 @@ import { createAudioRecord, createAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { query } from "../../config/db";
+import { AI_FLOW_NAMES } from "../../constants/aiFlows";
 
 const router = Router();
 
@@ -198,7 +199,7 @@ router.post(
       // Persist transcript to ai_results table
       const aiResult = await createAiResult({
         encounter_id: encounterId,
-        flow_name: "whisper_transcript",
+        flow_name: AI_FLOW_NAMES.transcript,
         input_json: { s3Key },
         output_json: transcript,
         model_version: transcript?.model_version || "whisper",
@@ -292,9 +293,9 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
     // Query ai_results for the transcript
     const result = await query(
       `SELECT output_json FROM ai_results 
-       WHERE encounter_id = $1 AND flow_name = 'whisper_transcript' 
+       WHERE encounter_id = $1 AND flow_name = $2 
        ORDER BY created_at DESC LIMIT 1`,
-      [encounterId]
+      [encounterId, AI_FLOW_NAMES.transcript]
     );
 
     if (result.rows.length === 0) {
@@ -335,7 +336,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
     // Persist edited transcript as a new ai_results row
     const aiResult = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "whisper_transcript",
+      flow_name: AI_FLOW_NAMES.transcript,
       input_json: { source: "manual_edit" },
       output_json: { text: parsedBody.data.text },
       model_version: "manual_edit",

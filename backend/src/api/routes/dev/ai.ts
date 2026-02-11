@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { authMiddleware } from "../../../middleware/auth";
-import { speechToSoap } from "../../../../genkit";
+import { speechToSoap } from "../../../services/ai/speechToSoap";
 import { query } from "../../../config/db";
 import { createAiResult } from "../../../db/queries";
+import { AI_FLOW_NAMES } from "../../../constants/aiFlows";
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
     const encounterCheck = await query("SELECT id FROM encounters WHERE id = $1", [encounter_id]);
 
     if (encounterCheck.rows.length === 0) {
-      console.log(`[dev/genkit] Encounter ${encounter_id} not found, creating mock data...`);
+      console.log(`[dev/ai] Encounter ${encounter_id} not found, creating mock data...`);
 
       // Get a clinician (use the first one found or the logged in user if possible)
       // Since this is a dev route, we'll just grab the first user
@@ -46,10 +47,10 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
          VALUES ($1, $2, $3, NOW(), 'draft')`,
         [encounter_id, patientId, clinicianId]
       );
-      console.log(`[dev/genkit] Created mock encounter ${encounter_id}`);
+      console.log(`[dev/ai] Created mock encounter ${encounter_id}`);
     }
 
-    // 2. Run the Genkit flow
+    // 2. Run the AI generation flow
     const result = await speechToSoap({
       encounter_id,
       transcript,
@@ -58,7 +59,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
     // 3. Save result to ai_results
     const saved = await createAiResult({
       encounter_id,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { transcript: transcript || "mock", source: "dev_panel" },
       output_json: result,
       model_version: result.model_version,
@@ -76,7 +77,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
       data: result,
     });
   } catch (error: any) {
-    console.error("Genkit speechToSoap error:", error);
+    console.error("AI speechToSoap error:", error);
     res.status(500).json({
       success: false,
       error: error?.message || "Failed to run speechToSoap flow",

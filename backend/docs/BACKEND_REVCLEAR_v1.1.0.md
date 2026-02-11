@@ -205,9 +205,9 @@ AI-generated SOAP notes built on top of transcripts.
   - Auth required; encounter must belong to org and clinician.
   - Flow:
     - Fetch transcript for encounter from `ai_results` (`flow_name='whisper_transcript'`).
-    - Call Genkit/Gemini to generate SOAP note.
+    - Call configured AI provider (local Ollama or external endpoint) to generate SOAP note.
     - Save SOAP to `ai_results`:
-      - `flow_name = 'soap_gemini'`
+      - `flow_name = 'soap_note'`
       - Either append (versioned) or upsert (see “Open Choices”).
   - Supports “regenerate” by creating a new version.
 
@@ -275,7 +275,7 @@ AI-generated SOAP notes built on top of transcripts.
 - **AI Artifacts (transcripts, SOAP)**
   - Stored in `ai_results`:
     - `encounter_id`
-    - `flow_name` (`whisper_transcript`, `soap_gemini`, etc.)
+    - `flow_name` (`whisper_transcript`, `soap_note`, etc.)
     - `output_json` (contains transcript text or SOAP sections)
     - Optional version metadata.
 
@@ -353,10 +353,10 @@ AI-generated SOAP notes built on top of transcripts.
     - Fallback to S3 path works when no audio is sent (mock S3/Whisper).
 
   - `/api/encounters/:id/soap`
-    - POST generates SOAP from transcript (mock Genkit).
+    - POST generates SOAP from transcript (mock/provider-backed flow).
     - GET returns latest SOAP; PUT saves edits.
 
-- Tests can be conditionally skipped when external dependencies (Whisper, Genkit, S3) are not configured, using environment flags.
+- Tests can be conditionally skipped when external dependencies (Whisper, AI provider, S3) are not configured, using environment flags.
 
 ---
 
