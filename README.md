@@ -46,7 +46,7 @@ revclear/
 | Document | Description |
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | AI assistant guidance |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| [COLLABORATOR_CONTRIBUTIONS.md](https://github.com/hpppm/revclear/blob/main/COLLABORATOR_CONTRIBUTIONS.md) | Detailed contributor vertical ownership and responsibilities |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [docs/](docs/) | Full documentation hub |
 | [Backend Docs](backend/docs/) | API & database documentation |
