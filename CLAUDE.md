@@ -16,11 +16,8 @@ revclear/
 │   │   ├── api/routes/  # REST API endpoints
 │   │   ├── config/      # AWS, database, app configuration
 │   │   ├── middleware/  # Auth, audit, security, error handling
-│   │   ├── services/    # Business logic (patient, encounter, claim)
+│   │   ├── services/    # Business logic (patient, encounter, claim, ai providers)
 │   │   └── db/          # Database queries
-│   └── genkit/        # Genkit AI flows (Gemini integration)
-│       ├── flows/       # speechToSoap, soapToCodes
-│       └── tools/       # Mock transcript, medical code loaders
 ├── frontend/          # Next.js 16 App Router (port 3000)
 │   └── app/
 │       ├── (pages)/     # Auth pages (login, signup, landing)
@@ -34,8 +31,8 @@ revclear/
 ### Key Data Flow
 
 1. **Audio Upload** → S3 storage → Whisper transcription
-2. **Transcript** → `speechToSoap` Genkit flow → SOAP note
-3. **SOAP Note** → `soapToCodes` Genkit flow → ICD-10/CPT codes
+2. **Transcript** → `speechToSoap` AI service → SOAP note
+3. **SOAP Note** → `soapToCodes` AI service → ICD-10/CPT codes
 4. **Medical Codes** → Claim generation → EDI submission
 
 ### Database (PostgreSQL via AWS RDS)
@@ -64,7 +61,6 @@ cd backend
 npm install
 npm run dev              # Start dev server (nodemon + ts-node)
 npm run build            # Compile TypeScript
-npm run build:genkit     # Compile Genkit flows
 npm test                 # Run Jest tests
 ```
 
@@ -83,7 +79,7 @@ npm run lint             # ESLint
 ### Docker (Full Stack)
 
 ```bash
-docker-compose up        # Backend on 4000, Genkit UI on 4001, Frontend on 3000
+docker-compose up        # Backend on 4000, Frontend on 3000
 ```
 
 ## Environment Variables
@@ -94,7 +90,9 @@ Copy `.env.example` to `.env` in the backend directory. Required:
 - `AWS_S3_BUCKET` - audio/transcript storage
 - `AWS_COGNITO_USER_POOL_ID`, `AWS_COGNITO_CLIENT_ID` - auth
 - `DATABASE_URL` or individual `DB_*` params - PostgreSQL
-- `GOOGLE_GENAI_API_KEY` or `GEMINI_API_KEY` - Genkit AI
+- `OLLAMA_BASE_URL`, `OLLAMA_MODEL` - local AI inference (SOAP/codes)
+- `OLLAMA_CODES_MODEL` - optional separate model for code matching
+- `SOAP_API_URL`, `CODES_API_URL` - optional hosted AI endpoints
 - `PHI_ENCRYPTION_KEY` - 32-byte hex for PHI encryption
 
 Frontend: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3005/api`)
@@ -119,16 +117,13 @@ All backend routes under `/api`:
 
 Swagger docs available at `/docs` in development mode.
 
-## Genkit AI Flows
+## AI Services
 
-Located in `backend/genkit/`:
+Located in `backend/src/services/ai/`:
 
-- `speechToSoap` - Converts transcript to SOAP note using Gemini
-- `soapToCodes` - Matches SOAP content to ICD-10/CPT codes from loaded code sets
-
-Default model: `gemini-2.5-flash`
-
-Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
+- `speechToSoap` - Converts transcript to SOAP note
+- `soapToCodes` - Matches SOAP content to ICD-10/CPT codes
+- `providers/*` - Provider adapters (Ollama by default, optional external endpoint)
 
 ## Security Considerations
 
