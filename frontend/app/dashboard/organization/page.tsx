@@ -156,9 +156,9 @@ export default function OrganizationProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+            <div className="space-y-4">
                 <Card>
-                    <div className="text-center p-8">
+                    <div className="text-center p-6">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading organization...</p>
                     </div>
@@ -169,10 +169,10 @@ export default function OrganizationProfilePage() {
 
     if (!organization) {
         return (
-             <div className="min-h-screen bg-slate-50 p-8">
-                <div className="max-w-4xl mx-auto">
+             <div className="space-y-4">
+                <div className="max-w-4xl">
                      <Card>
-                        <div className="text-center p-8">
+                        <div className="text-center p-6">
                             <p className="text-slate-600 mb-4">No organization found.</p>
                             <Link href="/dashboard">
                                 <Button>Back to Dashboard</Button>
@@ -185,8 +185,8 @@ export default function OrganizationProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="space-y-4">
+            <div className="max-w-4xl">
                 {/* Header */}
                 <div className="mb-6">
                     <Link

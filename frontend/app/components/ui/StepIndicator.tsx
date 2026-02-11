@@ -12,8 +12,8 @@ interface StepIndicatorProps {
 
 export default function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
     return (
-        <div className="mb-8">
-            <div className="flex items-center justify-between">
+        <div className="mb-4">
+            <div className="flex items-center justify-between gap-2">
                 {steps.map((step, index) => {
                     const isCompleted = index < currentStep;
                     const isCurrent = index === currentStep;
@@ -23,10 +23,10 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                         <React.Fragment key={index}>
                             <div className="flex flex-col items-center flex-1">
                                 <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${isCompleted
-                                            ? "bg-blue-600 text-white"
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs transition-all ${isCompleted
+                                            ? "bg-slate-900 text-white"
                                             : isCurrent
-                                                ? "bg-blue-100 text-blue-600 ring-2 ring-blue-600"
+                                                ? "bg-slate-100 text-slate-900 ring-2 ring-slate-900"
                                                 : "bg-slate-200 text-slate-500"
                                         }`}
                                 >
@@ -44,7 +44,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                                 </div>
                                 <div className="mt-2 text-center">
                                     <p
-                                        className={`text-sm font-medium ${isCurrent ? "text-blue-600" : isCompleted ? "text-slate-700" : "text-slate-500"
+                                        className={`text-xs font-semibold ${isCurrent ? "text-slate-900" : isCompleted ? "text-slate-700" : "text-slate-500"
                                             }`}
                                     >
                                         {step.name}
@@ -56,7 +56,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                             </div>
                             {index < steps.length - 1 && (
                                 <div
-                                    className={`flex-1 h-0.5 mx-2 transition-all ${isCompleted ? "bg-blue-600" : "bg-slate-200"
+                                    className={`flex-1 h-0.5 mx-2 transition-all ${isCompleted ? "bg-slate-900" : "bg-slate-200"
                                         }`}
                                     style={{ maxWidth: "100px" }}
                                 />

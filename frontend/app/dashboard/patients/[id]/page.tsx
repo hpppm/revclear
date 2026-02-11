@@ -157,7 +157,7 @@ export default function PatientProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="space-y-4">
                 <div className="text-slate-500">Loading patient profile...</div>
             </div>
         );
@@ -165,7 +165,7 @@ export default function PatientProfilePage() {
 
     if (error || !patient) {
         return (
-            <div className="min-h-screen bg-slate-50 p-8">
+            <div className="space-y-4">
                 <div className="max-w-6xl mx-auto">
                     <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
                         {error || "Patient not found."}
@@ -179,7 +179,7 @@ export default function PatientProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
+        <div className="space-y-4">
             <div className="max-w-6xl mx-auto space-y-8">
                 {/* Header / Back */}
                 <div>
@@ -191,7 +191,7 @@ export default function PatientProfilePage() {
                     <div className="px-6 py-6">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
                             <div className="flex items-center gap-4">
-                                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold">
+                                <div className="h-16 w-16 rounded-full bg-slate-900 flex items-center justify-center text-white text-2xl font-semibold">
                                     {(patient.name || "U").charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -203,7 +203,7 @@ export default function PatientProfilePage() {
                                 {!editMode ? (
                                     <button
                                         onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                                        className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm"
                                     >
                                         Edit Profile
                                     </button>
@@ -212,7 +212,7 @@ export default function PatientProfilePage() {
                                         <button
                                             onClick={handleSave}
                                             disabled={saving}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
+                                            className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm disabled:opacity-50"
                                         >
                                             {saving ? "Saving..." : "Save"}
                                         </button>
@@ -380,7 +380,7 @@ export default function PatientProfilePage() {
                         <h2 className="text-xl font-semibold text-slate-900">Encounters History</h2>
                         <Link
                             href={`/dashboard/encounters/create?patientId=${patientId}`}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
                         >
                             + Start New Encounter
                         </Link>
@@ -391,7 +391,7 @@ export default function PatientProfilePage() {
                             <p className="text-slate-500">No encounters recorded for this patient.</p>
                             <Link
                                 href={`/dashboard/encounters/create?patientId=${patientId}`}
-                                className="text-blue-600 hover:text-blue-700 font-medium mt-2 inline-block"
+                                className="text-slate-900 hover:text-slate-700 font-medium mt-2 inline-block"
                             >
                                 Start the first encounter
                             </Link>
@@ -440,14 +440,14 @@ export default function PatientProfilePage() {
                                                 {encounter.status === "ready" || encounter.status === "completed" ? (
                                                     <Link
                                                         href={`/dashboard/encounters/${encounter.id}`}
-                                                        className="text-blue-600 hover:text-blue-900 font-semibold"
+                                                        className="text-slate-900 hover:text-slate-700 font-semibold"
                                                     >
                                                         View
                                                     </Link>
                                                 ) : (
                                                     <Link
                                                         href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                        className="text-green-600 hover:text-green-900 font-semibold"
+                                                        className="text-slate-900 hover:text-slate-700 font-semibold"
                                                     >
                                                         Continue →
                                                     </Link>

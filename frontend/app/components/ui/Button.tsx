@@ -11,16 +11,16 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300",
-    secondary: "bg-white text-slate-800 border border-slate-200 hover:border-blue-500",
+    primary: "bg-teal-700 text-white hover:bg-teal-600 disabled:bg-slate-300",
+    secondary: "bg-white text-slate-700 border border-slate-300 hover:border-slate-400",
     danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-slate-300",
-    ghost: "bg-transparent text-blue-600 hover:bg-blue-50",
+    ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
     sm: "px-3 py-1.5 text-xs",
     md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base",
+    lg: "px-6 py-2.5 text-sm",
 };
 
 export default function Button({
@@ -34,7 +34,7 @@ export default function Button({
 }: ButtonProps) {
     return (
         <button
-            className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold shadow-sm transition disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
             disabled={disabled || loading}
             {...props}
         >

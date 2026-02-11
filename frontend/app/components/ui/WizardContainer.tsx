@@ -93,15 +93,17 @@ export default function WizardContainer({
     const canGoBack = currentStepData.canGoBack !== false && !isFirstStep && !isTransitioning;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl">
-                {title && (
-                    <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
+        <div className="space-y-4">
+            {title && (
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Encounter workflow</p>
+                        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
                     </div>
-                )}
+                </div>
+            )}
 
-                <Card className="min-h-[600px] flex flex-col">
+            <Card className="min-h-[520px] flex flex-col">
                     <StepIndicator
                         steps={steps.map((s) => ({ name: s.name, description: s.description }))}
                         currentStep={currentStep}
@@ -128,8 +130,7 @@ export default function WizardContainer({
                             {isLastStep ? "Ready for Submission" : "Continue →"}
                         </Button>
                     </div>
-                </Card>
-            </div>
+            </Card>
         </div>
     );
 }

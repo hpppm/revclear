@@ -85,9 +85,9 @@ export default function ProfilePage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+            <div className="space-y-4">
                 <Card>
-                    <div className="text-center p-8">
+                    <div className="text-center p-6">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading profile...</p>
                     </div>
@@ -105,8 +105,8 @@ export default function ProfilePage() {
         : "N/A";
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="space-y-4">
+            <div className="max-w-4xl">
                 {/* Header */}
                 <div className="mb-6">
                     <Link
@@ -126,16 +126,16 @@ export default function ProfilePage() {
 
                 <Card>
                     {/* Header Section */}
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 -m-6 mb-6 rounded-t-lg">
+                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-8 py-6 -m-6 mb-6 rounded-t-lg">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center">
-                                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-blue-600 text-3xl font-bold">
+                                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-slate-900 text-3xl font-bold">
                                     {user.full_name?.charAt(0).toUpperCase() || "U"}
                                 </div>
                                 <div className="ml-6 text-white">
                                     <h2 className="text-2xl font-bold">{user.full_name}</h2>
-                                    <p className="text-blue-100 capitalize">{user.role || "User"}</p>
-                                    <p className="text-blue-200 text-sm mt-1">
+                                    <p className="text-slate-200 capitalize">{user.role || "User"}</p>
+                                    <p className="text-slate-300 text-sm mt-1">
                                         {(user as any)?.organization?.name ? `Organization: ${(user as any).organization.name}` : "No Primary Organization"}
                                     </p>
                                 </div>
@@ -261,6 +261,37 @@ export default function ProfilePage() {
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Individual NPI</label>
                                         <p className="text-slate-900 font-medium">{(user as any).npi || "—"}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Organization */}
+                            <div>
+                                <div className="flex items-center justify-between border-b pb-2 mb-4">
+                                    <h3 className="text-lg font-semibold text-slate-900">Organization</h3>
+                                    <Link
+                                        href="/dashboard/organization"
+                                        className="text-sm font-semibold text-slate-900 hover:text-slate-700"
+                                    >
+                                        Manage
+                                    </Link>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <p className="text-sm font-semibold text-slate-900">
+                                        {(user as any)?.organization?.name || "No organization linked"}
+                                    </p>
+                                    <p className="text-sm text-slate-600 mt-1">
+                                        {(user as any)?.organization?.name
+                                            ? "Update clinic details and billing info from Organization settings."
+                                            : "Create or join a clinic to unlock patient workflows."}
+                                    </p>
+                                    <div className="mt-3">
+                                        <Link
+                                            href="/dashboard/organization"
+                                            className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                                        >
+                                            {(user as any)?.organization?.name ? "View organization" : "Set up organization"}
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

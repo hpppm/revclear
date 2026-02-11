@@ -441,6 +441,9 @@ export default function EncounterPage() {
       const soapData = responseData?.soap || responseData;
 
       setSoap(soapData);
+      await apiClient.encounters.update(encounterId, {
+        status: "ready_for_review",
+      });
     } catch (err: any) {
       logger.error("SOAP generation failed", err);
     } finally {
@@ -638,11 +641,8 @@ export default function EncounterPage() {
           onValidationChange={setClaimValid}
         />
       ),
-      canGoNext: claimValid,
+      canGoNext: true,
       onNext: async () => {
-        if (!claimValid) {
-          throw new Error("Claim is missing required fields.");
-        }
         // Step 5: Create or update claim, then finalize encounter status
         if (encounterId && claimDraft) {
           try {

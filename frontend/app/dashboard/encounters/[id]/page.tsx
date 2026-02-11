@@ -84,6 +84,14 @@ export default function EncounterSummaryPage() {
     const handleSubmit = async () => {
         setSubmitting(true);
         try {
+            // If a claim exists, mark it as submitted
+            if (claim?.id) {
+                await apiClient.claims.update(claim.id, {
+                    status: "submitted",
+                    submission_date: new Date().toISOString(),
+                });
+            }
+
             // Update encounter status to completed
             await apiClient.encounters.update(encounterId, { status: "completed" });
 
@@ -166,7 +174,7 @@ export default function EncounterSummaryPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="space-y-4">
                 <div className="text-slate-500">Loading encounter summary...</div>
             </div>
         );
@@ -174,7 +182,7 @@ export default function EncounterSummaryPage() {
 
     if (!encounter) {
         return (
-            <div className="min-h-screen bg-slate-50 p-8">
+            <div className="space-y-4">
                 <div className="max-w-4xl mx-auto">
                     <p className="text-red-600">Encounter not found</p>
                     <BackButton href="/dashboard">Back to Dashboard</BackButton>
@@ -184,7 +192,7 @@ export default function EncounterSummaryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
+        <div className="space-y-4">
             <div className="max-w-4xl mx-auto space-y-6">
                 <BackButton href={`/dashboard/patients/${encounter.patient_id}`}>
                     Back to Patient

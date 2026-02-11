@@ -57,7 +57,7 @@ export default function AddPatientPage() {
         : formData;
 
       await apiClient.patients.create(dataToSubmit);
-      router.push("/dashboard"); // Navigate to dashboard after saving
+      router.push("/dashboard/patients"); // Navigate to patients list after saving
     } catch (error) {
       logger.error("Failed to create patient", error);
       const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
@@ -68,14 +68,14 @@ export default function AddPatientPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="space-y-4">
+      <div className="max-w-4xl">
         {/* Header */}
         <div className="mb-6">
           <BackButton href="/dashboard">
             Back to Dashboard
           </BackButton>
-          <h1 className="text-3xl font-bold text-slate-900">Add New Patient</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">Add New Patient</h1>
           <p className="text-slate-600 mt-2">
             Enter patient information and insurance details
           </p>
@@ -178,7 +178,7 @@ export default function AddPatientPage() {
                       onChange={(e) => setIsSelfPay(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 transition-colors"></div>
+                    <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-slate-900 transition-colors"></div>
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
                   </div>
                   <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
@@ -188,20 +188,20 @@ export default function AddPatientPage() {
               </div>
 
               {isSelfPay ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="flex-shrink-0 w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-blue-900 mb-1">Self-Pay Patient</h3>
-                      <p className="text-sm text-blue-800 leading-relaxed">
+                      <h3 className="font-semibold text-slate-900 mb-1">Self-Pay Patient</h3>
+                      <p className="text-sm text-slate-600 leading-relaxed">
                         This patient will be marked as self-pay. No insurance claims will be generated for their encounters.
                         All charges will be billed directly to the patient.
                       </p>
-                      <div className="mt-3 text-xs text-blue-700 space-y-1">
+                      <div className="mt-3 text-xs text-slate-500 space-y-1">
                         <p>• Encounters will be tracked normally</p>
                         <p>• SOAP notes will be generated as usual</p>
                         <p>• No insurance claims will be created</p>
