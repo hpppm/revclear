@@ -1,6 +1,7 @@
 import app from "./server";
 import { appConfig } from "./config/appConfig";
 import { closePool } from "./config/db";
+import { logAiProviderHealthStartup } from "./services/ai/providerHealth";
 
 const PORT = appConfig.port;
 const disableListen = appConfig.disableListen;
@@ -11,6 +12,7 @@ let server: any;
 if (!isTestEnv && !disableListen) {
   server = app.listen(PORT, () => {
     console.log(`✅ API running securely on http://localhost:${PORT}`);
+    void logAiProviderHealthStartup();
   });
 } else {
   console.log("ℹ️ Server listen disabled (test or DISABLE_LISTEN).");

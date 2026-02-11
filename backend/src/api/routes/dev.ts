@@ -2,7 +2,7 @@ import { Router } from "express";
 import s3Routes from "./dev/s3";
 import cognitoRoutes from "./dev/cognito";
 import statusRoutes from "./dev/status";
-import genkitRoutes from "./dev/genkit";
+import aiRoutes from "./dev/ai";
 import dbRoutes from "./dev/db";
 import { authMiddleware } from "../../middleware/auth";
 import { getAuthenticatedUser } from "../../utils/auth";
@@ -60,7 +60,7 @@ router.get("/config", authMiddleware, async (req, res) => {
 router.use("/s3", s3Routes);
 router.use("/cognito", cognitoRoutes);
 router.use("/status", statusRoutes);
-router.use("/genkit", genkitRoutes);
+router.use("/ai", aiRoutes);
 router.use("/db", dbRoutes);
 
 export default router;

@@ -5,10 +5,11 @@ import path from "path";
 import { authMiddleware } from "../../middleware/auth";
 import { IdParamSchema } from "../../types/zod";
 import { sendError } from "../../utils/httpResponses";
-import { soapToCodes } from "../../../genkit";
+import { soapToCodes } from "../../services/ai/soapToCodes";
 import { query } from "../../config/db";
-import { getLatestAiResult } from "../../db/queries";
+import { getLatestAiResultByFlowNames } from "../../db/queries";
 import { getAuthenticatedUser } from "../../utils/auth";
+import { SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
 
 const router = Router();
 
@@ -49,7 +50,7 @@ const SearchQuerySchema = z.object({
 
 const loadCodesFromFile = async (type: "icd" | "cpt") => {
   const filename = type === "icd" ? "mockIcdCodes.json" : "mockCptCodes.json";
-  const filePath = path.resolve(process.cwd(), "genkit/data", filename);
+  const filePath = path.resolve(process.cwd(), "src/data/ai", filename);
   const raw = await fs.readFile(filePath, "utf-8");
   return JSON.parse(raw);
 };
@@ -147,7 +148,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
 
   try {
     // Get SOAP note from database
-    const soapResult = await getLatestAiResult(encounterId, "soap_gemini");
+    const soapResult = await getLatestAiResultByFlowNames(encounterId, SOAP_READ_FLOW_NAMES);
     if (!soapResult) {
       return sendError(res, 404, "No SOAP note found for this encounter");
     }

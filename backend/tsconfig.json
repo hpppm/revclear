@@ -17,6 +17,6 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src/**/*", "genkit/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }
