@@ -1,6 +1,7 @@
 // AWS Configuration for RevClear Backend
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { Pool } from 'pg';
+import logger from '../utils/logger';
 
 const region = process.env.AWS_REGION || 'us-east-1';
 
@@ -27,7 +28,7 @@ export async function getDatabaseCredentials() {
       password: secret.password,
     };
   } catch (error) {
-    console.error('Error fetching database credentials:', error);
+    logger.error({ err: error }, 'Failed to fetch database credentials from Secrets Manager');
     throw error;
   }
 }
@@ -58,11 +59,11 @@ export async function createDatabasePool(): Promise<Pool> {
  */
 export async function testDatabaseConnection(pool: Pool): Promise<boolean> {
   try {
-    const result = await pool.query('SELECT NOW()');
-    console.log('✓ Database connection successful:', result.rows[0]);
+    await pool.query('SELECT NOW()');
+    logger.info('Database connection successful');
     return true;
   } catch (error) {
-    console.error('✗ Database connection failed:', error);
+    logger.error({ err: error }, 'Database connection failed');
     return false;
   }
 }

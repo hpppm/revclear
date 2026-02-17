@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { loadMedicalCodes } from "./loadMedicalCodes";
 import { getCodeMatcher, SoapToCodesOutputSchema } from "./providers/codeMatcher";
+import logger from "../../utils/logger";
 
 const SoapToCodesInputSchema = z.object({
   soapNote: z
@@ -16,9 +17,6 @@ export const soapToCodes = async (
   input: SoapToCodesInputType
 ): Promise<SoapToCodesOutputType> => {
   const parsedInput = SoapToCodesInputSchema.parse(input);
-  console.log(
-    `[soapToCodes] Analyzing SOAP note (length: ${parsedInput.soapNote.length})`
-  );
 
   const codeMatcher = getCodeMatcher();
   const { icdCodes, cptCodes } = await loadMedicalCodes();
@@ -62,9 +60,7 @@ export const soapToCodes = async (
   const validatedIcd = normalizeMatches(result.icdMatches, validIcdCodes);
   const validatedCpt = normalizeMatches(result.cptMatches, validCptCodes);
 
-  console.log(
-    `[soapToCodes] Validated: ${validatedIcd.length} ICD, ${validatedCpt.length} CPT`
-  );
+  logger.info({ icdCount: validatedIcd.length, cptCount: validatedCpt.length }, 'soapToCodes completed');
 
   return {
     icdMatches: validatedIcd,

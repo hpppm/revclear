@@ -11,6 +11,7 @@ import {
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
+import logger from "../utils/logger";
 
 export class AuthService {
     private static allowedEmailDomain = appConfig.auth.testEmailDomain.toLowerCase();
@@ -46,17 +47,15 @@ export class AuthService {
                     practitionerType,
                     licenseId
                 );
-                const maskedEmail = email.replace(/(?<=.{2}).(?=.*@)/g, '*');
-                console.log(`User ${maskedEmail} stored in DB with Cognito ID ${response.UserSub}`);
+                logger.info({ userId: response.UserSub }, 'User stored in DB');
             } catch (dbError: any) {
-                console.error("Failed to store user in DB:", dbError);
+                logger.error({ err: dbError }, 'Failed to store user in DB');
                 if (dbError.code === '23505') { // Duplicate key
                     try {
                         await updateUserPractitionerInfo(email, practitionerType, licenseId);
-                        const maskedEmailUpdate = email.replace(/(?<=.{2}).(?=.*@)/g, '*');
-                        console.log(`Updated practitioner info for existing user ${maskedEmailUpdate}`);
+                        logger.info({ userId: response.UserSub }, 'Updated practitioner info for existing user');
                     } catch (updateError) {
-                        console.error("Failed to update practitioner info:", updateError);
+                        logger.error({ err: updateError }, 'Failed to update practitioner info');
                     }
                 }
             }
@@ -82,7 +81,7 @@ export class AuthService {
                 if (confirmError.name === 'NotAuthorizedException' && confirmError.message.includes('Current status is CONFIRMED')) {
                     autoConfirmResult.success = true;
                 } else {
-                    console.warn("Auto confirm failed:", confirmError);
+                    logger.warn({ err: confirmError }, 'Auto confirm failed');
                     autoConfirmResult.success = false;
                     autoConfirmResult.error = confirmError?.message || "Failed to auto confirm user.";
                 }
@@ -96,7 +95,7 @@ export class AuthService {
                     authenticationResult = loginResponse.AuthenticationResult;
                     autoLoginResult.success = true;
                 } catch (loginError: any) {
-                    console.warn("Auto login failed:", loginError);
+                    logger.warn({ err: loginError }, 'Auto login failed');
                     autoLoginResult.success = false;
                     autoLoginResult.error = loginError?.message || "Failed to auto login user.";
                 }

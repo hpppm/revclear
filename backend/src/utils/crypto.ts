@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import logger from "./logger";
 
 const ALGO = "aes-256-gcm";
 let key: Buffer | null = null;
@@ -11,16 +12,14 @@ if (
   /^[0-9a-fA-F]{64}$/.test(phiEncryptionKey)
 ) {
   key = Buffer.from(phiEncryptionKey, "hex");
-  console.log("PHI encryption key loaded successfully.");
+  logger.info('PHI encryption key loaded');
 } else {
-  console.warn(
-    "PHI_ENCRYPTION_KEY is not set, is a placeholder, or is invalid. PHI encryption/decryption will not be functional.",
-  );
+  logger.warn('PHI_ENCRYPTION_KEY not set or invalid; PHI encryption unavailable');
 }
 
 export function encryptPHI(data: string): string {
   if (!key) {
-    console.error("PHI_ENCRYPTION_KEY is not configured. Cannot encrypt PHI.");
+    logger.error('PHI_ENCRYPTION_KEY not configured; cannot encrypt PHI');
     throw new Error(
       "PHI encryption is required but not configured. Refusing to store unencrypted data.",
     );
@@ -35,7 +34,7 @@ export function encryptPHI(data: string): string {
 
 export function decryptPHI(payload: string): string {
   if (!key) {
-    console.error("PHI_ENCRYPTION_KEY is not configured. Cannot decrypt PHI.");
+    logger.error('PHI_ENCRYPTION_KEY not configured; cannot decrypt PHI');
     throw new Error(
       "PHI decryption key not configured. Cannot access encrypted data.",
     );
@@ -54,7 +53,7 @@ export function decryptPHI(payload: string): string {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown PHI decrypt error";
-    console.error("Failed to decrypt PHI:", message);
+    logger.error({ reason: message }, 'PHI decryption failed');
     throw new Error(
       "PHI decryption failed. Data may be corrupted or key mismatch.",
     );
