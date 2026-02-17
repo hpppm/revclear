@@ -6,6 +6,7 @@ import {
 } from "../../../config/awsCognito";
 import { authMiddleware } from "../../../middleware/auth";
 import { getAuthenticatedUser } from "../../../utils/auth";
+import logger from "../../../utils/logger";
 
 const router = Router();
 
@@ -17,7 +18,7 @@ const adminOnly = async (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ success: false, message: "User not authenticated" });
     }
     if (user.role !== "admin" && user.role !== "superadmin") {
-      console.warn(`[SECURITY] Non-admin user ${user.id} attempted to access dev Cognito route`);
+      logger.warn({ userId: user.id }, 'security: non-admin attempted dev Cognito route');
       return res.status(403).json({ success: false, message: "Admin access required for dev routes" });
     }
     next();
@@ -40,7 +41,7 @@ router.get("/check", authMiddleware, adminOnly, async (_req, res) => {
       result,
     });
   } catch (error: any) {
-    console.error("Cognito connectivity check failed:", error);
+    logger.error({ err: error }, 'dev/cognito: connectivity check failed');
     res.status(500).json({
       success: false,
       error: error?.message || "Failed to reach Cognito.",

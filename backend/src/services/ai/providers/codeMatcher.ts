@@ -1,4 +1,5 @@
 import { z } from "zod";
+import logger from "../../../utils/logger";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -97,9 +98,7 @@ class OllamaCodeMatcher implements CodeMatcher {
       throw new Error("Missing OLLAMA_CODES_MODEL/OLLAMA_MODEL. Set one in backend/.env.");
     }
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
-    console.log(
-      `[OllamaCodeMatcher] Sending request to ${url} using model=${OLLAMA_CODES_MODEL}`
-    );
+    logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
     const response = await fetch(url, {
       method: "POST",
@@ -112,7 +111,7 @@ class OllamaCodeMatcher implements CodeMatcher {
       }),
     });
 
-    console.log(`[OllamaCodeMatcher] Response status=${response.status}`);
+    logger.debug({ status: response.status }, 'OllamaCodeMatcher: response received');
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`Ollama codes request failed (${response.status}): ${body}`);
@@ -128,7 +127,7 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
   constructor(private readonly endpoint: string) {}
 
   async match(input: CodeInput): Promise<CodeMatchResult> {
-    console.log(`[HttpEndpointCodeMatcher] Sending request to ${this.endpoint}`);
+    logger.debug({}, 'HttpEndpointCodeMatcher: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -139,7 +138,7 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
       }),
     });
 
-    console.log(`[HttpEndpointCodeMatcher] Response status=${response.status}`);
+    logger.debug({ status: response.status }, 'HttpEndpointCodeMatcher: response received');
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`External codes endpoint failed (${response.status}): ${body}`);

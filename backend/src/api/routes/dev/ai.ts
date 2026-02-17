@@ -4,6 +4,7 @@ import { speechToSoap } from "../../../services/ai/speechToSoap";
 import { query } from "../../../config/db";
 import { createAiResult } from "../../../db/queries";
 import { AI_FLOW_NAMES } from "../../../constants/aiFlows";
+import logger from "../../../utils/logger";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
     const encounterCheck = await query("SELECT id FROM encounters WHERE id = $1", [encounter_id]);
 
     if (encounterCheck.rows.length === 0) {
-      console.log(`[dev/ai] Encounter ${encounter_id} not found, creating mock data...`);
+      logger.debug({ encounter_id }, 'dev/ai: encounter not found, creating mock data');
 
       // Get a clinician (use the first one found or the logged in user if possible)
       // Since this is a dev route, we'll just grab the first user
@@ -47,7 +48,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
          VALUES ($1, $2, $3, NOW(), 'draft')`,
         [encounter_id, patientId, clinicianId]
       );
-      console.log(`[dev/ai] Created mock encounter ${encounter_id}`);
+      logger.debug({ encounter_id }, 'dev/ai: created mock encounter');
     }
 
     // 2. Run the AI generation flow
@@ -77,7 +78,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
       data: result,
     });
   } catch (error: any) {
-    console.error("AI speechToSoap error:", error);
+    logger.error({ err: error }, 'dev/ai: speechToSoap error');
     res.status(500).json({
       success: false,
       error: error?.message || "Failed to run speechToSoap flow",

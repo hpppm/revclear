@@ -1,4 +1,5 @@
 import { query } from "../config/db";
+import logger from "../utils/logger";
 
 export const createAudioRecord = async (data: {
   encounter_id: string;
@@ -60,9 +61,7 @@ export const getLatestAiResult = async (
   encounter_id: string,
   flow_name: string,
 ) => {
-  console.log(
-    `[getLatestAiResult] Querying for encounter_id=${encounter_id}, flow_name=${flow_name}`,
-  );
+  logger.debug({ encounter_id, flow_name }, 'getLatestAiResult');
   const result = await query(
     `SELECT ${AI_RESULT_COLUMNS}
      FROM ai_results
@@ -71,7 +70,6 @@ export const getLatestAiResult = async (
      LIMIT 1`,
     [encounter_id, flow_name],
   );
-  console.log(`[getLatestAiResult] Found ${result.rows.length} rows`);
   return result.rows[0];
 };
 
@@ -82,10 +80,7 @@ export const getLatestAiResultByFlowNames = async (
   const uniqueFlowNames = [...new Set(flow_names.filter((f) => f && f.trim().length > 0))];
   if (uniqueFlowNames.length === 0) return undefined;
 
-  console.log(
-    `[getLatestAiResultByFlowNames] Querying for encounter_id=${encounter_id}, flow_names=${uniqueFlowNames.join(",")}`,
-  );
-
+  logger.debug({ encounter_id, flow_names: uniqueFlowNames }, 'getLatestAiResultByFlowNames');
   const result = await query(
     `SELECT ${AI_RESULT_COLUMNS}
      FROM ai_results
@@ -94,6 +89,5 @@ export const getLatestAiResultByFlowNames = async (
      LIMIT 1`,
     [encounter_id, uniqueFlowNames],
   );
-  console.log(`[getLatestAiResultByFlowNames] Found ${result.rows.length} rows`);
   return result.rows[0];
 };

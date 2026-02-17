@@ -8,6 +8,7 @@ import { speechToSoap } from "../../services/ai/speechToSoap";
 import { query } from "../../config/db";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { AI_FLOW_NAMES, SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -70,7 +71,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   }
 
   try {
-    console.log(`[POST /api/encounters/:id/soap/mock] Forcing mock transcript usage`);
+    logger.debug({ encounterId }, 'soap/mock: forcing mock transcript');
 
     // Force empty transcript to trigger mock
     const soapResult = await speechToSoap({
@@ -106,7 +107,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[POST /api/encounters/:id/soap/mock] error", error);
+    logger.error({ encounterId, err: error }, 'POST soap/mock: error');
     return sendError(res, 500, "Failed to generate SOAP note");
   }
 });
@@ -142,7 +143,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[GET /api/encounters/:id/soap] error", error);
+    logger.error({ encounterId, err: error }, 'GET soap: error');
     return sendError(res, 500, "Failed to fetch SOAP note");
   }
 });
@@ -169,9 +170,9 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
     let transcriptText = "";
     if (transcript) {
       transcriptText = parseTranscriptText(transcript.output_json) || "";
-      console.log(`[POST /api/encounters/:id/soap] Found transcript in DB, length: ${transcriptText.length}`);
+      logger.debug({ encounterId, length: transcriptText.length }, 'soap: transcript found in DB');
     } else {
-      console.log(`[POST /api/encounters/:id/soap] No transcript in DB, will use mock transcript`);
+      logger.debug({ encounterId }, 'soap: no transcript in DB, using mock');
     }
 
     // Call speechToSoap - it will use mock transcript if transcriptText is empty
@@ -207,7 +208,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[POST /api/encounters/:id/soap] error", error);
+    logger.error({ encounterId, err: error }, 'POST soap: error');
     return sendError(res, 500, "Failed to generate SOAP note");
   }
 });
@@ -259,7 +260,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[PUT /api/encounters/:id/soap] error", error);
+    logger.error({ encounterId, err: error }, 'PUT soap: error');
     return sendError(res, 500, "Failed to save SOAP note");
   }
 });

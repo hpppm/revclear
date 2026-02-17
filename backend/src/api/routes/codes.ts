@@ -10,6 +10,7 @@ import { query } from "../../config/db";
 import { getLatestAiResultByFlowNames } from "../../db/queries";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -161,9 +162,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
 
     const soapText = `Subjective: ${soap.subjective}\nObjective: ${soap.objective}\nAssessment: ${soap.assessment}\nPlan: ${soap.plan}`;
 
-    console.log(
-      `[POST /codes/match] Matching codes for encounter ${encounterId}`,
-    );
+    logger.info({ encounterId }, 'codes/match: matching codes');
 
     // Call soapToCodes flow
     const matches = await soapToCodes({ soapNote: soapText });
@@ -179,7 +178,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[POST /codes/match] error", error);
+    logger.error({ err: error }, 'POST codes/match: error');
     return sendError(res, 500, "Failed to match codes");
   }
 });
@@ -217,7 +216,7 @@ router.get("/search", authMiddleware, async (req, res) => {
       data: results,
     });
   } catch (error: any) {
-    console.error("[GET /codes/search] error", error);
+    logger.error({ err: error }, 'GET codes/search: error');
     return sendError(res, 500, "Failed to search codes");
   }
 });
@@ -284,7 +283,7 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
       data: savedCodes,
     });
   } catch (error: any) {
-    console.error("[POST /codes] error", error);
+    logger.error({ err: error }, 'POST codes: error');
     return sendError(res, 500, "Failed to save codes");
   }
 });
@@ -320,7 +319,7 @@ router.get("/:id/codes", authMiddleware, async (req, res) => {
       data: codes,
     });
   } catch (error: any) {
-    console.error("[GET /codes] error", error);
+    logger.error({ err: error }, 'GET codes: error');
     return sendError(res, 500, "Failed to fetch codes");
   }
 });

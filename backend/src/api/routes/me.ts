@@ -4,6 +4,7 @@ import { authMiddleware } from "../../middleware/auth";
 import { findUserByCognitoId, createUser, query } from "../../config/db";
 import { UpdateUserSchema } from "../../types/zod";
 import { getUserOrganization } from "../../utils/organization";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -37,7 +38,7 @@ router.get("/", authMiddleware, async (req, res) => {
     let user: QueryResultRow | null | undefined = req.user;
 
     if (user) {
-      console.log(`[GET /api/me] User resolved by middleware:`, user.id);
+      logger.debug({ userId: user.id }, 'GET /api/me: user resolved');
       // Include role from Cognito groups in response
       const cognitoRole = req.auth?.cognitoRole || user.role;
       const organization = await getUserOrganization(user.id);
@@ -59,9 +60,7 @@ router.get("/", authMiddleware, async (req, res) => {
 
     // 2. No user found by cognito_id - create new user
     // SECURITY: We do NOT fall back to email lookup to prevent account takeover
-    console.log(
-      `[GET /api/me] No user found for cognito_id, creating new user...`,
-    );
+    logger.info({ cognitoId }, 'GET /api/me: creating new user');
 
     const fullName = nameFromToken || safeEmail;
     const cognitoRole = req.auth?.cognitoRole || "clinician";
@@ -79,7 +78,7 @@ router.get("/", authMiddleware, async (req, res) => {
       organization,
     });
   } catch (err: any) {
-    console.error(`[GET /api/me] Error:`, err.message);
+    logger.error({ err: err.message }, 'GET /api/me: error');
     return res.status(500).json({
       error: "Server Error",
       message: "Failed to fetch user profile",
@@ -156,7 +155,7 @@ router.patch("/", authMiddleware, async (req, res) => {
     const organization = await getUserOrganization(updatedUser.id);
     return res.json({ ...updatedUser, organization });
   } catch (err: any) {
-    console.error(`[PATCH /api/me] Error:`, err.message);
+    logger.error({ err: err.message }, 'PATCH /api/me: error');
     return res.status(500).json({
       error: "Server Error",
       message: "Failed to update user profile",

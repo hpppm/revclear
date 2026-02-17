@@ -2,6 +2,7 @@ import app from "./server";
 import { appConfig } from "./config/appConfig";
 import { closePool } from "./config/db";
 import { logAiProviderHealthStartup } from "./services/ai/providerHealth";
+import logger from "./utils/logger";
 
 const PORT = appConfig.port;
 const disableListen = appConfig.disableListen;
@@ -11,15 +12,15 @@ let server: any;
 
 if (!isTestEnv && !disableListen) {
   server = app.listen(PORT, () => {
-    console.log(`✅ API running securely on http://localhost:${PORT}`);
+    logger.info({ port: PORT }, 'API server started');
     void logAiProviderHealthStartup();
   });
 } else {
-  console.log("ℹ️ Server listen disabled (test or DISABLE_LISTEN).");
+  logger.debug('Server listen disabled (test or DISABLE_LISTEN)');
 }
 
 const shutdown = async (signal: string) => {
-  console.log(`ℹ️ Received ${signal}, shutting down gracefully...`);
+  logger.info({ signal }, 'Shutting down gracefully');
   if (server) {
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -28,7 +29,7 @@ const shutdown = async (signal: string) => {
   try {
     await closePool();
   } catch (err) {
-    console.error("⚠️ Error closing DB pool during shutdown", err);
+    logger.error({ err }, 'Error closing DB pool during shutdown');
   } finally {
     process.exit(0);
   }

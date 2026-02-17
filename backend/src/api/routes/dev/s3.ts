@@ -8,6 +8,7 @@ import {
 } from "../../../config/awsS3";
 import { authMiddleware } from "../../../middleware/auth";
 import { getAuthenticatedUser } from "../../../utils/auth";
+import logger from "../../../utils/logger";
 
 const router = Router();
 
@@ -20,7 +21,7 @@ const adminOnly = async (req: Request, res: Response, next: NextFunction) => {
     }
     // Check for admin role - adjust field name based on your user model
     if (user.role !== "admin" && user.role !== "superadmin") {
-      console.warn(`[SECURITY] Non-admin user ${user.id} attempted to access dev S3 route`);
+      logger.warn({ userId: user.id }, 'security: non-admin attempted dev S3 route');
       return res.status(403).json({ success: false, message: "Admin access required for dev routes" });
     }
     next();

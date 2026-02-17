@@ -1,3 +1,5 @@
+import logger from "../../utils/logger";
+
 type ProviderMode = "ollama" | "external";
 
 export type ProviderHealth = {
@@ -153,15 +155,14 @@ export const getAiProviderHealthReport = async (): Promise<AiProviderHealthRepor
 
 export const logAiProviderHealthStartup = async () => {
   const report = await getAiProviderHealthReport();
-
-  const badge = report.overallHealthy ? "✅" : "⚠️";
-  console.log(
-    `${badge} AI provider health: overall=${report.overallHealthy ? "healthy" : "degraded"} ollama=${report.ollamaBaseUrl}`
-  );
-  console.log(
-    `[AI Health] SOAP mode=${report.soap.mode} healthy=${report.soap.healthy} message="${report.soap.message}"`
-  );
-  console.log(
-    `[AI Health] CODES mode=${report.codes.mode} healthy=${report.codes.healthy} message="${report.codes.message}"`
+  const logFn = report.overallHealthy ? logger.info.bind(logger) : logger.warn.bind(logger);
+  logFn(
+    {
+      overall: report.overallHealthy ? 'healthy' : 'degraded',
+      ollamaBaseUrl: report.ollamaBaseUrl,
+      soap: { mode: report.soap.mode, healthy: report.soap.healthy },
+      codes: { mode: report.codes.mode, healthy: report.codes.healthy },
+    },
+    'AI provider health',
   );
 };
