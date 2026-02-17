@@ -9,6 +9,7 @@ import {
 import { getAuthenticatedUser } from "../../utils/auth";
 import { JoinOrganizationSchema, OrganizationSchema } from "../../types/zod";
 import { generateInviteToken, hashInviteToken } from "../../utils/crypto";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -71,7 +72,7 @@ router.get("/me", authMiddleware, async (req, res) => {
       organization: stripSensitiveOrgFields(organization),
     });
   } catch (error) {
-    console.error("[GET /api/organizations/me] Error:", error);
+    logger.error({ err: error }, 'GET organizations/me: error');
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch organization" });
@@ -144,7 +145,7 @@ router.post("/", authMiddleware, async (req, res) => {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
     }
-    console.error("[POST /api/organizations] Error:", error);
+    logger.error({ err: error }, 'POST organizations: error');
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
@@ -241,7 +242,7 @@ router.post("/join", authMiddleware, async (req, res) => {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
     }
-    console.error("[POST /api/organizations/join] Error:", error);
+    logger.error({ err: error }, 'POST organizations/join: error');
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
@@ -291,7 +292,7 @@ router.post("/invite", authMiddleware, async (req, res) => {
       message: `Invitation code valid for ${INVITE_TOKEN_EXPIRY_DAYS} days. Share this code securely.`,
     });
   } catch (error) {
-    console.error("[POST /api/organizations/invite] Error:", error);
+    logger.error({ err: error }, 'POST organizations/invite: error');
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
@@ -381,7 +382,7 @@ router.patch("/me", authMiddleware, async (req, res) => {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
     }
-    console.error("[PATCH /api/organizations/me] Error:", error);
+    logger.error({ err: error }, 'PATCH organizations/me: error');
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });

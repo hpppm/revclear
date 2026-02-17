@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { promises as fs } from "fs";
 import path from "path";
+import logger from "../utils/logger";
 
 const AUDIT_LOG_FILE = path.join(__dirname, '../../audit.log');
 
@@ -107,9 +108,8 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
 
     const logMessage = JSON.stringify(entry);
 
-    // Log to console in development only
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[AUDIT] ${logMessage}`);
+      logger.debug({ audit: entry }, 'audit');
     }
 
     // Append to local audit file

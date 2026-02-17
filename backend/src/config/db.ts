@@ -1,5 +1,6 @@
 import { Pool, PoolConfig, QueryResult, QueryResultRow } from "pg";
 import { appConfig } from "./appConfig";
+import logger from "../utils/logger";
 
 const userColumns = [
   "id",
@@ -34,15 +35,14 @@ poolConfig.ssl = process.env.NODE_ENV === 'production'
   ? { rejectUnauthorized: true, ...(process.env.DB_SSL_CA ? { ca: process.env.DB_SSL_CA } : {}) }
   : { rejectUnauthorized: false };
 
-// SECURITY: Only log DB connection info in development (no credentials)
 if (process.env.NODE_ENV === "development") {
-  console.log("DB Config: connected to", poolConfig.database);
+  logger.debug({ database: poolConfig.database }, 'DB pool initialized');
 }
 
 const pool = new Pool(poolConfig);
 
 pool.on("error", (err: Error) => {
-  console.error("Unexpected PostgreSQL pool error", err);
+  logger.error({ err }, 'Unexpected PostgreSQL pool error');
 });
 
 export const query = <T extends QueryResultRow = QueryResultRow>(

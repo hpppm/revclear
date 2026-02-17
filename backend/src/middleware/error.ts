@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../utils/AppError";
+import logger from "../utils/logger";
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
@@ -30,8 +31,10 @@ export const errorHandler = (
         });
     }
 
-    // Log unexpected errors server-side (never expose to client)
-    console.error(`[ERROR] ${req.method} ${req.originalUrl}:`, isDevelopment ? err : err.message);
+    logger.error(
+      { method: req.method, url: req.originalUrl, err: isDevelopment ? err : err.message },
+      'Unhandled server error',
+    );
 
     // Generic error response - never leak internal details
     return res.status(500).json({
