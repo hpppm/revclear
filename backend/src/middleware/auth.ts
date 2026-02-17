@@ -75,7 +75,15 @@ export const authMiddleware = async (
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const payload = await jwtVerifier.verify(token);
+    let payload;
+    try {
+      payload = await jwtVerifier.verify(token);
+    } catch (jwtErr: any) {
+      const isExpired = jwtErr?.message?.includes("expired");
+      return res.status(401).json({
+        error: isExpired ? "Token expired" : "Invalid token",
+      });
+    }
 
     // Extract Cognito groups from JWT and map to application role
     // The `cognito:groups` claim contains an array of group names
@@ -91,23 +99,25 @@ export const authMiddleware = async (
       cognitoRole,
     } as any;
 
-    // Resolve DB user
-    const dbUser = await findUserByCognitoId(payload.sub);
-    if (dbUser) {
-      // Merge Cognito role with DB user (Cognito is authoritative for role)
-      req.user = {
-        ...dbUser,
-        role: cognitoRole, // Cognito groups override DB role
-      } as any;
+    // Resolve DB user — database errors should not block authentication
+    try {
+      const dbUser = await findUserByCognitoId(payload.sub);
+      if (dbUser) {
+        req.user = {
+          ...dbUser,
+          role: cognitoRole,
+        } as any;
+      }
+    } catch (dbErr: any) {
+      console.error("[Auth] Database lookup failed:", dbErr.message);
+      // Continue without DB user — routes like /me can handle missing user
     }
-    // If no DB user, req.user stays undefined - routes like /me can handle creation
 
     next();
   } catch (err: any) {
-    // Don't leak JWT verification details
-    const isExpired = err?.message?.includes("expired");
-    return res.status(401).json({
-      error: isExpired ? "Token expired" : "Invalid token",
+    console.error("[Auth] Unexpected error:", err.message);
+    return res.status(503).json({
+      error: "Authentication service temporarily unavailable",
     });
   }
 };
