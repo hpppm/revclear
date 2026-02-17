@@ -1,4 +1,5 @@
 import { z } from "zod";
+import logger from "../../../utils/logger";
 
 export const SoapSchema = z.object({
   soap: z.object({
@@ -85,9 +86,7 @@ class OllamaSoapGenerator implements SoapGenerator {
 
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
     const prompt = buildSoapPrompt(input);
-    console.log(
-      `[OllamaSoapGenerator] Sending request to ${url} using model=${OLLAMA_MODEL} encounter=${input.encounterId}`
-    );
+    logger.debug({ model: OLLAMA_MODEL, encounterId: input.encounterId }, 'OllamaSoapGenerator: sending request');
 
     const response = await fetch(url, {
       method: "POST",
@@ -99,9 +98,7 @@ class OllamaSoapGenerator implements SoapGenerator {
         format: "json",
       }),
     });
-    console.log(
-      `[OllamaSoapGenerator] Response status=${response.status} encounter=${input.encounterId}`
-    );
+    logger.debug({ status: response.status, encounterId: input.encounterId }, 'OllamaSoapGenerator: response received');
 
     if (!response.ok) {
       const body = await response.text();
@@ -118,9 +115,7 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
   constructor(private readonly endpoint: string) {}
 
   async generate(input: GenerateSoapInput): Promise<SoapOutput> {
-    console.log(
-      `[HttpEndpointSoapGenerator] Sending request to ${this.endpoint} encounter=${input.encounterId}`
-    );
+    logger.debug({ encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,9 +124,7 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
         transcriptText: input.transcriptText,
       }),
     });
-    console.log(
-      `[HttpEndpointSoapGenerator] Response status=${response.status} encounter=${input.encounterId}`
-    );
+    logger.debug({ status: response.status, encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: response received');
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`External SOAP endpoint failed (${response.status}): ${body}`);

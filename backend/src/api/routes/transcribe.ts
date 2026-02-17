@@ -11,6 +11,7 @@ import { sendError } from "../../utils/httpResponses";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { query } from "../../config/db";
 import { AI_FLOW_NAMES } from "../../constants/aiFlows";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -111,14 +112,14 @@ router.post(
 
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
-        console.log(`Backend: Uploaded audio to S3 with key: ${s3Key}`);
+        logger.info({ encounterId, s3Key }, 'transcribe: audio uploaded to S3');
 
         // Update encounter with audio_key
         await query(
           `UPDATE encounters SET audio_key = $1 WHERE id = $2`,
           [s3Key, encounterId]
         );
-        console.log(`Backend: Updated encounter ${encounterId} with audio_key: ${s3Key}`);
+        logger.debug({ encounterId }, 'transcribe: encounter updated with audio_key');
 
         // Create a record in audio_records table
         await createAudioRecord({
@@ -182,19 +183,19 @@ router.post(
         pythonProcess.on('close', (code) => {
           if (code !== 0) {
             const fullError = `Python script exited with code ${code}. Stderr: ${pythonError}.`;
-            console.error(`Backend: Python script error - ${fullError}`);
+            logger.error({ code, stderr: pythonError }, 'transcribe: Python script error');
             return reject(new Error(`Whisper transcription failed: ${pythonError || 'Unknown Python error.'}`));
           }
           resolve();
         });
         pythonProcess.on('error', (err) => {
-          console.error('Backend: Failed to start Python child process:', err);
+          logger.error({ err }, 'transcribe: failed to start Python child process');
           reject(new Error(`Failed to start Whisper service: ${err.message}.`));
         });
       });
 
       const transcript = JSON.parse(pythonOutput);
-      console.log(`Backend: Transcription successful for S3 key: ${s3Key}`);
+      logger.info({ encounterId, s3Key }, 'transcribe: transcription successful');
 
       // Persist transcript to ai_results table
       const aiResult = await createAiResult({
@@ -211,7 +212,7 @@ router.post(
         `UPDATE encounters SET transcript_result_id = $1 WHERE id = $2`,
         [aiResult.id, encounterId]
       );
-      console.log(`Backend: Updated encounter ${encounterId} with transcript_result_id: ${aiResult.id}`);
+      logger.debug({ encounterId, aiResultId: aiResult.id }, 'transcribe: encounter updated with transcript_result_id');
 
       res.json({
         success: true,
@@ -221,7 +222,7 @@ router.post(
       });
 
     } catch (error: any) {
-      console.error("Backend: Transcription processing error:", error);
+      logger.error({ err: error }, 'transcribe: processing error');
       sendError(res, 500, "Failed to process audio file");
     }
   }
@@ -265,7 +266,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
 
     res.json({ audioUrl });
   } catch (error: any) {
-    console.error("Backend: Error getting audio URL:", error);
+    logger.error({ err: error }, 'transcribe: error getting audio URL');
     sendError(res, 500, "Failed to get audio URL");
   }
 });
@@ -304,7 +305,7 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
 
     res.json(result.rows[0].output_json);
   } catch (error: any) {
-    console.error("Backend: Error retrieving transcript:", error);
+    logger.error({ err: error }, 'transcribe: error retrieving transcript');
     sendError(res, 500, "Failed to retrieve transcript");
   }
 });
@@ -355,7 +356,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
       aiResultId: aiResult.id,
     });
   } catch (error: any) {
-    console.error("Backend: Error saving transcript:", error);
+    logger.error({ err: error }, 'transcribe: error saving transcript');
     sendError(res, 500, "Failed to save transcript");
   }
 });

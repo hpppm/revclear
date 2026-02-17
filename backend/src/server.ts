@@ -9,6 +9,7 @@ import rateLimit from "express-rate-limit";
 
 import { auditLogger } from "./middleware/audit";
 import { appConfig } from "./config/appConfig";
+import logger from "./utils/logger";
 
 const app = express();
 const isTestEnv = appConfig.env === "test" || process.env.JEST_WORKER_ID;
@@ -39,7 +40,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      logger.warn({ origin }, 'CORS blocked request from origin');
       return callback(new Error("Not allowed by CORS"), false);
     },
     credentials: true,
@@ -67,7 +68,7 @@ app.use((req, res, next) => {
 // Security Monitoring (Custom Built)
 // --------------------------------------------------
 import { securityMonitor } from "./middleware/securityMonitor";
-console.log("✅ Security monitoring enabled");
+logger.info('Security monitoring enabled');
 app.use(securityMonitor);
 
 // --------------------------------------------------
@@ -285,7 +286,7 @@ if (isDevelopment && !isTestEnv) {
   // Lazily load dev routes only in development to avoid exposure in production
   const devRoutes = require("./api/routes/dev").default;
   app.use("/api/dev", devRoutes);
-  console.log("⚠️  Dev routes enabled at /api/dev (development only)");
+  logger.warn('Dev routes enabled at /api/dev');
 
   // Swagger Documentation
   const swaggerSpec = generateOpenApiSpec();
@@ -294,7 +295,7 @@ if (isDevelopment && !isTestEnv) {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
   });
-  console.log("✅ Swagger docs enabled at /docs");
+  logger.info('Swagger docs enabled at /docs');
 }
 
 import { errorHandler } from "./middleware/error";

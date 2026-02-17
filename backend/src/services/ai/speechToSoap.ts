@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getMockTranscript } from "./mockTranscript";
 import { getSoapGenerator, SoapSchema } from "./providers/soapGenerator";
+import logger from "../../utils/logger";
 
 const SpeechToSoapInput = z.object({
   encounter_id: z
@@ -21,9 +22,6 @@ export const speechToSoap = async (
   input: SpeechToSoapInputType
 ): Promise<SpeechToSoapOutputType> => {
   const parsedInput = SpeechToSoapInput.parse(input);
-  console.log(
-    `[speechToSoap] Input transcript length: ${parsedInput.transcript?.length || 0}`
-  );
 
   const generator = getSoapGenerator();
 
@@ -32,17 +30,14 @@ export const speechToSoap = async (
       ? parsedInput.transcript
       : (await getMockTranscript()).transcript;
 
-  console.log(
-    `[speechToSoap] Processing transcript (length: ${transcriptText.length} chars)`
-  );
-
   const output = await generator.generate({
     encounterId: parsedInput.encounter_id,
     transcriptText,
   });
 
-  console.log(
-    `[speechToSoap] Generated SOAP note for encounter ${parsedInput.encounter_id} (${output?.soap ? "success" : "empty"})`
+  logger.info(
+    { encounterId: parsedInput.encounter_id, success: !!output?.soap },
+    'speechToSoap completed',
   );
 
   const base = output || {

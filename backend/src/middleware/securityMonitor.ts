@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import logger from '../utils/logger';
 
 interface RequestMetrics {
   timestamp: string;
@@ -82,7 +83,7 @@ export function securityMonitor(req: Request, res: Response, next: NextFunction)
   // Early threat detection on request (before processing)
   const sanitizedUrl = sanitizeUrl(req.originalUrl);
   if (hasSQLInjectionPattern(req.originalUrl) || hasXSSPattern(req.originalUrl)) {
-    console.warn(`🚨 [SECURITY] Blocked malicious request from ${ipAddress}`);
+    logger.warn({ ip: ipAddress }, 'security: blocked malicious request');
     blockIP(ipAddress);
     return res.status(400).json({ error: 'Invalid request' });
   }
@@ -126,7 +127,7 @@ export function securityMonitor(req: Request, res: Response, next: NextFunction)
  */
 function blockIP(ip: string) {
   blockedIPs.set(ip, new Date(Date.now() + BLOCK_DURATION));
-  console.error(`🚨 [SECURITY] IP blocked: ${ip}`);
+  logger.error({ ip }, 'security: IP blocked');
 }
 
 /**
@@ -146,7 +147,7 @@ function trackRequestRate(ip: string): boolean {
     existing.count++;
     
     if (existing.count > RATE_LIMIT_THRESHOLD) {
-      console.warn(`🚨 [SECURITY] Rate limit exceeded: ${ip}`);
+      logger.warn({ ip }, 'security: rate limit exceeded');
       return true;
     }
     return false;
@@ -168,13 +169,12 @@ function detectThreats(metrics: RequestMetrics) {
   ).length;
   
   if (recent404s > 20) {
-    console.warn(`🚨 [SECURITY] Potential scanning detected from ${metrics.ipAddress}`);
+    logger.warn({ ip: metrics.ipAddress }, 'security: potential scanning detected');
     blockIP(metrics.ipAddress);
   }
 
-  // Detect slow requests (potential DoS)
   if (metrics.durationMs > 10000) {
-    console.warn(`⚠️ [PERFORMANCE] Slow request: ${metrics.method} ${metrics.url.substring(0, 50)} took ${metrics.durationMs}ms`);
+    logger.warn({ method: metrics.method, url: metrics.url.substring(0, 50), durationMs: metrics.durationMs }, 'performance: slow request');
   }
 }
 
@@ -194,7 +194,7 @@ function trackFailedAuth(ip: string) {
     existing.lastAttempt = now;
 
     if (existing.count >= FAILED_AUTH_THRESHOLD) {
-      console.error(`🚨 [SECURITY] Brute force detected from ${ip}`);
+      logger.error({ ip }, 'security: brute force detected');
       blockIP(ip);
     }
   }

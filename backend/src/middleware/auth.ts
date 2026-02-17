@@ -1,6 +1,7 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
+import logger from "../utils/logger";
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
 const clientId = process.env.AWS_CLIENT_ID;
@@ -51,7 +52,7 @@ export const authMiddleware = async (
   try {
     const jwtVerifier = getVerifier();
     if (!jwtVerifier) {
-      console.error("[Auth] Cognito not configured");
+      logger.error('Auth: Cognito not configured');
       return res
         .status(503)
         .json({ error: "Authentication service unavailable" });
@@ -109,13 +110,13 @@ export const authMiddleware = async (
         } as any;
       }
     } catch (dbErr: any) {
-      console.error("[Auth] Database lookup failed:", dbErr.message);
+      logger.error({ err: dbErr.message }, 'Auth: database user lookup failed');
       // Continue without DB user — routes like /me can handle missing user
     }
 
     next();
   } catch (err: any) {
-    console.error("[Auth] Unexpected error:", err.message);
+    logger.error({ err: err.message }, 'Auth: unexpected error');
     return res.status(503).json({
       error: "Authentication service temporarily unavailable",
     });
