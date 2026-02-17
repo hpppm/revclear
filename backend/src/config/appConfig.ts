@@ -24,7 +24,6 @@ const EnvSchema = z.object({
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
   AUTO_LOGIN_AFTER_SIGNUP: z.string().optional(),
 
-  GENKIT_ENV: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
@@ -66,7 +65,6 @@ export const appConfig = {
     autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
     autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
   },
-  genkitEnv: env.GENKIT_ENV,
 };
 
 export type AppConfig = typeof appConfig;

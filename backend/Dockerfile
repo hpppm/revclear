@@ -5,11 +5,9 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
-RUN npm install -g genkit-cli
 
 COPY . .
 RUN npm run build
-RUN npm run build:genkit
 
 # Production stage
 FROM node:18-alpine

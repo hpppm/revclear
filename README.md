@@ -79,9 +79,10 @@ We apply part of the required controls from:
 ### 📦 **File Storage**
 - Encrypted transcripts and audio files in **Amazon S3**
 
-### 🤖 **External AI Processing**
-- **Genkit AI runs outside our environment**  
-- local python whisper
+### 🤖 **AI Processing**
+- Local Whisper transcription (Python)
+- Local Ollama inference by default (`http://localhost:11434`)
+- Optional external AI endpoints via backend env configuration
 - Restricted with encrypted data handling and vendor controls
 
 ### 🔍 **Audit Logging**

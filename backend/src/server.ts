@@ -16,17 +16,6 @@ const isTestEnv = appConfig.env === "test" || process.env.JEST_WORKER_ID;
 // Cookie parser for httpOnly JWT cookies
 app.use(cookieParser());
 
-// Load Genkit flows/tools in dev mode so the CLI Dev UI can attach.
-if (appConfig.genkitEnv === "dev") {
-  import("../genkit")
-    .then(() => {
-      console.log("✅ Genkit dev runtime loaded.");
-    })
-    .catch((err) => {
-      console.warn("⚠️ Genkit dev runtime failed to load:", err);
-    });
-}
-
 // --------------------------------------------------
 // CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
