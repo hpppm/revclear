@@ -74,3 +74,26 @@ export const getLatestAiResult = async (
   console.log(`[getLatestAiResult] Found ${result.rows.length} rows`);
   return result.rows[0];
 };
+
+export const getLatestAiResultByFlowNames = async (
+  encounter_id: string,
+  flow_names: string[],
+) => {
+  const uniqueFlowNames = [...new Set(flow_names.filter((f) => f && f.trim().length > 0))];
+  if (uniqueFlowNames.length === 0) return undefined;
+
+  console.log(
+    `[getLatestAiResultByFlowNames] Querying for encounter_id=${encounter_id}, flow_names=${uniqueFlowNames.join(",")}`,
+  );
+
+  const result = await query(
+    `SELECT ${AI_RESULT_COLUMNS}
+     FROM ai_results
+     WHERE encounter_id = $1 AND flow_name = ANY($2::text[])
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [encounter_id, uniqueFlowNames],
+  );
+  console.log(`[getLatestAiResultByFlowNames] Found ${result.rows.length} rows`);
+  return result.rows[0];
+};

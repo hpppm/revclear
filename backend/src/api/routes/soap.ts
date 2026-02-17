@@ -2,11 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
 import { IdParamSchema } from "../../types/zod";
-import { createAiResult, getLatestAiResult } from "../../db/queries";
+import { createAiResult, getLatestAiResult, getLatestAiResultByFlowNames } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
-import { speechToSoap } from "../../../genkit";
+import { speechToSoap } from "../../services/ai/speechToSoap";
 import { query } from "../../config/db";
 import { getAuthenticatedUser } from "../../utils/auth";
+import { AI_FLOW_NAMES, SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
 
 const router = Router();
 
@@ -81,7 +82,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
 
     const saved = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { transcript_id: "mock", source: "mock_endpoint" },
       output_json: soapResult,
       model_version: soapResult.model_version,
@@ -126,7 +127,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
   }
 
   try {
-    const latest = await getLatestAiResult(encounterId, "soap_gemini");
+    const latest = await getLatestAiResultByFlowNames(encounterId, SOAP_READ_FLOW_NAMES);
     if (!latest) {
       return sendError(res, 404, "No SOAP note found for encounter");
     }
@@ -163,7 +164,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
 
   try {
     // Try to get transcript from database
-    const transcript = await getLatestAiResult(encounterId, "whisper_transcript");
+    const transcript = await getLatestAiResult(encounterId, AI_FLOW_NAMES.transcript);
 
     let transcriptText = "";
     if (transcript) {
@@ -183,7 +184,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
 
     const saved = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { transcript_id: transcript?.id || "mock" },
       output_json: soapResult,
       model_version: soapResult.model_version,
@@ -235,7 +236,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
   try {
     const saved = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { source: "manual_edit" },
       output_json: { soap },
       model_version: model_version ?? "manual_edit",
