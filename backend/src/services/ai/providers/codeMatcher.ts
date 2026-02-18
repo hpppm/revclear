@@ -18,8 +18,6 @@ export type CodeMatchResult = z.infer<typeof SoapToCodesOutputSchema>;
 
 type CodeInput = {
   soapNote: string;
-  icdListText: string;
-  cptListText: string;
 };
 
 type CodeMatcher = {
@@ -31,22 +29,17 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
 const CODES_API_URL = process.env.CODES_API_URL || "";
 
-const buildPrompt = ({ soapNote, icdListText, cptListText }: CodeInput) => `You are a medical coding expert. Match the SOAP note to the most relevant ICD-10 diagnosis codes and CPT procedure codes ONLY from the lists provided.
+const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes using your training knowledge.
 
 SOAP NOTE:
 ${soapNote}
 
-AVAILABLE ICD-10 CODES (Diagnosis):
-${icdListText}
-
-AVAILABLE CPT CODES (Procedures):
-${cptListText}
-
 INSTRUCTIONS:
-1) Return up to 3 ICD-10 and up to 3 CPT codes that best match the SOAP content.
-2) For each match, include a confidence score (0-1) based on fit.
-3) Only return codes from the provided lists. Do not invent codes.
-4) Order matches by confidence (highest first).
+1) Return up to 3 ICD-10-CM diagnosis codes that best match the documented conditions.
+2) Return up to 3 CPT procedure codes that best match the documented services/procedures.
+3) Use real, valid ICD-10-CM and CPT codes from your training knowledge.
+4) For each code include: the code, its official description, its category, and a confidence score (0.0-1.0).
+5) Order matches by confidence (highest first).
 Return JSON matching this exact schema:
 {"icdMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"cptMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"model_version":"string"}`;
 
@@ -133,8 +126,6 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         soapNote: input.soapNote,
-        icdListText: input.icdListText,
-        cptListText: input.cptListText,
       }),
     });
 
