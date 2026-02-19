@@ -1,5 +1,5 @@
 // AWS Cognito Authentication Configuration
-import { 
+import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   SignUpCommand,
@@ -7,6 +7,7 @@ import {
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminConfirmSignUpCommand,
+  AdminAddUserToGroupCommand,
   DescribeUserPoolClientCommand,
   GlobalSignOutCommand,
   ForgotPasswordCommand,
@@ -197,6 +198,19 @@ export async function adminConfirmSignUp(email: string) {
     Username: email,
   });
 
+  return cognitoClient.send(command);
+}
+
+/**
+ * Add a user to a Cognito User Pool group.
+ * Used to assign the default "Users" (clinician) group on signup.
+ */
+export async function adminAddUserToGroup(email: string, groupName: string) {
+  const command = new AdminAddUserToGroupCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+    GroupName: groupName,
+  });
   return cognitoClient.send(command);
 }
 

@@ -3,6 +3,7 @@ import {
     confirmSignUp,
     signInUser,
     adminConfirmSignUp,
+    adminAddUserToGroup,
     signOutUser,
     refreshAuthTokens,
     forgotPassword,
@@ -37,7 +38,16 @@ export class AuthService {
         // 1. Sign up in Cognito
         const response = await signUpUser(email, password, attributes);
 
-        // 2. Create user in DB
+        // 2. Assign default "Users" (clinician) group so cognito:groups is always present in the token
+        try {
+            await adminAddUserToGroup(email, "Users");
+            logger.info({ userId: response.UserSub }, 'User added to Users (clinician) group');
+        } catch (groupError: any) {
+            // Non-fatal: role will still default to clinician via fallback in auth middleware
+            logger.warn({ err: groupError }, 'Failed to add user to Users group');
+        }
+
+        // 3. Create user in DB
         if (response.UserSub) {
             try {
                 await createUser(

@@ -27,6 +27,19 @@ const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
 
+// HIPAA guard: PHI must not be sent to a remote host without a BAA.
+// Warn in dev, throw in production if Ollama is not local.
+const isLocalHost = (url: string) =>
+  /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(url);
+
+if (!SOAP_API_URL && !isLocalHost(OLLAMA_BASE_URL)) {
+  const msg = `HIPAA: OLLAMA_BASE_URL (${OLLAMA_BASE_URL}) is not localhost. PHI (transcripts) will be sent to a remote host.`;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(msg);
+  }
+  logger.warn(msg);
+}
+
 const buildSoapPrompt = ({ encounterId, transcriptText }: GenerateSoapInput) =>
   [
     "You are a concise clinical summarizer that converts doctor-patient conversation text into a SOAP note.",

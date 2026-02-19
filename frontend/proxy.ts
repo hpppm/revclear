@@ -31,6 +31,9 @@ export function proxy(request: NextRequest) {
     "img-src 'self' data: https:",
     // Fonts
     "font-src 'self' data:",
+    // HIPAA: Allow audio playback from S3 presigned URLs (encounter recordings).
+    // Presigned URLs are time-limited (1h) and scoped to specific objects.
+    `media-src 'self' https://${process.env.NEXT_PUBLIC_S3_BUCKET || "arevclear"}.s3.us-east-1.amazonaws.com`,
     // Prevent framing
     "frame-ancestors 'none'",
     // Base URI restriction

@@ -1,7 +1,5 @@
 import { Router } from "express";
 import { z } from "zod";
-import fs from "fs/promises";
-import path from "path";
 import { authMiddleware } from "../../middleware/auth";
 import { IdParamSchema } from "../../types/zod";
 import { sendError } from "../../utils/httpResponses";
@@ -40,21 +38,9 @@ const SaveCodesSchema = z.object({
   ),
 });
 
-const SearchQuerySchema = z.object({
-  q: z.string().min(1, "Search query is required"),
-  type: z.enum(["icd", "cpt"]),
-});
-
 // =========================================================
 // HELPER FUNCTIONS
 // =========================================================
-
-const loadCodesFromFile = async (type: "icd" | "cpt") => {
-  const filename = type === "icd" ? "mockIcdCodes.json" : "mockCptCodes.json";
-  const filePath = path.resolve(process.cwd(), "src/data/ai", filename);
-  const raw = await fs.readFile(filePath, "utf-8");
-  return JSON.parse(raw);
-};
 
 // =========================================================
 // DATABASE QUERIES
@@ -72,7 +58,7 @@ const saveMedicalCode = async (data: {
   const result = await query(
     `INSERT INTO medical_codes (encounter_id, code_type, code, description, category, confidence_score, is_ai_suggested)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
+     RETURNING id, encounter_id, code_type, code, description, category, confidence_score, is_ai_suggested, created_at`,
     [
       data.encounter_id,
       data.code_type,
@@ -155,7 +141,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
     }
 
     // Extract SOAP text
-    const soap = soapResult.output_json?.soap;
+    const soap = (soapResult.output_json as Record<string, any>)?.soap;
     if (!soap) {
       return sendError(res, 400, "Invalid SOAP note format");
     }
@@ -183,43 +169,6 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
   }
 });
 
-/**
- * GET /api/codes/search?q=<query>&type=<icd|cpt>
- * Manual search for codes
- */
-router.get("/search", authMiddleware, async (req, res) => {
-  const parsed = SearchQuerySchema.safeParse(req.query);
-  if (!parsed.success) {
-    return sendError(
-      res,
-      400,
-      "Invalid search parameters",
-      parsed.error.issues,
-    );
-  }
-
-  const { q, type } = parsed.data;
-
-  try {
-    const codes = await loadCodesFromFile(type);
-    const searchLower = q.toLowerCase();
-
-    const results = codes.filter(
-      (code: any) =>
-        code.code.toLowerCase().includes(searchLower) ||
-        code.description.toLowerCase().includes(searchLower) ||
-        code.category.toLowerCase().includes(searchLower),
-    );
-
-    return res.json({
-      success: true,
-      data: results,
-    });
-  } catch (error: any) {
-    logger.error({ err: error }, 'GET codes/search: error');
-    return sendError(res, 500, "Failed to search codes");
-  }
-});
 
 /**
  * POST /api/encounters/:id/codes

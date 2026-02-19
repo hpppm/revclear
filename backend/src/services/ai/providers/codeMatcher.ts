@@ -29,6 +29,19 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
 const CODES_API_URL = process.env.CODES_API_URL || "";
 
+// HIPAA guard: PHI must not be sent to a remote host without a BAA.
+// Warn in dev, throw in production if Ollama is not local.
+const isLocalHost = (url: string) =>
+  /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(url);
+
+if (!CODES_API_URL && !isLocalHost(OLLAMA_BASE_URL)) {
+  const msg = `HIPAA: OLLAMA_BASE_URL (${OLLAMA_BASE_URL}) is not localhost. PHI (SOAP notes) will be sent to a remote host.`;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(msg);
+  }
+  logger.warn(msg);
+}
+
 const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes using your training knowledge.
 
 SOAP NOTE:

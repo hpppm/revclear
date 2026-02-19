@@ -182,14 +182,15 @@ router.post(
       await new Promise<void>((resolve, reject) => {
         pythonProcess.on('close', (code) => {
           if (code !== 0) {
-            const fullError = `Python script exited with code ${code}. Stderr: ${pythonError}.`;
-            logger.error({ code, stderr: pythonError }, 'transcribe: Python script error');
-            return reject(new Error(`Whisper transcription failed: ${pythonError || 'Unknown Python error.'}`));
+            // HIPAA: truncate stderr — may contain partial transcript content
+            const safeStderr = (pythonError || '').slice(0, 200);
+            logger.error({ code, stderrPreview: safeStderr }, 'transcribe: Python script error');
+            return reject(new Error(`Whisper transcription failed. Check server logs.`));
           }
           resolve();
         });
         pythonProcess.on('error', (err) => {
-          logger.error({ err }, 'transcribe: failed to start Python child process');
+          logger.error({ errMessage: err.message }, 'transcribe: failed to start Python child process');
           reject(new Error(`Failed to start Whisper service: ${err.message}.`));
         });
       });
@@ -214,11 +215,12 @@ router.post(
       );
       logger.debug({ encounterId, aiResultId: aiResult.id }, 'transcribe: encounter updated with transcript_result_id');
 
+      // HIPAA: do not echo full transcript back in HTTP response — stored server-side only.
       res.json({
         success: true,
         message: `Transcription complete.`,
         s3Key: s3Key,
-        transcript: transcript,
+        aiResultId: aiResult.id,
       });
 
     } catch (error: any) {
