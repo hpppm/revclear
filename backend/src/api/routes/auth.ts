@@ -36,6 +36,16 @@ router.post("/signup", async (req, res) => {
       practitionerType,
       licenseId,
     );
+
+    // Set httpOnly cookies if auto-login succeeded during signup
+    const authResult = result.AuthenticationResult;
+    if (authResult?.AccessToken) {
+      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    }
+    if (authResult?.RefreshToken) {
+      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
+    }
+
     res.status(200).json(result);
   } catch (error: any) {
     // Log internally but don't expose details

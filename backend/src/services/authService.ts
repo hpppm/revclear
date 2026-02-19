@@ -38,13 +38,17 @@ export class AuthService {
         // 1. Sign up in Cognito
         const response = await signUpUser(email, password, attributes);
 
-        // 2. Assign default "Users" (clinician) group so cognito:groups is always present in the token
+        // 2. Assign default "Users" (clinician) group so cognito:groups is present in the token.
+        // This pool uses email as the Cognito username — required for AdminAddUserToGroup.
+        // Required IAM permission: cognito-idp:AdminAddUserToGroup
         try {
             await adminAddUserToGroup(email, "Users");
-            logger.info({ userId: response.UserSub }, 'User added to Users (clinician) group');
+            logger.info({ userId: response.UserSub }, 'SIGNUP: user added to Users (clinician) group');
         } catch (groupError: any) {
-            // Non-fatal: role will still default to clinician via fallback in auth middleware
-            logger.warn({ err: groupError }, 'Failed to add user to Users group');
+            logger.error(
+                { err: groupError?.message || groupError, userId: response.UserSub },
+                'SIGNUP: failed to add user to Users group'
+            );
         }
 
         // 3. Create user in DB
