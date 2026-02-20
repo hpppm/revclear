@@ -60,7 +60,8 @@ export default function AddPatientPage() {
       router.push("/dashboard"); // Navigate to dashboard after saving
     } catch (error) {
       logger.error("Failed to create patient", error);
-      const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
+      // SECURITY: Use sanitized error.message from axios interceptor
+      const message = (error as any)?.message || "Failed to create patient";
       setError(message);
     } finally {
       setSaving(false);

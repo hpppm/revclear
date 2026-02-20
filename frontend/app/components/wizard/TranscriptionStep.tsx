@@ -56,7 +56,7 @@ export default function TranscriptionStep({
         );
     })();
 
-    logger.log("TranscriptionStep render:", { audioFile, audioUrl, s3Key, transcript, transcriptText });
+    logger.log("TranscriptionStep render:", { hasAudio: !!audioFile, hasUrl: !!audioUrl, hasS3Key: !!s3Key, hasTranscript: !!transcript });
 
     return (
         <div className="space-y-6">

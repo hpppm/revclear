@@ -76,7 +76,8 @@ export default function ProfilePage() {
             setIsEditing(false);
         } catch (error) {
             logger.error("Failed to save profile", error);
-            const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to save profile";
+            // SECURITY: Use sanitized error.message from axios interceptor
+            const message = (error as any)?.message || "Failed to save profile";
             setError(message);
         } finally {
             setSaving(false);

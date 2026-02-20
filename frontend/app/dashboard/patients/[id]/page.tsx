@@ -96,7 +96,7 @@ export default function PatientProfilePage() {
             setEditMode(false);
         } catch (err) {
             logger.error("Failed to update patient", err);
-            alert("Failed to update patient");
+            setError("Failed to update patient");
         } finally {
             setSaving(false);
         }
@@ -141,6 +141,9 @@ export default function PatientProfilePage() {
     };
 
     const handleDelete = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this encounter? This action cannot be undone.")) {
+            return;
+        }
         setDeletingId(id);
         try {
             await apiClient.encounters.delete(id);

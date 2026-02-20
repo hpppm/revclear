@@ -85,11 +85,8 @@ export default function DashboardHome() {
             if (error?.response?.status === 404) {
                 setOrganization(null);
             } else {
-                setOrgError(
-                    error?.response?.data?.message ||
-                    error?.response?.data?.error ||
-                    "Unable to load organization."
-                );
+                // SECURITY: Use sanitized error.message from axios interceptor
+                setOrgError(error?.message || "Unable to load organization.");
                 setOrganization(null);
             }
         } finally {
@@ -138,17 +135,8 @@ export default function DashboardHome() {
             setOrgName("");
         } catch (error: any) {
             logger.error("Failed to create organization", error);
-            let message = "Could not create organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
-            } else if (error?.response?.data?.error) {
-                message = error.response.data.error;
-            }
-            setOrgError(message);
+            // SECURITY: Use sanitized error.message from axios interceptor
+            setOrgError(error?.message || "Could not create organization.");
         } finally {
             setIsCreating(false);
         }
@@ -169,17 +157,8 @@ export default function DashboardHome() {
             setInviteCode("");
         } catch (error: any) {
             logger.error("Failed to join organization", error);
-            let message = "Could not join organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
-            } else if (error?.response?.data?.error) {
-                message = error.response.data.error;
-            }
-            setOrgError(message);
+            // SECURITY: Use sanitized error.message from axios interceptor
+            setOrgError(error?.message || "Could not join organization.");
         } finally {
             setIsJoining(false);
         }

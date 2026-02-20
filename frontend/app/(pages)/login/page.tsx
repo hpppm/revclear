@@ -47,15 +47,10 @@ export default function LoginPage() {
         login(user);
       } catch (error: unknown) {
         logger.error("Login failed");
-        const err = error as {
-          response?: { data?: { error?: string; details?: string } };
-        };
-        const errorMessage =
-          err.response?.data?.error ||
-          err.response?.data?.details ||
-          "Invalid email or password";
+        // SECURITY: Use sanitized error.message from axios interceptor, not raw backend data
+        const err = error as { message?: string };
         setErrors({
-          form: errorMessage,
+          form: err.message || "Invalid email or password",
         });
       } finally {
         setIsLoading(false);

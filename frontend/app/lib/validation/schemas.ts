@@ -32,7 +32,7 @@ export const OrganizationResponseSchema = z.object({
   // SECURITY: These fields should NEVER be present in API responses
   edi_sftp_password: z.never().optional(),
   edi_sftp_private_key: z.never().optional(),
-}).passthrough(); // Allow additional fields for backward compatibility
+}).strip(); // SECURITY: Strip unexpected fields from response
 
 export const EncounterSchema = z.object({
   id: z.string().uuid(),
@@ -45,7 +45,7 @@ export const EncounterSchema = z.object({
   transcript_result_id: z.string().uuid().optional().nullable(),
   soap_result_id: z.string().uuid().optional().nullable(),
   codes_result_id: z.string().uuid().optional().nullable(),
-}).passthrough();
+}).strip(); // SECURITY: Strip unexpected fields from response
 
 export const UserSchema = z.object({
   id: z.string().uuid(),
@@ -53,4 +53,4 @@ export const UserSchema = z.object({
   full_name: z.string(),
   role: z.enum(["admin", "clinician", "billing_staff"]),
   organization_id: z.string().uuid().optional().nullable(),
-}).passthrough();
+}).strip(); // SECURITY: Strip unexpected fields from response

@@ -86,9 +86,8 @@ export default function ForgotPasswordPage() {
       }, 2000);
     } catch (error: any) {
       logger.error("Confirm forgot password failed");
-      const errorMessage =
-        error.response?.data?.error || "Invalid code or password requirements not met.";
-      setErrors({ form: errorMessage });
+      // SECURITY: Use sanitized error.message from axios interceptor, not raw backend data
+      setErrors({ form: error.message || "Invalid code or password requirements not met." });
     } finally {
       setIsLoading(false);
     }

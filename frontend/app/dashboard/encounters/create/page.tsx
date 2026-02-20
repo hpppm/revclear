@@ -130,7 +130,7 @@ export default function EncounterPage() {
         .getById(id)
         .then(async (res) => {
           const data = res.data?.data || res.data;
-          logger.log("Refresh recovery - encounter data:", data);
+          logger.log("Refresh recovery - encounter loaded, id:", data?.id);
           if (data) {
             // Restore patient and encounter metadata
             const encounterDate = data.date_of_service?.split("T")[0];
@@ -150,9 +150,9 @@ export default function EncounterPage() {
             }
 
             // Restore audio
-            logger.log("Checking for audio_key:", data.audio_key, "Full data:", data);
+            logger.log("Checking for audio_key:", !!data.audio_key);
             if (data.audio_key) {
-              logger.log("Restoring audio with key:", data.audio_key);
+              logger.log("Restoring audio from previous session");
               setS3Key(data.audio_key);
               // Fetch presigned URL for audio playback
               try {
@@ -181,7 +181,7 @@ export default function EncounterPage() {
 
                 if (soapData) {
                   setSoap(soapData);
-                  logger.log("SOAP set successfully:", soapData);
+                  logger.log("SOAP restored successfully");
                 }
               } catch (err) {
                 logger.error("Failed to load SOAP", err);
@@ -212,7 +212,7 @@ export default function EncounterPage() {
               const codesRes = await apiClient.codes.getSaved(id);
               const codesData = codesRes.data?.data || [];
               if (codesData) {
-                logger.log("Restoring medical codes:", codesData);
+                logger.log("Restoring medical codes, count:", codesData?.length || 0);
                 setSavedCodes(codesData);
                 setSelectedCodes(codesData);
               }

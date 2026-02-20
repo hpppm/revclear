@@ -10,16 +10,16 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor - cookies are sent automatically via withCredentials
-// Keep Authorization header support for backward compatibility during migration
+// SECURITY: Cookies are sent automatically via withCredentials: true
+// No manual token attachment needed - legacy localStorage migration complete
 api.interceptors.request.use(
   (config) => {
-    // During migration: still check localStorage for legacy clients
-    // This can be removed once all clients use httpOnly cookies
+    // Clear any legacy localStorage tokens still lingering from pre-cookie migration
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token && !config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const legacyToken = localStorage.getItem("token");
+      if (legacyToken) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("practitionerType");
       }
     }
     return config;

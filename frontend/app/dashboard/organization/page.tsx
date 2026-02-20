@@ -137,15 +137,8 @@ export default function OrganizationProfilePage() {
             // await checkAuth(); 
         } catch (error: any) {
             logger.error("Failed to save organization", error);
-            let message = "Could not save organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
-            }
-            setError(message);
+            // SECURITY: Use sanitized error.message from axios interceptor
+            setError(error?.message || "Could not save organization.");
         } finally {
             setSaving(false);
         }

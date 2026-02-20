@@ -16,6 +16,11 @@ import logger from "@/app/lib/logger";
 // HIPAA §164.312(a)(2)(iii): Automatic logoff after 15 minutes of inactivity
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
+// SECURITY: Session marker key - ensures users must re-authenticate per browser session.
+// sessionStorage is cleared when the browser/tab is closed, so even if the httpOnly cookie
+// persists (which is correct), the user must explicitly login again after closing the browser.
+const SESSION_MARKER_KEY = "revclear_session_active";
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -79,6 +84,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // SECURITY: Authentication now uses httpOnly cookies (not localStorage)
     // The cookie is sent automatically with credentials: true
     // We verify auth by calling /me endpoint - if it succeeds, we're authenticated
+
+    // HIPAA: Check browser session marker. If absent, the user closed their browser
+    // since last login and must re-authenticate, even if the httpOnly cookie persists.
+    if (typeof window !== "undefined") {
+      const hasActiveSession = sessionStorage.getItem(SESSION_MARKER_KEY);
+      if (!hasActiveSession) {
+        // No active session marker - require login
+        clearSensitiveData();
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const response = await apiClient.me.getProfile();
       const payload = response.data || {};
@@ -117,8 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
     setRequiresOrganization(needsOrg);
 
-    // Clean up legacy localStorage token if present
+    // SECURITY: Set browser session marker so checkAuth knows this session is active
     if (typeof window !== "undefined") {
+      sessionStorage.setItem(SESSION_MARKER_KEY, "true");
+      // Clean up legacy localStorage token if present
       localStorage.removeItem("token");
       localStorage.removeItem("practitionerType");
     }
@@ -128,8 +148,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Clear all sensitive data from browser storage
   const clearSensitiveData = () => {
-    // Legacy cleanup - remove any tokens from localStorage
     if (typeof window !== "undefined") {
+      // Remove session marker so next browser open requires login
+      sessionStorage.removeItem(SESSION_MARKER_KEY);
+      // Legacy cleanup - remove any tokens from localStorage
       localStorage.removeItem("token");
       localStorage.removeItem("practitionerType");
     }

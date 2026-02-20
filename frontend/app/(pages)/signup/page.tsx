@@ -101,19 +101,8 @@ export default function SignupPage() {
       }
     } catch (error: any) {
       logger.error("Signup failed");
-      const errorData = error.response?.data;
-      let errorMessage = "Signup failed. Please try again.";
-
-      if (errorData?.code === "USER_ALREADY_EXISTS") {
-        errorMessage = errorData.error + " " + errorData.message;
-      } else if (errorData?.error) {
-        errorMessage = errorData.error;
-        if (errorData.policy) {
-          errorMessage += " " + errorData.policy;
-        }
-      }
-
-      setError(errorMessage);
+      // SECURITY: Use sanitized error.message from axios interceptor, not raw backend data
+      setError(error.message || "Signup failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
