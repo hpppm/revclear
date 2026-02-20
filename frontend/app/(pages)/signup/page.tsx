@@ -86,8 +86,8 @@ export default function SignupPage() {
         licenseId: form.license,
       });
 
-      if (response.data.AuthenticationResult) {
-        // Auto-login - cookies are set by the backend
+      if (response.data.autoLogin?.success) {
+        // Auto-login succeeded - cookies are set by the backend
         // Fetch user profile to complete login
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
@@ -158,12 +158,14 @@ export default function SignupPage() {
             <div className="grid md:grid-cols-2 gap-5">
               {/* Full Name */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-700">
                   Full Name
                 </label>
                 <input
+                  id="name"
                   name="name"
                   type="text"
+                  autoComplete="name"
                   onChange={handleChange}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
                   placeholder="Dr. John Carter"
@@ -173,12 +175,14 @@ export default function SignupPage() {
 
               {/* Email */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700">
                   Email Address
                 </label>
                 <input
+                  id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
                   onChange={handleChange}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
                   placeholder="you@example.com"
@@ -191,10 +195,11 @@ export default function SignupPage() {
             <div className="grid md:grid-cols-2 gap-5">
               {/* Practitioner Type */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label htmlFor="practitioner" className="block text-sm font-semibold text-gray-700">
                   Practitioner Type
                 </label>
                 <select
+                  id="practitioner"
                   name="practitioner"
                   onChange={handleChange}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 appearance-none"
@@ -213,12 +218,14 @@ export default function SignupPage() {
 
               {/* License ID */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
+                <label htmlFor="license" className="block text-sm font-semibold text-gray-700">
                   License / Certification ID
                 </label>
                 <input
+                  id="license"
                   name="license"
                   type="text"
+                  autoComplete="off"
                   onChange={handleChange}
                   className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
                   placeholder="License Number"
@@ -229,12 +236,14 @@ export default function SignupPage() {
 
             {/* Password */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
                 Password
               </label>
               <input
+                id="password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 onChange={handleChange}
                 className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
                 placeholder="Create a strong password"
@@ -319,12 +328,14 @@ export default function SignupPage() {
 
             {/* Confirm Password */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
+              <label htmlFor="confirm" className="block text-sm font-semibold text-gray-700">
                 Confirm Password
               </label>
               <input
+                id="confirm"
                 name="confirm"
                 type="password"
+                autoComplete="new-password"
                 onChange={handleChange}
                 className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
                 placeholder="Re-enter your password"

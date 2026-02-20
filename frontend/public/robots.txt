@@ -1,0 +1,15 @@
+# RevClear - Healthcare billing platform
+# Block crawlers from internal application paths
+
+User-agent: *
+Disallow: /_next/
+Disallow: /api/
+Disallow: /dashboard/
+
+# Allow public marketing and auth pages
+Allow: /landing
+Allow: /login
+Allow: /signup
+Allow: /forgot-password
+
+Sitemap: /sitemap.xml

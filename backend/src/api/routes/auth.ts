@@ -46,7 +46,13 @@ router.post("/signup", async (req, res) => {
       res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
     }
 
-    res.status(200).json(result);
+    // SECURITY: Return only safe fields - AuthenticationResult excluded (tokens in httpOnly cookies)
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      autoConfirm: result.autoConfirm,
+      autoLogin: result.autoLogin,
+    });
   } catch (error: any) {
     // Log internally but don't expose details
     if (error.name === "InvalidPasswordException") {
@@ -98,18 +104,10 @@ router.post("/signin", async (req, res) => {
       );
     }
 
-    // Check if auto-confirmation happened (internal flag)
-    if ((response as any)._autoConfirmed) {
-      return res.status(200).json({
-        message: "User signed in successfully.",
-        // Still return tokens in body for backward compatibility during migration
-        AuthenticationResult: response.AuthenticationResult,
-      });
-    }
 
+    // SECURITY: Tokens delivered via httpOnly cookies only - not in response body
     res.status(200).json({
       message: "User signed in successfully.",
-      AuthenticationResult: response.AuthenticationResult,
     });
   } catch (error: any) {
     // Don't reveal whether email exists - use generic message
@@ -167,10 +165,9 @@ router.post("/refresh-token", async (req, res) => {
     if (authResult?.AccessToken) {
       res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
     }
-
+    // SECURITY: New access token delivered via httpOnly cookie only - not in response body
     res.status(200).json({
       message: "Tokens refreshed successfully.",
-      AuthenticationResult: response.AuthenticationResult,
     });
   } catch (error: any) {
     // Clear cookies on refresh failure

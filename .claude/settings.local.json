@@ -4,7 +4,11 @@
       "Bash(npm test)",
       "Bash(grep -rn \"error.response\\\\|error.message\\\\|throw error\" \"C:\\\\Projects\\\\Dev\\\\revclear\\\\frontend\\\\app\\\\lib\\\\api\"\" --include=\"*.ts \")",
       "Bash(npx tsc:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(/tmp/handle_transcribe_block.txt:*)",
+      "Bash(cat:*)",
+      "Bash(/tmp/fix_org.js:*)",
+      "Bash(node:*)"
     ]
   }
 }

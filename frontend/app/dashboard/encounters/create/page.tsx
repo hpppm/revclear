@@ -31,7 +31,8 @@ const extractTranscriptText = (t: any): string => {
   if (Array.isArray(t.segments)) {
     return t.segments.map((s: any) => s?.text ?? "").join(" ").trim();
   }
-  return typeof t === "object" ? JSON.stringify(t) : "";
+  // SECURITY: Never fall back to JSON.stringify - could leak S3 keys or internal IDs into the UI
+  return "";
 };
 
 export default function EncounterPage() {
@@ -409,18 +410,22 @@ export default function EncounterPage() {
     setTranscribing(true);
 
     try {
-      const res = await apiClient.transcribe.transcribeS3({
+      // Step 1: Trigger transcription (backend stores result, does NOT return transcript - HIPAA)
+      await apiClient.transcribe.transcribeS3({
         s3Key: s3Key,
         encounterId: encounterId,
       });
 
-      const receivedTranscript =
-        res.data?.transcript || res.data?.data?.transcript || res.data;
-      const receivedSoap = res.data?.soap || res.data?.data?.soap || null;
+      // Step 2: Fetch the actual transcript from the stored AI result
+      const transcriptRes = await apiClient.transcribe.getByEncounterId(encounterId);
+      const transcriptData = transcriptRes.data;
 
-      setTranscript(receivedTranscript);
-      setTranscriptDraft(extractTranscriptText(receivedTranscript));
-      setSoap(receivedSoap);
+      if (transcriptData) {
+        setTranscript(transcriptData);
+        setTranscriptDraft(extractTranscriptText(transcriptData));
+      } else {
+        logger.error("Transcription completed but transcript data is empty");
+      }
     } catch (err: any) {
       logger.error("Transcription failed", err);
     } finally {

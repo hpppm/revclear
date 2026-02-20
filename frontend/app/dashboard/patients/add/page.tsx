@@ -91,6 +91,7 @@ export default function AddPatientPage() {
                 <div className="md:col-span-2">
                   <Input
                     label="Full Name"
+                    autoComplete="name"
                     value={formData.full_name}
                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     placeholder="John Doe"
@@ -100,12 +101,14 @@ export default function AddPatientPage() {
                 <Input
                   label="Date of Birth"
                   type="date"
+                  autoComplete="bday"
                   value={formData.dob}
                   onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                 />
                 <Input
                   label="Gender"
                   variant="select"
+                  autoComplete="sex"
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                   options={[
@@ -118,6 +121,7 @@ export default function AddPatientPage() {
                 <Input
                   label="Phone"
                   type="tel"
+                  autoComplete="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="(555) 123-4567"
@@ -125,6 +129,7 @@ export default function AddPatientPage() {
                 <Input
                   label="Email"
                   type="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="john.doe@example.com"
@@ -138,6 +143,7 @@ export default function AddPatientPage() {
               <div className="space-y-4">
                 <Input
                   label="Street Address"
+                  autoComplete="street-address"
                   value={formData.address_street}
                   onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
                   placeholder="123 Main St"
@@ -145,18 +151,21 @@ export default function AddPatientPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
                     label="City"
+                    autoComplete="address-level2"
                     value={formData.address_city}
                     onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
                     placeholder="Erie"
                   />
                   <Input
                     label="State"
+                    autoComplete="address-level1"
                     value={formData.address_state}
                     onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
                     placeholder="PA"
                   />
                   <Input
                     label="ZIP Code"
+                    autoComplete="postal-code"
                     value={formData.address_zip}
                     onChange={(e) => setFormData({ ...formData, address_zip: e.target.value })}
                     placeholder="16501"
@@ -215,18 +224,21 @@ export default function AddPatientPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
                     label="Insurance Provider"
+                    autoComplete="off"
                     value={formData.insurance_provider}
                     onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
                     placeholder="Blue Cross Blue Shield"
                   />
                   <Input
                     label="Policy Number"
+                    autoComplete="off"
                     value={formData.insurance_policy_number}
                     onChange={(e) => setFormData({ ...formData, insurance_policy_number: e.target.value })}
                     placeholder="ABC123456789"
                   />
                   <Input
                     label="Member ID"
+                    autoComplete="off"
                     value={formData.insurance_member_id}
                     onChange={(e) => setFormData({ ...formData, insurance_member_id: e.target.value })}
                     placeholder="Member/Subscriber ID"
@@ -234,12 +246,14 @@ export default function AddPatientPage() {
                   />
                   <Input
                     label="Group Number"
+                    autoComplete="off"
                     value={formData.insurance_group_number}
                     onChange={(e) => setFormData({ ...formData, insurance_group_number: e.target.value })}
                     placeholder="Group number"
                   />
                   <Input
                     label="Payer ID"
+                    autoComplete="off"
                     value={formData.insurance_payer_id}
                     onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
                     placeholder="Clearinghouse payer ID"
@@ -247,6 +261,7 @@ export default function AddPatientPage() {
                   />
                   <Input
                     label="Payer Name"
+                    autoComplete="off"
                     value={formData.insurance_payer_name}
                     onChange={(e) => setFormData({ ...formData, insurance_payer_name: e.target.value })}
                     placeholder="Insurance payer name"

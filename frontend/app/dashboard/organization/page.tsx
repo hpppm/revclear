@@ -218,12 +218,14 @@ export default function OrganizationProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="Organization Name"
+                                        autoComplete="organization"
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Clinic Name"
                                     />
                                      <Input
                                         label="Phone"
+                                        autoComplete="tel"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 555-5555"
@@ -232,12 +234,14 @@ export default function OrganizationProfilePage() {
                                 <div className="mt-4 space-y-4">
                                      <Input
                                         label="Address Line 1"
+                                        autoComplete="address-line1"
                                         value={formData.address_line1}
                                         onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                                         placeholder="123 Main St"
                                     />
                                     <Input
                                         label="Address Line 2"
+                                        autoComplete="address-line2"
                                         value={formData.address_line2}
                                         onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
                                         placeholder="Suite 100"
@@ -245,16 +249,19 @@ export default function OrganizationProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <Input
                                             label="City"
+                                            autoComplete="address-level2"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                                         />
                                         <Input
                                             label="State"
+                                            autoComplete="address-level1"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                                         />
                                         <Input
                                             label="Postal Code"
+                                            autoComplete="postal-code"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
                                         />
@@ -268,6 +275,7 @@ export default function OrganizationProfilePage() {
                                 <p className="text-sm text-slate-600 mb-4">These details are used specifically for claims submission.</p>
                                 <Input
                                     label="Billing Name"
+                                    autoComplete="off"
                                     value={formData.billing_name}
                                     onChange={(e) => setFormData({ ...formData, billing_name: e.target.value })}
                                     placeholder="Official Billing Name"
@@ -275,12 +283,14 @@ export default function OrganizationProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                     <Input
                                         label="Billing NPI"
+                                        autoComplete="off"
                                         value={formData.billing_npi}
                                         onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
                                         placeholder="10-digit NPI"
                                     />
                                     <Input
                                         label="Billing Tax ID"
+                                        autoComplete="off"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
                                         placeholder="Tax ID"
@@ -289,12 +299,14 @@ export default function OrganizationProfilePage() {
                                 <div className="mt-4 space-y-4">
                                      <Input
                                         label="Billing Address Line 1"
+                                        autoComplete="off"
                                         value={formData.billing_address_line1}
                                         onChange={(e) => setFormData({ ...formData, billing_address_line1: e.target.value })}
                                         placeholder="123 Main St"
                                     />
                                     <Input
                                         label="Billing Address Line 2"
+                                        autoComplete="off"
                                         value={formData.billing_address_line2}
                                         onChange={(e) => setFormData({ ...formData, billing_address_line2: e.target.value })}
                                         placeholder="Suite 100"
@@ -302,16 +314,19 @@ export default function OrganizationProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <Input
                                             label="Billing City"
+                                            autoComplete="off"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
                                         />
                                         <Input
                                             label="Billing State"
+                                            autoComplete="off"
                                             value={formData.billing_state}
                                             onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
                                         />
                                         <Input
                                             label="Billing Postal Code"
+                                            autoComplete="off"
                                             value={formData.billing_postal_code}
                                             onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
                                         />
@@ -319,12 +334,14 @@ export default function OrganizationProfilePage() {
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
                                             label="Billing Phone"
+                                            autoComplete="off"
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
                                             placeholder="(555) 555-5555"
                                         />
                                         <Input
                                             label="Default Place of Service"
+                                            autoComplete="off"
                                             value={formData.default_place_of_service}
                                             onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
                                             placeholder="11"
@@ -356,11 +373,13 @@ export default function OrganizationProfilePage() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <Input
                                                 label="EDI Sender ID"
+                                                autoComplete="off"
                                                 value={formData.edi_sender_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_sender_id: e.target.value })}
                                             />
                                             <Input
                                                 label="EDI Receiver ID"
+                                                autoComplete="off"
                                                 value={formData.edi_receiver_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_receiver_id: e.target.value })}
                                             />
@@ -368,11 +387,13 @@ export default function OrganizationProfilePage() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                             <Input
                                                 label="SFTP Host"
+                                                autoComplete="off"
                                                 value={formData.edi_sftp_host}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_host: e.target.value })}
                                             />
                                             <Input
                                                 label="SFTP Port"
+                                                autoComplete="off"
                                                 value={formData.edi_sftp_port}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_port: e.target.value })}
                                             />
@@ -380,6 +401,7 @@ export default function OrganizationProfilePage() {
                                         <div className="mt-4">
                                             <Input
                                                 label="SFTP Username"
+                                                autoComplete="off"
                                                 value={formData.edi_sftp_username}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_username: e.target.value })}
                                             />

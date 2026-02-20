@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // SECURITY: Disable source maps in production to prevent exposing internal code structure
+  productionBrowserSourceMaps: false,
   typescript: {
     ignoreBuildErrors: true,
   },
