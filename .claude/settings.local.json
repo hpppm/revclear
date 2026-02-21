@@ -2,13 +2,20 @@
   "permissions": {
     "allow": [
       "Bash(npm test)",
-      "Bash(grep -rn \"error.response\\\\|error.message\\\\|throw error\" \"C:\\\\Projects\\\\Dev\\\\revclear\\\\frontend\\\\app\\\\lib\\\\api\"\" --include=\"*.ts \")",
-      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
       "Bash(npm audit:*)",
-      "Bash(/tmp/handle_transcribe_block.txt:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
       "Bash(cat:*)",
-      "Bash(/tmp/fix_org.js:*)",
-      "Bash(node:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(ps:*)",
+      "Bash(netstat:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(ollama:*)",
+      "Bash(/tmp/*:*)"
     ]
   }
 }

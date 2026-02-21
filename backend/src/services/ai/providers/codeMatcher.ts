@@ -42,18 +42,16 @@ if (!CODES_API_URL && !isLocalHost(OLLAMA_BASE_URL)) {
   logger.warn(msg);
 }
 
-const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes using your training knowledge.
+const buildPrompt = ({
+  soapNote,
+}: CodeInput) => `You are a certified medical coder. Read the SOAP note below and identify the correct ICD-10-CM diagnosis codes and CPT procedure codes that apply.
 
 SOAP NOTE:
 ${soapNote}
 
-INSTRUCTIONS:
-1) Return up to 3 ICD-10-CM diagnosis codes that best match the documented conditions.
-2) Return up to 3 CPT procedure codes that best match the documented services/procedures.
-3) Use real, valid ICD-10-CM and CPT codes from your training knowledge.
-4) For each code include: the code, its official description, its category, and a confidence score (0.0-1.0).
-5) Order matches by confidence (highest first).
-Return JSON matching this exact schema:
+Return ONLY valid ICD-10-CM and CPT codes that are directly supported by the documented clinical findings. Assign a confidence score between 0.0 and 1.0 for each code based on how clearly it is supported.
+
+Return ONLY this JSON with no explanation or markdown:
 {"icdMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"cptMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"model_version":"string"}`;
 
 const safeString = (value: unknown) =>
@@ -94,17 +92,23 @@ const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
   return {
     icdMatches: normalizeMatches(obj.icdMatches),
     cptMatches: normalizeMatches(obj.cptMatches),
-    model_version: safeString(obj.model_version) || OLLAMA_CODES_MODEL || "ollama",
+    model_version:
+      safeString(obj.model_version) || OLLAMA_CODES_MODEL || "ollama",
   };
 };
 
 class OllamaCodeMatcher implements CodeMatcher {
   async match(input: CodeInput): Promise<CodeMatchResult> {
     if (!OLLAMA_CODES_MODEL) {
-      throw new Error("Missing OLLAMA_CODES_MODEL/OLLAMA_MODEL. Set one in backend/.env.");
+      throw new Error(
+        "Missing OLLAMA_CODES_MODEL/OLLAMA_MODEL. Set one in backend/.env.",
+      );
     }
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
-    logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
+    logger.debug(
+      { model: OLLAMA_CODES_MODEL },
+      "OllamaCodeMatcher: sending request",
+    );
 
     const response = await fetch(url, {
       method: "POST",
@@ -114,13 +118,22 @@ class OllamaCodeMatcher implements CodeMatcher {
         prompt: buildPrompt(input),
         stream: false,
         format: "json",
+        options: {
+          temperature: 0,
+          num_predict: 1024,
+        },
       }),
     });
 
-    logger.debug({ status: response.status }, 'OllamaCodeMatcher: response received');
+    logger.debug(
+      { status: response.status },
+      "OllamaCodeMatcher: response received",
+    );
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Ollama codes request failed (${response.status}): ${body}`);
+      throw new Error(
+        `Ollama codes request failed (${response.status}): ${body}`,
+      );
     }
 
     const data = (await response.json()) as { response?: unknown };
@@ -133,7 +146,7 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
   constructor(private readonly endpoint: string) {}
 
   async match(input: CodeInput): Promise<CodeMatchResult> {
-    logger.debug({}, 'HttpEndpointCodeMatcher: sending request');
+    logger.debug({}, "HttpEndpointCodeMatcher: sending request");
     const response = await fetch(this.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -142,10 +155,15 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
       }),
     });
 
-    logger.debug({ status: response.status }, 'HttpEndpointCodeMatcher: response received');
+    logger.debug(
+      { status: response.status },
+      "HttpEndpointCodeMatcher: response received",
+    );
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`External codes endpoint failed (${response.status}): ${body}`);
+      throw new Error(
+        `External codes endpoint failed (${response.status}): ${body}`,
+      );
     }
 
     const data = (await response.json()) as unknown;

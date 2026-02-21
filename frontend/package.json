@@ -19,8 +19,9 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^20",
     "@types/react": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.3",
+    "baseline-browser-mapping": "^2.10.0",
+    "eslint": "^10.0.1",
+    "eslint-config-next": "^0.2.4",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
