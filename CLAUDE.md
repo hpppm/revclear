@@ -50,7 +50,8 @@ Schema: `backend/docs/db/revclear_schema_current.sql`
 
 - AWS Cognito for user identity (JWT access tokens)
 - Backend verifies tokens via `aws-jwt-verify`
-- Frontend stores token in localStorage, uses `AuthContext` for state
+- Frontend stores token in `httpOnly` cookies (NOT localStorage), uses `AuthContext` for state
+- All API requests use `withCredentials: true`
 
 ## Build and Development Commands
 
