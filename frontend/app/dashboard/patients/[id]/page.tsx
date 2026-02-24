@@ -396,16 +396,16 @@ export default function PatientProfilePage() {
                         </div>
                     ) : (
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="min-w-full divide-y divide-slate-200">
+                            <table className="w-full table-fixed divide-y divide-slate-200">
                                 <thead className="bg-slate-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        <th className="w-1/3 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                             Date
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        <th className="w-1/3 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                             Status
                                         </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        <th className="w-1/3 px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
