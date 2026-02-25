@@ -1,11 +1,50 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
+import AuthField from "@/app/components/ui/AuthField";
+import AuthInput from "@/app/components/ui/AuthInput";
+import AuthSelect from "@/app/components/ui/AuthSelect";
+import AuthSection from "@/app/components/ui/AuthSection";
+import AuthCheckbox from "@/app/components/ui/AuthCheckbox";
+import PasswordStrengthBlock from "@/app/components/ui/PasswordStrengthBlock";
+import { practitionerTypes, states } from "@/app/(pages)/signup/constants";
+
+interface ApiErrorData {
+  code?: string;
+  error?: string;
+  message?: string;
+  policy?: string;
+}
+
+interface ApiErrorShape {
+  response?: {
+    data?: unknown;
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getApiErrorData(error: unknown): ApiErrorData | undefined {
+  if (!isRecord(error)) return undefined;
+  const response = (error as ApiErrorShape).response;
+  if (!response || !isRecord(response)) return undefined;
+  const data = response.data;
+  if (!isRecord(data)) return undefined;
+
+  return {
+    code: typeof data.code === "string" ? data.code : undefined,
+    error: typeof data.error === "string" ? data.error : undefined,
+    message: typeof data.message === "string" ? data.message : undefined,
+    policy: typeof data.policy === "string" ? data.policy : undefined,
+  };
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -13,51 +52,59 @@ export default function SignupPage() {
 
   // Clear any legacy localStorage tokens when visiting signup
   // (authentication now uses httpOnly cookies)
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
     }
-  });
+  }, []);
 
   const [form, setForm] = useState({
     name: "",
     email: "",
-    license: "",
+    phone: "",
+    state: "",
     practitioner: "",
+    taxonomyCode: "",
+    license: "",
+    npi: "",
+    agreeTerms: false,
+    agreeBaa: false,
+    agreeLicense: false,
     password: "",
     confirm: "",
   });
 
-  const [passwordStrength, setPasswordStrength] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
-  const practitionerTypes = [
-    "Mental Health",
-    "Speech Therapy",
-    "Physical Therapy",
+  const practitionerOptions = [
+    {
+      value: "",
+      label: "Select specialty",
+      className: "text-[#c4c9d1]",
+      disabled: true,
+    },
+    ...practitionerTypes.map((type) => ({ value: type, label: type })),
+  ];
+  const stateOptions = [
+    {
+      value: "",
+      label: "Select state",
+      className: "text-[#c4c9d1]",
+      disabled: true,
+    },
+    ...states.map((state) => ({ value: state, label: state })),
   ];
 
-  // Password Strength Logic
-  function checkStrength(pw: string) {
-    let strength = 0;
-    if (pw.length >= 8) strength++;
-    if (/[A-Z]/.test(pw)) strength++;
-    if (/[0-9]/.test(pw)) strength++;
-    if (/[^A-Za-z0-9]/.test(pw)) strength++;
-
-    if (strength <= 1) return "Weak";
-    if (strength === 2) return "Medium";
-    return "Strong";
-  }
-
-  function handleChange(e: any) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
 
-    if (name === "password") {
-      setPasswordStrength(checkStrength(value));
-    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -74,6 +121,16 @@ export default function SignupPage() {
       return;
     }
 
+    if (!/^\d{10}$/.test(form.npi)) {
+      setError("NPI number must be 10 digits");
+      return;
+    }
+
+    if (!form.agreeTerms || !form.agreeBaa || !form.agreeLicense) {
+      setError("Please accept all required agreements");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await apiClient.auth.signup({
@@ -81,14 +138,19 @@ export default function SignupPage() {
         password: form.password,
         attributes: {
           name: form.name,
+          phone: form.phone,
+          state: form.state,
+          taxonomyCode: form.taxonomyCode,
+          npi: form.npi,
+          agreeTerms: form.agreeTerms,
+          agreeBaa: form.agreeBaa,
+          agreeLicense: form.agreeLicense,
         },
         practitionerType: form.practitioner,
         licenseId: form.license,
       });
 
       if (response.data.AuthenticationResult) {
-        // Auto-login - cookies are set by the backend
-        // Fetch user profile to complete login
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
@@ -99,9 +161,9 @@ export default function SignupPage() {
         );
         setTimeout(() => router.push("/login"), 2000);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Signup failed");
-      const errorData = error.response?.data;
+      const errorData = getApiErrorData(error);
       let errorMessage = "Signup failed. Please try again.";
 
       if (errorData?.code === "USER_ALREADY_EXISTS") {
@@ -119,231 +181,285 @@ export default function SignupPage() {
     }
   }
 
-  const getStrengthColor = () => {
-    if (passwordStrength === "Weak") return "text-red-500";
-    if (passwordStrength === "Medium") return "text-yellow-500";
-    return "text-green-500";
-  };
-
-  const getStrengthBarWidth = () => {
-    if (passwordStrength === "Weak") return "w-1/3";
-    if (passwordStrength === "Medium") return "w-2/3";
-    return "w-full";
-  };
-
-  const getStrengthBarColor = () => {
-    if (passwordStrength === "Weak") return "bg-red-500";
-    if (passwordStrength === "Medium") return "bg-yellow-500";
-    return "bg-green-500";
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 font-sans">
-      <div className="w-full max-w-2xl">
-        {/* Logo */}
+    <div className="min-h-screen flex items-center justify-center bg-[#c0f2f3] px-4 py-12 font-sans">
+      <div className="w-full max-w-xl">
         <div className="text-center mb-8">
-          <Link
-            href="/landing"
-            className="inline-flex items-center gap-2 group"
-          >
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
+          <div className="inline-flex items-center gap-2">
+            <div className="w-12 h-12 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-10px_rgba(79,70,229,0.45)] transition-transform group-hover:scale-105">
               <span className="text-white font-bold text-2xl">R</span>
             </div>
-            <span className="text-3xl font-bold text-gray-900">RevClear</span>
-          </Link>
+            <span className="text-3xl font-bold text-[#4f46e5]">RevClear</span>
+          </div>
         </div>
 
-        {/* Signup Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 p-8">
+        <div className="bg-white rounded-2xl border border-blue-100 p-6 max-w-xl shadow-[0_30px_60px_-25px_rgba(15,23,42,0.55),0_18px_36px_-24px_rgba(15,23,42,0.4)]">
+          <div className="h-1.5 w-full rounded-full bg-linear-r from-[#6366f1] to-[#4f46e5] mb-6" />
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-[#4f46e5] mb-2">
               Create Your Account
             </h1>
-            <p className="text-gray-500">
+            <p className="text-[rgba(99,102,241,0.6)]">
               Join thousands of clinicians automating their workflow
             </p>
           </div>
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {/* Two Column Layout for Name and Email */}
-            <div className="grid md:grid-cols-2 gap-5">
-              {/* Full Name */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Full Name
-                </label>
-                <input
-                  name="name"
-                  type="text"
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <AuthSection>
+              <div className="grid md:grid-cols-2 gap-4">
+                <AuthField label="Full Name" required>
+                  <AuthInput
+                    name="name"
+                    type="text"
+                    onChange={handleChange}
+                    placeholder="Dr. John Carter"
+                    required
+                  />
+                </AuthField>
+
+                <AuthField label="Work Email" required>
+                  <AuthInput
+                    name="email"
+                    type="email"
+                    onChange={handleChange}
+                    placeholder="you@clinic.com"
+                    required
+                  />
+                </AuthField>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <AuthField label="Phone Number" required>
+                  <AuthInput
+                    name="phone"
+                    type="tel"
+                    onChange={handleChange}
+                    placeholder="(555) 123-4567"
+                    required
+                  />
+                </AuthField>
+
+                <AuthField label="State of Licensure" required>
+                  <AuthSelect
+                    name="state"
+                    onChange={handleChange}
+                    required
+                    options={stateOptions}
+                  />
+                </AuthField>
+              </div>
+            </AuthSection>
+
+            <AuthSection>
+              <div className="grid md:grid-cols-2 gap-4">
+                <AuthField label="Practitioner Type" required>
+                  <AuthSelect
+                    name="practitioner"
+                    onChange={handleChange}
+                    required
+                    options={practitionerOptions}
+                  />
+                </AuthField>
+
+                <AuthField label="Taxonomy Code" required>
+                  <AuthInput
+                    name="taxonomyCode"
+                    type="text"
+                    onChange={handleChange}
+                    placeholder="101YM0800X"
+                    required
+                  />
+                </AuthField>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <AuthField label="License / Certification ID" required>
+                  <AuthInput
+                    name="license"
+                    type="text"
+                    onChange={handleChange}
+                    placeholder="License Number"
+                    required
+                  />
+                </AuthField>
+
+                <AuthField label="NPI Number" required>
+                  <AuthInput
+                    name="npi"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\\d{10}"
+                    maxLength={10}
+                    onChange={handleChange}
+                    placeholder="10-digit NPI"
+                    required
+                  />
+                  <p className="text-xs text-[#9ca3af]">
+                    Enter a 10-digit National Provider Identifier.
+                  </p>
+                </AuthField>
+              </div>
+            </AuthSection>
+
+            <AuthSection>
+              <AuthField label="Password" required>
+                <AuthInput
+                  name="password"
+                  type={showPassword ? "text" : "password"}
                   onChange={handleChange}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
-                  placeholder="Dr. John Carter"
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  placeholder="Create a strong password"
                   required
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="text-[#9ca3af] hover:text-[#6b7280] transition"
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showPassword ? (
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.036.157-2.036.45-2.975M6.223 6.223A9.955 9.955 0 0112 5c5.523 0 10 4.477 10 10 0 2.07-.623 3.995-1.695 5.596M9.88 9.88a3 3 0 104.243 4.243"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 3l18 18"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  }
                 />
-              </div>
 
-              {/* Email */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Email Address
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  onChange={handleChange}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
-                  placeholder="you@example.com"
-                  required
+                <PasswordStrengthBlock
+                  password={form.password}
+                  isVisible={passwordFocused || form.password.length > 0}
                 />
-              </div>
-            </div>
+              </AuthField>
 
-            {/* Two Column Layout for Practitioner and License */}
-            <div className="grid md:grid-cols-2 gap-5">
-              {/* Practitioner Type */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Practitioner Type
-                </label>
-                <select
-                  name="practitioner"
+              <AuthField label="Confirm Password" required>
+                <AuthInput
+                  name="confirm"
+                  type={showConfirm ? "text" : "password"}
                   onChange={handleChange}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 appearance-none"
+                  placeholder="Re-enter your password"
                   required
-                >
-                  <option value="" className="text-gray-400">
-                    Select specialty
-                  </option>
-                  {practitionerTypes.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* License ID */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  License / Certification ID
-                </label>
-                <input
-                  name="license"
-                  type="text"
-                  onChange={handleChange}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
-                  placeholder="License Number"
-                  required
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm((prev) => !prev)}
+                      className="text-[#9ca3af] hover:text-[#6b7280] transition"
+                      aria-label={
+                        showConfirm ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showConfirm ? (
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.036.157-2.036.45-2.975M6.223 6.223A9.955 9.955 0 0112 5c5.523 0 10 4.477 10 10 0 2.07-.623 3.995-1.695 5.596M9.88 9.88a3 3 0 104.243 4.243"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 3l18 18"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  }
                 />
-              </div>
-            </div>
+              </AuthField>
+            </AuthSection>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Password
-              </label>
-              <input
-                name="password"
-                type="password"
-                onChange={handleChange}
-                className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
-                placeholder="Create a strong password"
+            <div className="space-y-3 rounded-xl border border-[#e5e7eb] bg-white px-4 py-3">
+              <AuthCheckbox
+                name="agreeTerms"
+                label="I agree to the Terms of Service and Privacy Policy"
+                checked={form.agreeTerms}
                 required
+                onChange={(e) =>
+                  setForm({ ...form, agreeTerms: e.target.checked })
+                }
               />
-
-              {/* Password Strength Indicator */}
-              {passwordStrength && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs font-medium ${getStrengthColor()}`}
-                    >
-                      Password strength: {passwordStrength}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${getStrengthBarWidth()} ${getStrengthBarColor()} transition-all duration-300`}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Password Requirements */}
-              <div className="bg-gray-50 border border-gray-100 rounded-lg p-3 mt-2">
-                <p className="text-xs text-gray-500 font-medium mb-2">
-                  Password must contain:
-                </p>
-                <ul className="text-xs text-gray-500 space-y-1">
-                  <li className="flex items-center gap-2">
-                    <span
-                      className={
-                        form.password.length >= 8
-                          ? "text-green-500"
-                          : "text-gray-300"
-                      }
-                    >
-                      {form.password.length >= 8 ? "✓" : "○"}
-                    </span>
-                    At least 8 characters
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span
-                      className={
-                        /[A-Z]/.test(form.password)
-                          ? "text-green-500"
-                          : "text-gray-300"
-                      }
-                    >
-                      {/[A-Z]/.test(form.password) ? "✓" : "○"}
-                    </span>
-                    One uppercase letter
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span
-                      className={
-                        /[0-9]/.test(form.password)
-                          ? "text-green-500"
-                          : "text-gray-300"
-                      }
-                    >
-                      {/[0-9]/.test(form.password) ? "✓" : "○"}
-                    </span>
-                    One number
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span
-                      className={
-                        /[^A-Za-z0-9]/.test(form.password)
-                          ? "text-green-500"
-                          : "text-gray-300"
-                      }
-                    >
-                      {/[^A-Za-z0-9]/.test(form.password) ? "✓" : "○"}
-                    </span>
-                    One special character (!@#$%)
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                name="confirm"
-                type="password"
-                onChange={handleChange}
-                className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
-                placeholder="Re-enter your password"
+              <AuthCheckbox
+                name="agreeBaa"
+                label="I agree to the HIPAA Business Associate Program (BAA)"
+                checked={form.agreeBaa}
                 required
+                onChange={(e) =>
+                  setForm({ ...form, agreeBaa: e.target.checked })
+                }
+              />
+              <AuthCheckbox
+                name="agreeLicense"
+                label="My license is currently active and in good standing in my state of practice"
+                checked={form.agreeLicense}
+                required
+                onChange={(e) =>
+                  setForm({ ...form, agreeLicense: e.target.checked })
+                }
               />
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-100 rounded-xl p-4">
                 <p className="text-sm text-red-600 flex items-center gap-2">
@@ -363,73 +479,68 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl shadow-md hover:bg-blue-700 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-blue-600"
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  Create Account
-                  <svg
-                    className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </span>
-              )}
-            </button>
-
-            {/* Sign In Link */}
-            <p className="text-center text-gray-500">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+            <div className="space-y-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+              className="group w-full bg-[#F6F1FA] text-[#4f46e5] font-semibold py-3.5 rounded-xl border border-[#4f46e5] shadow-[0_12px_20px_-12px_rgba(79,70,229,0.25)] hover:shadow-[0_14px_24px_-12px_rgba(79,70,229,0.35)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#4f46e5] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                Sign In
-              </Link>
-            </p>
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Creating account...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Create Clinician Account
+                    <svg
+                      className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 7l5 5m0 0l-5 5m5-5H6"
+                      />
+                    </svg>
+                  </span>
+                )}
+              </button>
+
+              <p className="text-center text-gray-500">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                className="font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors"
+                >
+                  Sign In
+                </Link>
+              </p>
+            </div>
           </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-gray-400 text-xs mt-8">
-          By creating an account, you agree to our Terms of Service and Privacy
-          Policy
-        </p>
       </div>
     </div>
   );
