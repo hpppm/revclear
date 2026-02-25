@@ -49,6 +49,8 @@ export class AuthService {
                 { err: groupError?.message || groupError, userId: response.UserSub },
                 'SIGNUP: failed to add user to Users group'
             );
+            // Fail signup if required group assignment cannot be completed to avoid inconsistent authorization state.
+            throw groupError;
         }
 
         // 3. Create user in DB
