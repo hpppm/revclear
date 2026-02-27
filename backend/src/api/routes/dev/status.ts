@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { bucketName } from "../../../config/awsS3";
 import { clientId, userPoolId } from "../../../config/awsCognito";
-import { authMiddleware } from "../../../middleware/auth";
+import { authMiddleware, requireRole } from "../../../middleware/auth";
 
 const router = Router();
 
-// The base path for this route will be /api/status, so the endpoint is GET /api/status
-router.get("/", authMiddleware, (_req, res) => {
+// The base path for this route will be /api/dev/status, so the endpoint is GET /api/dev/status
+// SECURITY: Admin-only — exposes AWS infrastructure details (bucket, Cognito pool)
+router.get("/", authMiddleware, requireRole(["admin"]), (_req, res) => {
   const health = {
     awsS3: {
       bucket: bucketName,
