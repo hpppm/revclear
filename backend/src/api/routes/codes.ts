@@ -60,6 +60,9 @@ const loadCodesFromFile = async (type: "icd" | "cpt") => {
 // DATABASE QUERIES
 // =========================================================
 
+// Explicit column list for data minimization
+const MEDICAL_CODE_COLUMNS = `id, encounter_id, code_type, code, description, category, confidence_score, is_ai_suggested, created_at`;
+
 const saveMedicalCode = async (data: {
   encounter_id: string;
   code_type: string;
@@ -72,7 +75,7 @@ const saveMedicalCode = async (data: {
   const result = await query(
     `INSERT INTO medical_codes (encounter_id, code_type, code, description, category, confidence_score, is_ai_suggested)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
+     RETURNING ${MEDICAL_CODE_COLUMNS}`,
     [
       data.encounter_id,
       data.code_type,
@@ -85,9 +88,6 @@ const saveMedicalCode = async (data: {
   );
   return result.rows[0];
 };
-
-// Explicit column list for data minimization
-const MEDICAL_CODE_COLUMNS = `id, encounter_id, code_type, code, description, category, confidence_score, is_ai_suggested, created_at`;
 
 const getMedicalCodesByEncounter = async (encounter_id: string) => {
   const result = await query(

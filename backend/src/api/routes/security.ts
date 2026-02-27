@@ -1,25 +1,15 @@
 import { Router } from 'express';
 import { getSecurityStats } from '../../middleware/securityMonitor';
-import { authMiddleware } from '../../middleware/auth';
+import { authMiddleware, requireRole } from '../../middleware/auth';
 
 const router = Router();
-
-// Helper to check if user is admin
-const isAdmin = (user: any): boolean => {
-  return user?.role === 'admin';
-};
 
 /**
  * GET /api/security/stats
  * Returns security monitoring statistics
  * @access Private - requires authentication + admin role
  */
-router.get('/stats', authMiddleware, (req, res) => {
-  // Admin check
-  if (!isAdmin(req.user)) {
-    return res.status(403).json({ success: false, error: 'Admin access required' });
-  }
-
+router.get('/stats', authMiddleware, requireRole(['admin']), (req, res) => {
   try {
     const stats = getSecurityStats();
     res.json({
