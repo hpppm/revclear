@@ -24,6 +24,8 @@ export class AuthService {
      */
     static isAllowedEmail(email?: string): boolean {
         if (!email) return false;
+        // If no domain restriction is configured, allow all emails
+        if (!this.allowedEmailDomain) return true;
         return email.toLowerCase().endsWith(this.allowedEmailDomain);
     }
 
