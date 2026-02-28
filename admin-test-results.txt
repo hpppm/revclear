@@ -1,0 +1,47 @@
+=== Admin Tests Fri, Feb 27, 2026  4:12:31 PM ===
+--- Admin: /api/dev/status (expect 200) ---
+200
+--- Admin: /api/security/stats (expect 200) ---
+200
+--- Admin: /api/dev/s3/list (expect 200) ---
+200
+--- Admin: /api/dev/cognito/check (expect 200) ---
+200
+--- Admin: /api/me (expect 200) ---
+200
+--- Rate limit: /api/health 35x (expect 200 x30 then 429) ---
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+200
+429
+429
+429
+429
+429
