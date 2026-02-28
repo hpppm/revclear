@@ -8,7 +8,7 @@
     "build": "tsc",
     "build:watch": "tsc -w",
     "start": "node dist/start.js",
-    "dev": "cross-env NODE_OPTIONS=--no-deprecation nodemon --quiet --watch 'src/**/*.ts' --exec 'npx ts-node --files' src/start.ts",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation nodemon --quiet --watch 'src/**/*.ts' --exec 'npx ts-node --files --transpile-only' src/start.ts",
     "migrate:019": "npx ts-node --files src/scripts/run_migration_019.ts",
     "depcheck": "depcheck"
   },
