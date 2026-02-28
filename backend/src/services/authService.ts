@@ -13,6 +13,29 @@ import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
 import logger from "../utils/logger";
 
+/** Cognito standard User Pool attributes — all other keys are rejected with InvalidParameterException. */
+const COGNITO_ALLOWED_ATTRIBUTES = new Set([
+    'name',
+    'given_name',
+    'family_name',
+    'middle_name',
+    'nickname',
+    'preferred_username',
+    'profile',
+    'picture',
+    'website',
+    'email',
+    'email_verified',
+    'gender',
+    'birthdate',
+    'zoneinfo',
+    'locale',
+    'phone_number',
+    'phone_number_verified',
+    'address',
+    'updated_at',
+]);
+
 export class AuthService {
     private static allowedEmailDomain = appConfig.auth.testEmailDomain.toLowerCase();
     private static autoConfirmSignups = appConfig.auth.autoConfirmSignup;
@@ -34,8 +57,15 @@ export class AuthService {
             throw new Error(`Email must end with ${this.allowedEmailDomain} for testing`);
         }
 
-        // 1. Sign up in Cognito
-        const response = await signUpUser(email, password, attributes);
+        // 1. Sign up in Cognito — only send standard Cognito attributes.
+        //    Fields like npi, taxonomyCode, state, agreeTerms, agreeBaa, agreeLicense
+        //    are persisted to the DB below and must NOT be forwarded to Cognito.
+        const cognitoAttributes = Object.fromEntries(
+            Object.entries(attributes as Record<string, string>).filter(
+                ([key]) => COGNITO_ALLOWED_ATTRIBUTES.has(key)
+            )
+        );
+        const response = await signUpUser(email, password, cognitoAttributes);
 
         // 2. Create user in DB
         if (response.UserSub) {
