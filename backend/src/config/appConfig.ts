@@ -61,6 +61,7 @@ export const appConfig = {
     clientId: env.AWS_CLIENT_ID,
   },
   auth: {
+    // Restrict signup/signin to this email domain. Override with TEST_EMAIL_DOMAIN in .env.
     testEmailDomain: env.TEST_EMAIL_DOMAIN || "@localhost.dev",
     autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
     autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",

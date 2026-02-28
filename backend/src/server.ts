@@ -165,6 +165,15 @@ app.use(
   }),
 );
 
+app.use(
+  "/api/health",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: "Too many health check requests. Try again later.",
+  }),
+);
+
 // Rate limiting for AI endpoints (SOAP generation and code matching)
 // These are expensive operations that call external AI APIs
 app.use(
@@ -283,6 +292,16 @@ const isDevelopment =
   appConfig.env === "development" && process.env.NODE_ENV !== "production";
 
 if (isDevelopment && !isTestEnv) {
+  // Rate limit dev routes - less restrictive than production but still protected
+  app.use(
+    "/api/dev",
+    rateLimit({
+      windowMs: 60 * 1000,
+      max: 30,
+      message: "Too many dev requests. Try again later.",
+    }),
+  );
+
   // Lazily load dev routes only in development to avoid exposure in production
   const devRoutes = require("./api/routes/dev").default;
   app.use("/api/dev", devRoutes);

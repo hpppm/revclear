@@ -2,6 +2,7 @@ import { Router } from "express";
 import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -102,6 +103,12 @@ router.post("/signin", async (req, res) => {
       AuthenticationResult: response.AuthenticationResult,
     });
   } catch (error: any) {
+    // Log the actual Cognito error server-side (never sent to client)
+    logger.warn(
+      { cognito_error: error.name, message: error.message, email },
+      "auth/signin failed",
+    );
+
     // Don't reveal whether email exists - use generic message
     if (error.name === "UserNotConfirmedException") {
       return res.status(400).json({
@@ -110,7 +117,12 @@ router.post("/signin", async (req, res) => {
       });
     }
     // Generic error for all other cases (wrong password, user not found, etc.)
-    res.status(401).json({ error: "Invalid email or password." });
+    // In development, surface the Cognito error name to aid debugging
+    const devDetail =
+      appConfig.env !== "production"
+        ? { debug_cognito_error: error.name, debug_message: error.message }
+        : {};
+    res.status(401).json({ error: "Invalid email or password.", ...devDetail });
   }
 });
 
