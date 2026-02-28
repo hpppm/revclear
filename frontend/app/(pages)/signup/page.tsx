@@ -46,6 +46,14 @@ function getApiErrorData(error: unknown): ApiErrorData | undefined {
   };
 }
 
+function normalizeNpi(value: string) {
+  return value.replace(/\D/g, "").slice(0, 10);
+}
+
+function isValidNpi(value: string) {
+  return /^\d{10}$/.test(value);
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -103,7 +111,8 @@ export default function SignupPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+    const nextValue = name === "npi" ? normalizeNpi(value) : value;
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
 
   }
 
@@ -121,8 +130,14 @@ export default function SignupPage() {
       return;
     }
 
-    if (!/^\d{10}$/.test(form.npi)) {
-      setError("NPI number must be 10 digits");
+    if (!form.state) {
+      setError("Please select a state");
+      return;
+    }
+
+    const normalizedNpi = normalizeNpi(form.npi);
+    if (!isValidNpi(normalizedNpi)) {
+      setError("NPI number must be 10 digits.");
       return;
     }
 
@@ -141,7 +156,7 @@ export default function SignupPage() {
           phone: form.phone,
           state: form.state,
           taxonomyCode: form.taxonomyCode,
-          npi: form.npi,
+          npi: normalizedNpi,
           agreeTerms: form.agreeTerms,
           agreeBaa: form.agreeBaa,
           agreeLicense: form.agreeLicense,
@@ -242,6 +257,7 @@ export default function SignupPage() {
                 <AuthField label="State of Licensure" required>
                   <AuthSelect
                     name="state"
+                    value={form.state}
                     onChange={handleChange}
                     required
                     options={stateOptions}
@@ -255,6 +271,7 @@ export default function SignupPage() {
                 <AuthField label="Practitioner Type" required>
                   <AuthSelect
                     name="practitioner"
+                    value={form.practitioner}
                     onChange={handleChange}
                     required
                     options={practitionerOptions}
@@ -288,7 +305,7 @@ export default function SignupPage() {
                     name="npi"
                     type="text"
                     inputMode="numeric"
-                    pattern="\\d{10}"
+                    pattern="[0-9]{10}"
                     maxLength={10}
                     onChange={handleChange}
                     placeholder="10-digit NPI"
@@ -437,7 +454,10 @@ export default function SignupPage() {
                 checked={form.agreeTerms}
                 required
                 onChange={(e) =>
-                  setForm({ ...form, agreeTerms: e.target.checked })
+                  setForm((prev) => ({
+                    ...prev,
+                    agreeTerms: e.target.checked,
+                  }))
                 }
               />
               <AuthCheckbox
@@ -446,7 +466,10 @@ export default function SignupPage() {
                 checked={form.agreeBaa}
                 required
                 onChange={(e) =>
-                  setForm({ ...form, agreeBaa: e.target.checked })
+                  setForm((prev) => ({
+                    ...prev,
+                    agreeBaa: e.target.checked,
+                  }))
                 }
               />
               <AuthCheckbox
@@ -455,7 +478,10 @@ export default function SignupPage() {
                 checked={form.agreeLicense}
                 required
                 onChange={(e) =>
-                  setForm({ ...form, agreeLicense: e.target.checked })
+                  setForm((prev) => ({
+                    ...prev,
+                    agreeLicense: e.target.checked,
+                  }))
                 }
               />
             </div>
