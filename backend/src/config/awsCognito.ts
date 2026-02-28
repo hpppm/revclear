@@ -231,3 +231,16 @@ export async function checkCognitoConnectivity() {
 }
 
 export { cognitoClient, userPoolId, clientId };
+
+/**
+ * Admin add user to a Cognito group.
+ */
+export async function adminAddUserToGroup(email: string, groupName: string) {
+  const { AdminAddUserToGroupCommand } = await import('@aws-sdk/client-cognito-identity-provider');
+  const command = new AdminAddUserToGroupCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+    GroupName: groupName,
+  });
+  return cognitoClient.send(command);
+}

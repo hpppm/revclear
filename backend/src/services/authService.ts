@@ -8,6 +8,7 @@ import {
     forgotPassword,
     confirmForgotPassword,
     adminMarkEmailVerified,
+    adminAddUserToGroup,
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
@@ -23,6 +24,8 @@ export class AuthService {
      */
     static isAllowedEmail(email?: string): boolean {
         if (!email) return false;
+        // If no domain restriction is configured, allow all emails
+        if (!this.allowedEmailDomain) return true;
         return email.toLowerCase().endsWith(this.allowedEmailDomain);
     }
 
@@ -75,6 +78,8 @@ export class AuthService {
                 await adminConfirmSignUp(email);
                 // Also mark email as verified so password reset works
                 await adminMarkEmailVerified(email);
+                await adminAddUserToGroup(email, "Users");
+                logger.info({ email }, 'User auto-assigned to Users group');
                 
                 autoConfirmResult.success = true;
             } catch (confirmError: any) {
