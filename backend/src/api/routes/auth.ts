@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { AuthService } from "../../services/authService";
+import { AuthService } from "../../services/AuthService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 
