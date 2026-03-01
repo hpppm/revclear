@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
       await apiClient.auth.forgotPassword(email);
       setStep("CONFIRM");
       setMessage("If an account exists, a reset code has been sent to your email.");
-    } catch (_error: unknown) {
+    } catch {
       // Even if it fails, we often don't want to reveal it, but here we can show a generic error
       logger.error("Forgot password request failed");
       // For UX, we might still move to the next step or show a message
