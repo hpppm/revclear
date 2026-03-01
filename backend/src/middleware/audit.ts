@@ -94,9 +94,18 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
     const end = process.hrtime.bigint();
     const duration = Number(end - start) / 1_000_000; // duration in ms
 
+    const auth = (req as any).auth;
+
     const entry = {
       timestamp: new Date().toISOString(),
+      // Database user ID for application-level tracing
       userId: req.user?.id || "anonymous",
+      // Cognito sub for cross-system / cross-session correlation
+      cognitoSub: auth?.sub || null,
+      // jti allows detection of token replay across different IPs
+      tokenJti: auth?.jti || null,
+      // Issuer confirms which user pool issued the token
+      tokenIssuer: auth?.iss || null,
       method: req.method,
       url: (req.originalUrl || req.url).split("?")[0],
       ipAddress: req.ip,
@@ -108,11 +117,15 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
 
     const logMessage = JSON.stringify(entry);
 
+    // Always emit through structured logger so production stdout (CloudWatch,
+    // ECS log driver, etc.) captures every audit event, not just dev.
     if (process.env.NODE_ENV === 'development') {
       logger.debug({ audit: entry }, 'audit');
+    } else {
+      logger.info({ audit: entry }, 'audit');
     }
 
-    // Append to local audit file
+    // Also append to local audit file
     try {
       await fs.appendFile(AUDIT_LOG_FILE, logMessage + '\n');
     } catch (error) {
