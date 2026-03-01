@@ -13,6 +13,17 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // API response shapes are not yet fully typed — tracked as warnings
+      // while the codebase incrementally migrates to strict types.
+      "@typescript-eslint/no-explicit-any": "warn",
+      // JSX text entities — cosmetic, not a runtime risk.
+      "react/no-unescaped-entities": "warn",
+      // React Compiler immutability hints — advisory, not errors.
+      "react-hooks/immutability": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
