@@ -51,7 +51,7 @@ export default function SignupPage() {
     return "Strong";
   }
 
-  function handleChange(e: any) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
 
@@ -99,13 +99,14 @@ export default function SignupPage() {
         );
         setTimeout(() => router.push("/login"), 2000);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Signup failed");
-      const errorData = error.response?.data;
+      const apiError = error as { response?: { data?: { code?: string; error?: string; message?: string; policy?: string } } };
+      const errorData = apiError.response?.data;
       let errorMessage = "Signup failed. Please try again.";
 
       if (errorData?.code === "USER_ALREADY_EXISTS") {
-        errorMessage = errorData.error + " " + errorData.message;
+        errorMessage = (errorData.error ?? "") + " " + (errorData.message ?? "");
       } else if (errorData?.error) {
         errorMessage = errorData.error;
         if (errorData.policy) {
