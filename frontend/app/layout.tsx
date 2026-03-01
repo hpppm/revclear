@@ -32,7 +32,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {/* Error suppression script moved to external file for CSP compliance */}
-        <Script src="/suppress-errors.js" strategy="beforeInteractive" />
+        <Script src="/suppress-errors.js" strategy="afterInteractive" />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
