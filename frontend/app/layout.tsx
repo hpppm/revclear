@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,14 +27,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Error suppression script moved to external file for CSP compliance */}
-        <script src="/suppress-errors.js" />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
+        {/* Error suppression script moved to external file for CSP compliance */}
+        <Script src="/suppress-errors.js" strategy="beforeInteractive" />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
