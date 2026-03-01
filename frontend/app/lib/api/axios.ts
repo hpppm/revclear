@@ -10,23 +10,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor - cookies are sent automatically via withCredentials
-// Keep Authorization header support for backward compatibility during migration
+// Request interceptor - tokens are sent automatically via httpOnly cookies
+// (withCredentials: true above). No manual token handling needed.
 api.interceptors.request.use(
-  (config) => {
-    // During migration: still check localStorage for legacy clients
-    // This can be removed once all clients use httpOnly cookies
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token && !config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  },
+  (config) => config,
+  (error) => Promise.reject(error),
 );
 
 // Helper function to get user-friendly error messages

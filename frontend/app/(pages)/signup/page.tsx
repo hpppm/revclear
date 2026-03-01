@@ -86,7 +86,7 @@ export default function SignupPage() {
         licenseId: form.license,
       });
 
-      if (response.data.AuthenticationResult) {
+      if (response.data.autoLoggedIn) {
         // Auto-login - cookies are set by the backend
         // Fetch user profile to complete login
         const userResponse = await apiClient.me.getProfile();

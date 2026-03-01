@@ -89,18 +89,14 @@ router.post("/signin", async (req, res) => {
       );
     }
 
-    // Check if auto-confirmation happened (internal flag)
-    if ((response as any)._autoConfirmed) {
-      return res.status(200).json({
-        message: "User signed in successfully.",
-        // Still return tokens in body for backward compatibility during migration
-        AuthenticationResult: response.AuthenticationResult,
-      });
-    }
+    // Tokens are already set in httpOnly cookies above.
+    // NEVER return raw tokens in the response body — the frontend can
+    // base64-decode any JWT to read all Cognito claims (sub, username, device_key, etc).
+    const autoLoggedIn = !!(authResult?.AccessToken);
 
     res.status(200).json({
       message: "User signed in successfully.",
-      AuthenticationResult: response.AuthenticationResult,
+      autoLoggedIn,
     });
   } catch (error: any) {
     // Log the actual Cognito error server-side (never sent to client)
@@ -170,9 +166,9 @@ router.post("/refresh-token", async (req, res) => {
       res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
     }
 
+    // Do NOT return raw tokens in the body — cookie is the only token transport.
     res.status(200).json({
       message: "Tokens refreshed successfully.",
-      AuthenticationResult: response.AuthenticationResult,
     });
   } catch (error: any) {
     // Clear cookies on refresh failure
@@ -218,9 +214,9 @@ router.post("/confirm-forgot-password", async (req, res) => {
   }
 });
 
-// Protected route to get current user's information
+// Returns the authenticated DB user profile (not raw JWT claims).
+// req.user is populated by authMiddleware from the database, not from the token.
 router.get("/me", authMiddleware, (req, res) => {
-  // req.user will contain the decoded Cognito JWT payload
   res
     .status(200)
     .json({ user: req.user, message: "User data fetched successfully." });
