@@ -87,7 +87,7 @@ export default function AudioRecorder({ onRecorded }: Props) {
       setStatus("recording");
       stopTimer();
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch (err) {
+    } catch {
       setError("Microphone permission denied or unavailable.");
     }
   };
