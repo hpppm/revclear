@@ -19,8 +19,6 @@ const router = Router();
  */
 router.get("/", authMiddleware, async (req, res) => {
   const cognitoId = req.auth?.sub;
-  const emailFromToken = req.auth?.email as string | undefined;
-  const nameFromToken = req.auth?.name as string | undefined;
 
   // Stop early if Cognito ID is missing
   if (!cognitoId) {
@@ -30,8 +28,10 @@ router.get("/", authMiddleware, async (req, res) => {
     });
   }
 
-  // Email from token for new user creation only
-  const safeEmail: string = emailFromToken || `${cognitoId}@placeholder.local`;
+  // Access tokens do not carry email/name claims (those are ID token claims).
+  // Use a deterministic placeholder for new user creation; the user can
+  // update their profile via PATCH /api/me afterwards.
+  const safeEmail: string = `${cognitoId}@placeholder.local`;
 
   try {
     // 1. Check if middleware already resolved the user by cognito_id
@@ -62,7 +62,7 @@ router.get("/", authMiddleware, async (req, res) => {
     // SECURITY: We do NOT fall back to email lookup to prevent account takeover
     logger.info({ cognitoId }, 'GET /api/me: creating new user');
 
-    const fullName = nameFromToken || safeEmail;
+    const fullName = safeEmail;
     const cognitoRole = req.auth?.cognitoRole || "clinician";
 
     const newUser = await createUser(cognitoId, safeEmail, fullName);
