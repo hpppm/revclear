@@ -14,6 +14,19 @@ import logger from "./utils/logger";
 const app = express();
 const isTestEnv = appConfig.env === "test" || process.env.JEST_WORKER_ID;
 
+// --------------------------------------------------
+// Trust Proxy
+// In production (behind a load balancer/reverse proxy), trust exactly 1 hop
+// so that req.ip is the real client IP from X-Forwarded-For.
+// In development/test, set to false so X-Forwarded-For cannot be spoofed
+// to bypass IP-based rate limiting.
+// --------------------------------------------------
+if (appConfig.env === "production") {
+  app.set("trust proxy", 1);
+} else {
+  app.set("trust proxy", false);
+}
+
 // Cookie parser for httpOnly JWT cookies
 app.use(cookieParser());
 
@@ -23,6 +36,8 @@ app.use(cookieParser());
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
   "http://localhost:3000",
   "http://localhost:3005",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3005",
   "https://revclear.tech",
   "https://www.revclear.tech",
 ];

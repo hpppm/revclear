@@ -57,6 +57,11 @@ next-env.d.ts
 Thumbs.db
 desktop.ini
 
+# Standalone dev/debug files
+review.html
+test-security.js
+test-*.js
+
 # IDE files
 .idea/
 *.swp
