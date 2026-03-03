@@ -44,10 +44,12 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
-// SECURITY: Check both clinician_id and organization_id for proper scoping
+// SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
+// access within the same organization. Using OR would allow any clinician in the
+// org to access another clinician's PHI data.
 const ensureEncounterOwnership = async (encounterId: string, clinicianId: string, organizationId?: string) => {
   const result = await query(
-    "SELECT id FROM encounters WHERE id = $1 AND (clinician_id = $2 OR organization_id = $3)",
+    "SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2 AND organization_id = $3",
     [encounterId, clinicianId, organizationId || null]
   );
   return result.rows.length > 0;

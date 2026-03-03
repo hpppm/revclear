@@ -1,0 +1,40 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+    # Only run when dependency files change — avoids noise on unrelated PRs
+    paths:
+      - "backend/package.json"
+      - "backend/package-lock.json"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+
+permissions:
+  contents: read
+  pull-requests: write  # Required to post inline PR comment with vulnerability details
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Block the PR if any introduced dependency has a CVE at these severities
+          fail-on-severity: high
+
+          # Allow only OSI-approved licenses — blocks GPL, AGPL, SSPL etc.
+          # which could create legal issues for a commercial healthcare product
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, CC0-1.0, Unlicense, Python-2.0
+
+          # Post a comment on the PR summarizing any issues found
+          comment-summary-in-pr: always
+
+          # Warn (don't fail) on moderate vulnerabilities — keep noise low
+          warn-on-openssl-cf-bypass: true
