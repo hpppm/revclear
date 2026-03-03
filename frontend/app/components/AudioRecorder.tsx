@@ -18,12 +18,6 @@ export default function AudioRecorder({ onRecorded }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const emitOnStopRef = useRef(true);
 
-  useEffect(() => {
-    return () => {
-      stopRecorder(true);
-    };
-  }, []);
-
   const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -46,6 +40,13 @@ export default function AudioRecorder({ onRecorded }: Props) {
       setStatus("idle");
     }
   };
+
+  useEffect(() => {
+    return () => {
+      stopRecorder(true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startRecording = async () => {
     setError(null);
@@ -86,7 +87,7 @@ export default function AudioRecorder({ onRecorded }: Props) {
       setStatus("recording");
       stopTimer();
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch (err) {
+    } catch {
       setError("Microphone permission denied or unavailable.");
     }
   };

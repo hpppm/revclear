@@ -93,9 +93,15 @@ export const authMiddleware = async (
       | undefined;
     const cognitoRole = mapCognitoGroupsToRole(cognitoGroups);
 
-    // Attach JWT payload with derived role
+    // Attach ONLY minimal claims to req.auth — never spread the full payload.
+    // Spreading payload would expose username, device_key, scope, client_id,
+    // origin_jti, event_id, etc. to every downstream route handler.
     req.auth = {
-      ...payload,
+      sub: payload.sub,
+      iss: payload.iss,
+      jti: (payload as any).jti as string | undefined,
+      exp: payload.exp,
+      iat: payload.iat,
       cognitoGroups,
       cognitoRole,
     } as any;

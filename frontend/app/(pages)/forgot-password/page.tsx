@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
       await apiClient.auth.forgotPassword(email);
       setStep("CONFIRM");
       setMessage("If an account exists, a reset code has been sent to your email.");
-    } catch (error: any) {
+    } catch {
       // Even if it fails, we often don't want to reveal it, but here we can show a generic error
       logger.error("Forgot password request failed");
       // For UX, we might still move to the next step or show a message
@@ -84,10 +84,11 @@ export default function ForgotPasswordPage() {
       setTimeout(() => {
         router.push("/login");
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error("Confirm forgot password failed");
+      const apiError = error as { response?: { data?: { error?: string } } };
       const errorMessage =
-        error.response?.data?.error || "Invalid code or password requirements not met.";
+        apiError.response?.data?.error || "Invalid code or password requirements not met.";
       setErrors({ form: errorMessage });
     } finally {
       setIsLoading(false);

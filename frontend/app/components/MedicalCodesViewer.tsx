@@ -16,13 +16,25 @@ type MedicalCodesViewerProps = {
   onCodesSelected?: (codes: MedicalCode[]) => void;
 };
 
+// Raw shape returned by the codes API before normalization
+type RawCode = {
+  id?: string;
+  code: string;
+  description: string;
+  category?: string;
+  confidence?: number;
+  confidence_score?: number;
+  is_ai_suggested?: boolean;
+  source?: string;
+};
+
 export default function MedicalCodesViewer({
-  soap,
+  soap: _soap,
   encounterId,
   savedCodes = [],
   onCodesSelected,
 }: MedicalCodesViewerProps) {
-  const ensureType = (codes: any[], type: "ICD-10" | "CPT") =>
+  const ensureType = (codes: RawCode[], type: "ICD-10" | "CPT") =>
     (codes || []).map((c) => ({
       id: c.id || `${type}-${c.code}`,
       type,
@@ -98,7 +110,7 @@ export default function MedicalCodesViewer({
       setIcdCandidates(ensureType(icdMatches, "ICD-10"));
       setCptCandidates(ensureType(cptMatches, "CPT"));
       setHasGenerated(true);
-    } catch (err: any) {
+    } catch {
       logger.error("Code generation failed");
       setHasGenerated(true);
     } finally {
@@ -115,17 +127,16 @@ export default function MedicalCodesViewer({
       const rawResults = response.data.data || [];
 
       // Inject type based on searchType since mock data doesn't have it
-      const resultsWithType = rawResults.map((r: any) => ({
+      type CodeResult = Omit<MedicalCode, 'type'> & { type?: string };
+      const resultsWithType: MedicalCode[] = rawResults.map((r: CodeResult) => ({
         ...r,
-        type: searchType === "icd" ? "ICD-10" : "CPT"
+        id: r.id || `${searchType === "icd" ? "ICD-10" : "CPT"}-${r.code}`,
+        type: (searchType === "icd" ? "ICD-10" : "CPT") as "ICD-10" | "CPT",
+        category: r.category || "Unspecified",
       }));
 
-      setSearchResults(resultsWithType.map((r) => ({
-        ...r,
-        id: r.id || `${r.type}-${r.code}`,
-        category: r.category || "Unspecified",
-      })));
-    } catch (err) {
+      setSearchResults(resultsWithType);
+    } catch {
       logger.error("Search failed");
       setSearchResults([]);
     } finally {
@@ -245,7 +256,7 @@ export default function MedicalCodesViewer({
             No matches found
           </h3>
           <p className="text-sm text-amber-700">
-            The AI couldn't find matching codes. Try manually searching for codes below.
+            The AI couldn&apos;t find matching codes. Try manually searching for codes below.
           </p>
         </div>
       )}

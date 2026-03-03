@@ -1,13 +1,8 @@
 import { Router } from "express";
-import { authMiddleware } from "../../middleware/auth";
+import { authMiddleware, requireRole } from "../../middleware/auth";
 import { query } from "../../config/db";
 
 const router = Router();
-
-// Helper to check if user is org admin
-const isOrgAdmin = (user: any): boolean => {
-  return user?.is_org_admin === true || user?.role === 'admin';
-};
 
 /**
  * @route GET /api/users
@@ -16,13 +11,8 @@ const isOrgAdmin = (user: any): boolean => {
  * @query {number} limit - Max results (default 50, max 100)
  * @query {number} offset - Skip results (default 0)
  */
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", authMiddleware, requireRole(["admin"]), async (req, res) => {
   try {
-    // Admin check - only admins can list users
-    if (!isOrgAdmin(req.user)) {
-      return res.status(403).json({ error: "Forbidden", message: "Admin access required" });
-    }
-
     // SECURITY: Scope to user's organization to prevent cross-org data leak
     const orgId = (req.user as any)?.organization_id;
     if (!orgId) {
@@ -53,12 +43,7 @@ router.get("/", authMiddleware, async (req, res) => {
  * @description Get a single user by their Cognito ID (admin only, same org)
  * @access Private (requires authMiddleware + admin role)
  */
-router.get("/:cognitoId", authMiddleware, async (req, res) => {
-  // Admin check
-  if (!isOrgAdmin(req.user)) {
-    return res.status(403).json({ error: "Forbidden", message: "Admin access required" });
-  }
-
+router.get("/:cognitoId", authMiddleware, requireRole(["admin"]), async (req, res) => {
   // SECURITY: Scope to user's organization
   const orgId = (req.user as any)?.organization_id;
   if (!orgId) {

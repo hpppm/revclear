@@ -1,10 +1,26 @@
 import { Request } from "express";
-import { CognitoJwtPayload } from "aws-jwt-verify/jwt-model";
 
-// Extended JWT payload with Cognito groups
-interface ExtendedCognitoJwtPayload extends CognitoJwtPayload {
-  "cognito:groups"?: string[];
+/**
+ * Minimal JWT claims attached to req.auth after token verification.
+ * Deliberately does NOT extend the full CognitoJwtPayload — we only
+ * attach fields needed for authorization and audit. This prevents
+ * username, device_key, scope, client_id, origin_jti, event_id, and
+ * other claims from leaking into route handlers.
+ */
+interface ExtendedCognitoJwtPayload {
+  /** Cognito user sub (stable, unique per user) */
+  sub: string;
+  /** Token issuer — identifies the Cognito user pool */
+  iss: string;
+  /** JWT ID — used for replay detection in audit logs */
+  jti?: string;
+  /** Expiry (unix epoch) */
+  exp: number;
+  /** Issued-at (unix epoch) */
+  iat: number;
+  /** Raw Cognito group names extracted from the token */
   cognitoGroups?: string[];
+  /** Application role derived from cognitoGroups */
   cognitoRole?: string;
 }
 
