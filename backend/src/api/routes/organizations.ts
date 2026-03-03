@@ -248,7 +248,7 @@ router.post("/join", authMiddleware, async (req, res) => {
 });
 
 // POST /api/organizations/invite - generate a new invitation token (admin only)
-router.post("/invite", authMiddleware, async (req, res) => {
+router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -258,15 +258,6 @@ router.post("/invite", authMiddleware, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "User must belong to an organization to create invites",
-      });
-    }
-
-    // Check if user is org admin
-    const isAdmin = (user as any).is_org_admin || user.role === "admin";
-    if (!isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Only organization admins can create invitation codes",
       });
     }
 

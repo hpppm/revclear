@@ -153,6 +153,22 @@ GEMINI.md
 .claude/*
 !.claude/settings.json
 
+# Test result output files
+*-test-results.txt
+*test-results.txt
+jest-test-results.txt
+
+# Security audit/fix documentation (internal only, not for public repo)
+SECURITY_FIXES*.md
+SECURITY_AUDIT*.md
+
+# Standalone dev HTML tools
+review.html
+
+# Browser-side debug/test scripts
+test-security.js
+test-*.js
+
 # Docker secrets
 docker-compose.override.yml
 .docker/
