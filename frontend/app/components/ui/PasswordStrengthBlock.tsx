@@ -1,5 +1,3 @@
-import React from "react";
-
 interface PasswordStrengthBlockProps {
   password: string;
   isVisible: boolean;
@@ -20,19 +18,22 @@ function checkStrength(pw: string) {
 function getStrengthColor(label: string) {
   if (label === "Weak") return "text-red-500";
   if (label === "Medium") return "text-yellow-500";
-  return "text-green-500";
+  if (label === "Strong") return "text-green-500";
+  return "text-gray-400";
 }
 
 function getStrengthBarWidth(label: string) {
   if (label === "Weak") return "w-1/3";
   if (label === "Medium") return "w-2/3";
-  return "w-full";
+  if (label === "Strong") return "w-full";
+  return "w-0";
 }
 
 function getStrengthBarColor(label: string) {
   if (label === "Weak") return "bg-red-500";
   if (label === "Medium") return "bg-yellow-500";
-  return "bg-green-500";
+  if (label === "Strong") return "bg-green-500";
+  return "bg-gray-300";
 }
 
 export default function PasswordStrengthBlock({
