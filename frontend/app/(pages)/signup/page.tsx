@@ -15,7 +15,6 @@ import PasswordStrengthBlock from "@/app/components/ui/PasswordStrengthBlock";
 import { practitionerTypes, states } from "@/app/(pages)/signup/constants";
 
 interface ApiErrorData {
-  code?: string;
   error?: string;
   message?: string;
   policy?: string;
@@ -39,7 +38,6 @@ function getApiErrorData(error: unknown): ApiErrorData | undefined {
   if (!isRecord(data)) return undefined;
 
   return {
-    code: typeof data.code === "string" ? data.code : undefined,
     error: typeof data.error === "string" ? data.error : undefined,
     message: typeof data.message === "string" ? data.message : undefined,
     policy: typeof data.policy === "string" ? data.policy : undefined,
@@ -165,7 +163,7 @@ export default function SignupPage() {
         licenseId: form.license,
       });
 
-      if (response.data.AuthenticationResult) {
+      if (response.data.autoLoggedIn) {
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
@@ -181,10 +179,11 @@ export default function SignupPage() {
       const errorData = getApiErrorData(error);
       let errorMessage = "Signup failed. Please try again.";
 
-      if (errorData?.code === "USER_ALREADY_EXISTS") {
-        errorMessage = (errorData.error ?? "") + " " + (errorData.message ?? "");
-      } else if (errorData?.error) {
+      if (errorData?.error) {
         errorMessage = errorData.error;
+        if (errorData.message) {
+          errorMessage += " " + errorData.message;
+        }
         if (errorData.policy) {
           errorMessage += " " + errorData.policy;
         }
