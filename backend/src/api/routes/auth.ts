@@ -37,7 +37,21 @@ router.post("/signup", async (req, res) => {
       practitionerType,
       licenseId,
     );
-    res.status(200).json(result);
+
+    // If Cognito auto-confirmed the user and returned tokens, set httpOnly cookies
+    // exactly like signin does — never expose raw tokens in the response body.
+    const authResult = result?.AuthenticationResult;
+    if (authResult?.AccessToken) {
+      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    }
+    if (authResult?.RefreshToken) {
+      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
+    }
+
+    res.status(200).json({
+      message: "Account created successfully.",
+      autoLoggedIn: !!(authResult?.AccessToken),
+    });
   } catch (error: any) {
     // Log internally but don't expose details
     if (error.name === "InvalidPasswordException") {
