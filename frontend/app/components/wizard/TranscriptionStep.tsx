@@ -10,6 +10,7 @@ interface TranscriptionStepProps {
     audioUrl: string | null;
     s3Key: string | null;
     transcript: any;
+    transcribeError: string | null;
     transcriptDraft: string;
     onTranscriptDraftChange: (value: string) => void;
     onSaveTranscript: () => void;
@@ -27,6 +28,7 @@ export default function TranscriptionStep({
     audioUrl,
     s3Key,
     transcript,
+    transcribeError,
     transcriptDraft,
     onTranscriptDraftChange,
     onSaveTranscript,
@@ -142,12 +144,20 @@ export default function TranscriptionStep({
                             <Button
                                 onClick={onTranscribe}
                                 loading={transcribing}
-                                disabled={transcribing || uploading}
+                                disabled={transcribing || uploading || !s3Key}
                             >
                                 {transcribing ? "Transcribing..." : "Transcribe Audio"}
                             </Button>
                         )}
                     </div>
+                    {!s3Key && !uploading && !transcript && (
+                        <p className="mb-4 text-sm text-amber-700">
+                            Audio must finish uploading before transcription can start.
+                        </p>
+                    )}
+                    {transcribeError && (
+                        <p className="mb-4 text-sm text-red-600">{transcribeError}</p>
+                    )}
 
                     {transcribing && (
                         <div className="text-center py-8">

@@ -74,6 +74,7 @@ export default function EncounterPage() {
   const [s3Key, setS3Key] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<any | null>(null);
   const [transcriptDraft, setTranscriptDraft] = useState<string>("");
   const [savingTranscript, setSavingTranscript] = useState(false);
@@ -357,9 +358,11 @@ export default function EncounterPage() {
     setAudioFile(file);
     setAudioUrl(URL.createObjectURL(file));
     setTranscript(null);
+    setTranscribeError(null);
     setSoap(null);
 
     if (!metadata.date || !metadata.patientId) {
+      setTranscribeError("Select the patient and encounter date before uploading audio.");
       return;
     }
 
@@ -396,6 +399,9 @@ export default function EncounterPage() {
       setS3Key(key);
     } catch (err: any) {
       logger.error("Save failed", err);
+      setTranscribeError(
+        err?.response?.data?.error || err?.message || "Failed to upload audio.",
+      );
     } finally {
       setUploading(false);
     }
@@ -403,10 +409,14 @@ export default function EncounterPage() {
 
   const handleTranscribe = async () => {
     if (!s3Key || !encounterId) {
+      setTranscribeError(
+        "Audio upload is not ready yet. Re-upload the audio and try again.",
+      );
       return;
     }
 
     setTranscribing(true);
+    setTranscribeError(null);
 
     try {
       const res = await apiClient.transcribe.transcribeS3({
@@ -423,6 +433,9 @@ export default function EncounterPage() {
       setSoap(receivedSoap);
     } catch (err: any) {
       logger.error("Transcription failed", err);
+      setTranscribeError(
+        err?.response?.data?.error || err?.message || "Transcription failed.",
+      );
     } finally {
       setTranscribing(false);
     }
@@ -576,6 +589,7 @@ export default function EncounterPage() {
           audioUrl={audioUrl}
           s3Key={s3Key}
           transcript={transcript}
+          transcribeError={transcribeError}
           transcriptDraft={transcriptDraft}
           onTranscriptDraftChange={setTranscriptDraft}
           onSaveTranscript={handleSaveTranscript}
