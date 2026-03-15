@@ -12,6 +12,7 @@ import { sendError } from "../../utils/httpResponses";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { query } from "../../config/db";
 import { AI_FLOW_NAMES } from "../../constants/aiFlows";
+import { getUserOrganization } from "../../utils/organization";
 import logger from "../../utils/logger";
 
 const router = Router();
@@ -35,7 +36,10 @@ const upload = multer({
 
 // AI server URL from environment (prefer AI_TRANSCRIBE_URL, support TRANSCRIBE_URL).
 const AI_TRANSCRIBE_URL =
-  process.env.AI_TRANSCRIBE_URL || process.env.TRANSCRIBE_URL;
+  process.env.AI_TRANSCRIBE_URL ||
+  process.env.TRANSCRIBE_API_URL ||
+  process.env.TRANSCRIBE_URL;
+const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
 const TranscriptUpdateSchema = z.object({
   text: z.string().min(1, "Transcript text is required"),
@@ -53,6 +57,11 @@ const requireUser = async (req: any, res: any) => {
     return null;
   }
   return user;
+};
+
+const getRequestOrganizationId = async (userId: string) => {
+  const organization = await getUserOrganization(userId);
+  return organization?.id;
 };
 
 // SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
@@ -91,6 +100,7 @@ router.post(
     try {
       const user = await requireUser(req, res);
       if (!user) return;
+      const organizationId = await getRequestOrganizationId(user.id);
 
       const encounterId = req.body.encounterId;
 
@@ -102,7 +112,7 @@ router.post(
       const ownsEncounter = await ensureEncounterOwnership(
         encounterId,
         user.id,
-        user.organization_id,
+        organizationId,
       );
       if (!ownsEncounter) {
         return sendError(res, 404, "Encounter not found");
@@ -196,12 +206,21 @@ router.post(
 
       if (!AI_TRANSCRIBE_URL) {
         logger.error(
-          "transcribe: missing AI_TRANSCRIBE_URL/TRANSCRIBE_URL configuration",
+          "transcribe: missing AI_TRANSCRIBE_URL/TRANSCRIBE_API_URL/TRANSCRIBE_URL configuration",
         );
         return sendError(
           res,
           500,
-          "AI transcription URL is not configured (AI_TRANSCRIBE_URL or TRANSCRIBE_URL)",
+          "AI transcription URL is not configured (AI_TRANSCRIBE_URL, TRANSCRIBE_API_URL, or TRANSCRIBE_URL)",
+        );
+      }
+
+      if (!AI_SERVER_API_KEY) {
+        logger.error("transcribe: missing AI_SERVER_API_KEY configuration");
+        return sendError(
+          res,
+          500,
+          "AI server API key is not configured (AI_SERVER_API_KEY)",
         );
       }
 
@@ -220,7 +239,10 @@ router.post(
       const response = await fetch(AI_TRANSCRIBE_URL, {
         method: "POST",
         body: formData as any,
-        headers: formData.getHeaders(),
+        headers: {
+          ...formData.getHeaders(),
+          "X-API-Key": AI_SERVER_API_KEY,
+        },
       });
 
       logger.debug({ status: response.status }, "transcribe: AI server response");
@@ -293,6 +315,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+    const organizationId = await getRequestOrganizationId(user.id);
 
     const { encounterId } = req.params;
 
@@ -303,7 +326,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
     const ownsEncounter = await ensureEncounterOwnership(
       encounterId,
       user.id,
-      user.organization_id,
+      organizationId,
     );
     if (!ownsEncounter) {
       return sendError(res, 404, "Encounter not found");
@@ -340,6 +363,7 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+    const organizationId = await getRequestOrganizationId(user.id);
 
     const { encounterId } = req.params;
 
@@ -350,7 +374,7 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
     const ownsEncounter = await ensureEncounterOwnership(
       encounterId,
       user.id,
-      user.organization_id,
+      organizationId,
     );
     if (!ownsEncounter) {
       return sendError(res, 404, "Encounter not found");
@@ -383,6 +407,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+    const organizationId = await getRequestOrganizationId(user.id);
 
     const { encounterId } = req.params;
     if (!encounterId) {
@@ -402,7 +427,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
     const ownsEncounter = await ensureEncounterOwnership(
       encounterId,
       user.id,
-      user.organization_id,
+      organizationId,
     );
     if (!ownsEncounter) {
       return sendError(res, 404, "Encounter not found");

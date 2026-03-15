@@ -7,6 +7,7 @@ import { sendError } from "../../utils/httpResponses";
 import { speechToSoap } from "../../services/ai/speechToSoap";
 import { query } from "../../config/db";
 import { getAuthenticatedUser } from "../../utils/auth";
+import { getUserOrganization } from "../../utils/organization";
 import { AI_FLOW_NAMES, SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
 import logger from "../../utils/logger";
 
@@ -44,6 +45,11 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
+const getRequestOrganizationId = async (userId: string) => {
+  const organization = await getUserOrganization(userId);
+  return organization?.id;
+};
+
 // SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
 // access within the same organization. Using OR would allow any clinician in the
 // org to access another clinician's PHI data.
@@ -60,6 +66,7 @@ const ensureEncounterOwnership = async (encounterId: string, clinicianId: string
 router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -67,7 +74,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -117,6 +124,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
 router.get("/:id/soap", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -124,7 +132,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -153,6 +161,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
 router.post("/:id/soap", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -160,7 +169,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -218,6 +227,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
 router.put("/:id/soap", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsedParams = IdParamSchema.safeParse(req.params);
   if (!parsedParams.success) {
@@ -231,7 +241,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
   const encounterId = parsedParams.data.id;
   const { soap, model_version, confidence_score } = parsedBody.data;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, user.organization_id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }

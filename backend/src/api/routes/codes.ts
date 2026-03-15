@@ -9,6 +9,7 @@ import { soapToCodes } from "../../services/ai/soapToCodes";
 import { query } from "../../config/db";
 import { getLatestAiResultByFlowNames } from "../../db/queries";
 import { getAuthenticatedUser } from "../../utils/auth";
+import { getUserOrganization } from "../../utils/organization";
 import { SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
 import logger from "../../utils/logger";
 
@@ -112,14 +113,20 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
+const getRequestOrganizationId = async (userId: string) => {
+  const organization = await getUserOrganization(userId);
+  return organization?.id;
+};
+
 const requireOwnedEncounter = async (
   encounterId: string,
   clinicianId: string,
+  organizationId?: string,
 ) => {
   const result = await query(
     `SELECT id, patient_id, clinician_id, organization_id, status, soap_result_id
-         FROM encounters WHERE id = $1 AND clinician_id = $2`,
-    [encounterId, clinicianId],
+         FROM encounters WHERE id = $1 AND clinician_id = $2 AND organization_id = $3`,
+    [encounterId, clinicianId, organizationId || null],
   );
   return result.rows[0] || null;
 };
@@ -135,6 +142,7 @@ const requireOwnedEncounter = async (
 router.post("/:id/codes/match", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -142,7 +150,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const encounter = await requireOwnedEncounter(encounterId, user.id);
+  const encounter = await requireOwnedEncounter(encounterId, user.id, organizationId);
   if (!encounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -228,6 +236,7 @@ router.get("/search", authMiddleware, async (req, res) => {
 router.post("/:id/codes", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsedParams = IdParamSchema.safeParse(req.params);
   if (!parsedParams.success) {
@@ -252,7 +261,7 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
   const encounterId = parsedParams.data.id;
   const { codes } = parsedBody.data;
 
-  const encounter = await requireOwnedEncounter(encounterId, user.id);
+  const encounter = await requireOwnedEncounter(encounterId, user.id, organizationId);
   if (!encounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -295,6 +304,7 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
 router.get("/:id/codes", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -302,7 +312,7 @@ router.get("/:id/codes", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const encounter = await requireOwnedEncounter(encounterId, user.id);
+  const encounter = await requireOwnedEncounter(encounterId, user.id, organizationId);
   if (!encounter) {
     return sendError(res, 404, "Encounter not found");
   }

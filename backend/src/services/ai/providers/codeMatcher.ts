@@ -28,6 +28,7 @@ const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
 const CODES_API_URL = process.env.CODES_API_URL || "";
+const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
 const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes using your training knowledge.
 
@@ -120,10 +121,17 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
   constructor(private readonly endpoint: string) {}
 
   async match(input: CodeInput): Promise<CodeMatchResult> {
+    if (!AI_SERVER_API_KEY) {
+      throw new Error("Missing AI_SERVER_API_KEY for external codes endpoint.");
+    }
+
     logger.debug({}, 'HttpEndpointCodeMatcher: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": AI_SERVER_API_KEY,
+      },
       body: JSON.stringify({
         soapNote: input.soapNote,
       }),

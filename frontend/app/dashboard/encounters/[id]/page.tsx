@@ -19,6 +19,8 @@ export default function EncounterSummaryPage() {
     const [soap, setSoap] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [transcribing, setTranscribing] = useState(false);
+    const [transcribeError, setTranscribeError] = useState("");
     const [showAnimation, setShowAnimation] = useState(false);
 
     // Collapsible state
@@ -78,6 +80,54 @@ export default function EncounterSummaryPage() {
             logger.error("Failed to load encounter data");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const extractTranscriptText = (value: any) => {
+        if (!value) return "";
+        if (typeof value === "string") return value;
+        if (typeof value.text === "string") return value.text;
+        if (typeof value.transcript === "string") return value.transcript;
+        return "";
+    };
+
+    const handleTranscribe = async () => {
+        if (!encounterId || !encounter?.audio_key) {
+            setTranscribeError("No uploaded audio is available for this encounter.");
+            return;
+        }
+
+        setTranscribing(true);
+        setTranscribeError("");
+
+        try {
+            const res = await apiClient.transcribe.transcribeS3({
+                s3Key: encounter.audio_key,
+                encounterId,
+            });
+
+            const transcriptPayload =
+                res.data?.transcript || res.data?.data?.transcript || res.data;
+            const nextTranscript = extractTranscriptText(transcriptPayload);
+
+            setTranscript(nextTranscript);
+            setEncounter((current: any) =>
+                current
+                    ? {
+                        ...current,
+                        transcript_result_id:
+                            current.transcript_result_id || "generated",
+                    }
+                    : current,
+            );
+            setTranscriptExpanded(true);
+        } catch (err: any) {
+            logger.error("Failed to transcribe encounter audio", err);
+            setTranscribeError(
+                err?.response?.data?.message || "Failed to transcribe this encounter audio.",
+            );
+        } finally {
+            setTranscribing(false);
         }
     };
 
@@ -220,8 +270,25 @@ export default function EncounterSummaryPage() {
                     </button>
                     {transcriptExpanded && (
                         <div className="px-6 pb-6 border-t border-slate-200">
+                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <Button
+                                    onClick={handleTranscribe}
+                                    loading={transcribing}
+                                    disabled={transcribing || !encounter.audio_key}
+                                >
+                                    {transcript ? "Retranscribe Audio" : "Transcribe Audio"}
+                                </Button>
+                                {!encounter.audio_key && (
+                                    <p className="text-sm text-slate-500">
+                                        No audio file is attached to this encounter yet.
+                                    </p>
+                                )}
+                            </div>
+                            {transcribeError && (
+                                <p className="mt-3 text-sm text-red-600">{transcribeError}</p>
+                            )}
                             <p className="text-slate-700 whitespace-pre-wrap mt-4">
-                                {transcript || "No transcription available for this encounter. The audio may not have been transcribed yet."}
+                                {transcript || "No transcription available for this encounter. Use the button above to transcribe the attached audio."}
                             </p>
                         </div>
                     )}
