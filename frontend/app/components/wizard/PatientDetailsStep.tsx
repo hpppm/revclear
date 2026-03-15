@@ -71,6 +71,8 @@ export default function PatientDetailsStep({
         <label className="space-y-1 block">
           <span className="text-sm font-medium text-slate-700">Encounter Type</span>
           <select
+            id="encounter-type"
+            name="encounter-type"
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             value={metadata.encounterType || "office_visit"}
             onChange={(e) => setMetadata({ ...metadata, encounterType: e.target.value })}
@@ -93,6 +95,8 @@ export default function PatientDetailsStep({
       <label className="space-y-1 block">
         <span className="text-sm font-medium text-slate-700">Patient</span>
         <select
+          id="patient-select"
+          name="patient-select"
           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           value={metadata.patientId}
         onChange={(e) => {

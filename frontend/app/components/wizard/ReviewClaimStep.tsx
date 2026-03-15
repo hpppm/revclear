@@ -426,6 +426,8 @@ export default function ReviewClaimStep({
                         <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1">Claim Type</label>
                             <select
+                                id="claim-type"
+                                name="claim-type"
                                 value={claim.claim_type || "professional"}
                                 onChange={(e) => handleUpdateClaim("claim_type", e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -439,6 +441,8 @@ export default function ReviewClaimStep({
                                 Submission Type (Claim Frequency)
                             </label>
                             <select
+                                id="submission-type"
+                                name="submission-type"
                                 value={claim.submission_type || "initial"}
                                 onChange={(e) => handleUpdateClaim("submission_type", e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"

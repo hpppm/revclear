@@ -77,9 +77,25 @@ api.interceptors.response.use(
     // Sanitize - only pass through known-safe error messages
     const userMessage = sanitizeErrorMessage(backendMessage, status);
 
-    // Return sanitized error - preserve response for status code checks
+    // AUTO-LOGOUT: Redirect to login when session cookie has expired.
+    // Only fires on dashboard routes to avoid loops on login/signup/landing.
+    // Auth routes (e.g. /auth/signin) are excluded — a wrong password returns
+    // 401 and the login page must handle that itself, not get redirected away.
+    if (status === 401 && typeof window !== "undefined") {
+      const isAuthRoute = error?.config?.url?.includes("/auth/");
+      const isDashboard = window.location.pathname.startsWith("/dashboard");
+      if (!isAuthRoute && isDashboard) {
+        window.location.href = "/login?reason=expired";
+      }
+    }
+
+    // SANITIZATION: Replace raw response.data with the sanitized message so
+    // that callers reading error.response.data.error never see raw backend
+    // output (stack traces, DB details, internal paths, etc.).
     const cleanError = {
-      response: error.response,
+      response: error.response
+        ? { ...error.response, data: { error: userMessage } }
+        : undefined,
       message: userMessage,
       status: status,
     };

@@ -2,28 +2,26 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Middleware to generate CSP nonces for each request.
- * This provides protection against XSS even if an attacker injects a script tag.
+ * Next.js 16 proxy middleware — runs on every request.
+ * Generates a per-request CSP nonce and sets security headers.
  *
- * NOTE: Next.js has limitations with dynamic CSP nonces in the App Router.
- * For full nonce support, scripts must use the nonce from headers.
- *
- * Current implementation:
- * - Generates a random nonce per request
- * - Adds it to CSP header
- * - Makes it available via x-nonce header for client-side access
+ * Next.js 16 renamed "middleware.ts / export middleware" to
+ * "proxy.ts / export proxy". This file must be named proxy.ts
+ * and export a function named `proxy`.
  */
 export function proxy(request: NextRequest) {
   // Generate a cryptographically secure nonce
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
+  const isDev = process.env.NODE_ENV === "development";
+
   // Build CSP with nonce
   const cspHeader = [
     "default-src 'self'",
     // Scripts: allow self + nonce-based inline scripts + strict-dynamic for trusted script loading
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // unsafe-eval is required in development only for React/Turbopack hot reload internals
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     // Styles: unsafe-inline required for Tailwind/component libraries that inject styles
-    // TODO: Migrate to nonce-based styles when Tailwind supports it
     `style-src 'self' 'unsafe-inline'`,
     // Connect to API
     `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"}`,
@@ -53,27 +51,20 @@ export function proxy(request: NextRequest) {
   // Set CSP header
   response.headers.set("Content-Security-Policy", cspHeader);
 
-  // Other security headers
+  // Security headers
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
-  // Make nonce available to client (for inline scripts that need it)
+  // Make nonce available to client
   response.headers.set("x-nonce", nonce);
 
   return response;
 }
 
-// Apply middleware to all routes except static files and API routes
+// Apply to all routes except static files
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
