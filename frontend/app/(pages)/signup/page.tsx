@@ -197,9 +197,9 @@ export default function SignupPage() {
       <div className="w-full max-w-xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2">
-            <div className="w-12 h-12 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-10px_rgba(79,70,229,0.45)] transition-transform group-hover:scale-105">
+            <Link href="/landing" className="w-12 h-12 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-10px_rgba(79,70,229,0.45)] hover:bg-[#4338ca] transition-all hover:scale-105 cursor-pointer">
               <span className="text-white font-bold text-2xl">R</span>
-            </div>
+            </Link>
             <span className="text-3xl font-bold text-[#4f46e5]">RevClear</span>
           </div>
         </div>

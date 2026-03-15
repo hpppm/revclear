@@ -51,12 +51,6 @@ const steps = [
   },
 ];
 
-const stats = [
-  { label: "Clinician review", value: "Built in" },
-  { label: "Designed for", value: "Outpatient clinics" },
-  { label: "Security controls", value: "Secure workflows" },
-];
-
 const specialties = ["Mental Health", "Speech Therapy", "Physical Therapy"];
 const featureAccents = ["teal", "blue", "orange", "pink"];
 
@@ -96,12 +90,6 @@ export default function LandingPage() {
         <main className="max-w-7xl mx-auto px-6 pt-16 pb-20">
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-full mb-6">
-                <span className="w-2 h-2 bg-teal-500 rounded-full" />
-                <span className="text-slate-600 text-sm font-medium">
-                  AI-Assisted Clinical Documentation & Billing
-                </span>
-              </div>
               <h1
                 className={`${display.className} text-5xl md:text-6xl font-semibold leading-tight tracking-tight`}
               >
@@ -134,9 +122,6 @@ export default function LandingPage() {
                 claims while clinicians stay in control.
               </p>
               <div className="flex flex-wrap items-center gap-3 mt-8">
-                <span className="text-slate-500 text-sm font-medium uppercase tracking-wide">
-                  Trusted by providers in:
-                </span>
                 {specialties.map((specialty) => (
                   <div
                     key={specialty}
@@ -147,14 +132,6 @@ export default function LandingPage() {
                 ))}
               </div>
 
-              <div className="grid sm:grid-cols-3 gap-4 mt-10">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 border-t-4 border-t-teal-200">
-                    <p className="text-sm text-slate-500 uppercase tracking-wide">{stat.label}</p>
-                    <p className="text-xl font-semibold text-slate-900 mt-1">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="space-y-6">
@@ -210,15 +187,14 @@ export default function LandingPage() {
               {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className={`p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all border-t-4 ${
-                    featureAccents[index % featureAccents.length] === "teal"
-                      ? "border-t-teal-300 hover:border-teal-200"
-                      : featureAccents[index % featureAccents.length] === "blue"
-                        ? "border-t-blue-300 hover:border-blue-200"
-                        : featureAccents[index % featureAccents.length] === "orange"
-                          ? "border-t-orange-300 hover:border-orange-200"
-                          : "border-t-pink-200 hover:border-pink-200"
-                  }`}
+                  className={`p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all border-t-4 ${featureAccents[index % featureAccents.length] === "teal"
+                    ? "border-t-teal-300 hover:border-teal-200"
+                    : featureAccents[index % featureAccents.length] === "blue"
+                      ? "border-t-blue-300 hover:border-blue-200"
+                      : featureAccents[index % featureAccents.length] === "orange"
+                        ? "border-t-orange-300 hover:border-orange-200"
+                        : "border-t-pink-200 hover:border-pink-200"
+                    }`}
                 >
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">
                     Feature
