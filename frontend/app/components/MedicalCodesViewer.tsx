@@ -314,6 +314,8 @@ export default function MedicalCodesViewer({
         <h4 className="text-sm font-semibold text-slate-700 mb-3">Manual Code Search</h4>
         <div className="flex gap-2">
           <select
+            id="code-search-type"
+            name="code-search-type"
             value={searchType}
             onChange={(e) => setSearchType(e.target.value as "icd" | "cpt")}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"

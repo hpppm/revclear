@@ -181,6 +181,8 @@ export default function TranscriptionStep({
                 </span>
             </div>
                             <textarea
+                                id="transcript-draft"
+                                name="transcript-draft"
                                 value={transcriptDraft}
                                 onChange={(e) => onTranscriptDraftChange(e.target.value)}
                                 rows={10}
