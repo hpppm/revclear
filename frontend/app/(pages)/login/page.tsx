@@ -99,9 +99,9 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
           <div className="mb-6 text-center">
             <div className="inline-flex items-center gap-2">
-              <div className="w-10 h-10 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-12px_rgba(79,70,229,0.45)]">
+              <Link href="/landing" className="w-10 h-10 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-12px_rgba(79,70,229,0.45)] hover:bg-[#4338ca] transition-colors cursor-pointer">
                 <span className="text-white font-bold text-xl">R</span>
-              </div>
+              </Link>
               <span className="text-2xl font-bold text-[#4f46e5]">
                 RevClear
               </span>
