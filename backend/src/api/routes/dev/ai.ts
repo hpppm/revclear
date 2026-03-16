@@ -5,6 +5,7 @@ import { query } from "../../../config/db";
 import { createAiResult } from "../../../db/queries";
 import { AI_FLOW_NAMES } from "../../../constants/aiFlows";
 import logger from "../../../utils/logger";
+import { encryptPHIText } from "../../../utils/crypto";
 
 const router = Router();
 
@@ -38,7 +39,12 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
         `INSERT INTO patients (full_name, clinician_id, dob, gender) 
          VALUES ($1, $2, $3, $4) 
          RETURNING id`,
-        ["Mock Patient", clinicianId, "1980-01-01", "other"]
+        [
+          encryptPHIText("Mock Patient"),
+          clinicianId,
+          encryptPHIText("1980-01-01"),
+          encryptPHIText("O"),
+        ]
       );
       const patientId = patientResult.rows[0].id;
 

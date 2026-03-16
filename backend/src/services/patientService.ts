@@ -1,5 +1,6 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
+import { decryptPHIText, encryptPHIText } from "../utils/crypto";
 
 interface PaginationOptions {
   limit?: number;
@@ -42,6 +43,79 @@ const ALLOWED_SUBSCRIBER_FIELDS = [
   "group_number",
   "plan_name",
 ];
+
+export const PATIENT_ENCRYPTED_FIELDS = [
+  "full_name",
+  "dob",
+  "gender",
+  "phone",
+  "email",
+  "address_street",
+  "address_city",
+  "address_state",
+  "address_zip",
+  "insurance_provider",
+  "insurance_policy_number",
+  "insurance_member_id",
+  "insurance_group_number",
+  "insurance_payer_name",
+  "insurance_relationship",
+  "plan_name",
+] as const;
+
+export const SUBSCRIBER_ENCRYPTED_FIELDS = [
+  "full_name",
+  "dob",
+  "gender",
+  "phone",
+  "address_street",
+  "address_city",
+  "address_state",
+  "address_zip",
+  "member_id",
+  "group_number",
+  "plan_name",
+] as const;
+
+const PATIENT_ENCRYPTED_FIELD_SET = new Set<string>(PATIENT_ENCRYPTED_FIELDS);
+const SUBSCRIBER_ENCRYPTED_FIELD_SET = new Set<string>(SUBSCRIBER_ENCRYPTED_FIELDS);
+
+const transformEncryptedFields = <T extends Record<string, any>>(
+  record: T | null | undefined,
+  encryptedFields: Set<string>,
+  transform: (value: string | Date | null | undefined) => string | null | undefined,
+): T | null | undefined => {
+  if (!record) return record;
+
+  const clone: Record<string, any> = { ...record };
+  for (const field of Object.keys(clone)) {
+    if (encryptedFields.has(field)) {
+      clone[field] = transform(clone[field]);
+    }
+  }
+  return clone as T;
+};
+
+const maybeEncryptField = (field: string, value: any) =>
+  PATIENT_ENCRYPTED_FIELD_SET.has(field) || SUBSCRIBER_ENCRYPTED_FIELD_SET.has(field)
+    ? encryptPHIText(value ?? null)
+    : value;
+
+export const decryptPatientRow = <T extends Record<string, any> | null | undefined>(patient: T): T =>
+  transformEncryptedFields(
+    patient,
+    PATIENT_ENCRYPTED_FIELD_SET,
+    decryptPHIText,
+  ) as T;
+
+export const decryptSubscriberRow = <T extends Record<string, any> | null | undefined>(
+  subscriber: T,
+): T =>
+  transformEncryptedFields(
+    subscriber,
+    SUBSCRIBER_ENCRYPTED_FIELD_SET,
+    decryptPHIText,
+  ) as T;
 
 // Explicit column list for subscriber queries - data minimization
 const SUBSCRIBER_SELECT_COLUMNS = `
@@ -114,7 +188,7 @@ export class PatientService {
       "primary_clinician_id",
     ];
     const values: any[] = [
-      data.full_name,
+      encryptPHIText(data.full_name),
       clinicianId,
       organizationId,
       clinicianId,
@@ -146,7 +220,7 @@ export class PatientService {
       if (value !== undefined) {
         columns.push(key);
         placeholders.push(`$${idx}`);
-        values.push(value);
+        values.push(maybeEncryptField(key, value));
         idx += 1;
       }
     }
@@ -181,7 +255,7 @@ export class PatientService {
     }
 
     const fields = safeEntries.map(([key], index) => `${key} = $${index + 1}`);
-    const values = safeEntries.map(([, value]) => value);
+    const values = safeEntries.map(([key, value]) => maybeEncryptField(key, value));
 
     const queryText = `UPDATE patients SET ${fields.join(", ")} WHERE id = $${fields.length + 1} RETURNING ${PATIENT_SELECT_COLUMNS}`;
     const result = await query(queryText, [...values, id]);
@@ -229,7 +303,7 @@ export class PatientService {
       const fields = safeEntries.map(
         ([key], index) => `${key} = $${index + 1}`,
       );
-      const values = safeEntries.map(([, value]) => value);
+      const values = safeEntries.map(([key, value]) => maybeEncryptField(key, value));
       const updated = await query(
         `UPDATE insurance_subscribers SET ${fields.join(", ")} WHERE id = $${fields.length + 1} RETURNING ${SUBSCRIBER_SELECT_COLUMNS}`,
         [...values, currentSubscriberId],
@@ -250,7 +324,7 @@ export class PatientService {
         .forEach(([key, value]) => {
           columns.push(key);
           placeholders.push(`$${idx}`);
-          values.push(value);
+          values.push(maybeEncryptField(key, value));
           idx += 1;
         });
       const inserted = await query(
@@ -290,18 +364,19 @@ export class PatientService {
       [subscriberId],
     );
 
-    return subscriberResult.rows[0] || null;
+    return decryptSubscriberRow(subscriberResult.rows[0] || null);
   }
 
   private static async enrichPatientWithSubscriber(patient: any) {
+    const decryptedPatient = decryptPatientRow(patient);
     if (patient?.subscriber_id) {
       const subRes = await query(
         `SELECT ${SUBSCRIBER_SELECT_COLUMNS} FROM insurance_subscribers WHERE id = $1`,
         [patient.subscriber_id],
       );
-      const subscriber = subRes.rows[0] || null;
-      return { ...patient, subscriber };
+      const subscriber = decryptSubscriberRow(subRes.rows[0] || null);
+      return { ...decryptedPatient, subscriber };
     }
-    return patient;
+    return decryptedPatient;
   }
 }
