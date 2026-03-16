@@ -1,8 +1,11 @@
 import axios from "axios";
 
+const defaultApiBaseUrl =
+  process.env.NODE_ENV === "development" ? "http://localhost:3005/api" : "/api";
+
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || defaultApiBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
