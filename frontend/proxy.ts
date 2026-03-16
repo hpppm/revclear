@@ -14,6 +14,9 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const isDev = process.env.NODE_ENV === "development";
+  const connectSrc = isDev
+    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"
+    : "'self'";
 
   // Build CSP with nonce
   const cspHeader = [
@@ -23,13 +26,8 @@ export function proxy(request: NextRequest) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     // Styles: unsafe-inline required for Tailwind/component libraries that inject styles
     `style-src 'self' 'unsafe-inline'`,
-    // SECURITY: connect-src must not fall back to http://localhost in production —
-    // it would allow any script to call the local backend without restriction.
-    // In production NEXT_PUBLIC_API_URL must be set; in dev localhost is acceptable.
-    `connect-src 'self' ${isDev
-      ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005")
-      : (process.env.NEXT_PUBLIC_API_URL || "'none'")
-    }`,
+    // Connect to API
+    `connect-src ${connectSrc}`,
     // Images
     "img-src 'self' data: https:",
     // Fonts
