@@ -63,7 +63,12 @@ const ensureEncounterOwnership = async (encounterId: string, clinicianId: string
 
 // New endpoint specifically for testing with mock transcript
 // MUST come before POST /:id/soap to avoid route conflict
+// SECURITY: Mock endpoint must not be accessible in production — it bypasses
+// real transcript validation and creates synthetic PHI records.
 router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(404).send();
+  }
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);
