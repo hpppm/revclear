@@ -28,6 +28,48 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
+// SECURITY: Ollama must only be reachable via localhost to prevent SSRF and
+// unintended external exposure of the inference server.
+const OLLAMA_ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
+
+// SECURITY: Allowlist of approved external SOAP API hostnames.
+// Any URL not matching this list is rejected to block SSRF attacks.
+const SOAP_API_ALLOWLIST: string[] = (process.env.SOAP_API_ALLOWLIST || "").split(",").filter(Boolean);
+
+const validateOllamaUrl = (url: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid OLLAMA_BASE_URL: "${url}"`);
+  }
+  if (!OLLAMA_ALLOWED_HOSTS.includes(parsed.hostname)) {
+    throw new Error(
+      `OLLAMA_BASE_URL hostname "${parsed.hostname}" is not allowed. Must be localhost or 127.0.0.1.`,
+    );
+  }
+};
+
+const validateExternalSoapUrl = (url: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid SOAP_API_URL: "${url}"`);
+  }
+  // SECURITY: External AI endpoints must use HTTPS to prevent credential and
+  // PHI exposure over unencrypted connections.
+  if (parsed.protocol !== "https:") {
+    throw new Error(`SOAP_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
+  }
+  // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
+  if (SOAP_API_ALLOWLIST.length > 0 && !SOAP_API_ALLOWLIST.includes(parsed.hostname)) {
+    throw new Error(
+      `SOAP_API_URL hostname "${parsed.hostname}" is not in the approved allowlist.`,
+    );
+  }
+};
+
 const buildSoapPrompt = ({ encounterId, transcriptText }: GenerateSoapInput) =>
   [
     "You are a concise clinical summarizer that converts doctor-patient conversation text into a SOAP note.",
@@ -85,6 +127,9 @@ class OllamaSoapGenerator implements SoapGenerator {
       throw new Error("Missing OLLAMA_MODEL. Set OLLAMA_MODEL in backend/.env.");
     }
 
+    // SECURITY: Enforce localhost-only binding before making any request.
+    validateOllamaUrl(OLLAMA_BASE_URL);
+
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
     const prompt = buildSoapPrompt(input);
     logger.debug({ model: OLLAMA_MODEL, encounterId: input.encounterId }, 'OllamaSoapGenerator: sending request');
@@ -102,8 +147,14 @@ class OllamaSoapGenerator implements SoapGenerator {
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'OllamaSoapGenerator: response received');
 
     if (!response.ok) {
+      // SECURITY: Log the raw body server-side only; do not include it in the
+      // thrown error message so it cannot surface in an API response.
       const body = await response.text();
-      throw new Error(`Ollama request failed (${response.status}): ${body}`);
+      logger.error(
+        { encounterId: input.encounterId, status: response.status, body },
+        "OllamaSoapGenerator: upstream error",
+      );
+      throw new Error(`Ollama request failed with status ${response.status}`);
     }
 
     const data = (await response.json()) as { response?: unknown };
@@ -113,7 +164,11 @@ class OllamaSoapGenerator implements SoapGenerator {
 }
 
 class HttpEndpointSoapGenerator implements SoapGenerator {
-  constructor(private readonly endpoint: string) {}
+  constructor(private readonly endpoint: string) {
+    // SECURITY: Validate URL at construction time so misconfiguration is caught
+    // at startup rather than on the first patient request.
+    validateExternalSoapUrl(this.endpoint);
+  }
 
   async generate(input: GenerateSoapInput): Promise<SoapOutput> {
     if (!AI_SERVER_API_KEY) {
@@ -134,8 +189,14 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
     });
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: response received');
     if (!response.ok) {
+      // SECURITY: Log the raw body server-side only; do not include it in the
+      // thrown error message so it cannot surface in an API response.
       const body = await response.text();
-      throw new Error(`External SOAP endpoint failed (${response.status}): ${body}`);
+      logger.error(
+        { encounterId: input.encounterId, status: response.status, body },
+        "HttpEndpointSoapGenerator: upstream error",
+      );
+      throw new Error(`External SOAP endpoint failed with status ${response.status}`);
     }
 
     const data = (await response.json()) as unknown;

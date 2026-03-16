@@ -1,5 +1,5 @@
 import "./setupEnv";
-import express from "express";
+import express, { Request } from "express";
 import helmet, { HelmetOptions } from "helmet";
 import cors from "cors";
 import morgan from "morgan";
@@ -281,7 +281,12 @@ const helmetOptions: HelmetOptions = {
 };
 
 app.use(helmet(helmetOptions));
-app.use(morgan("combined"));
+// SECURITY: Custom Morgan token strips query string from URL before logging
+// to prevent query params (which may contain PHI on some routes) from reaching stdout.
+morgan.token("url-no-query", (req: Request) =>
+  (req.originalUrl || req.url || "").split("?")[0]
+);
+app.use(morgan(":method :url-no-query :status :res[content-length] - :response-time ms"));
 app.use(auditLogger);
 
 // Security headers for API responses - prevent caching of sensitive data

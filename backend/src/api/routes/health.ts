@@ -23,8 +23,9 @@ router.get("/", async (_req, res) => {
   }
 });
 
-// SECURITY: AI health exposes provider names, model versions, and
-// infrastructure status — restrict to authenticated users only.
+// SECURITY: AI health is restricted to authenticated users only.
+// Provider URLs and model names are stripped from the response to avoid
+// leaking infrastructure details that could aid reconnaissance.
 router.get("/ai", authMiddleware, async (_req, res) => {
   try {
     const report = await getAiProviderHealthReport();
@@ -33,7 +34,13 @@ router.get("/ai", authMiddleware, async (_req, res) => {
     res.status(statusCode).json({
       success: report.overallHealthy,
       status: report.overallHealthy ? "healthy" : "degraded",
-      data: report,
+      // SECURITY: Omit aiServerHealthUrl — it reveals internal infrastructure URLs.
+      data: {
+        aiServer: {
+          healthy: report.aiServer.healthy,
+          message: report.aiServer.message,
+        },
+      },
     });
   } catch (_error: any) {
     res.status(503).json({

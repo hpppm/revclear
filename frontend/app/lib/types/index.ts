@@ -10,8 +10,9 @@ export interface User {
   phone?: string;
   cognito_id?: string;
   // Provider billing fields
-  npi?: string;
-  tax_id?: string;
+  // SECURITY: npi and tax_id removed from client-side User type — they are
+  // provider billing identifiers that should not be stored in React state.
+  // Access them via the Organization object (user.organization.npi/tax_id).
   license_state?: string;
   clinic_name?: string;
   clinic_address_street?: string;
