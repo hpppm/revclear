@@ -2,6 +2,7 @@ import crypto from "crypto";
 import logger from "./logger";
 
 const ALGO = "aes-256-gcm";
+const ENCRYPTED_JSON_MARKER = "__revclear_encrypted";
 let key: Buffer | null = null;
 
 const phiEncryptionKey = process.env.PHI_ENCRYPTION_KEY;
@@ -58,6 +59,39 @@ export function decryptPHI(payload: string): string {
       "PHI decryption failed. Data may be corrupted or key mismatch.",
     );
   }
+}
+
+type EncryptedJsonEnvelope = {
+  [ENCRYPTED_JSON_MARKER]: true;
+  ciphertext: string;
+};
+
+export function isEncryptedPHIJson(value: unknown): value is EncryptedJsonEnvelope {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Record<string, unknown>)[ENCRYPTED_JSON_MARKER] === true &&
+    typeof (value as Record<string, unknown>).ciphertext === "string"
+  );
+}
+
+export function encryptPHIJson<T>(value: T): T | EncryptedJsonEnvelope {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  return {
+    [ENCRYPTED_JSON_MARKER]: true,
+    ciphertext: encryptPHI(JSON.stringify(value)),
+  };
+}
+
+export function decryptPHIJson<T>(value: T | EncryptedJsonEnvelope): T {
+  if (!isEncryptedPHIJson(value)) {
+    return value as T;
+  }
+
+  return JSON.parse(decryptPHI(value.ciphertext)) as T;
 }
 
 /**

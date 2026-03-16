@@ -42,7 +42,7 @@ function assertNoCredentialLeak(response: { data: unknown }): void {
   const result = OrganizationResponseSchema.safeParse(payload);
   if (!result.success) {
     const leakFields = ["edi_sftp_password", "edi_sftp_private_key"];
-    const hasLeak = result.error.errors.some((e) =>
+    const hasLeak = result.error.issues.some((e) =>
       leakFields.includes(String(e.path[0]))
     );
     if (hasLeak) {
