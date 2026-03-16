@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import fs from "fs/promises";
-import path from "path";
 import { authMiddleware } from "../../middleware/auth";
 import { IdParamSchema } from "../../types/zod";
 import { sendError } from "../../utils/httpResponses";
 import { soapToCodes } from "../../services/ai/soapToCodes";
+import { getFlatCptCodes } from "../../data/ai/cptDataLoader";
 import { query } from "../../config/db";
 import { getLatestAiResultByFlowNames } from "../../db/queries";
 import { getAuthenticatedUser } from "../../utils/auth";
@@ -50,12 +49,6 @@ const SearchQuerySchema = z.object({
 // HELPER FUNCTIONS
 // =========================================================
 
-const loadCodesFromFile = async (type: "icd" | "cpt") => {
-  const filename = type === "icd" ? "mockIcdCodes.json" : "mockCptCodes.json";
-  const filePath = path.resolve(process.cwd(), "src/data/ai", filename);
-  const raw = await fs.readFile(filePath, "utf-8");
-  return JSON.parse(raw);
-};
 
 // =========================================================
 // DATABASE QUERIES
@@ -209,15 +202,25 @@ router.get("/search", authMiddleware, async (req, res) => {
   const { q, type } = parsed.data;
 
   try {
-    const codes = await loadCodesFromFile(type);
+    if (type === "icd") {
+      return sendError(res, 501, "ICD-10 code search is not yet available");
+    }
+
+    const codes = getFlatCptCodes();
     const searchLower = q.toLowerCase();
 
-    const results = codes.filter(
-      (code: any) =>
-        code.code.toLowerCase().includes(searchLower) ||
-        code.description.toLowerCase().includes(searchLower) ||
-        code.category.toLowerCase().includes(searchLower),
-    );
+    const results = codes
+      .filter(
+        (entry) =>
+          entry.code.toLowerCase().includes(searchLower) ||
+          entry.short_description.toLowerCase().includes(searchLower) ||
+          entry.clinical.type.toLowerCase().includes(searchLower),
+      )
+      .map((entry) => ({
+        code: entry.code,
+        description: entry.short_description,
+        category: entry.clinical.type,
+      }));
 
     return res.json({
       success: true,
