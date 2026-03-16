@@ -1,5 +1,6 @@
 import { z } from "zod";
 import logger from "../../../utils/logger";
+import { getCptCodesForPrompt } from "../../../data/ai/cptDataLoader";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -30,15 +31,20 @@ const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
 const CODES_API_URL = process.env.CODES_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
-const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes using your training knowledge.
+const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes.
 
 SOAP NOTE:
 ${soapNote}
 
+CURATED CPT CODE REFERENCE:
+The following are verified CPT codes for this practice. Prefer these codes when they match the documented services. If no curated code fits, you may use other valid CPT codes from your training knowledge.
+
+${getCptCodesForPrompt()}
+
 INSTRUCTIONS:
-1) Return up to 3 ICD-10-CM diagnosis codes that best match the documented conditions.
-2) Return up to 3 CPT procedure codes that best match the documented services/procedures.
-3) Use real, valid ICD-10-CM and CPT codes from your training knowledge.
+1) Return up to 3 ICD-10-CM diagnosis codes that best match the documented conditions using your training knowledge.
+2) Return up to 3 CPT procedure codes. PREFER codes from the CURATED CPT CODE REFERENCE above when they match the documented services. Fall back to your training knowledge only if no curated code is appropriate.
+3) Use real, valid ICD-10-CM codes from your training knowledge, and prefer curated CPT codes from the reference list.
 4) For each code include: the code, its official description, its category, and a confidence score (0.0-1.0).
 5) Order matches by confidence (highest first).
 Return JSON matching this exact schema:
