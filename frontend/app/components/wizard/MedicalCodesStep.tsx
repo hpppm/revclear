@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { MedicalCode } from "@/app/lib/types";
 import MedicalCodesViewer from "../MedicalCodesViewer";
 

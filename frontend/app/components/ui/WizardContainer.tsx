@@ -60,7 +60,7 @@ export default function WizardContainer({
             } else {
                 onComplete();
             }
-        } catch (error) {
+        } catch {
             logger.error("Error in step transition");
         } finally {
             setIsTransitioning(false);
@@ -80,7 +80,7 @@ export default function WizardContainer({
             if (currentStep > 0) {
                 setCurrentStep(currentStep - 1);
             }
-        } catch (error) {
+        } catch {
             logger.error("Error in step transition");
         } finally {
             setIsTransitioning(false);
