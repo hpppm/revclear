@@ -73,7 +73,9 @@ export default function EncounterPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [s3Key, setS3Key] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState(false);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<any | null>(null);
   const [transcriptDraft, setTranscriptDraft] = useState<string>("");
   const [savingTranscript, setSavingTranscript] = useState(false);
@@ -365,6 +367,7 @@ export default function EncounterPage() {
 
     setUploading(true);
 
+    setUploadError(null);
     try {
       // Use existing encounterId or create new one
       let currentEncounterId = encounterId;
@@ -395,7 +398,9 @@ export default function EncounterPage() {
       if (!key) throw new Error("Failed to get S3 key from upload");
       setS3Key(key);
     } catch (err: any) {
-      logger.error("Save failed", err);
+      logger.error("Audio upload failed", err);
+      const msg = err?.response?.data?.message || err?.message || "Failed to upload audio. Check your connection and try again.";
+      setUploadError(msg);
     } finally {
       setUploading(false);
     }
@@ -403,10 +408,12 @@ export default function EncounterPage() {
 
   const handleTranscribe = async () => {
     if (!s3Key || !encounterId) {
+      setTranscribeError("Audio has not been uploaded yet. Please re-select your file.");
       return;
     }
 
     setTranscribing(true);
+    setTranscribeError(null);
 
     try {
       const res = await apiClient.transcribe.transcribeS3({
@@ -423,6 +430,8 @@ export default function EncounterPage() {
       setSoap(receivedSoap);
     } catch (err: any) {
       logger.error("Transcription failed", err);
+      const msg = err?.response?.data?.message || err?.message || "Transcription failed. Make sure the Whisper server is running on port 5000.";
+      setTranscribeError(msg);
     } finally {
       setTranscribing(false);
     }
@@ -454,6 +463,8 @@ export default function EncounterPage() {
     setTranscript(null);
     setTranscriptDraft("");
     setSoap(null);
+    setUploadError(null);
+    setTranscribeError(null);
   };
 
   const handleComplete = () => {
@@ -581,7 +592,9 @@ export default function EncounterPage() {
           onSaveTranscript={handleSaveTranscript}
           savingTranscript={savingTranscript}
           uploading={uploading}
+          uploadError={uploadError}
           transcribing={transcribing}
+          transcribeError={transcribeError}
           onAudioSelected={handleAudioSelected}
           onClearAudio={clearAudioState}
           onTranscribe={handleTranscribe}
