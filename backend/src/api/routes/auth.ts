@@ -14,10 +14,22 @@ const cookieSameSite: "strict" | "lax" =
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: appConfig.env === "production", // HTTPS only in production
+  secure: appConfig.env === "production", // Requires TLS termination and correct X-Forwarded-Proto from proxy
   sameSite: cookieSameSite,
   path: "/",
   maxAge: 60 * 60 * 1000, // 1 hour (matches Cognito access token expiry)
+};
+
+// Use the same cookie attributes on clear as on set.
+// In production behind revclear.gannon.edu, the reverse proxy must:
+// 1) terminate TLS,
+// 2) forward X-Forwarded-Proto=https,
+// 3) preserve the original Host header,
+// otherwise secure cookies and HTTPS enforcement will misbehave.
+const CLEAR_COOKIE_OPTIONS = {
+  path: "/",
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: COOKIE_OPTIONS.sameSite,
 };
 
 const REFRESH_COOKIE_OPTIONS = {
@@ -152,14 +164,14 @@ router.post("/signout", async (req, res) => {
     }
 
     // Always clear httpOnly cookies
-    res.clearCookie("accessToken", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
 
     res.status(200).json({ message: "Signed out successfully." });
   } catch (error: any) {
     // Even if signout fails, clear cookies and return success
-    res.clearCookie("accessToken", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
     res.status(200).json({ message: "Signed out successfully." });
   }
 });
@@ -186,8 +198,8 @@ router.post("/refresh-token", async (req, res) => {
     });
   } catch (error: any) {
     // Clear cookies on refresh failure
-    res.clearCookie("accessToken", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
     res.status(401).json({ error: "Invalid or expired refresh token." });
   }
 });
