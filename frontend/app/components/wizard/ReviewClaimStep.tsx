@@ -21,12 +21,13 @@ export default function ReviewClaimStep({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
-    const [prefilling, setPrefilling] = useState(false);
+    const [_prefilling, setPrefilling] = useState(false);
 
     useEffect(() => {
         if (encounterId) {
             fetchClaimPreview();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [encounterId]);
 
     const fetchClaimPreview = async () => {
@@ -40,7 +41,7 @@ export default function ReviewClaimStep({
             onClaimChange?.(preview);
             updateValidation(preview);
             await hydrateWithDefaults(preview);
-        } catch (err: any) {
+        } catch {
             logger.error("Failed to build claim preview");
             setError("Failed to build claim preview. Please try again.");
         } finally {
@@ -81,6 +82,7 @@ export default function ReviewClaimStep({
             onClaimChange?.(claim);
             updateValidation(claim);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [claim]);
 
     const parsePointerList = (value: string) =>
@@ -338,7 +340,7 @@ export default function ReviewClaimStep({
             setClaim(next);
             onClaimChange?.(next);
             updateValidation(next);
-        } catch (err) {
+        } catch {
             logger.warn("Prefill failed");
         } finally {
             setPrefilling(false);

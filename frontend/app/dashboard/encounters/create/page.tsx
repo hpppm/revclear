@@ -41,8 +41,8 @@ export default function EncounterPage() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [encounterId, setEncounterId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
 
   // Step 1: Patient Details State
   const [metadata, setMetadata] = useState<{
@@ -87,7 +87,7 @@ export default function EncounterPage() {
   // Step 4: Medical Codes State
   const [savedCodes, setSavedCodes] = useState<MedicalCode[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<MedicalCode[]>([]);
-  const [savingCodes, setSavingCodes] = useState(false);
+  const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -218,7 +218,7 @@ export default function EncounterPage() {
                 setSavedCodes(codesData);
                 setSelectedCodes(codesData);
               }
-            } catch (err) {
+            } catch {
               // It's okay if no codes exist yet
               logger.log("No saved codes found or failed to load");
             }
@@ -601,7 +601,6 @@ export default function EncounterPage() {
           uploading={uploading}
           uploadError={uploadError}
           transcribing={transcribing}
-          transcribeError={transcribeError}
           onAudioSelected={handleAudioSelected}
           onClearAudio={clearAudioState}
           onTranscribe={handleTranscribe}

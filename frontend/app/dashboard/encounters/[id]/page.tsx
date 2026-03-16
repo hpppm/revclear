@@ -32,6 +32,7 @@ export default function EncounterSummaryPage() {
         if (encounterId) {
             fetchEncounterData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [encounterId]);
 
     const fetchEncounterData = async () => {
@@ -49,7 +50,7 @@ export default function EncounterSummaryPage() {
                 const claimData = claimRes.data?.data || claimRes.data;
                 logger.log("Claim loaded");
                 setClaim(claimData);
-            } catch (err) {
+            } catch {
                 logger.log("No claim found");
             }
 
@@ -60,7 +61,7 @@ export default function EncounterSummaryPage() {
                     const transcriptData = transcriptRes.data?.text || transcriptRes.data?.data?.text || "";
                     logger.log("Transcript loaded");
                     setTranscript(transcriptData);
-                } catch (err) {
+                } catch {
                     logger.log("Failed to load transcript");
                 }
             }
@@ -72,11 +73,11 @@ export default function EncounterSummaryPage() {
                     const soapData = soapRes.data?.data || soapRes.data;
                     logger.log("SOAP loaded");
                     setSoap(soapData?.soap || soapData);
-                } catch (err) {
+                } catch {
                     logger.log("Failed to load SOAP");
                 }
             }
-        } catch (err) {
+        } catch {
             logger.error("Failed to load encounter data");
         } finally {
             setLoading(false);
@@ -121,10 +122,11 @@ export default function EncounterSummaryPage() {
                     : current,
             );
             setTranscriptExpanded(true);
-        } catch (err: any) {
-            logger.error("Failed to transcribe encounter audio", err);
+        } catch (err) {
+            logger.error("Failed to transcribe encounter audio");
+            const e = err as { response?: { data?: { message?: string } } };
             setTranscribeError(
-                err?.response?.data?.message || "Failed to transcribe this encounter audio.",
+                e?.response?.data?.message || "Failed to transcribe this encounter audio.",
             );
         } finally {
             setTranscribing(false);

@@ -18,7 +18,6 @@ interface TranscriptionStepProps {
     uploading: boolean;
     uploadError: string | null;
     transcribing: boolean;
-    transcribeError: string | null;
     onAudioSelected: (file: File) => void;
     onClearAudio: () => void;
     onTranscribe: () => void;
@@ -38,7 +37,6 @@ export default function TranscriptionStep({
     uploading,
     uploadError,
     transcribing,
-    transcribeError,
     onAudioSelected,
     onClearAudio,
     onTranscribe,
@@ -228,7 +226,7 @@ export default function TranscriptionStep({
 
                     {!transcript && !transcribing && (
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Click "Transcribe Audio" to generate a transcript.
+                            Click &quot;Transcribe Audio&quot; to generate a transcript.
                         </div>
                     )}
                 </div>

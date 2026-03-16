@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
   title: string;
@@ -17,8 +16,6 @@ export default function DashboardHeader({
   backLink,
   actions,
 }: DashboardHeaderProps) {
-  const router = useRouter();
-
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between">

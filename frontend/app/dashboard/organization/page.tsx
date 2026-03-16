@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
@@ -12,8 +11,7 @@ import { Organization } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
 export default function OrganizationProfilePage() {
-    const { user, checkAuth, isLoading: authLoading } = useAuth();
-    const router = useRouter();
+    const { user, isLoading: authLoading } = useAuth();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -199,7 +197,7 @@ export default function OrganizationProfilePage() {
                          <div>
                             <h1 className="text-3xl font-bold text-slate-900">Organization Profile</h1>
                             <p className="text-slate-600 mt-2">
-                                Manage your clinic's details, billing profile, and integration settings.
+                                Manage your clinic&apos;s details, billing profile, and integration settings.
                             </p>
                          </div>
                          {!isEditing && (
