@@ -116,8 +116,11 @@ export const appConfig = {
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
   },
   auth: {
-    // Restrict signup/signin to this email domain. Override with TEST_EMAIL_DOMAIN in .env.
-    testEmailDomain: env.TEST_EMAIL_DOMAIN || "@localhost.dev",
+    // In development, keep auth flows limited to local test accounts unless overridden.
+    // In production, allow any email unless TEST_EMAIL_DOMAIN is explicitly set.
+    testEmailDomain:
+      env.TEST_EMAIL_DOMAIN ||
+      (env.NODE_ENV === "development" ? "@localhost.dev" : ""),
     autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
     autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
   },
