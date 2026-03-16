@@ -73,6 +73,7 @@ export default function EncounterPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [s3Key, setS3Key] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<any | null>(null);
@@ -368,6 +369,7 @@ export default function EncounterPage() {
 
     setUploading(true);
 
+    setUploadError(null);
     try {
       // Use existing encounterId or create new one
       let currentEncounterId = encounterId;
@@ -467,6 +469,8 @@ export default function EncounterPage() {
     setTranscript(null);
     setTranscriptDraft("");
     setSoap(null);
+    setUploadError(null);
+    setTranscribeError(null);
   };
 
   const handleComplete = () => {
@@ -595,7 +599,9 @@ export default function EncounterPage() {
           onSaveTranscript={handleSaveTranscript}
           savingTranscript={savingTranscript}
           uploading={uploading}
+          uploadError={uploadError}
           transcribing={transcribing}
+          transcribeError={transcribeError}
           onAudioSelected={handleAudioSelected}
           onClearAudio={clearAudioState}
           onTranscribe={handleTranscribe}

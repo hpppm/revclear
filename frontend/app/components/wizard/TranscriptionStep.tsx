@@ -16,7 +16,9 @@ interface TranscriptionStepProps {
     onSaveTranscript: () => void;
     savingTranscript: boolean;
     uploading: boolean;
+    uploadError: string | null;
     transcribing: boolean;
+    transcribeError: string | null;
     onAudioSelected: (file: File) => void;
     onClearAudio: () => void;
     onTranscribe: () => void;
@@ -34,7 +36,9 @@ export default function TranscriptionStep({
     onSaveTranscript,
     savingTranscript,
     uploading,
+    uploadError,
     transcribing,
+    transcribeError,
     onAudioSelected,
     onClearAudio,
     onTranscribe,
@@ -131,6 +135,12 @@ export default function TranscriptionStep({
                 </div>
             )}
 
+            {uploadError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <strong>Upload failed:</strong> {uploadError}
+                </div>
+            )}
+
             {(audioFile || s3Key) && (
                 <div className="border-t border-slate-200 pt-6">
                     <div className="flex items-center justify-between mb-4">
@@ -163,6 +173,12 @@ export default function TranscriptionStep({
                         <div className="text-center py-8">
                             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-b-transparent" />
                             <p className="text-sm text-slate-600 mt-2">Transcribing audio...</p>
+                        </div>
+                    )}
+
+                    {transcribeError && !transcribing && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <strong>Transcription failed:</strong> {transcribeError}
                         </div>
                     )}
 
