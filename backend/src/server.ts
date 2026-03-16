@@ -13,6 +13,18 @@ import logger from "./utils/logger";
 
 const app = express();
 const isTestEnv = appConfig.env === "test" || process.env.JEST_WORKER_ID;
+const HEALTH_ROUTE_PREFIXES = ["/api/health"];
+const DEFAULT_DEV_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:3005",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3005",
+];
+const DEFAULT_PROD_ORIGINS = [
+  "https://revclear.gannon.edu",
+  "https://revclear.tech",
+  "https://www.revclear.tech",
+];
 
 // --------------------------------------------------
 // Trust Proxy
@@ -33,34 +45,47 @@ app.use(cookieParser());
 // --------------------------------------------------
 // CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
-  "http://localhost:3000",
-  "http://localhost:3005",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:3005",
-  "https://revclear.tech",
-  "https://www.revclear.tech",
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean) || (appConfig.env === "production"
+    ? DEFAULT_PROD_ORIGINS
+    : [...DEFAULT_DEV_ORIGINS, ...DEFAULT_PROD_ORIGINS]);
 
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      // In production, require origin header to prevent CSRF
-      if (!origin) {
-        if (appConfig.env === "production") {
-          return callback(new Error("Origin header required"), false);
-        }
-        return callback(null, true); // Allow in dev/test only
+  cors((req, callback) => {
+    const origin = req.header("Origin");
+    const requestPath = req.path || "";
+    const isHealthRoute = HEALTH_ROUTE_PREFIXES.some((prefix) =>
+      requestPath.startsWith(prefix),
+    );
+
+    // In production, require Origin for browser requests but allow health probes
+    if (!origin) {
+      if (appConfig.env === "production" && !isHealthRoute) {
+        return callback(new Error("Origin header required"), {
+          origin: false,
+        });
       }
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      logger.warn({ origin }, 'CORS blocked request from origin');
-      return callback(new Error("Not allowed by CORS"), false);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+
+      return callback(null, {
+        origin: true,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+      });
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, {
+        origin: true,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+      });
+    }
+
+    logger.warn({ origin }, 'CORS blocked request from origin');
+    return callback(new Error("Not allowed by CORS"), { origin: false });
   }),
 );
 

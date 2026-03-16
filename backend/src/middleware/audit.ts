@@ -4,6 +4,9 @@ import path from "path";
 import logger from "../utils/logger";
 
 const AUDIT_LOG_FILE = path.join(__dirname, '../../audit.log');
+const isProduction = process.env.NODE_ENV === "production";
+const enableAuditFileLogging =
+  !isProduction || process.env.AUDIT_FILE_LOGGING === "true";
 
 // Auth/token related keys
 const SENSITIVE_QUERY_KEYS = [
@@ -17,6 +20,11 @@ const SENSITIVE_QUERY_KEYS = [
   "refreshtoken",
   "apikey",
   "api_key",
+  "email",
+  "phone",
+  "dob",
+  "member_id",
+  "insurance_id",
 ];
 
 // Request body sensitive keys (auth + PHI/PII)
@@ -28,6 +36,28 @@ const SENSITIVE_BODY_KEYS = [
   "secret",
   "secretkey",
   "code",
+  "email",
+  "full_name",
+  "fullname",
+  "first_name",
+  "firstname",
+  "last_name",
+  "lastname",
+  "name",
+  "address",
+  "address_line1",
+  "address_line2",
+  "address_street",
+  "address_city",
+  "address_state",
+  "address_zip",
+  "city",
+  "state",
+  "postal_code",
+  "zip",
+  "phone",
+  "phone_number",
+  "fax",
   "accesstoken",
   "idtoken",
   "refreshtoken",
@@ -40,6 +70,13 @@ const SENSITIVE_BODY_KEYS = [
   "social_security_number",
   "insurance_id",
   "insuranceid",
+  "insurance_provider",
+  "insurance_policy_number",
+  "insurance_member_id",
+  "insurance_group_number",
+  "insurance_payer_id",
+  "insurance_payer_name",
+  "insurance_relationship",
   "member_id",
   "memberid",
   "dob",
@@ -54,6 +91,22 @@ const SENSITIVE_BODY_KEYS = [
   "medical_record",
   "medicalrecord",
   "mrn",
+  "patient",
+  "patient_id",
+  "patient_name",
+  "subscriber",
+  "subscriber_id",
+  "subscriber_relationship",
+  "subscriber_name",
+  "claim",
+  "claim_id",
+  "claim_type",
+  "billing_provider",
+  "service_facility",
+  "rendering_provider",
+  "line_items",
+  "input_json",
+  "output_json",
   "transcript",
   "soap",
   "soap_note",
@@ -87,6 +140,18 @@ function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: st
   return clone;
 }
 
+function sanitizeAuditBody(body: Record<string, any> | undefined) {
+  if (!body || Object.keys(body).length === 0) {
+    return {};
+  }
+
+  if (isProduction) {
+    return "[OMITTED]";
+  }
+
+  return sanitizeObject(body, SENSITIVE_BODY_KEYS, PARTIAL_MASK_KEYS);
+}
+
 export async function auditLogger(req: Request, res: Response, next: NextFunction) {
   const start = process.hrtime.bigint();
 
@@ -112,24 +177,26 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
       statusCode: res.statusCode,
       durationMs: duration.toFixed(2),
       query: sanitizeObject(req.query as Record<string, any>, SENSITIVE_QUERY_KEYS),
-      body: sanitizeObject(req.body as Record<string, any>, SENSITIVE_BODY_KEYS, PARTIAL_MASK_KEYS),
+      body: sanitizeAuditBody(req.body as Record<string, any> | undefined),
     };
 
     const logMessage = JSON.stringify(entry);
 
     // Always emit through structured logger so production stdout (CloudWatch,
     // ECS log driver, etc.) captures every audit event, not just dev.
-    if (process.env.NODE_ENV === 'development') {
+    if (!isProduction) {
       logger.debug({ audit: entry }, 'audit');
     } else {
       logger.info({ audit: entry }, 'audit');
     }
 
-    // Also append to local audit file
-    try {
-      await fs.appendFile(AUDIT_LOG_FILE, logMessage + '\n');
-    } catch (error) {
-      // Silent fail - don't expose file system errors
+    // Local file logging is disabled in production by default.
+    if (enableAuditFileLogging) {
+      try {
+        await fs.appendFile(AUDIT_LOG_FILE, logMessage + '\n');
+      } catch (error) {
+        // Silent fail - don't expose file system errors
+      }
     }
   });
 
