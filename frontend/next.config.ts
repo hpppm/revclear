@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+// SECURITY: ignoreBuildErrors was removed — TypeScript errors must be fixed
+// before deployment. Silencing them masks type-unsafe API payloads and
+// allows unvalidated data to reach production.
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
   async headers() {
     return [
@@ -26,6 +26,13 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          // HIPAA compliance: HSTS applied to static/fallback paths.
+          // The proxy.ts middleware sets this on dynamic requests.
+          // max-age=2yr, includeSubDomains, preload per HSTS preload requirements.
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
         ],
       },
