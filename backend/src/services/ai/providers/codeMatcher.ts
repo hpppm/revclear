@@ -31,6 +31,48 @@ const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
 const CODES_API_URL = process.env.CODES_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
+// SECURITY: Ollama must only be reachable via localhost to prevent SSRF and
+// unintended external exposure of the inference server.
+const OLLAMA_ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
+
+// SECURITY: Allowlist of approved external codes API hostnames.
+// Any URL not matching this list is rejected to block SSRF attacks.
+const CODES_API_ALLOWLIST: string[] = (process.env.CODES_API_ALLOWLIST || "").split(",").filter(Boolean);
+
+const validateOllamaUrl = (url: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid OLLAMA_BASE_URL: "${url}"`);
+  }
+  if (!OLLAMA_ALLOWED_HOSTS.includes(parsed.hostname)) {
+    throw new Error(
+      `OLLAMA_BASE_URL hostname "${parsed.hostname}" is not allowed. Must be localhost or 127.0.0.1.`,
+    );
+  }
+};
+
+const validateExternalCodesUrl = (url: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid CODES_API_URL: "${url}"`);
+  }
+  // SECURITY: External AI endpoints must use HTTPS to prevent credential and
+  // PHI exposure over unencrypted connections.
+  if (parsed.protocol !== "https:") {
+    throw new Error(`CODES_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
+  }
+  // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
+  if (CODES_API_ALLOWLIST.length > 0 && !CODES_API_ALLOWLIST.includes(parsed.hostname)) {
+    throw new Error(
+      `CODES_API_URL hostname "${parsed.hostname}" is not in the approved allowlist.`,
+    );
+  }
+};
+
 const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes.
 
 SOAP NOTE:
@@ -97,6 +139,8 @@ class OllamaCodeMatcher implements CodeMatcher {
     if (!OLLAMA_CODES_MODEL) {
       throw new Error("Missing OLLAMA_CODES_MODEL/OLLAMA_MODEL. Set one in backend/.env.");
     }
+    // SECURITY: Enforce localhost-only binding before making any request.
+    validateOllamaUrl(OLLAMA_BASE_URL);
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
     logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
@@ -113,8 +157,14 @@ class OllamaCodeMatcher implements CodeMatcher {
 
     logger.debug({ status: response.status }, 'OllamaCodeMatcher: response received');
     if (!response.ok) {
+      // SECURITY: Log the raw body server-side only; do not include it in the
+      // thrown error message so it cannot surface in an API response.
       const body = await response.text();
-      throw new Error(`Ollama codes request failed (${response.status}): ${body}`);
+      logger.error(
+        { status: response.status, body },
+        "OllamaCodeMatcher: upstream error",
+      );
+      throw new Error(`Ollama codes request failed with status ${response.status}`);
     }
 
     const data = (await response.json()) as { response?: unknown };
@@ -124,7 +174,11 @@ class OllamaCodeMatcher implements CodeMatcher {
 }
 
 class HttpEndpointCodeMatcher implements CodeMatcher {
-  constructor(private readonly endpoint: string) {}
+  constructor(private readonly endpoint: string) {
+    // SECURITY: Validate URL at construction time so misconfiguration is caught
+    // at startup rather than on the first patient request.
+    validateExternalCodesUrl(this.endpoint);
+  }
 
   async match(input: CodeInput): Promise<CodeMatchResult> {
     if (!AI_SERVER_API_KEY) {
@@ -145,8 +199,14 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
 
     logger.debug({ status: response.status }, 'HttpEndpointCodeMatcher: response received');
     if (!response.ok) {
+      // SECURITY: Log the raw body server-side only; do not include it in the
+      // thrown error message so it cannot surface in an API response.
       const body = await response.text();
-      throw new Error(`External codes endpoint failed (${response.status}): ${body}`);
+      logger.error(
+        { status: response.status, body },
+        "HttpEndpointCodeMatcher: upstream error",
+      );
+      throw new Error(`External codes endpoint failed with status ${response.status}`);
     }
 
     const data = (await response.json()) as unknown;

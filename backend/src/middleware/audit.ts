@@ -28,6 +28,7 @@ const SENSITIVE_QUERY_KEYS = [
 ];
 
 // Request body sensitive keys (auth + PHI/PII)
+// HIPAA 45 CFR § 164.312(b): PHI must never appear in application logs.
 const SENSITIVE_BODY_KEYS = [
   // Auth/credentials
   "password",
@@ -36,18 +37,35 @@ const SENSITIVE_BODY_KEYS = [
   "secret",
   "secretkey",
   "code",
-  "email",
+  "accesstoken",
+  "idtoken",
+  "refreshtoken",
+  "apikey",
+  "api_key",
+  // PHI — patient identity
+  "name",
   "full_name",
   "fullname",
   "first_name",
-  "firstname",
   "last_name",
+  "firstname",
   "lastname",
-  "name",
+  "email",
+  "gender",
+  "ssn",
+  "social_security",
+  "socialsecurity",
+  "social_security_number",
+  "dob",
+  "date_of_birth",
+  "dateofbirth",
+  "birthdate",
+  "birth_date",
+  // PHI — contact / address
   "address",
+  "address_street",
   "address_line1",
   "address_line2",
-  "address_street",
   "address_city",
   "address_state",
   "address_zip",
@@ -58,46 +76,41 @@ const SENSITIVE_BODY_KEYS = [
   "phone",
   "phone_number",
   "fax",
-  "accesstoken",
-  "idtoken",
-  "refreshtoken",
-  "apikey",
-  "api_key",
-  // PHI/PII fields - HIPAA compliance
-  "ssn",
-  "social_security",
-  "socialsecurity",
-  "social_security_number",
+  // PHI — insurance / billing
   "insurance_id",
   "insuranceid",
   "insurance_provider",
+  "insuranceprovider",
   "insurance_policy_number",
   "insurance_member_id",
   "insurance_group_number",
   "insurance_payer_id",
   "insurance_payer_name",
   "insurance_relationship",
+  "subscriber_id",
+  "subscriberid",
+  "subscriber",
+  "subscriber_relationship",
+  "subscriber_name",
   "member_id",
   "memberid",
-  "dob",
-  "date_of_birth",
-  "dateofbirth",
-  "birthdate",
-  "birth_date",
+  "plan_name",
+  "npi",
+  "tax_id",
+  "taxid",
+  // PHI — clinical content
   "diagnosis",
   "diagnoses",
   "diagnosis_codes",
   "procedure_codes",
+  "chief_complaint",
+  "chiefcomplaint",
   "medical_record",
   "medicalrecord",
   "mrn",
   "patient",
   "patient_id",
   "patient_name",
-  "subscriber",
-  "subscriber_id",
-  "subscriber_relationship",
-  "subscriber_name",
   "claim",
   "claim_id",
   "claim_type",
@@ -110,16 +123,31 @@ const SENSITIVE_BODY_KEYS = [
   "transcript",
   "soap",
   "soap_note",
+  "soapnote",
   "subjective",
   "objective",
   "assessment",
   "plan",
   "notes",
   "clinical_notes",
+  "clinicalnotes",
 ];
 
 // Fields that should be partially masked (show last 4 chars)
 const PARTIAL_MASK_KEYS = ["phone", "phone_number", "phonenumber", "fax"];
+
+// SECURITY: Mask the Cognito issuer URL to hide AWS region + User Pool ID.
+// Input:  "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_NZCFuSv1l"
+// Output: "cognito-idp.us-east-1.amazonaws.com/***"
+function maskTokenIssuer(iss: string | null | undefined): string | null {
+  if (!iss) return null;
+  try {
+    const url = new URL(iss);
+    return `${url.hostname}/***`;
+  } catch {
+    return "***";
+  }
+}
 
 function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: string[], partialMaskKeys: string[] = []) {
   if (!obj) return obj;
@@ -160,19 +188,34 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
     const duration = Number(end - start) / 1_000_000; // duration in ms
 
     const auth = (req as any).auth;
+    const timestamp = new Date().toISOString();
+    const url = (req.originalUrl || req.url).split("?")[0];
 
-    const entry = {
-      timestamp: new Date().toISOString(),
-      // Database user ID for application-level tracing
+    // GENERAL log — written to application stdout (CloudWatch, ECS, etc.).
+    // Must contain NO PHI, NO internal IDs, NO credential fields.
+    const generalEntry = {
+      timestamp,
+      method: req.method,
+      url,
+      statusCode: res.statusCode,
+      durationMs: duration.toFixed(2),
+      ipAddress: req.ip,
+    };
+
+    // AUDIT log — written to secure audit file only.
+    // Contains correlation IDs for security investigation but NEVER PHI body content.
+    const auditEntry = {
+      timestamp,
+      // Application-level user ID for data access tracing
       userId: req.user?.id || "anonymous",
       // Cognito sub for cross-system / cross-session correlation
       cognitoSub: auth?.sub || null,
-      // jti allows detection of token replay across different IPs
+      // jti enables token replay detection across different IPs
       tokenJti: auth?.jti || null,
-      // Issuer confirms which user pool issued the token
-      tokenIssuer: auth?.iss || null,
+      // Issuer masked: hides AWS region + User Pool ID from logs
+      tokenIssuer: maskTokenIssuer(auth?.iss),
       method: req.method,
-      url: (req.originalUrl || req.url).split("?")[0],
+      url,
       ipAddress: req.ip,
       statusCode: res.statusCode,
       durationMs: duration.toFixed(2),
@@ -180,20 +223,19 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
       body: sanitizeAuditBody(req.body as Record<string, any> | undefined),
     };
 
-    const logMessage = JSON.stringify(entry);
+    const auditLogMessage = JSON.stringify(auditEntry);
 
-    // Always emit through structured logger so production stdout (CloudWatch,
-    // ECS log driver, etc.) captures every audit event, not just dev.
+    // Emit general (PHI-free) entry to application logger (stdout / log aggregator)
     if (!isProduction) {
-      logger.debug({ audit: entry }, 'audit');
+      logger.debug({ audit: auditEntry }, 'audit');
     } else {
-      logger.info({ audit: entry }, 'audit');
+      logger.info(generalEntry, 'request');
     }
 
     // Local file logging is disabled in production by default.
     if (enableAuditFileLogging) {
       try {
-        await fs.appendFile(AUDIT_LOG_FILE, logMessage + '\n');
+        await fs.appendFile(AUDIT_LOG_FILE, auditLogMessage + '\n');
       } catch (error) {
         // Silent fail - don't expose file system errors
       }

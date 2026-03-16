@@ -142,7 +142,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const organization =
       payload.organization ?? fetchedUser.organization ?? null;
     const needsOrg = payload.requiresOrganization === true || !organization;
-    setUser({ ...(fetchedUser as User), organization: organization as User["organization"] });
+    // Pick only the fields defined on User to avoid storing unexpected API fields
+    // in React state. Unknown fields (e.g. npi/tax_id no longer on the User type)
+    // are intentionally dropped here.
+    const safeUser: User = {
+      id: fetchedUser.id as string,
+      email: fetchedUser.email as string,
+      name: (fetchedUser.full_name ?? fetchedUser.name ?? "") as string,
+      full_name: fetchedUser.full_name as string | undefined,
+      role: fetchedUser.role as string | undefined,
+      phone: fetchedUser.phone as string | undefined,
+      cognito_id: fetchedUser.cognito_id as string | undefined,
+      practitionerType: fetchedUser.practitionerType as string | undefined,
+      licenseId: fetchedUser.licenseId as string | undefined,
+      created_at: fetchedUser.created_at as string | undefined,
+      license_state: fetchedUser.license_state as string | undefined,
+      clinic_name: fetchedUser.clinic_name as string | undefined,
+      clinic_address_street: fetchedUser.clinic_address_street as string | undefined,
+      clinic_address_city: fetchedUser.clinic_address_city as string | undefined,
+      clinic_address_state: fetchedUser.clinic_address_state as string | undefined,
+      clinic_address_zip: fetchedUser.clinic_address_zip as string | undefined,
+      clinic_phone: fetchedUser.clinic_phone as string | undefined,
+      taxonomy_code: fetchedUser.taxonomy_code as string | undefined,
+      clinic_npi: fetchedUser.clinic_npi as string | undefined,
+      provider_role: fetchedUser.provider_role as User["provider_role"],
+      organization_id: fetchedUser.organization_id as string | null | undefined,
+      organization: organization as User["organization"],
+      memberships: fetchedUser.memberships as User["memberships"],
+    };
+    setUser(safeUser);
     setIsAuthenticated(true);
     setRequiresOrganization(needsOrg as boolean);
 
