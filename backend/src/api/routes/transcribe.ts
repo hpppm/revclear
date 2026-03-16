@@ -215,13 +215,10 @@ router.post(
         );
       }
 
-      if (!AI_SERVER_API_KEY) {
-        logger.error("transcribe: missing AI_SERVER_API_KEY configuration");
-        return sendError(
-          res,
-          500,
-          "AI server API key is not configured (AI_SERVER_API_KEY)",
-        );
+      if (AI_SERVER_API_KEY) {
+        logger.debug("transcribe: using AI_SERVER_API_KEY for authentication");
+      } else {
+        logger.debug("transcribe: no AI_SERVER_API_KEY set, proceeding without auth header");
       }
 
       // --- Call AI Server for Transcription ---
@@ -241,7 +238,7 @@ router.post(
         body: formData as any,
         headers: {
           ...formData.getHeaders(),
-          "X-API-Key": AI_SERVER_API_KEY,
+          ...(AI_SERVER_API_KEY ? { "X-API-Key": AI_SERVER_API_KEY } : {}),
         },
       });
 
@@ -461,3 +458,5 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
 });
 
 export default router;
+
+

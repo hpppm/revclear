@@ -48,14 +48,19 @@ function getGenericErrorMessage(status?: number): string {
 
 // Whitelist of safe error message patterns from backend
 const SAFE_ERROR_PATTERNS = [
-  /invalid (email|password|credentials|code)/i,
+  /invalid (email|password|credentials|code|invitation)/i,
   /not found/i,
   /already exists/i,
+  /already belongs to an organization/i,
+  /already a member/i,
+  /must create or join/i,
+  /invitation code/i,
   /password (requirements|must|policy)/i,
   /email must end with/i,
   /required/i,
   /unauthorized/i,
   /permission denied/i,
+  /no fields to update/i,
 ];
 
 function sanitizeErrorMessage(
@@ -95,9 +100,17 @@ api.interceptors.response.use(
     // SANITIZATION: Replace raw response.data with the sanitized message so
     // that callers reading error.response.data.error never see raw backend
     // output (stack traces, DB details, internal paths, etc.).
+    // EXCEPTION: Preserve structured Zod validation errors array so callers
+    // can display field-level messages (e.g. org/patient create forms).
+    const zodErrors = Array.isArray(error?.response?.data?.errors)
+      ? error.response.data.errors
+      : undefined;
     const cleanError = {
       response: error.response
-        ? { ...error.response, data: { error: userMessage } }
+        ? {
+            ...error.response,
+            data: { error: userMessage, ...(zodErrors ? { errors: zodErrors } : {}) },
+          }
         : undefined,
       message: userMessage,
       status: status,

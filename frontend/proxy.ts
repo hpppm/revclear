@@ -59,8 +59,21 @@ export function proxy(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
-  // Make nonce available to client
-  response.headers.set("x-nonce", nonce);
+  // HIPAA compliance: HSTS forces HTTPS for all future connections, preventing
+  // protocol downgrade attacks and cookie hijacking over plain HTTP.
+  // includeSubDomains + preload qualify the domain for HSTS preload lists.
+  if (!isDev) {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload",
+    );
+  }
+
+  // SECURITY: x-nonce must NOT be set on the response. A nonce placed in a
+  // response header is readable by JavaScript (via fetch/XHR response headers),
+  // which allows any injected script to extract it and bypass the CSP nonce check.
+  // The nonce is passed only via the x-nonce *request* header (line above) so
+  // server components can read it server-side — never exposed to the client.
 
   return response;
 }
