@@ -8,6 +8,7 @@ const userColumns = [
   "email",
   "full_name",
   "role",
+  "organization_id",
   "phone",
   "practitioner_type",
   "license_id",
