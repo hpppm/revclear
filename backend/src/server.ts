@@ -127,7 +127,7 @@ app.use(
   "/api/transcribe",
   rateLimit({
     windowMs: 60 * 1000,
-    max: 5,
+    max: 20,
     message: "Too many transcribe requests. Try again later.",
   }),
 );
