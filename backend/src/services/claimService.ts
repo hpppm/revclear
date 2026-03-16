@@ -1,5 +1,6 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
+import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
 
 interface PaginationOptions {
   limit?: number;
@@ -274,7 +275,7 @@ export class ClaimService {
     if (patientResult.rows.length === 0) {
       throw new AppError("Patient not found", 404);
     }
-    const patient = patientResult.rows[0];
+    const patient = decryptPatientRow(patientResult.rows[0]);
 
     // Get medical codes
     const codes = await this.getMedicalCodesByEncounter(encounterId);
@@ -299,7 +300,7 @@ export class ClaimService {
                  FROM insurance_subscribers WHERE id = $1`,
         [patient.subscriber_id],
       );
-      subscriber = subRes.rows[0] || null;
+      subscriber = decryptSubscriberRow(subRes.rows[0] || null);
     }
 
     return this.buildClaimPayload(

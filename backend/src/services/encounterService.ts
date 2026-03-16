@@ -1,5 +1,6 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
+import { decryptPHIText, encryptPHIText } from "../utils/crypto";
 
 interface PaginationOptions {
   limit?: number;
@@ -85,7 +86,7 @@ export class EncounterService {
        LIMIT 1`,
       [id, organizationId, clinicianId],
     );
-    return result.rows[0] || null;
+    return this.decryptEncounterRow(result.rows[0] || null);
   }
 
   static async create(data: any, organizationId: string, clinicianId: string) {
@@ -126,14 +127,16 @@ export class EncounterService {
       if (value !== undefined && availableColumns.includes(key)) {
         columns.push(key);
         placeholders.push(`$${idx}`);
-        values.push(value);
+        values.push(
+          key === "chief_complaint" ? encryptPHIText(value ?? null) : value,
+        );
         idx += 1;
       }
     }
 
     const insertQuery = `INSERT INTO encounters (${columns.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING ${ENCOUNTER_SELECT_COLUMNS}`;
     const result = await query(insertQuery, values);
-    return result.rows[0];
+    return this.decryptEncounterRow(result.rows[0]);
   }
 
   static async update(
@@ -177,7 +180,11 @@ export class EncounterService {
     const fields = entries
       .map(([fieldName], i) => `${fieldName} = $${i + 1}`)
       .join(", ");
-    const values = entries.map(([, value]) => value);
+    const values = entries.map(([fieldName, value]) =>
+      fieldName === "chief_complaint"
+        ? encryptPHIText((value as string | null | undefined) ?? null)
+        : value,
+    );
 
     const result = await query(
       `UPDATE encounters SET ${fields} WHERE id = $${values.length + 1} RETURNING ${ENCOUNTER_SELECT_COLUMNS}`,
@@ -188,7 +195,7 @@ export class EncounterService {
       throw new AppError("Encounter not found", 404);
     }
 
-    return result.rows[0];
+    return this.decryptEncounterRow(result.rows[0]);
   }
 
   static async delete(id: string, organizationId: string, clinicianId: string) {
@@ -201,5 +208,16 @@ export class EncounterService {
       throw new AppError("Encounter not found", 404);
     }
     return true;
+  }
+
+  private static decryptEncounterRow<T extends Record<string, any> | null>(
+    encounter: T,
+  ): T {
+    if (!encounter) return encounter;
+
+    return {
+      ...encounter,
+      chief_complaint: decryptPHIText(encounter.chief_complaint ?? null),
+    } as T;
   }
 }
