@@ -18,6 +18,7 @@ interface TranscriptionStepProps {
     uploading: boolean;
     uploadError: string | null;
     transcribing: boolean;
+    transcribeError: string | null;
     onAudioSelected: (file: File) => void;
     onClearAudio: () => void;
     onTranscribe: () => void;
@@ -37,6 +38,7 @@ export default function TranscriptionStep({
     uploading,
     uploadError,
     transcribing,
+    transcribeError,
     onAudioSelected,
     onClearAudio,
     onTranscribe,
