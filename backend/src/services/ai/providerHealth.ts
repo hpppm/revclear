@@ -1,27 +1,26 @@
 import logger from "../../utils/logger";
 
-type ProviderMode = "ollama" | "external";
-
-export type ProviderHealth = {
-  mode: ProviderMode;
+export type AiServerHealth = {
   healthy: boolean;
   message: string;
+  statusCode?: number;
 };
 
 export type AiProviderHealthReport = {
   overallHealthy: boolean;
-  ollamaBaseUrl: string;
-  soap: ProviderHealth;
-  codes: ProviderHealth;
+  aiServerHealthUrl: string;
+  aiServer: AiServerHealth;
 };
-
-const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL;
 
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
 const CODES_API_URL = process.env.CODES_API_URL || "";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
-const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
+const TRANSCRIBE_API_URL =
+  process.env.AI_TRANSCRIBE_URL ||
+  process.env.TRANSCRIBE_API_URL ||
+  process.env.TRANSCRIBE_URL ||
+  "";
+const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
+const AI_SERVER_HEALTH_URL = process.env.AI_SERVER_HEALTH_URL || "";
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
@@ -31,51 +30,64 @@ const createTimeoutSignal = (ms: number) => {
   return { signal: controller.signal, done: () => clearTimeout(timer) };
 };
 
-type OllamaCheck = {
+type AiServerCheck = {
   reachable: boolean;
-  installedModels: string[];
-  missingModels: string[];
+  statusCode?: number;
   message: string;
 };
 
-const checkOllamaModels = async (models: string[]) => {
-  const url = `${trimTrailingSlash(OLLAMA_BASE_URL)}/api/tags`;
+const resolveAiServerHealthUrl = (): string => {
+  if (AI_SERVER_HEALTH_URL) return AI_SERVER_HEALTH_URL;
+
+  const candidateUrl = SOAP_API_URL || CODES_API_URL || TRANSCRIBE_API_URL;
+  if (!candidateUrl) return "";
+
+  try {
+    const parsed = new URL(candidateUrl);
+    const pathname = parsed.pathname || "";
+    parsed.pathname = pathname.startsWith("/api/") ? "/api/health" : "/health";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+};
+
+const checkAiServer = async (url: string): Promise<AiServerCheck> => {
   const { signal, done } = createTimeoutSignal(4000);
 
   try {
-    const response = await fetch(url, { signal });
-    if (!response.ok) {
+    if (!url) {
       return {
         reachable: false,
-        installedModels: [] as string[],
-        missingModels: models,
-        message: `Ollama responded with HTTP ${response.status}`,
+        message: "AI server health URL is not configured",
       };
     }
 
-    const payload = (await response.json()) as {
-      models?: Array<{ name?: string; model?: string }>;
-    };
-    const installedModels = (payload.models || [])
-      .map((m) => (typeof m.name === "string" ? m.name : m.model || ""))
-      .filter((name) => name.length > 0);
+    const headers: Record<string, string> = {};
+    if (AI_SERVER_API_KEY) {
+      headers["X-API-Key"] = AI_SERVER_API_KEY;
+    }
 
-    const missingModels = models.filter((m) => !installedModels.includes(m));
+    const response = await fetch(url, { signal, headers });
+    if (!response.ok) {
+      return {
+        reachable: false,
+        statusCode: response.status,
+        message: `AI server health check responded with HTTP ${response.status}`,
+      };
+    }
+
     return {
       reachable: true,
-      installedModels,
-      missingModels,
-      message:
-        missingModels.length === 0
-          ? "Ollama reachable and all configured models are installed"
-          : `Ollama reachable but missing models: ${missingModels.join(", ")}`,
+      statusCode: response.status,
+      message: "AI server health route is reachable",
     };
   } catch (error: any) {
     return {
       reachable: false,
-      installedModels: [] as string[],
-      missingModels: models,
-      message: `Ollama unreachable (${error?.name || "error"})`,
+      message: `AI server unreachable (${error?.name || "error"})`,
     };
   } finally {
     done();
@@ -83,73 +95,26 @@ const checkOllamaModels = async (models: string[]) => {
 };
 
 export const getAiProviderHealthReport = async (): Promise<AiProviderHealthReport> => {
-  const soapMode: ProviderMode = SOAP_API_URL ? "external" : "ollama";
-  const codesMode: ProviderMode = CODES_API_URL ? "external" : "ollama";
-
-  const modelsToCheck = new Set<string>();
-  if (soapMode === "ollama" && OLLAMA_MODEL) modelsToCheck.add(OLLAMA_MODEL);
-  if (codesMode === "ollama" && OLLAMA_CODES_MODEL) modelsToCheck.add(OLLAMA_CODES_MODEL);
-
-  const ollamaCheck: OllamaCheck =
-    modelsToCheck.size > 0
-      ? await checkOllamaModels([...modelsToCheck])
-      : {
-          reachable: true,
-          installedModels: [],
-          missingModels: [],
-          message: "No Ollama-backed providers configured",
-        };
-
-  const isModelHealthy = (model: string) =>
-    ollamaCheck.reachable && !ollamaCheck.missingModels.includes(model);
-
-  const soap: ProviderHealth =
-    soapMode === "external"
-      ? {
-          mode: "external",
-          healthy: true,
-          message: `External SOAP endpoint configured: ${SOAP_API_URL}`,
-        }
-      : !OLLAMA_MODEL
-        ? {
-            mode: "ollama",
-            healthy: false,
-            message: "OLLAMA_MODEL is not set",
-          }
-        : {
-            mode: "ollama",
-            healthy: isModelHealthy(OLLAMA_MODEL),
-            message: ollamaCheck.reachable
-              ? ollamaCheck.message
-              : `Ollama unavailable at ${OLLAMA_BASE_URL}`,
-          };
-
-  const codes: ProviderHealth =
-    codesMode === "external"
-      ? {
-          mode: "external",
-          healthy: true,
-          message: `External codes endpoint configured: ${CODES_API_URL}`,
-        }
-      : !OLLAMA_CODES_MODEL
-        ? {
-            mode: "ollama",
-            healthy: false,
-            message: "OLLAMA_CODES_MODEL/OLLAMA_MODEL is not set",
-          }
-        : {
-            mode: "ollama",
-            healthy: isModelHealthy(OLLAMA_CODES_MODEL),
-            message: ollamaCheck.reachable
-              ? ollamaCheck.message
-              : `Ollama unavailable at ${OLLAMA_BASE_URL}`,
-          };
+  const aiServerHealthUrl = resolveAiServerHealthUrl();
+  const aiServerCheck = await checkAiServer(aiServerHealthUrl);
+  const hasConfiguredAiEndpoint = Boolean(
+    SOAP_API_URL || CODES_API_URL || TRANSCRIBE_API_URL,
+  );
+  const aiServer: AiServerHealth = !hasConfiguredAiEndpoint
+    ? {
+        healthy: false,
+        message: "No AI server endpoints are configured",
+      }
+    : {
+        healthy: aiServerCheck.reachable,
+        message: aiServerCheck.message,
+        statusCode: aiServerCheck.statusCode,
+      };
 
   return {
-    overallHealthy: soap.healthy && codes.healthy,
-    ollamaBaseUrl: OLLAMA_BASE_URL,
-    soap,
-    codes,
+    overallHealthy: aiServer.healthy,
+    aiServerHealthUrl,
+    aiServer,
   };
 };
 
@@ -159,10 +124,12 @@ export const logAiProviderHealthStartup = async () => {
   logFn(
     {
       overall: report.overallHealthy ? 'healthy' : 'degraded',
-      ollamaBaseUrl: report.ollamaBaseUrl,
-      soap: { mode: report.soap.mode, healthy: report.soap.healthy },
-      codes: { mode: report.codes.mode, healthy: report.codes.healthy },
+      aiServerHealthUrl: report.aiServerHealthUrl,
+      aiServer: {
+        healthy: report.aiServer.healthy,
+        statusCode: report.aiServer.statusCode,
+      },
     },
-    'AI provider health',
+    'AI server health',
   );
 };

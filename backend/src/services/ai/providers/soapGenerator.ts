@@ -26,6 +26,7 @@ type SoapGenerator = {
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
+const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
 const buildSoapPrompt = ({ encounterId, transcriptText }: GenerateSoapInput) =>
   [
@@ -115,10 +116,17 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
   constructor(private readonly endpoint: string) {}
 
   async generate(input: GenerateSoapInput): Promise<SoapOutput> {
+    if (!AI_SERVER_API_KEY) {
+      throw new Error("Missing AI_SERVER_API_KEY for external SOAP endpoint.");
+    }
+
     logger.debug({ encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": AI_SERVER_API_KEY,
+      },
       body: JSON.stringify({
         encounterId: input.encounterId,
         transcriptText: input.transcriptText,

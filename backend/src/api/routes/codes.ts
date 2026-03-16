@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
-import fs from "fs/promises";
-import path from "path";
 import { authMiddleware } from "../../middleware/auth";
 import { IdParamSchema } from "../../types/zod";
 import { sendError } from "../../utils/httpResponses";
 import { soapToCodes } from "../../services/ai/soapToCodes";
+import { getFlatCptCodes } from "../../data/ai/cptDataLoader";
 import { query } from "../../config/db";
 import { getLatestAiResultByFlowNames } from "../../db/queries";
 import { getAuthenticatedUser } from "../../utils/auth";
+import { getUserOrganization } from "../../utils/organization";
 import { SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
 import logger from "../../utils/logger";
 
@@ -49,12 +49,6 @@ const SearchQuerySchema = z.object({
 // HELPER FUNCTIONS
 // =========================================================
 
-const loadCodesFromFile = async (type: "icd" | "cpt") => {
-  const filename = type === "icd" ? "mockIcdCodes.json" : "mockCptCodes.json";
-  const filePath = path.resolve(process.cwd(), "src/data/ai", filename);
-  const raw = await fs.readFile(filePath, "utf-8");
-  return JSON.parse(raw);
-};
 
 // =========================================================
 // DATABASE QUERIES
@@ -112,14 +106,20 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
+const getRequestOrganizationId = async (userId: string) => {
+  const organization = await getUserOrganization(userId);
+  return organization?.id;
+};
+
 const requireOwnedEncounter = async (
   encounterId: string,
   clinicianId: string,
+  organizationId?: string,
 ) => {
   const result = await query(
     `SELECT id, patient_id, clinician_id, organization_id, status, soap_result_id
-         FROM encounters WHERE id = $1 AND clinician_id = $2`,
-    [encounterId, clinicianId],
+         FROM encounters WHERE id = $1 AND clinician_id = $2 AND organization_id = $3`,
+    [encounterId, clinicianId, organizationId || null],
   );
   return result.rows[0] || null;
 };
@@ -135,6 +135,7 @@ const requireOwnedEncounter = async (
 router.post("/:id/codes/match", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -142,7 +143,7 @@ router.post("/:id/codes/match", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const encounter = await requireOwnedEncounter(encounterId, user.id);
+  const encounter = await requireOwnedEncounter(encounterId, user.id, organizationId);
   if (!encounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -201,15 +202,25 @@ router.get("/search", authMiddleware, async (req, res) => {
   const { q, type } = parsed.data;
 
   try {
-    const codes = await loadCodesFromFile(type);
+    if (type === "icd") {
+      return sendError(res, 501, "ICD-10 code search is not yet available");
+    }
+
+    const codes = getFlatCptCodes();
     const searchLower = q.toLowerCase();
 
-    const results = codes.filter(
-      (code: any) =>
-        code.code.toLowerCase().includes(searchLower) ||
-        code.description.toLowerCase().includes(searchLower) ||
-        code.category.toLowerCase().includes(searchLower),
-    );
+    const results = codes
+      .filter(
+        (entry) =>
+          entry.code.toLowerCase().includes(searchLower) ||
+          entry.short_description.toLowerCase().includes(searchLower) ||
+          entry.clinical.type.toLowerCase().includes(searchLower),
+      )
+      .map((entry) => ({
+        code: entry.code,
+        description: entry.short_description,
+        category: entry.clinical.type,
+      }));
 
     return res.json({
       success: true,
@@ -228,6 +239,7 @@ router.get("/search", authMiddleware, async (req, res) => {
 router.post("/:id/codes", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsedParams = IdParamSchema.safeParse(req.params);
   if (!parsedParams.success) {
@@ -252,7 +264,7 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
   const encounterId = parsedParams.data.id;
   const { codes } = parsedBody.data;
 
-  const encounter = await requireOwnedEncounter(encounterId, user.id);
+  const encounter = await requireOwnedEncounter(encounterId, user.id, organizationId);
   if (!encounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -295,6 +307,7 @@ router.post("/:id/codes", authMiddleware, async (req, res) => {
 router.get("/:id/codes", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -302,7 +315,7 @@ router.get("/:id/codes", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const encounter = await requireOwnedEncounter(encounterId, user.id);
+  const encounter = await requireOwnedEncounter(encounterId, user.id, organizationId);
   if (!encounter) {
     return sendError(res, 404, "Encounter not found");
   }

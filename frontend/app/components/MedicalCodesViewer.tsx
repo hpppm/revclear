@@ -29,7 +29,7 @@ type RawCode = {
 };
 
 export default function MedicalCodesViewer({
-  soap: _soap,
+  soap: _,
   encounterId,
   savedCodes = [],
   onCodesSelected,

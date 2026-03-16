@@ -37,9 +37,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    checkAuth();
+  // Clear all sensitive data from browser storage
+  const clearSensitiveData = useCallback(() => {
+    // Legacy cleanup - remove any tokens from localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("practitionerType");
+    }
+    setUser(null);
+    setIsAuthenticated(false);
+    setRequiresOrganization(false);
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
   }, []);
+
+  const performLogout = useCallback(async () => {
+    try {
+      // Call backend to clear httpOnly cookies
+      await apiClient.auth.signout();
+    } catch {
+      // Even if API call fails, clear local state
+    }
+    clearSensitiveData();
+  }, [clearSensitiveData]);
+
+  const checkAuth = useCallback(async () => {
+    // SECURITY: Authentication now uses httpOnly cookies (not localStorage)
+    // The cookie is sent automatically with credentials: true
+    // We verify auth by calling /me endpoint - if it succeeds, we're authenticated
+    try {
+      const response = await apiClient.me.getProfile();
+      const payload = response.data || {};
+      const fetchedUser = payload.user ?? payload;
+      const organization =
+        payload.organization ?? fetchedUser.organization ?? null;
+      const needsOrg = payload.requiresOrganization === true || !organization;
+
+      setUser({ ...fetchedUser, organization });
+      setIsAuthenticated(true);
+      setRequiresOrganization(needsOrg);
+
+      if (needsOrg && pathname !== "/dashboard") {
+        router.push("/dashboard");
+      }
+    } catch (err: unknown) {
+      // 401 means not authenticated - this is expected for logged out users
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 401) {
+        logger.error("Auth check failed");
+      }
+      // Clear state - httpOnly cookie will be cleared by backend on logout
+      clearSensitiveData();
+    }
+  }, [pathname, router, clearSensitiveData]);
+
+  useEffect(() => {
+    void (async () => {
+      await checkAuth();
+      setIsLoading(false);
+    })();
+  }, [checkAuth]);
 
   // HIPAA: Automatic session timeout on inactivity
   const resetIdleTimer = useCallback(() => {
@@ -54,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/login?reason=timeout");
       }, IDLE_TIMEOUT_MS);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, performLogout, router]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -75,47 +134,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isAuthenticated, resetIdleTimer]);
 
-  const checkAuth = async () => {
-    // SECURITY: Authentication now uses httpOnly cookies (not localStorage)
-    // The cookie is sent automatically with credentials: true
-    // We verify auth by calling /me endpoint - if it succeeds, we're authenticated
-    try {
-      const response = await apiClient.me.getProfile();
-      const payload = response.data || {};
-      const fetchedUser = payload.user ?? payload;
-      const organization =
-        payload.organization ?? fetchedUser.organization ?? null;
-      const needsOrg = payload.requiresOrganization === true || !organization;
-
-      setUser({ ...fetchedUser, organization });
-      setIsAuthenticated(true);
-      setRequiresOrganization(needsOrg);
-
-      if (needsOrg && pathname !== "/dashboard") {
-        router.push("/dashboard");
-      }
-    } catch (error: any) {
-      // 401 means not authenticated - this is expected for logged out users
-      if (error?.response?.status !== 401) {
-        logger.error("Auth check failed");
-      }
-      // Clear state - httpOnly cookie will be cleared by backend on logout
-      clearSensitiveData();
-    }
-    setIsLoading(false);
-  };
-
-  const login = (newUser: User | any) => {
+  const login = useCallback((newUser: User | Record<string, unknown>) => {
     // SECURITY: Token is now stored in httpOnly cookie by backend
     // We just update local state with user info
-    const payload: any = newUser || {};
-    const fetchedUser = payload.user ?? payload;
+    const payload = (newUser || {}) as Record<string, unknown>;
+    const fetchedUser = (payload.user ?? payload) as Record<string, unknown>;
     const organization =
       payload.organization ?? fetchedUser.organization ?? null;
     const needsOrg = payload.requiresOrganization === true || !organization;
-    setUser({ ...fetchedUser, organization });
+    setUser({ ...(fetchedUser as User), organization: organization as User["organization"] });
     setIsAuthenticated(true);
-    setRequiresOrganization(needsOrg);
+    setRequiresOrganization(needsOrg as boolean);
 
     // Clean up legacy localStorage token if present
     if (typeof window !== "undefined") {
@@ -124,41 +153,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     router.push("/dashboard");
-  };
+  }, [router]);
 
-  // Clear all sensitive data from browser storage
-  const clearSensitiveData = () => {
-    // Legacy cleanup - remove any tokens from localStorage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("practitionerType");
-    }
-    setUser(null);
-    setIsAuthenticated(false);
-    setRequiresOrganization(false);
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
-    }
-  };
-
-  const performLogout = async () => {
-    try {
-      // Call backend to clear httpOnly cookies
-      await apiClient.auth.signout();
-    } catch (error) {
-      // Even if API call fails, clear local state
-    }
-    clearSensitiveData();
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await performLogout();
     router.push("/login");
-  };
-
-  // Backward compatibility: expose token as null (it's now in httpOnly cookie)
-  const token = isAuthenticated ? "httpOnly" : null;
+  }, [performLogout, router]);
 
   return (
     <AuthContext.Provider

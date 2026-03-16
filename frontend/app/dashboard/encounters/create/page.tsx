@@ -41,8 +41,8 @@ export default function EncounterPage() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [encounterId, setEncounterId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
 
   // Step 1: Patient Details State
   const [metadata, setMetadata] = useState<{
@@ -87,7 +87,7 @@ export default function EncounterPage() {
   // Step 4: Medical Codes State
   const [savedCodes, setSavedCodes] = useState<MedicalCode[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<MedicalCode[]>([]);
-  const [savingCodes, setSavingCodes] = useState(false);
+  const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
   const hasLoadedRef = useRef(false);
@@ -218,7 +218,7 @@ export default function EncounterPage() {
                 setSavedCodes(codesData);
                 setSelectedCodes(codesData);
               }
-            } catch (err) {
+            } catch {
               // It's okay if no codes exist yet
               logger.log("No saved codes found or failed to load");
             }
@@ -359,9 +359,11 @@ export default function EncounterPage() {
     setAudioFile(file);
     setAudioUrl(URL.createObjectURL(file));
     setTranscript(null);
+    setTranscribeError(null);
     setSoap(null);
 
     if (!metadata.date || !metadata.patientId) {
+      setTranscribeError("Select the patient and encounter date before uploading audio.");
       return;
     }
 
@@ -398,9 +400,10 @@ export default function EncounterPage() {
       if (!key) throw new Error("Failed to get S3 key from upload");
       setS3Key(key);
     } catch (err: any) {
-      logger.error("Audio upload failed", err);
-      const msg = err?.response?.data?.message || err?.message || "Failed to upload audio. Check your connection and try again.";
-      setUploadError(msg);
+      logger.error("Save failed", err);
+      setTranscribeError(
+        err?.response?.data?.error || err?.message || "Failed to upload audio.",
+      );
     } finally {
       setUploading(false);
     }
@@ -408,7 +411,9 @@ export default function EncounterPage() {
 
   const handleTranscribe = async () => {
     if (!s3Key || !encounterId) {
-      setTranscribeError("Audio has not been uploaded yet. Please re-select your file.");
+      setTranscribeError(
+        "Audio upload is not ready yet. Re-upload the audio and try again.",
+      );
       return;
     }
 
@@ -430,8 +435,9 @@ export default function EncounterPage() {
       setSoap(receivedSoap);
     } catch (err: any) {
       logger.error("Transcription failed", err);
-      const msg = err?.response?.data?.message || err?.message || "Transcription failed. Make sure the Whisper server is running on port 5000.";
-      setTranscribeError(msg);
+      setTranscribeError(
+        err?.response?.data?.error || err?.message || "Transcription failed.",
+      );
     } finally {
       setTranscribing(false);
     }
@@ -587,6 +593,7 @@ export default function EncounterPage() {
           audioUrl={audioUrl}
           s3Key={s3Key}
           transcript={transcript}
+          transcribeError={transcribeError}
           transcriptDraft={transcriptDraft}
           onTranscriptDraftChange={setTranscriptDraft}
           onSaveTranscript={handleSaveTranscript}
@@ -594,7 +601,6 @@ export default function EncounterPage() {
           uploading={uploading}
           uploadError={uploadError}
           transcribing={transcribing}
-          transcribeError={transcribeError}
           onAudioSelected={handleAudioSelected}
           onClearAudio={clearAudioState}
           onTranscribe={handleTranscribe}
