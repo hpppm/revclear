@@ -71,6 +71,11 @@ This runbook provides operational procedures for deploying, monitoring, and main
 Production assumes the backend is deployed behind a reverse proxy under the
 same public origin as the frontend (`https://revclear.gannon.edu`).
 
+A reference Nginx site configuration is included at
+`deploy/nginx/revclear.conf`. In the production Docker stack, Nginx runs as
+its own container and proxies to the `frontend` and `backend` services over the
+internal Docker network.
+
 The reverse proxy must:
 
 - Terminate TLS on `443`
@@ -80,6 +85,15 @@ The reverse proxy must:
 - Forward `X-Forwarded-For`
 - Keep backend container port internal; do not expose it publicly
 
+For Nginx specifically:
+
+- Proxy `/api/` to the backend service on internal port `3005`
+- Proxy `/` to the frontend service on internal port `3000`
+- Keep TLS termination at Nginx
+- Preserve `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`
+- Allow uploads up to at least `50M` for transcription audio
+- Mount the TLS certificate and private key into the Nginx container
+
 Internal service traffic should stay private:
 
 - Frontend/browser -> `https://revclear.gannon.edu`
@@ -87,6 +101,40 @@ Internal service traffic should stay private:
 - Reverse proxy -> backend container for `/api/*`
 - Backend -> AI server over internal Docker network
 - AI server -> Qdrant over internal Docker network
+
+#### Separate AI Stack
+
+If the medical AI service is deployed from a separate repository, use a shared
+external Docker network instead of combining both repos into one Compose file.
+
+Recommended pattern:
+
+- Keep the RevClear app stack in `docker-compose.prod.yml`
+- Keep the medical AI stack in its own Compose project
+- Create one shared external network, for example `revclear-shared`
+- Attach the RevClear `backend` service to that shared network
+- Attach the AI inference service (`medical-ai` or `medical-ai-cpu`) to that same shared network
+- Keep `qdrant` private to the AI stack unless another service explicitly needs it
+
+Create the shared network once on the server:
+
+```bash
+docker network create revclear-shared
+```
+
+RevClear production stack:
+
+- `docker-compose.prod.yml` already attaches `backend` to `${SHARED_DOCKER_NETWORK:-revclear-shared}`
+
+Medical AI stack:
+
+- Attach the inference service to the same external network
+- Example service URLs from the RevClear backend:
+  - `SOAP_API_URL=http://medical-ai-cpu:8000/api/process`
+  - `CODES_API_URL=http://medical-ai-cpu:8000/api/suggest-codes`
+  - `AI_TRANSCRIBE_URL=http://medical-ai-cpu:8000/api/transcribe`
+
+If the GPU profile is used instead, replace `medical-ai-cpu` with `medical-ai`.
 
 #### Cookie / Session Requirements
 
@@ -133,6 +181,9 @@ set -a
 source /opt/revclear/revclear.env
 set +a
 
+# 1a. Ensure the shared external network exists
+docker network create revclear-shared || true
+
 # 2. Build production images
 docker compose -f docker-compose.prod.yml build
 
@@ -141,6 +192,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 # 4. Verify deployment
 docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f nginx
 docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
@@ -148,7 +200,8 @@ Production compose expectations:
 
 - Use `docker-compose.prod.yml`, not the root `docker-compose.yml` dev stack
 - Do not bind-mount source code into containers
-- Do not publish the backend port publicly
+- Publish only Nginx on `80/443`
+- Do not publish the frontend or backend ports publicly
 - Inject secrets and environment variables from the server environment or a server-managed env file
 - Route public traffic through the reverse proxy only
 
