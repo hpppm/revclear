@@ -1,5 +1,6 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
+import { decryptPHIJson, encryptPHIJson } from "../utils/crypto";
 import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
 
 interface PaginationOptions {
@@ -19,6 +20,44 @@ const CLAIM_SELECT_COLUMNS = `
 `
   .replace(/\s+/g, " ")
   .trim();
+
+const CLAIM_ENCRYPTED_JSON_FIELDS = [
+  "billing_provider",
+  "service_facility",
+  "rendering_provider",
+  "subscriber",
+] as const;
+
+const CLAIM_ENCRYPTED_JSON_FIELD_SET = new Set<string>(CLAIM_ENCRYPTED_JSON_FIELDS);
+
+const serializeClaimValue = (fieldName: string, value: any) => {
+  if (fieldName === "line_items") {
+    const arrayValue = Array.isArray(value) ? value : Object.values(value || {});
+    return JSON.stringify(arrayValue);
+  }
+
+  if (CLAIM_ENCRYPTED_JSON_FIELD_SET.has(fieldName)) {
+    return encryptPHIJson(value);
+  }
+
+  if (["diagnosis_codes", "procedure_codes"].includes(fieldName)) {
+    return Array.isArray(value) ? value : Object.values(value || {});
+  }
+
+  return value;
+};
+
+const decryptClaimRow = <T extends Record<string, any> | null>(claim: T): T => {
+  if (!claim) {
+    return claim;
+  }
+
+  const clone: Record<string, any> = { ...claim };
+  for (const fieldName of CLAIM_ENCRYPTED_JSON_FIELDS) {
+    clone[fieldName] = decryptPHIJson(clone[fieldName] ?? null);
+  }
+  return clone as T;
+};
 
 export class ClaimService {
   private static async getClaimColumns() {
@@ -46,7 +85,7 @@ export class ClaimService {
       `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
       [organizationId, clinicianId, limit, offset],
     );
-    return { data: result.rows, total };
+    return { data: result.rows.map((row) => decryptClaimRow(row)), total };
   }
 
   static async findById(
@@ -58,7 +97,7 @@ export class ClaimService {
       `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
       [id, organizationId, clinicianId],
     );
-    return result.rows[0] || null;
+    return decryptClaimRow(result.rows[0] || null);
   }
 
   static async create(data: any, organizationId: string, clinicianId: string) {
@@ -117,36 +156,7 @@ export class ClaimService {
       if (value !== undefined && availableColumns.includes(key)) {
         columns.push(key);
         placeholders.push(`$${idx}`);
-
-        // Handle line_items - convert to array if needed
-        if (key === "line_items") {
-          const arrayValue = Array.isArray(value)
-            ? value
-            : Object.values(value || {});
-          values.push(JSON.stringify(arrayValue));
-        }
-        // Handle other JSONB fields
-        else if (
-          [
-            "billing_provider",
-            "service_facility",
-            "rendering_provider",
-            "subscriber",
-          ].includes(key)
-        ) {
-          values.push(JSON.stringify(value));
-        }
-        // Handle array fields that might come as objects
-        else if (["diagnosis_codes", "procedure_codes"].includes(key)) {
-          const arrayValue = Array.isArray(value)
-            ? value
-            : Object.values(value || {});
-          values.push(arrayValue);
-        }
-        // Handle all other fields
-        else {
-          values.push(value);
-        }
+        values.push(serializeClaimValue(key, value));
         idx += 1;
       }
     }
@@ -155,7 +165,7 @@ export class ClaimService {
       ", ",
     )}) VALUES (${placeholders.join(", ")}) RETURNING ${CLAIM_SELECT_COLUMNS}`;
     const result = await query(insertQuery, values);
-    return result.rows[0];
+    return decryptClaimRow(result.rows[0]);
   }
 
   static async update(
@@ -181,42 +191,12 @@ export class ClaimService {
       throw new AppError("No fields to update", 400);
     }
 
-    const jsonFields = new Set([
-      "line_items",
-      "billing_provider",
-      "service_facility",
-      "rendering_provider",
-      "subscriber",
-    ]);
-
-    const arrayFields = new Set(["diagnosis_codes", "procedure_codes"]);
-
-    // Convert object-formatted arrays back to proper arrays and serialize JSON fields
     const fields = entries
       .map(([fieldName], i) => `${fieldName} = $${i + 1}`)
       .join(", ");
-    const values = entries.map(([fieldName, value]) => {
-      // Handle array fields that might come as objects with numeric keys
-      if (arrayFields.has(fieldName)) {
-        // Convert to array if it's an object
-        const arrayValue = Array.isArray(value)
-          ? value
-          : Object.values(value || {});
-        return arrayValue;
-      }
-      // Handle line_items specially - convert to array of objects
-      if (fieldName === "line_items") {
-        const arrayValue = Array.isArray(value)
-          ? value
-          : Object.values(value || {});
-        return JSON.stringify(arrayValue);
-      }
-      // Handle other JSON fields
-      if (jsonFields.has(fieldName)) {
-        return JSON.stringify(value);
-      }
-      return value;
-    });
+    const values = entries.map(([fieldName, value]) =>
+      serializeClaimValue(fieldName, value),
+    );
 
     const result = await query(
       `UPDATE claims SET ${fields} WHERE id = $${values.length + 1} RETURNING ${CLAIM_SELECT_COLUMNS}`,
@@ -227,7 +207,7 @@ export class ClaimService {
       throw new AppError("Claim not found", 404);
     }
 
-    return result.rows[0];
+    return decryptClaimRow(result.rows[0]);
   }
 
   static async delete(id: string, organizationId: string, clinicianId: string) {
@@ -329,7 +309,7 @@ export class ClaimService {
     }
     sql += " ORDER BY created_at DESC LIMIT 1";
     const result = await query(sql, params);
-    return result.rows[0];
+    return decryptClaimRow(result.rows[0] || null);
   }
 
   private static async requireOwnedEncounter(
