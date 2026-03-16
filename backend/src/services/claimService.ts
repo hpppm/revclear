@@ -243,12 +243,20 @@ export class ClaimService {
 
   static async getPreview(encounterId: string, organization: any, user: any) {
     // Check for existing claim
-    const existing = await this.getClaimByEncounter(encounterId, user.id);
+    const existing = await this.getClaimByEncounter(
+      encounterId,
+      user.id,
+      organization.id,
+    );
     if (existing) {
       return existing;
     }
 
-    const encounter = await this.requireOwnedEncounter(encounterId, user.id);
+    const encounter = await this.requireOwnedEncounter(
+      encounterId,
+      user.id,
+      organization.id,
+    );
     if (!encounter) {
       throw new AppError("Encounter not found", 404);
     }
@@ -307,10 +315,14 @@ export class ClaimService {
   private static async getClaimByEncounter(
     encounter_id: string,
     clinician_id?: string,
+    organization_id?: string,
   ) {
     const params: any[] = [encounter_id];
     let sql = `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims WHERE encounter_id = $1`;
-    if (clinician_id) {
+    if (organization_id && clinician_id) {
+      sql += " AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))";
+      params.push(organization_id, clinician_id);
+    } else if (clinician_id) {
       sql += " AND clinician_id = $2";
       params.push(clinician_id);
     }
@@ -322,11 +334,12 @@ export class ClaimService {
   private static async requireOwnedEncounter(
     encounterId: string,
     clinicianId: string,
+    organizationId?: string,
   ) {
     const result = await query(
       `SELECT id, patient_id, clinician_id, organization_id, date_of_service, status, place_of_service
-             FROM encounters WHERE id = $1 AND clinician_id = $2`,
-      [encounterId, clinicianId],
+             FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
+      [encounterId, organizationId || null, clinicianId],
     );
     return result.rows[0] || null;
   }
