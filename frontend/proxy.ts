@@ -14,6 +14,9 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const isDev = process.env.NODE_ENV === "development";
+  const connectSrc = isDev
+    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"
+    : "'self'";
 
   // Build CSP with nonce
   const cspHeader = [
@@ -24,7 +27,7 @@ export function proxy(request: NextRequest) {
     // Styles: unsafe-inline required for Tailwind/component libraries that inject styles
     `style-src 'self' 'unsafe-inline'`,
     // Connect to API
-    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"}`,
+    `connect-src ${connectSrc}`,
     // Images
     "img-src 'self' data: https:",
     // Fonts
