@@ -14,9 +14,11 @@ export const createAudioRecord = async (data: {
     duration_seconds,
   } = data;
   const result = await query(
+    // SECURITY: Explicit column list prevents future sensitive columns (e.g. internal flags)
+    // from leaking into callers if the schema evolves.
     `INSERT INTO audio_records (encounter_id, file_url, transcription_status, duration_seconds)
      VALUES ($1, $2, $3, $4)
-     RETURNING *`,
+     RETURNING id, encounter_id, file_url, transcription_status, duration_seconds, created_at`,
     [encounter_id, file_url, transcription_status, duration_seconds ?? null],
   );
   return result.rows[0];
@@ -39,9 +41,10 @@ export const createAiResult = async (data: {
     confidence_score,
   } = data;
   const result = await query(
+    // SECURITY: Explicit column list — data minimization per CLAUDE.md security patterns.
     `INSERT INTO ai_results (encounter_id, flow_name, input_json, output_json, model_version, confidence_score)
      VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
+     RETURNING id, encounter_id, flow_name, input_json, output_json, model_version, confidence_score, created_at`,
     [
       encounter_id,
       flow_name,
