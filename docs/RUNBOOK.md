@@ -48,7 +48,7 @@ This runbook provides operational procedures for deploying, monitoring, and main
 |-------------|---------|-----|
 | **Development** | Local development | `http://localhost:3000` |
 | **Staging** | Pre-production testing | TBD |
-| **Production** | Live environment | TBD |
+| **Production** | Live environment | `https://revclear.gannon.edu` |
 
 ---
 
@@ -65,6 +65,43 @@ This runbook provides operational procedures for deploying, monitoring, and main
 - [ ] Backup current production state
 
 ### Backend Deployment
+
+#### Reverse Proxy Requirements
+
+Production assumes the backend is deployed behind a reverse proxy under the
+same public origin as the frontend (`https://revclear.gannon.edu`).
+
+The reverse proxy must:
+
+- Terminate TLS on `443`
+- Route browser API traffic from `/api/*` to the backend container
+- Preserve the original `Host` header
+- Forward `X-Forwarded-Proto: https`
+- Forward `X-Forwarded-For`
+- Keep backend container port internal; do not expose it publicly
+
+Internal service traffic should stay private:
+
+- Frontend/browser -> `https://revclear.gannon.edu`
+- Reverse proxy -> frontend container
+- Reverse proxy -> backend container for `/api/*`
+- Backend -> AI server over internal Docker network
+- AI server -> Qdrant over internal Docker network
+
+#### Cookie / Session Requirements
+
+The backend issues httpOnly auth cookies with:
+
+- `Secure=true` in production
+- `SameSite=Strict` in production
+- `Path=/`
+
+This requires same-origin frontend/backend routing in production. Do not deploy
+the frontend and backend on separate public origins unless cookie strategy and
+CORS are intentionally redesigned.
+
+If secure cookies are not being set or auth appears broken in production, first
+verify the reverse proxy is forwarding `X-Forwarded-Proto=https`.
 
 #### Manual Deployment
 
@@ -91,16 +128,29 @@ systemctl restart revclear-backend
 #### Docker Deployment
 
 ```bash
-# 1. Build images
-docker-compose build
+# 1. Export production env vars or use an env file managed by the server
+set -a
+source /opt/revclear/revclear.env
+set +a
 
-# 2. Deploy with zero downtime
-docker-compose up -d --no-deps --build backend
+# 2. Build production images
+docker compose -f docker-compose.prod.yml build
 
-# 3. Verify deployment
-docker-compose ps
-docker-compose logs -f backend
+# 3. Start or update the stack
+docker compose -f docker-compose.prod.yml up -d
+
+# 4. Verify deployment
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f backend
 ```
+
+Production compose expectations:
+
+- Use `docker-compose.prod.yml`, not the root `docker-compose.yml` dev stack
+- Do not bind-mount source code into containers
+- Do not publish the backend port publicly
+- Inject secrets and environment variables from the server environment or a server-managed env file
+- Route public traffic through the reverse proxy only
 
 #### AWS Deployment (Lambda/ECS)
 
