@@ -91,6 +91,7 @@ export default function EncounterPage() {
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
   const hasLoadedRef = useRef(false);
+  const hasRestoredStepRef = useRef(false);
 
   const handleCodesSelected = (codes: MedicalCode[]) => {
     setSelectedCodes(codes);
@@ -236,11 +237,12 @@ export default function EncounterPage() {
       setLoading(false);
     }
 
-    // Restore step from URL
-    if (step) {
+    // Restore step from URL — only once on initial load, not on every navigation
+    if (step && !hasRestoredStepRef.current) {
+      hasRestoredStepRef.current = true;
       setCurrentStep(parseInt(step) || 0);
     }
-  }, [searchParams, encounterId]);
+  }, [searchParams]);
 
   useEffect(() => {
     const param = searchParams?.get("patientId");

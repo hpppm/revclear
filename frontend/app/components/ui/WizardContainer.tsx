@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
 import logger from "@/app/lib/logger";
 import Card from "./Card";
 import Button from "./Button";
@@ -33,17 +35,21 @@ export default function WizardContainer({
 }: WizardContainerProps) {
     const [currentStep, setCurrentStep] = useState(initialStep);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    // Track whether the current step change came from user navigation (not external sync)
+    const userNavigatedRef = useRef(false);
 
     useEffect(() => {
+        // Sync step from parent (URL restore) without triggering onStepChange
+        userNavigatedRef.current = false;
         setCurrentStep(initialStep);
     }, [initialStep]);
 
     useEffect(() => {
-        if (onStepChange) {
+        // Only notify parent when the user actually clicked Next/Back
+        if (userNavigatedRef.current && onStepChange) {
             onStepChange(currentStep);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentStep]); // Only depend on currentStep, not onStepChange
+    }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleNext = async () => {
         const currentStepData = steps[currentStep];
@@ -56,6 +62,7 @@ export default function WizardContainer({
             }
 
             if (currentStep < steps.length - 1) {
+                userNavigatedRef.current = true;
                 setCurrentStep(currentStep + 1);
             } else {
                 onComplete();
@@ -78,6 +85,7 @@ export default function WizardContainer({
             }
 
             if (currentStep > 0) {
+                userNavigatedRef.current = true;
                 setCurrentStep(currentStep - 1);
             }
         } catch {
