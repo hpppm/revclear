@@ -1,6 +1,9 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
-import { decryptPHIText, encryptPHIText } from "../utils/crypto";
+import {
+  decryptPHITextFields,
+  encryptPHIText,
+} from "../utils/crypto";
 
 interface PaginationOptions {
   limit?: number;
@@ -16,6 +19,8 @@ const ENCOUNTER_SELECT_COLUMNS = `
 `
   .replace(/\s+/g, " ")
   .trim();
+
+const ENCOUNTER_ENCRYPTED_TEXT_FIELDS = ["chief_complaint"] as const;
 
 export class EncounterService {
   private static async getEncounterColumns() {
@@ -213,11 +218,9 @@ export class EncounterService {
   private static decryptEncounterRow<T extends Record<string, any> | null>(
     encounter: T,
   ): T {
-    if (!encounter) return encounter;
-
-    return {
-      ...encounter,
-      chief_complaint: decryptPHIText(encounter.chief_complaint ?? null),
-    } as T;
+    return decryptPHITextFields(
+      encounter,
+      ENCOUNTER_ENCRYPTED_TEXT_FIELDS,
+    ) as T;
   }
 }
