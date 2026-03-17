@@ -2,6 +2,8 @@ import crypto from "crypto";
 import logger from "./logger";
 
 const ALGO = "aes-256-gcm";
+const ENCRYPTED_JSON_MARKER = "__revclear_encrypted";
+const ENCRYPTED_TEXT_PREFIX = "revclear:phi:v1:";
 let key: Buffer | null = null;
 
 const phiEncryptionKey = process.env.PHI_ENCRYPTION_KEY;
@@ -58,6 +60,106 @@ export function decryptPHI(payload: string): string {
       "PHI decryption failed. Data may be corrupted or key mismatch.",
     );
   }
+}
+
+type EncryptedJsonEnvelope = {
+  [ENCRYPTED_JSON_MARKER]: true;
+  ciphertext: string;
+};
+
+type PHIRecord = Record<string, any>;
+
+export function isEncryptedPHIJson(value: unknown): value is EncryptedJsonEnvelope {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Record<string, unknown>)[ENCRYPTED_JSON_MARKER] === true &&
+    typeof (value as Record<string, unknown>).ciphertext === "string"
+  );
+}
+
+export function encryptPHIJson<T>(value: T): T | EncryptedJsonEnvelope {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  return {
+    [ENCRYPTED_JSON_MARKER]: true,
+    ciphertext: encryptPHI(JSON.stringify(value)),
+  };
+}
+
+export function decryptPHIJson<T>(value: T | EncryptedJsonEnvelope): T {
+  if (!isEncryptedPHIJson(value)) {
+    return value as T;
+  }
+
+  return JSON.parse(decryptPHI(value.ciphertext)) as T;
+}
+
+export function isEncryptedPHIText(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith(ENCRYPTED_TEXT_PREFIX);
+}
+
+export function encryptPHIText(
+  value: string | null | undefined,
+): string | null | undefined {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  return `${ENCRYPTED_TEXT_PREFIX}${encryptPHI(value)}`;
+}
+
+export function decryptPHIText(
+  value: string | Date | null | undefined,
+): string | null | undefined {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  if (!isEncryptedPHIText(value)) {
+    return value;
+  }
+
+  return decryptPHI(value.slice(ENCRYPTED_TEXT_PREFIX.length));
+}
+
+export function transformPHIFields<T extends PHIRecord | null | undefined>(
+  record: T,
+  fields: Iterable<string>,
+  transform: (value: any) => any,
+): T {
+  if (!record) {
+    return record;
+  }
+
+  const clone: PHIRecord = { ...record };
+  for (const field of fields) {
+    if (field in clone) {
+      clone[field] = transform(clone[field]);
+    }
+  }
+
+  return clone as T;
+}
+
+export function decryptPHIJsonFields<T extends PHIRecord | null | undefined>(
+  record: T,
+  fields: Iterable<string>,
+): T {
+  return transformPHIFields(record, fields, (value) => decryptPHIJson(value));
+}
+
+export function decryptPHITextFields<T extends PHIRecord | null | undefined>(
+  record: T,
+  fields: Iterable<string>,
+): T {
+  return transformPHIFields(record, fields, (value) => decryptPHIText(value));
 }
 
 /**

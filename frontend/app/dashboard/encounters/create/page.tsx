@@ -601,7 +601,6 @@ export default function EncounterPage() {
           uploading={uploading}
           uploadError={uploadError}
           transcribing={transcribing}
-          transcribeError={transcribeError}
           onAudioSelected={handleAudioSelected}
           onClearAudio={clearAudioState}
           onTranscribe={handleTranscribe}
