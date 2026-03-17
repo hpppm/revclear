@@ -7,7 +7,7 @@ import FormData from "form-data";
 import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
 import { getFile, uploadFile } from "../../config/awsS3";
-import { createAudioRecord, createAiResult } from "../../db/queries";
+import { createAudioRecord, createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { query } from "../../config/db";
@@ -377,19 +377,13 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
       return sendError(res, 404, "Encounter not found");
     }
 
-    // Query ai_results for the transcript
-    const result = await query(
-      `SELECT output_json FROM ai_results 
-       WHERE encounter_id = $1 AND flow_name = $2 
-       ORDER BY created_at DESC LIMIT 1`,
-      [encounterId, AI_FLOW_NAMES.transcript],
-    );
+    const result = await getLatestAiResult(encounterId, AI_FLOW_NAMES.transcript);
 
-    if (result.rows.length === 0) {
+    if (!result) {
       return sendError(res, 404, "Transcript not found for this encounter.");
     }
 
-    res.json(result.rows[0].output_json);
+    res.json(result.output_json);
   } catch (error: any) {
     logger.error({ err: error }, "transcribe: error retrieving transcript");
     sendError(res, 500, "Failed to retrieve transcript");
@@ -458,5 +452,4 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
 });
 
 export default router;
-
 

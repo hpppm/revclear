@@ -2,6 +2,11 @@ import { Router, Request, Response, NextFunction } from "express";
 import { query } from "../../../config/db";
 import { authMiddleware } from "../../../middleware/auth";
 import { getAuthenticatedUser } from "../../../utils/auth";
+import {
+  PATIENT_ENCRYPTED_FIELDS,
+  decryptPatientRow,
+} from "../../../services/patientService";
+import { encryptPHIText } from "../../../utils/crypto";
 
 type PatientInsertPayload = {
   full_name: string;
@@ -15,6 +20,11 @@ type PatientInsertPayload = {
 };
 
 type PatientUpdatePayload = Partial<PatientInsertPayload>;
+
+const PATIENT_ENCRYPTED_FIELD_SET = new Set<string>(PATIENT_ENCRYPTED_FIELDS);
+
+const maybeEncryptPatientField = (field: string, value: any) =>
+  PATIENT_ENCRYPTED_FIELD_SET.has(field) ? encryptPHIText(value ?? null) : value;
 
 const router = Router();
 
@@ -68,18 +78,18 @@ router.post("/patients", adminOnly, async (req, res) => {
     `;
 
     const values = [
-      payload.full_name,
-      payload.dob || null,
-      payload.gender || null,
-      payload.phone || null,
-      payload.email || null,
-      payload.insurance_provider || null,
-      payload.insurance_policy_number || null,
+      maybeEncryptPatientField("full_name", payload.full_name),
+      maybeEncryptPatientField("dob", payload.dob || null),
+      maybeEncryptPatientField("gender", payload.gender || null),
+      maybeEncryptPatientField("phone", payload.phone || null),
+      maybeEncryptPatientField("email", payload.email || null),
+      maybeEncryptPatientField("insurance_provider", payload.insurance_provider || null),
+      maybeEncryptPatientField("insurance_policy_number", payload.insurance_policy_number || null),
       payload.clinician_id || null,
     ];
 
     const result = await query(insertQuery, values);
-    res.status(201).json({ success: true, data: result.rows[0] });
+    res.status(201).json({ success: true, data: decryptPatientRow(result.rows[0]) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: "Failed to create patient" });
   }
@@ -106,7 +116,7 @@ router.get("/patients", adminOnly, async (req, res) => {
         return res.status(404).json({ success: false, message: "Patient not found" });
       }
 
-      return res.json({ success: true, data: result.rows[0] });
+      return res.json({ success: true, data: decryptPatientRow(result.rows[0]) });
     }
 
     const result = await query(
@@ -119,7 +129,7 @@ router.get("/patients", adminOnly, async (req, res) => {
       [Number.isFinite(limit) && limit > 0 ? limit : 5]
     );
 
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, data: result.rows.map((row) => decryptPatientRow(row)) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: "Failed to read patients" });
   }
@@ -146,7 +156,7 @@ router.put("/patients/:id", adminOnly, async (req, res) => {
 
   allowedFields.forEach((field) => {
     if (payload[field] !== undefined) {
-      values.push(payload[field]);
+      values.push(maybeEncryptPatientField(field, payload[field]));
       setFragments.push(`${field} = $${values.length}`);
     }
   });
@@ -169,7 +179,7 @@ router.put("/patients/:id", adminOnly, async (req, res) => {
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: decryptPatientRow(result.rows[0]) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: "Failed to update patient" });
   }
@@ -193,7 +203,7 @@ router.delete("/patients/:id", adminOnly, async (req, res) => {
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: decryptPatientRow(result.rows[0]) });
   } catch (error: any) {
     res.status(500).json({ success: false, message: "Failed to delete patient" });
   }

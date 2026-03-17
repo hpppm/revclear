@@ -1,6 +1,6 @@
 import "../setupEnv";
 import { query, closePool } from "../config/db";
-
+import { encryptPHIJson } from "../utils/crypto";
 
 const testClaimGen = async () => {
     try {
@@ -56,8 +56,8 @@ const testClaimGen = async () => {
                 data.submission_type,
                 data.patient_responsibility,
                 JSON.stringify(data.line_items),
-                JSON.stringify(data.billing_provider),
-                JSON.stringify(data.service_facility),
+                encryptPHIJson(data.billing_provider),
+                encryptPHIJson(data.service_facility),
             ]
         );
         console.log("Claim created successfully:", result.rows[0].id);

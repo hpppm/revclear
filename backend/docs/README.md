@@ -6,6 +6,7 @@ All backend-specific documentation lives under this directory so the entire proj
 
 - `dashboard/`: UX/integration specs for the auth-gated dashboard and the cards that drive Cognito/S3/DynamoDB.
 - `db/`: SQL schemas, migration notes, and anything tied to the database layer.
+- `phi-rollout-plan.md`: current PHI encryption rollout status and the future backfill playbook for non-test environments.
 - `testing/`: (Add API/testing notes here once they exist.)
 
 Each subfolder should focus on a single topic so it’s easy to link directly from the backend README or the feature docs you share with teammates.

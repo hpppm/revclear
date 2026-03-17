@@ -1,5 +1,27 @@
 import { query } from "../config/db";
+import { decryptPHIJsonFields, encryptPHIJson } from "../utils/crypto";
 import logger from "../utils/logger";
+
+type AiResultRow = {
+  id: string;
+  encounter_id: string;
+  flow_name: string;
+  input_json: any;
+  output_json: any;
+  model_version?: string;
+  confidence_score?: number;
+  created_at: Date | string;
+};
+
+const AI_RESULT_PHI_JSON_FIELDS = ["input_json", "output_json"] as const;
+
+const decryptAiResultRow = (row: AiResultRow): AiResultRow =>
+  decryptPHIJsonFields(row, AI_RESULT_PHI_JSON_FIELDS) as AiResultRow;
+
+const decryptOptionalAiResultRow = (
+  row: AiResultRow | undefined,
+): AiResultRow | undefined =>
+  decryptPHIJsonFields(row, AI_RESULT_PHI_JSON_FIELDS) as AiResultRow | undefined;
 
 export const createAudioRecord = async (data: {
   encounter_id: string;
@@ -48,13 +70,13 @@ export const createAiResult = async (data: {
     [
       encounter_id,
       flow_name,
-      input_json ?? null,
-      output_json ?? null,
+      encryptPHIJson(input_json ?? null),
+      encryptPHIJson(output_json ?? null),
       model_version ?? null,
       confidence_score ?? null,
     ],
   );
-  return result.rows[0];
+  return decryptAiResultRow(result.rows[0] as AiResultRow);
 };
 
 // Explicit column list for ai_results queries
@@ -73,7 +95,7 @@ export const getLatestAiResult = async (
      LIMIT 1`,
     [encounter_id, flow_name],
   );
-  return result.rows[0];
+  return decryptOptionalAiResultRow(result.rows[0] as AiResultRow | undefined);
 };
 
 export const getLatestAiResultByFlowNames = async (
@@ -92,5 +114,5 @@ export const getLatestAiResultByFlowNames = async (
      LIMIT 1`,
     [encounter_id, uniqueFlowNames],
   );
-  return result.rows[0];
+  return decryptOptionalAiResultRow(result.rows[0] as AiResultRow | undefined);
 };
