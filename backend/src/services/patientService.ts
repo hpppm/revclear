@@ -1,6 +1,9 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
-import { decryptPHIText, encryptPHIText } from "../utils/crypto";
+import {
+  decryptPHITextFields,
+  encryptPHIText,
+} from "../utils/crypto";
 
 interface PaginationOptions {
   limit?: number;
@@ -80,41 +83,23 @@ export const SUBSCRIBER_ENCRYPTED_FIELDS = [
 const PATIENT_ENCRYPTED_FIELD_SET = new Set<string>(PATIENT_ENCRYPTED_FIELDS);
 const SUBSCRIBER_ENCRYPTED_FIELD_SET = new Set<string>(SUBSCRIBER_ENCRYPTED_FIELDS);
 
-const transformEncryptedFields = <T extends Record<string, any>>(
-  record: T | null | undefined,
-  encryptedFields: Set<string>,
-  transform: (value: string | Date | null | undefined) => string | null | undefined,
-): T | null | undefined => {
-  if (!record) return record;
-
-  const clone: Record<string, any> = { ...record };
-  for (const field of Object.keys(clone)) {
-    if (encryptedFields.has(field)) {
-      clone[field] = transform(clone[field]);
-    }
-  }
-  return clone as T;
-};
-
 const maybeEncryptField = (field: string, value: any) =>
   PATIENT_ENCRYPTED_FIELD_SET.has(field) || SUBSCRIBER_ENCRYPTED_FIELD_SET.has(field)
     ? encryptPHIText(value ?? null)
     : value;
 
 export const decryptPatientRow = <T extends Record<string, any> | null | undefined>(patient: T): T =>
-  transformEncryptedFields(
+  decryptPHITextFields(
     patient,
     PATIENT_ENCRYPTED_FIELD_SET,
-    decryptPHIText,
   ) as T;
 
 export const decryptSubscriberRow = <T extends Record<string, any> | null | undefined>(
   subscriber: T,
 ): T =>
-  transformEncryptedFields(
+  decryptPHITextFields(
     subscriber,
     SUBSCRIBER_ENCRYPTED_FIELD_SET,
-    decryptPHIText,
   ) as T;
 
 // Explicit column list for subscriber queries - data minimization

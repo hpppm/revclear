@@ -1,5 +1,5 @@
 import { query } from "../config/db";
-import { decryptPHIJson, encryptPHIJson } from "../utils/crypto";
+import { decryptPHIJsonFields, encryptPHIJson } from "../utils/crypto";
 import logger from "../utils/logger";
 
 type AiResultRow = {
@@ -13,25 +13,15 @@ type AiResultRow = {
   created_at: Date | string;
 };
 
-const decryptAiResultRow = (row: AiResultRow): AiResultRow => {
-  return {
-    ...row,
-    input_json: decryptPHIJson(row.input_json),
-    output_json: decryptPHIJson(row.output_json),
-  };
-};
+const AI_RESULT_PHI_JSON_FIELDS = ["input_json", "output_json"] as const;
+
+const decryptAiResultRow = (row: AiResultRow): AiResultRow =>
+  decryptPHIJsonFields(row, AI_RESULT_PHI_JSON_FIELDS) as AiResultRow;
 
 const decryptOptionalAiResultRow = (
   row: AiResultRow | undefined,
-): AiResultRow | undefined => {
-  if (!row) return row;
-
-  return {
-    ...row,
-    input_json: decryptPHIJson(row.input_json),
-    output_json: decryptPHIJson(row.output_json),
-  };
-};
+): AiResultRow | undefined =>
+  decryptPHIJsonFields(row, AI_RESULT_PHI_JSON_FIELDS) as AiResultRow | undefined;
 
 export const createAudioRecord = async (data: {
   encounter_id: string;

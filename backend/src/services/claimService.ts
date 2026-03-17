@@ -1,6 +1,9 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
-import { decryptPHIJson, encryptPHIJson } from "../utils/crypto";
+import {
+  decryptPHIJsonFields,
+  encryptPHIJson,
+} from "../utils/crypto";
 import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
 
 interface PaginationOptions {
@@ -48,15 +51,7 @@ const serializeClaimValue = (fieldName: string, value: any) => {
 };
 
 const decryptClaimRow = <T extends Record<string, any> | null>(claim: T): T => {
-  if (!claim) {
-    return claim;
-  }
-
-  const clone: Record<string, any> = { ...claim };
-  for (const fieldName of CLAIM_ENCRYPTED_JSON_FIELDS) {
-    clone[fieldName] = decryptPHIJson(clone[fieldName] ?? null);
-  }
-  return clone as T;
+  return decryptPHIJsonFields(claim, CLAIM_ENCRYPTED_JSON_FIELDS) as T;
 };
 
 export class ClaimService {

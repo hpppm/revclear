@@ -67,6 +67,8 @@ type EncryptedJsonEnvelope = {
   ciphertext: string;
 };
 
+type PHIRecord = Record<string, any>;
+
 export function isEncryptedPHIJson(value: unknown): value is EncryptedJsonEnvelope {
   return (
     typeof value === "object" &&
@@ -125,6 +127,39 @@ export function decryptPHIText(
   }
 
   return decryptPHI(value.slice(ENCRYPTED_TEXT_PREFIX.length));
+}
+
+export function transformPHIFields<T extends PHIRecord | null | undefined>(
+  record: T,
+  fields: Iterable<string>,
+  transform: (value: any) => any,
+): T {
+  if (!record) {
+    return record;
+  }
+
+  const clone: PHIRecord = { ...record };
+  for (const field of fields) {
+    if (field in clone) {
+      clone[field] = transform(clone[field]);
+    }
+  }
+
+  return clone as T;
+}
+
+export function decryptPHIJsonFields<T extends PHIRecord | null | undefined>(
+  record: T,
+  fields: Iterable<string>,
+): T {
+  return transformPHIFields(record, fields, (value) => decryptPHIJson(value));
+}
+
+export function decryptPHITextFields<T extends PHIRecord | null | undefined>(
+  record: T,
+  fields: Iterable<string>,
+): T {
+  return transformPHIFields(record, fields, (value) => decryptPHIText(value));
 }
 
 /**
