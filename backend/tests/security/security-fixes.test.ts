@@ -195,6 +195,22 @@ describe("Fix 5: Admin access uses requireRole not is_org_admin DB flag", () => 
 });
 
 // ---------------------------------------------------------------------------
+// FIX 7 — Organization invites must be redeemed atomically
+// ---------------------------------------------------------------------------
+describe("Fix 7: organization invites are single-use under concurrent requests", () => {
+  it("organizations.ts atomically consumes invites with used_at IS NULL inside a transaction", () => {
+    const content = readRoute("organizations.ts");
+
+    expect(content).toMatch(/client\.query\("BEGIN"\)/);
+    expect(content).toMatch(/UPDATE organization_invites/);
+    expect(content).toMatch(/used_at IS NULL/);
+    expect(content).toMatch(/expires_at > NOW\(\)/);
+    expect(content).toMatch(/client\.query\("COMMIT"\)/);
+    expect(content).toMatch(/client\.query\("ROLLBACK"\)/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // FIX 6 — Local AI endpoints allowed only on loopback in development
 // ---------------------------------------------------------------------------
 describe("Fix 6: local HTTP AI endpoint support is limited to loopback hosts", () => {
