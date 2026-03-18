@@ -1,4 +1,5 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
 import logger from "../utils/logger";
@@ -6,18 +7,72 @@ import logger from "../utils/logger";
 const userPoolId = process.env.AWS_USER_POOL_ID;
 const clientId = process.env.AWS_CLIENT_ID;
 
+/**
+ * Custom JWKS cache that fetches with a longer timeout and retries.
+ * The default aws-jwt-verify timeout is 1500ms which is too short on some
+ * networks. This wrapper retries up to 3 times with a 5 second timeout.
+ */
+class RobustJwksCache extends SimpleJwksCache {
+  async getJwks(uri: string) {
+    const MAX_RETRIES = 3;
+    const TIMEOUT_MS = 5000;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        const response = await fetch(uri, { signal: controller.signal });
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          throw new Error(`JWKS fetch failed with status ${response.status}`);
+        }
+        const jwks = await response.json() as Parameters<SimpleJwksCache["addJwks"]>[1];
+        this.addJwks(uri, jwks);
+        logger.info({ attempt }, "Auth: JWKS fetched and cached");
+        return jwks;
+      } catch (err: any) {
+        const isLast = attempt === MAX_RETRIES;
+        logger.warn(
+          { attempt, err: err?.message },
+          isLast
+            ? "Auth: JWKS fetch failed — all retries exhausted"
+            : "Auth: JWKS fetch failed — retrying",
+        );
+        if (isLast) throw err;
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+      }
+    }
+    throw new Error("JWKS fetch failed after all retries");
+  }
+}
+
 // Lazy initialization of verifier (only when credentials are available)
 let verifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
 
 function getVerifier() {
   if (!verifier && userPoolId && clientId) {
-    verifier = CognitoJwtVerifier.create({
-      userPoolId,
-      clientId,
-      tokenUse: "access",
-    });
+    verifier = CognitoJwtVerifier.create(
+      { userPoolId, clientId, tokenUse: "access" },
+      { jwksCache: new RobustJwksCache() },
+    );
   }
   return verifier;
+}
+
+// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost
+if (userPoolId && clientId) {
+  const v = getVerifier();
+  if (v) {
+    v.hydrate()
+      .then(() => logger.info("Auth: JWKS cache pre-warmed"))
+      .catch((err: any) =>
+        logger.warn(
+          { err: err?.message },
+          "Auth: JWKS pre-warm failed — will retry on first request",
+        ),
+      );
+  }
 }
 
 /**
@@ -33,11 +88,9 @@ function mapCognitoGroupsToRole(groups: string[] | undefined): string {
   if (!groups || groups.length === 0) {
     return "clinician"; // Default role for users not in any group
   }
-  // Admin group takes precedence
   if (groups.includes("Admin")) {
     return "admin";
   }
-  // Users group maps to clinician
   if (groups.includes("Users")) {
     return "clinician";
   }
@@ -52,7 +105,7 @@ export const authMiddleware = async (
   try {
     const jwtVerifier = getVerifier();
     if (!jwtVerifier) {
-      logger.error('Auth: Cognito not configured');
+      logger.error("Auth: Cognito not configured");
       return res
         .status(503)
         .json({ error: "Authentication service unavailable" });
@@ -80,6 +133,10 @@ export const authMiddleware = async (
     try {
       payload = await jwtVerifier.verify(token);
     } catch (jwtErr: any) {
+      logger.warn(
+        { jwtError: jwtErr?.message, jwtName: jwtErr?.name },
+        "Auth: JWT verification failed",
+      );
       const isExpired = jwtErr?.message?.includes("expired");
       return res.status(401).json({
         error: isExpired ? "Token expired" : "Invalid token",
@@ -87,15 +144,12 @@ export const authMiddleware = async (
     }
 
     // Extract Cognito groups from JWT and map to application role
-    // The `cognito:groups` claim contains an array of group names
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
       | undefined;
     const cognitoRole = mapCognitoGroupsToRole(cognitoGroups);
 
     // Attach ONLY minimal claims to req.auth — never spread the full payload.
-    // Spreading payload would expose username, device_key, scope, client_id,
-    // origin_jti, event_id, etc. to every downstream route handler.
     req.auth = {
       sub: payload.sub,
       iss: payload.iss,
@@ -116,13 +170,12 @@ export const authMiddleware = async (
         } as any;
       }
     } catch (dbErr: any) {
-      logger.error({ err: dbErr.message }, 'Auth: database user lookup failed');
-      // Continue without DB user — routes like /me can handle missing user
+      logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
     }
 
     next();
   } catch (err: any) {
-    logger.error({ err: err.message }, 'Auth: unexpected error');
+    logger.error({ err: err.message }, "Auth: unexpected error");
     return res.status(503).json({
       error: "Authentication service temporarily unavailable",
     });
