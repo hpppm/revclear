@@ -62,7 +62,9 @@ const validateExternalCodesUrl = (url: string): void => {
   }
   // SECURITY: External AI endpoints must use HTTPS to prevent credential and
   // PHI exposure over unencrypted connections.
-  if (parsed.protocol !== "https:") {
+  // Allow http:// for localhost in development only.
+  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+  if (parsed.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && isLocalhost)) {
     throw new Error(`CODES_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
   }
   // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
@@ -141,7 +143,7 @@ class OllamaCodeMatcher implements CodeMatcher {
     }
     // SECURITY: Enforce localhost-only binding before making any request.
     validateOllamaUrl(OLLAMA_BASE_URL);
-    const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
+    const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
     const response = await fetch(url, {
@@ -149,7 +151,7 @@ class OllamaCodeMatcher implements CodeMatcher {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: OLLAMA_CODES_MODEL,
-        prompt: buildPrompt(input),
+        messages: [{ role: "user", content: buildPrompt(input) }],
         stream: false,
         format: "json",
       }),
@@ -167,8 +169,8 @@ class OllamaCodeMatcher implements CodeMatcher {
       throw new Error(`Ollama codes request failed with status ${response.status}`);
     }
 
-    const data = (await response.json()) as { response?: unknown };
-    const normalized = normalizeCodeOutput(data.response);
+    const data = (await response.json()) as { message?: { content?: unknown } };
+    const normalized = normalizeCodeOutput(data.message?.content);
     return SoapToCodesOutputSchema.parse(normalized);
   }
 }
