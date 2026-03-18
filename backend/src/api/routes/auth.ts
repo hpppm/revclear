@@ -34,7 +34,7 @@ const CLEAR_COOKIE_OPTIONS = {
 
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for refresh token
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches Cognito refresh token validity
 };
 
 // Sign-up route

@@ -41,6 +41,9 @@ logs/
 *-secret*
 credentials*.json
 
+# Cognito JWKS local cache (environment-specific, fetched at runtime)
+src/config/jwks.json
+
 # OS files
 .DS_Store
 Thumbs.db
