@@ -8,11 +8,11 @@ import { useAuth } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
 import AuthField from "@/app/components/ui/AuthField";
 import AuthInput from "@/app/components/ui/AuthInput";
-import AuthSelect from "@/app/components/ui/AuthSelect";
 import AuthSection from "@/app/components/ui/AuthSection";
 import AuthCheckbox from "@/app/components/ui/AuthCheckbox";
 import PasswordStrengthBlock from "@/app/components/ui/PasswordStrengthBlock";
-import { practitionerTypes, states } from "@/app/(pages)/signup/constants";
+import { BrandMark } from "@/app/components/ui/BrandMark";
+import Button from "@/app/components/ui/Button";
 
 interface ApiErrorData {
   error?: string;
@@ -44,14 +44,6 @@ function getApiErrorData(error: unknown): ApiErrorData | undefined {
   };
 }
 
-function normalizeNpi(value: string) {
-  return value.replace(/\D/g, "").slice(0, 10);
-}
-
-function isValidNpi(value: string) {
-  return /^\d{10}$/.test(value);
-}
-
 export default function SignupPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -67,12 +59,6 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    phone: "",
-    state: "",
-    practitioner: "",
-    taxonomyCode: "",
-    license: "",
-    npi: "",
     agreeTerms: false,
     agreeBaa: false,
     agreeLicense: false,
@@ -86,32 +72,11 @@ export default function SignupPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
-  const practitionerOptions = [
-    {
-      value: "",
-      label: "Select specialty",
-      className: "text-[#c4c9d1]",
-      disabled: true,
-    },
-    ...practitionerTypes.map((type) => ({ value: type, label: type })),
-  ];
-  const stateOptions = [
-    {
-      value: "",
-      label: "Select state",
-      className: "text-[#c4c9d1]",
-      disabled: true,
-    },
-    ...states.map((state) => ({ value: state, label: state })),
-  ];
-
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     const { name, value } = e.target;
-    const nextValue = name === "npi" ? normalizeNpi(value) : value;
-    setForm((prev) => ({ ...prev, [name]: nextValue }));
-
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -120,22 +85,6 @@ export default function SignupPage() {
 
     if (form.password !== form.confirm) {
       setError("Passwords do not match");
-      return;
-    }
-
-    if (!form.practitioner) {
-      setError("Please select a practitioner type");
-      return;
-    }
-
-    if (!form.state) {
-      setError("Please select a state");
-      return;
-    }
-
-    const normalizedNpi = normalizeNpi(form.npi);
-    if (!isValidNpi(normalizedNpi)) {
-      setError("NPI number must be 10 digits.");
       return;
     }
 
@@ -151,13 +100,7 @@ export default function SignupPage() {
         password: form.password,
         attributes: {
           name: form.name,
-          phone: form.phone,
-          state: form.state,
-          taxonomyCode: form.taxonomyCode,
-          npi: normalizedNpi,
         },
-        practitionerType: form.practitioner,
-        licenseId: form.license,
       });
 
       if (response.data.autoLoggedIn) {
@@ -193,125 +136,51 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#c0f2f3] px-4 py-12 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--brand-100)] px-4 py-12 font-sans">
       <div className="w-full max-w-xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2">
-            <Link href="/landing" className="w-12 h-12 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-10px_rgba(79,70,229,0.45)] hover:bg-[#4338ca] transition-all hover:scale-105 cursor-pointer">
-              <span className="text-white font-bold text-2xl">R</span>
+            <Link href="/landing" className="cursor-pointer transition-transform hover:scale-105">
+              <BrandMark
+                size="lg"
+                className="shadow-[0_10px_20px_-10px_rgba(13,148,136,0.45)]"
+              />
             </Link>
-            <span className="text-3xl font-bold text-[#4f46e5]">RevClear</span>
+            <span className="text-3xl font-bold text-[var(--brand-600)]">RevClear</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-blue-100 p-6 max-w-xl shadow-[0_30px_60px_-25px_rgba(15,23,42,0.55),0_18px_36px_-24px_rgba(15,23,42,0.4)]">
-          <div className="h-1.5 w-full rounded-full bg-linear-r from-[#6366f1] to-[#4f46e5] mb-6" />
+        <div className="bg-white rounded-2xl border border-[var(--brand-100)] p-6 max-w-xl shadow-[0_30px_60px_-25px_rgba(15,23,42,0.55),0_18px_36px_-24px_rgba(15,23,42,0.4)]">
+          <div className="h-1.5 w-full rounded-full bg-linear-r from-[var(--brand-500)] to-[var(--brand-700)] mb-6" />
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-[#4f46e5] mb-2">
+            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">
               Create Your Account
             </h1>
-            <p className="text-[rgba(99,102,241,0.6)]">
+            <p className="text-[rgba(13,148,136,0.68)]">
               Join thousands of clinicians automating their workflow
             </p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <AuthSection>
-              <div className="grid md:grid-cols-2 gap-4">
-                <AuthField label="Full Name" required>
-                  <AuthInput
-                    name="name"
-                    type="text"
-                    onChange={handleChange}
-                    placeholder="Dr. John Carter"
-                    required
-                  />
-                </AuthField>
-
-                <AuthField label="Work Email" required>
-                  <AuthInput
-                    name="email"
-                    type="email"
-                    onChange={handleChange}
-                    placeholder="you@clinic.com"
-                    required
-                  />
-                </AuthField>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <AuthField label="Phone Number" required>
-                  <AuthInput
-                    name="phone"
-                    type="tel"
-                    onChange={handleChange}
-                    placeholder="(555) 123-4567"
-                    required
-                  />
-                </AuthField>
-
-                <AuthField label="State of Licensure" required>
-                  <AuthSelect
-                    name="state"
-                    value={form.state}
-                    onChange={handleChange}
-                    required
-                    options={stateOptions}
-                  />
-                </AuthField>
-              </div>
-            </AuthSection>
-
-            <AuthSection>
-              <div className="grid md:grid-cols-2 gap-4">
-                <AuthField label="Practitioner Type" required>
-                  <AuthSelect
-                    name="practitioner"
-                    value={form.practitioner}
-                    onChange={handleChange}
-                    required
-                    options={practitionerOptions}
-                  />
-                </AuthField>
-
-                <AuthField label="Taxonomy Code" required>
-                  <AuthInput
-                    name="taxonomyCode"
-                    type="text"
-                    onChange={handleChange}
-                    placeholder="101YM0800X"
-                    required
-                  />
-                </AuthField>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <AuthField label="License / Certification ID" required>
-                  <AuthInput
-                    name="license"
-                    type="text"
-                    onChange={handleChange}
-                    placeholder="License Number"
-                    required
-                  />
-                </AuthField>
-
-                <AuthField label="NPI Number" required>
-                  <AuthInput
-                    name="npi"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{10}"
-                    maxLength={10}
-                    onChange={handleChange}
-                    placeholder="10-digit NPI"
-                    required
-                  />
-                  <p className="text-xs text-[#9ca3af]">
-                    Enter a 10-digit National Provider Identifier.
-                  </p>
-                </AuthField>
-              </div>
+              <AuthField label="Full Name" required>
+                <AuthInput
+                  name="name"
+                  type="text"
+                  onChange={handleChange}
+                  placeholder="Dr. John Carter"
+                  required
+                />
+              </AuthField>
+              <AuthField label="Email" required>
+                <AuthInput
+                  name="email"
+                  type="email"
+                  onChange={handleChange}
+                  placeholder="you@clinic.com"
+                  required
+                />
+              </AuthField>
             </AuthSection>
 
             <AuthSection>
@@ -502,59 +371,36 @@ export default function SignupPage() {
             )}
 
             <div className="space-y-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isLoading}
-              className="group w-full bg-[#F6F1FA] text-[#4f46e5] font-semibold py-3.5 rounded-xl border border-[#4f46e5] shadow-[0_12px_20px_-12px_rgba(79,70,229,0.25)] hover:shadow-[0_14px_24px_-12px_rgba(79,70,229,0.35)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#4f46e5] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                variant="secondary"
+                size="lg"
+                loading={isLoading}
+                className="group w-full rounded-xl shadow-[0_12px_20px_-12px_rgba(13,148,136,0.25)] hover:shadow-[0_14px_24px_-12px_rgba(13,148,136,0.35)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="animate-spin h-5 w-5 text-white"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Creating account...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    Create Clinician Account
-                    <svg
-                      className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 7l5 5m0 0l-5 5m5-5H6"
-                      />
-                    </svg>
-                  </span>
-                )}
-              </button>
+                <span className="flex items-center justify-center gap-2">
+                  Create Account
+                  <svg
+                    className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </span>
+              </Button>
 
               <p className="text-center text-gray-500">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                className="font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors"
+                className="font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)] transition-colors"
                 >
                   Sign In
                 </Link>

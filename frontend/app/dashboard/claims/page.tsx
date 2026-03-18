@@ -69,7 +69,6 @@ export default function ClaimsPage() {
             <DashboardHeader
                 title="Claims"
                 subtitle="Track billing claims and their submission status."
-                backLink="/dashboard"
             />
 
             {loading ? (
@@ -91,7 +90,7 @@ export default function ClaimsPage() {
                     <p className="text-xs text-slate-400 mt-1">Claims are generated automatically from completed encounters.</p>
                     <Link
                         href="/dashboard/encounters/create"
-                        className="mt-4 inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 transition"
+                        className="brand-button-primary mt-6 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
                     >
                         Start an encounter
                     </Link>
@@ -135,7 +134,7 @@ export default function ClaimsPage() {
                                         <td className="px-6 py-4">
                                             <Link
                                                 href={`/dashboard/encounters/${claim.encounter_id}`}
-                                                className="font-mono text-xs text-blue-600 hover:underline"
+                                                className="font-mono text-xs text-[var(--brand-600)] hover:text-[var(--brand-700)] hover:underline"
                                             >
                                                 {claim.id.slice(0, 8).toUpperCase()}
                                             </Link>

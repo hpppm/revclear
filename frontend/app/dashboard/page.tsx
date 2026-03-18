@@ -6,6 +6,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization, Patient } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
+import Button from "@/app/components/ui/Button";
 
 type ApiOrganizationPayload = {
     data?: any;
@@ -179,23 +180,6 @@ export default function DashboardHome() {
         }
     };
 
-    const orgInitials = useMemo(() => {
-        if (!organization?.name) return "RC";
-        const parts = organization.name.split(" ").slice(0, 2);
-        return parts.map((p) => p.charAt(0).toUpperCase()).join("");
-    }, [organization]);
-
-    const formattedAddress = useMemo(() => {
-        if (!organization) return null;
-        const line1 = organization.billing_address_line1 || organization.address_line1;
-        const line2 = organization.billing_address_line2 || organization.address_line2;
-        const city = organization.billing_city || organization.city;
-        const state = organization.billing_state || organization.state;
-        const zip = organization.billing_postal_code || organization.postal_code;
-        const segments = [line1, line2, [city, state].filter(Boolean).join(", "), zip].filter(Boolean);
-        return segments.join(" · ");
-    }, [organization]);
-
     const greeting = (() => {
         const hour = new Date().getHours();
         if (hour < 12) return "Good morning";
@@ -330,7 +314,7 @@ export default function DashboardHome() {
 
                         </div>
                     )}
-                </div>
+                    </div>
 
                 {/* Org loading skeleton */}
                 {orgLoading ? (
@@ -341,28 +325,6 @@ export default function DashboardHome() {
                     </div>
                 ) : organization ? (
                     <>
-                        {/* Big org card */}
-                        <div className="rounded-3xl bg-linear-to-br from-slate-900 via-blue-900 to-slate-800 text-white shadow-xl border border-slate-900/40 p-8 mb-6">
-                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-14 w-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-lg font-semibold backdrop-blur">
-                                        {orgInitials}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-blue-100/80">Active organization</p>
-                                        <h2 className="text-2xl font-semibold leading-tight">{organization.billing_name || organization.name}</h2>
-                                        {formattedAddress && <p className="text-blue-100/80 mt-1">{formattedAddress}</p>}
-                                    </div>
-                                </div>
-                                <div className="text-right space-y-1">
-                                    {organization.timezone && <p className="text-blue-100/80 text-sm">Timezone · {organization.timezone}</p>}
-                                    {(organization.billing_phone || organization.phone) && (
-                                        <p className="text-blue-100/80 text-sm">Phone · {organization.billing_phone || organization.phone}</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Stat cards */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                             {/* Patients */}
@@ -421,7 +383,7 @@ export default function DashboardHome() {
                                 <h2 className="text-sm font-semibold text-slate-900">Recent Patients</h2>
                                 <Link
                                     href="/dashboard/patients"
-                                    className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-700 transition"
+                                    className="brand-button-primary rounded-lg px-4 py-2 text-xs font-semibold transition"
                                 >
                                     View All Patients
                                 </Link>
@@ -440,15 +402,15 @@ export default function DashboardHome() {
                                         return (
                                             <li key={p.id}>
                                                 <Link
-                                                    href="/dashboard/patients"
+                                                    href={`/dashboard/patients/${p.id}`}
                                                     className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition group"
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-700 text-xs font-semibold">
+                                                        <div className="brand-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
                                                             {initials}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-medium text-slate-900 group-hover:text-blue-600 transition-colors">{p.name}</p>
+                                                            <p className="text-sm font-medium text-slate-900 group-hover:text-[var(--brand-600)] transition-colors">{p.name}</p>
                                                             <p className="text-xs text-slate-500 mt-0.5">DOB: {dob}</p>
                                                         </div>
                                                     </div>
@@ -492,9 +454,14 @@ export default function DashboardHome() {
                                         placeholder="Clinic name"
                                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
-                                    <button type="submit" disabled={isCreating} className="mt-3 w-full rounded-lg bg-slate-900 text-white text-sm font-semibold py-2.5 hover:bg-slate-800 transition disabled:opacity-50">
-                                        {isCreating ? "Creating..." : "Create organization"}
-                                    </button>
+                                    <Button
+                                        type="submit"
+                                        variant="primary"
+                                        loading={isCreating}
+                                        className="mt-3 w-full rounded-lg"
+                                    >
+                                        Create organization
+                                    </Button>
                                 </form>
                                 <form onSubmit={handleJoin} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <p className="text-sm font-semibold text-slate-900">Join with invite</p>
@@ -505,9 +472,14 @@ export default function DashboardHome() {
                                         placeholder="Invitation code"
                                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
-                                    <button type="submit" disabled={isJoining} className="mt-3 w-full rounded-lg border border-slate-900 text-slate-900 text-sm font-semibold py-2.5 hover:bg-slate-900 hover:text-white transition disabled:opacity-50">
-                                        {isJoining ? "Joining..." : "Join organization"}
-                                    </button>
+                                    <Button
+                                        type="submit"
+                                        variant="secondary"
+                                        loading={isJoining}
+                                        className="mt-3 w-full rounded-lg"
+                                    >
+                                        Join organization
+                                    </Button>
                                 </form>
                             </div>
                         </div>
