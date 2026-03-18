@@ -4,7 +4,7 @@
  * This test verifies that the security fix in getUserOrganization()
  * properly excludes edi_sftp_password and edi_sftp_private_key from responses.
  *
- * Run with: npx ts-node tests/security/sftp-credentials-test.ts
+ * Run with: npx ts-node tests/manual/security/sftp-credentials-test.ts
  */
 
 import { query } from "../../src/config/db";

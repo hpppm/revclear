@@ -14,8 +14,15 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const isDev = process.env.NODE_ENV === "development";
+  const apiOrigin = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005";
   const connectSrc = isDev
-    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"
+    ? [
+        "'self'",
+        apiOrigin,
+        "http://localhost:3000",
+        "ws://localhost:3000",
+        "ws://127.0.0.1:3000",
+      ].join(" ")
     : "'self'";
 
   // Build CSP with nonce

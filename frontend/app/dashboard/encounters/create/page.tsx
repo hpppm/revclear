@@ -90,8 +90,13 @@ export default function EncounterPage() {
   const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
-  const hasLoadedRef = useRef(false);
-  const hasRestoredStepRef = useRef(false);
+  const loadedEncounterIdRef = useRef<string | null>(null);
+
+  const searchEncounterId =
+    searchParams?.get("id") || searchParams?.get("encounterId") || null;
+  const searchStep = searchParams?.get("step") || null;
+  const searchPatientId = searchParams?.get("patientId") || null;
+  const parsedSearchStep = searchStep ? parseInt(searchStep) || 0 : null;
 
   const handleCodesSelected = (codes: MedicalCode[]) => {
     setSelectedCodes(codes);
@@ -120,17 +125,14 @@ export default function EncounterPage() {
 
   // URL state management and refresh recovery
   useEffect(() => {
-    const id = searchParams?.get("id") || searchParams?.get("encounterId");
-    const step = searchParams?.get("step");
-
-    if (id && !hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      setEncounterId(id);
+    if (searchEncounterId && loadedEncounterIdRef.current !== searchEncounterId) {
+      loadedEncounterIdRef.current = searchEncounterId;
+      setEncounterId(searchEncounterId);
       setLoading(true);
 
       // Fetch encounter data to restore state
       apiClient.encounters
-        .getById(id)
+        .getById(searchEncounterId)
         .then(async (res) => {
           const data = res.data?.data || res.data;
           logger.log("Refresh recovery - encounter data:", data);
@@ -159,7 +161,7 @@ export default function EncounterPage() {
               setS3Key(data.audio_key);
               // Fetch presigned URL for audio playback
               try {
-                const audioUrlRes = await apiClient.transcribe.getAudioUrl(id);
+                const audioUrlRes = await apiClient.transcribe.getAudioUrl(searchEncounterId);
                 logger.log("Audio URL response:", audioUrlRes.data);
                 if (audioUrlRes.data?.audioUrl) {
                   setAudioUrl(audioUrlRes.data.audioUrl);
@@ -175,7 +177,7 @@ export default function EncounterPage() {
             if (data.soap_result_id) {
               logger.log("Restoring SOAP with result_id:", data.soap_result_id);
               try {
-                const soapRes = await apiClient.soap.getForEncounter(id);
+                const soapRes = await apiClient.soap.getForEncounter(searchEncounterId);
                 logger.log("SOAP response:", soapRes.data);
 
                 // Extract the actual SOAP object from the response
@@ -197,7 +199,7 @@ export default function EncounterPage() {
             if (data.transcript_result_id) {
               logger.log("Restoring transcript with result_id:", data.transcript_result_id);
               try {
-                const transcriptRes = await apiClient.transcribe.getByEncounterId(id);
+                const transcriptRes = await apiClient.transcribe.getByEncounterId(searchEncounterId);
                 logger.log("Transcript response:", transcriptRes.data);
                 if (transcriptRes.data) {
                   setTranscript(transcriptRes.data);
@@ -212,7 +214,7 @@ export default function EncounterPage() {
 
             // Restore medical codes
             try {
-              const codesRes = await apiClient.codes.getSaved(id);
+              const codesRes = await apiClient.codes.getSaved(searchEncounterId);
               const codesData = codesRes.data?.data || [];
               if (codesData) {
                 logger.log("Restoring medical codes:", codesData);
@@ -237,20 +239,20 @@ export default function EncounterPage() {
       setLoading(false);
     }
 
-    // Restore step from URL — only once on initial load, not on every navigation
-    if (step && !hasRestoredStepRef.current) {
-      hasRestoredStepRef.current = true;
-      setCurrentStep(parseInt(step) || 0);
+    // Restore step from URL
+    if (parsedSearchStep !== null) {
+      setCurrentStep((prev) =>
+        prev === parsedSearchStep ? prev : parsedSearchStep,
+      );
     }
-  }, [searchParams]);
+  }, [searchEncounterId, parsedSearchStep]);
 
   useEffect(() => {
-    const param = searchParams?.get("patientId");
-    if (param) {
-      setMetadata((prev) => ({ ...prev, patientId: param }));
-      loadSubscriber(param);
+    if (searchPatientId && searchPatientId !== metadata.patientId) {
+      setMetadata((prev) => ({ ...prev, patientId: searchPatientId }));
+      loadSubscriber(searchPatientId);
     }
-  }, [searchParams]);
+  }, [searchPatientId, metadata.patientId]);
 
   const loadSubscriber = async (patientId: string) => {
     setSubscriberLoading(true);
@@ -306,12 +308,18 @@ export default function EncounterPage() {
 
   // Helper to update URL with encounter ID and step
   const updateUrl = (id: string, step: number) => {
-    router.push(`/dashboard/encounters/create?id=${id}&step=${step}`, { scroll: false });
+    if (searchEncounterId === id && parsedSearchStep === step) {
+      return;
+    }
+
+    router.replace(`/dashboard/encounters/create?id=${id}&step=${step}`, {
+      scroll: false,
+    });
   };
 
   // Helper to handle step changes
   const handleStepChange = (step: number) => {
-    setCurrentStep(step);
+    setCurrentStep((prev) => (prev === step ? prev : step));
     if (encounterId) {
       updateUrl(encounterId, step);
     }
@@ -453,6 +461,12 @@ export default function EncounterPage() {
     setGeneratingSoap(true);
 
     try {
+      const transcriptText = transcriptDraft.trim();
+      if (transcriptText) {
+        await apiClient.transcribe.saveTranscript(encounterId, transcriptText);
+        setTranscript({ text: transcriptText });
+      }
+
       const res = await apiClient.soap.generateFromTranscript(encounterId);
       const responseData = res.data?.data || res.data;
       const soapData = responseData?.soap || responseData;

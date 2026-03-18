@@ -60,11 +60,15 @@ const validateExternalCodesUrl = (url: string): void => {
   } catch {
     throw new Error(`Invalid CODES_API_URL: "${url}"`);
   }
+  const isLocalHttpEndpoint =
+    parsed.protocol === "http:" &&
+    (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1");
+  const allowLocalHttp = process.env.NODE_ENV !== "production" && isLocalHttpEndpoint;
+
   // SECURITY: External AI endpoints must use HTTPS to prevent credential and
-  // PHI exposure over unencrypted connections.
-  // Allow http:// for localhost in development only.
-  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
-  if (parsed.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && isLocalhost)) {
+  // PHI exposure over unencrypted connections. Local development may use a
+  // loopback HTTP endpoint when the AI server runs on the same machine.
+  if (parsed.protocol !== "https:" && !allowLocalHttp) {
     throw new Error(`CODES_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
   }
   // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
