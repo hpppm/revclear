@@ -149,13 +149,15 @@ export default function TranscriptionStep({
                             </p>
                         </div>
                         {!transcript && (
-                            <Button
-                                onClick={onTranscribe}
-                                loading={transcribing}
-                                disabled={transcribing || uploading || !s3Key}
-                            >
-                                {transcribing ? "Transcribing..." : "Transcribe Audio"}
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={onTranscribe}
+                                    loading={transcribing}
+                                    disabled={transcribing || uploading || !s3Key}
+                                >
+                                    {transcribing ? "Transcribing..." : "Transcribe Audio"}
+                                </Button>
+                            </div>
                         )}
                     </div>
                     {!s3Key && !uploading && !transcript && (
@@ -226,7 +228,7 @@ export default function TranscriptionStep({
 
                     {!transcript && !transcribing && (
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Click &quot;Transcribe Audio&quot; to generate a transcript.
+                            Click "Transcribe Audio" to generate a transcript.
                         </div>
                     )}
                 </div>
