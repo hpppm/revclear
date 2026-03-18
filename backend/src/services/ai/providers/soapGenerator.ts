@@ -59,7 +59,9 @@ const validateExternalSoapUrl = (url: string): void => {
   }
   // SECURITY: External AI endpoints must use HTTPS to prevent credential and
   // PHI exposure over unencrypted connections.
-  if (parsed.protocol !== "https:") {
+  // Allow http:// for localhost in development only.
+  const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+  if (parsed.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && isLocalhost)) {
     throw new Error(`SOAP_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
   }
   // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
@@ -130,7 +132,7 @@ class OllamaSoapGenerator implements SoapGenerator {
     // SECURITY: Enforce localhost-only binding before making any request.
     validateOllamaUrl(OLLAMA_BASE_URL);
 
-    const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
+    const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     const prompt = buildSoapPrompt(input);
     logger.debug({ model: OLLAMA_MODEL, encounterId: input.encounterId }, 'OllamaSoapGenerator: sending request');
 
@@ -139,7 +141,7 @@ class OllamaSoapGenerator implements SoapGenerator {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
-        prompt,
+        messages: [{ role: "user", content: prompt }],
         stream: false,
         format: "json",
       }),
@@ -157,8 +159,8 @@ class OllamaSoapGenerator implements SoapGenerator {
       throw new Error(`Ollama request failed with status ${response.status}`);
     }
 
-    const data = (await response.json()) as { response?: unknown };
-    const output = normalizeSoapOutput(data.response);
+    const data = (await response.json()) as { message?: { content?: unknown } };
+    const output = normalizeSoapOutput(data.message?.content);
     return SoapSchema.parse(output);
   }
 }
