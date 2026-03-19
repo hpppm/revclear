@@ -48,8 +48,11 @@ export function decryptPHI(payload: string): string {
       key,
       Buffer.from(ivStr, "base64"),
     );
-    decipher.setAuthTagLength(16);
-    decipher.setAuthTag(Buffer.from(tagStr, "base64"));
+    const authTag = Buffer.from(tagStr, "base64");
+    if (authTag.length !== 16) {
+      throw new Error("Invalid GCM authentication tag length; expected 16 bytes.");
+    }
+    decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, "base64", "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
