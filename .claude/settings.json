@@ -1,5 +1,43 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "sonnet",
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm test*)",
+      "Bash(npx tsc *)",
+      "Bash(npx jest *)",
+      "Bash(npx ecc-agentshield *)",
+      "Bash(node -e *)",
+      "Bash(node scripts/*)",
+      "Read(*)",
+      "Edit(backend/*)",
+      "Edit(frontend/*)",
+      "Edit(.claude/*)",
+      "Edit(CLAUDE.md)",
+      "Write(backend/*)",
+      "Write(frontend/*)",
+      "Write(.claude/*)",
+      "Write(handoffs/*)",
+      "Glob(*)",
+      "Grep(*)"
+    ],
+    "deny": [
+      "Bash(curl * | bash)",
+      "Bash(wget * | bash)",
+      "Bash(chmod 777 *)",
+      "Bash(rm -rf /*)",
+      "Bash(sudo *)",
+      "Bash(ssh *)",
+      "Bash(* > /dev/*)",
+      "Read(**/.env*)",
+      "Bash(cat */.env*)",
+      "Bash(printenv*)",
+      "Bash(env)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -87,7 +125,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const{execSync}=require('child_process');try{const status=execSync('git -C c:/Users/hppm1/Projects/Dev/revclear diff --name-only',{encoding:'utf8'});if(status.trim()){console.error('[RevClear Hook] Uncommitted changes remain: '+status.trim().split('\\n').join(', '))}}catch(e){}console.error('[RevClear Hook] Session ended - verify no PHI was logged or committed')\""
+          }
+        ]
+      }
     ]
-  },
-  "model": "sonnet"
+  }
 }
