@@ -31,10 +31,14 @@ const poolConfig: PoolConfig = {
   connectionTimeoutMillis: appConfig.db.connectionTimeoutMillis,
 };
 
-// SSL configuration: strict verification in production, relaxed in development
-poolConfig.ssl = process.env.NODE_ENV === 'production'
-  ? { rejectUnauthorized: true, ...(process.env.DB_SSL_CA ? { ca: process.env.DB_SSL_CA } : {}) }
-  : { rejectUnauthorized: false };
+// SSL configuration: required in production with strict verification.
+// In development/test, SSL is skipped entirely (local DB has no cert).
+if (process.env.NODE_ENV === 'production') {
+  poolConfig.ssl = {
+    rejectUnauthorized: true,
+    ...(process.env.DB_SSL_CA ? { ca: process.env.DB_SSL_CA } : {}),
+  };
+}
 
 if (process.env.NODE_ENV === "development") {
   logger.debug({ database: poolConfig.database }, 'DB pool initialized');

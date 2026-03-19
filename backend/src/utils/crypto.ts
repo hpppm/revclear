@@ -48,6 +48,7 @@ export function decryptPHI(payload: string): string {
       key,
       Buffer.from(ivStr, "base64"),
     );
+    decipher.setAuthTagLength(16);
     decipher.setAuthTag(Buffer.from(tagStr, "base64"));
     let decrypted = decipher.update(encrypted, "base64", "utf8");
     decrypted += decipher.final("utf8");
