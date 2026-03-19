@@ -149,13 +149,15 @@ export default function TranscriptionStep({
                             </p>
                         </div>
                         {!transcript && (
-                            <Button
-                                onClick={onTranscribe}
-                                loading={transcribing}
-                                disabled={transcribing || uploading || !s3Key}
-                            >
-                                {transcribing ? "Transcribing..." : "Transcribe Audio"}
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={onTranscribe}
+                                    loading={transcribing}
+                                    disabled={transcribing || uploading || !s3Key}
+                                >
+                                    {transcribing ? "Transcribing..." : "Transcribe Audio"}
+                                </Button>
+                            </div>
                         )}
                     </div>
                     {!s3Key && !uploading && !transcript && (
@@ -184,21 +186,24 @@ export default function TranscriptionStep({
                         <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
                             <p className="text-xs font-medium text-slate-700">Transcript (editable)</p>
             <div className="flex flex-wrap gap-2 mb-2">
-                <button
+                <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => onTranscriptDraftChange(demoTranscript)}
-                    className="inline-flex items-center gap-2 rounded-md border border-dashed border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                    className="border-dashed"
                 >
                     Demo transcript
-                </button>
+                </Button>
                 {transcriptText && (
-                    <button
+                    <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => onTranscriptDraftChange(transcriptText)}
-                        className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400"
                     >
                         Use original transcription
-                    </button>
+                    </Button>
                 )}
                 <span className="text-xs text-slate-500">
                     Using: {transcriptDraft.trim() === demoTranscript.trim() ? "Demo transcript" : "Original / edited transcript"}
@@ -226,7 +231,7 @@ export default function TranscriptionStep({
 
                     {!transcript && !transcribing && (
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Click &quot;Transcribe Audio&quot; to generate a transcript.
+                            Click "Transcribe Audio" to generate a transcript.
                         </div>
                     )}
                 </div>

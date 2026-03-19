@@ -85,12 +85,10 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   }
 
   try {
-    logger.debug({ encounterId }, 'soap/mock: forcing mock transcript');
+    logger.debug({ encounterId }, "soap/mock: forcing mock transcript");
 
-    // Force empty transcript to trigger mock
     const soapResult = await speechToSoap({
       encounter_id: encounterId,
-      transcript: "", // Empty string forces mock usage
     });
 
     // SECURITY: Do not log SOAP results - they contain PHI (clinical diagnoses, treatment plans)

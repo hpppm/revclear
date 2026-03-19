@@ -14,7 +14,7 @@ export default function AuthSection({
   return (
     <section className={`space-y-4 ${className}`}>
       {title ? (
-        <h2 className="text-sm font-semibold tracking-wide text-[#4f46e5] uppercase">
+        <h2 className="text-sm font-semibold tracking-wide text-[var(--brand-600)] uppercase">
           {title}
         </h2>
       ) : null}

@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
+import DashboardHeader from "@/app/components/ui/DashboardHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 
 export default function ProfilePage() {
-    const { user, logout, checkAuth } = useAuth();
-    const router = useRouter();
+    const { user, checkAuth } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -24,8 +22,6 @@ export default function ProfilePage() {
         npi: (user as any)?.npi || "",
         taxonomy_code: (user as any)?.taxonomy_code || "",
     });
-    const [showAdvanced, setShowAdvanced] = useState(false);
-
     useEffect(() => {
         if (user) {
             setFormData({
@@ -38,11 +34,6 @@ export default function ProfilePage() {
             });
         }
     }, [user]);
-
-    const handleLogout = () => {
-        logout();
-        router.push("/login");
-    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -85,10 +76,10 @@ export default function ProfilePage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+            <div className="max-w-6xl mx-auto px-6 py-8">
                 <Card>
                     <div className="text-center p-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--brand-600)] mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading profile...</p>
                     </div>
                 </Card>
@@ -105,51 +96,38 @@ export default function ProfilePage() {
         : "N/A";
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="mb-6">
-                    <Link
-                        href="/dashboard"
-                        className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium mb-4"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to Dashboard
-                    </Link>
-                    <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
-                    <p className="text-slate-600 mt-2">
-                        Manage your personal account information
-                    </p>
-                </div>
+        <div className="max-w-6xl mx-auto px-6 py-8">
+            <DashboardHeader
+                title="My Profile"
+                subtitle="Manage your personal account information."
+                actions={
+                    !isEditing ? (
+                        <Button variant="primary" size="sm" onClick={() => setIsEditing(true)}>
+                            Edit Profile
+                        </Button>
+                    ) : undefined
+                }
+            />
 
-                <Card>
-                    {/* Header Section */}
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 -m-6 mb-6 rounded-t-lg">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-blue-600 text-3xl font-bold">
-                                    {user.full_name?.charAt(0).toUpperCase() || "U"}
-                                </div>
-                                <div className="ml-6 text-white">
-                                    <h2 className="text-2xl font-bold">{user.full_name}</h2>
-                                    <p className="text-blue-100 capitalize">{user.role || "User"}</p>
-                                    <p className="text-blue-200 text-sm mt-1">
-                                        {(user as any)?.organization?.name ? `Organization: ${(user as any).organization.name}` : "No Primary Organization"}
-                                    </p>
-                                </div>
-                            </div>
-                            {!isEditing && (
-                                <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
-                                    Edit Profile
-                                </Button>
-                            )}
+            <Card>
+                <div className="mb-8 flex flex-col gap-4 border-b border-slate-100 pb-6 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="brand-accent-icon flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold">
+                            {user.full_name?.charAt(0).toUpperCase() || "U"}
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-semibold text-slate-900">{user.full_name}</h2>
+                            <p className="mt-1 text-sm capitalize text-slate-500">{user.role || "User"}</p>
+                            <p className="mt-1 text-sm text-slate-500">
+                                {(user as any)?.organization?.name ? `Organization: ${(user as any).organization.name}` : "No Primary Organization"}
+                            </p>
                         </div>
                     </div>
+                    <p className="text-sm text-slate-500">Member since {createdDate}</p>
+                </div>
 
-                    {isEditing ? (
-                        <div className="space-y-6">
+                {isEditing ? (
+                    <div className="space-y-6">
                             {/* Account Info */}
                             <div className="space-y-4">
                                 <h4 className="text-md font-semibold text-slate-900 border-b pb-2">Account Information</h4>
@@ -220,9 +198,9 @@ export default function ProfilePage() {
                                 </Button>
                             </div>
                             {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-                        </div>
-                    ) : (
-                        <div className="space-y-8">
+                    </div>
+                ) : (
+                    <div className="space-y-8">
                             {/* Account Info Read-Only */}
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Account Information</h3>
@@ -264,19 +242,9 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-
-                    {/* Actions Section */}
-                    {!isEditing && (
-                        <div className="flex gap-3 pt-6 mt-6 border-t border-slate-200">
-                            <Button variant="danger" onClick={handleLogout}>
-                                Logout
-                            </Button>
-                        </div>
-                    )}
-                </Card>
-            </div>
+                    </div>
+                )}
+            </Card>
         </div>
     );
 }
