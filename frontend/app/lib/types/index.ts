@@ -1,3 +1,5 @@
+import type { AppRole } from "../auth/roles";
+
 export interface User {
   id: string;
   email: string;
@@ -6,7 +8,7 @@ export interface User {
   licenseId?: string;
   created_at?: string;
   full_name?: string;
-  role?: string;
+  role?: AppRole;
   phone?: string;
   cognito_id?: string;
   // Provider billing fields

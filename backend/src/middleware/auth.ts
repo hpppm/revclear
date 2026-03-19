@@ -2,6 +2,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
+import { APP_ROLES } from "../constants/roles";
 import logger from "../utils/logger";
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
@@ -77,8 +78,10 @@ if (userPoolId && clientId) {
 
 /**
  * Map Cognito group names to application roles.
- * Cognito groups: "Admin", "Users"
- * Application roles: "admin", "clinician", "billing_staff"
+ * Supported Cognito groups include:
+ * "Admin", "Clinician", "Users", "Nurse", "BillingStaff", "Receptionist"
+ * Application roles:
+ * "admin", "clinician", "nurse", "billing_staff", "receptionist"
  *
  * IMPORTANT: Cognito group membership is the source of truth for roles.
  * The `cognito:groups` claim is automatically included in access tokens
@@ -88,13 +91,27 @@ function mapCognitoGroupsToRole(groups: string[] | undefined): string {
   if (!groups || groups.length === 0) {
     return "clinician"; // Default role for users not in any group
   }
-  if (groups.includes("Admin")) {
-    return "admin";
+
+  const normalizedGroups = groups.map((group) =>
+    group.trim().toLowerCase().replace(/[\s-]+/g, "_"),
+  );
+  const groupToRole: Record<string, (typeof APP_ROLES)[number]> = {
+    admin: "admin",
+    clinician: "clinician",
+    users: "clinician",
+    nurse: "nurse",
+    billingstaff: "billing_staff",
+    billing_staff: "billing_staff",
+    receptionist: "receptionist",
+  };
+
+  for (const group of normalizedGroups) {
+    const mappedRole = groupToRole[group];
+    if (mappedRole) {
+      return mappedRole;
+    }
   }
-  if (groups.includes("Users")) {
-    return "clinician";
-  }
-  return "clinician"; // Default fallback
+  return "clinician";
 }
 
 export const authMiddleware = async (

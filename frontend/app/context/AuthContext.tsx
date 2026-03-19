@@ -10,6 +10,8 @@ import React, {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
+import type { AppRole } from "@/app/lib/auth/roles";
+import { isOrganizationManager } from "@/app/lib/auth/roles";
 import { User } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
@@ -218,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: fetchedUser.email as string,
       name: (fetchedUser.full_name ?? fetchedUser.name ?? "") as string,
       full_name: fetchedUser.full_name as string | undefined,
-      role: fetchedUser.role as string | undefined,
+      role: fetchedUser.role as AppRole | undefined,
       phone: fetchedUser.phone as string | undefined,
       cognito_id: fetchedUser.cognito_id as string | undefined,
       practitionerType: fetchedUser.practitionerType as string | undefined,
@@ -304,8 +306,10 @@ export function useAuthorization() {
   return {
     isAdmin: user?.role === "admin",
     isClinician: user?.role === "clinician",
+    isNurse: user?.role === "nurse",
     isBillingStaff: user?.role === "billing_staff",
-    canManageOrganization: user?.role === "admin",
-    canManageUsers: user?.role === "admin",
+    isReceptionist: user?.role === "receptionist",
+    canManageOrganization: isOrganizationManager(user?.role),
+    canManageUsers: isOrganizationManager(user?.role),
   };
 }

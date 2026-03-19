@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { registry } from "../config/swagger";
+import { APP_ROLES, ORGANIZATION_MEMBER_ROLES } from "../constants/roles";
 
 extendZodWithOpenApi(z);
 
@@ -8,7 +9,7 @@ extendZodWithOpenApi(z);
 export const UserSchema = z.object({
   email: z.string().email("Invalid email address").openapi({ example: "doctor@example.com" }),
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Dr. John Doe" }),
-  role: z.string().optional().openapi({ example: "clinician" }),
+  role: z.enum(APP_ROLES).optional().openapi({ example: "clinician" }),
   phone: z.string().optional().openapi({ example: "555-123-4567" }),
   // Personal provider credentials (NOT clinic information)
   npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional().openapi({ example: "1234567890" }),
@@ -66,6 +67,10 @@ registry.register("Organization", OrganizationSchema);
 
 export const JoinOrganizationSchema = z.object({
   invitationCode: z.string().min(1, "Invitation code is required"),
+});
+
+export const CreateOrganizationInviteSchema = z.object({
+  role: z.enum(ORGANIZATION_MEMBER_ROLES).openapi({ example: "nurse" }),
 });
 
 // Patient Schemas (align with schema: full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number)
