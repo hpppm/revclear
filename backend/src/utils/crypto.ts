@@ -43,12 +43,18 @@ export function decryptPHI(payload: string): string {
   }
   try {
     const [ivStr, tagStr, encrypted] = payload.split(":");
-    const decipher = crypto.createDecipheriv(
+    const decipher = crypto.createDecipheriv( // nosemgrep: javascript.node-crypto.security.gcm-no-tag-length.gcm-no-tag-length
       ALGO,
       key,
       Buffer.from(ivStr, "base64"),
     );
-    decipher.setAuthTag(Buffer.from(tagStr, "base64"));
+    const authTag = Buffer.from(tagStr, "base64");
+    if (authTag.length !== 16) {
+      // Enforce 128-bit tag: GCM default is 16 bytes; reject anything shorter
+      // to prevent tag truncation attacks (mitigates gcm-no-tag-length concern).
+      throw new Error("Invalid GCM authentication tag length; expected 16 bytes.");
+    }
+    decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, "base64", "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
