@@ -1,13 +1,18 @@
 import { Router, Response } from "express";
 import { z } from "zod";
 import { authMiddleware, requireRole } from "../../middleware/auth";
+import { ORGANIZATION_MANAGER_ROLES } from "../../constants/roles";
 import { getClient, query } from "../../config/db";
 import {
   assignUserToOrganization,
   getUserOrganization,
 } from "../../utils/organization";
 import { getAuthenticatedUser } from "../../utils/auth";
-import { JoinOrganizationSchema, OrganizationSchema } from "../../types/zod";
+import {
+  CreateOrganizationInviteSchema,
+  JoinOrganizationSchema,
+  OrganizationSchema,
+} from "../../types/zod";
 import { generateInviteToken, hashInviteToken } from "../../utils/crypto";
 import logger from "../../utils/logger";
 
@@ -79,7 +84,7 @@ router.get("/me", authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/organizations - create a new organization and add the user as admin
+// POST /api/organizations - create a new organization and add the user as a manager
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
@@ -134,7 +139,7 @@ router.post("/", authMiddleware, async (req, res) => {
     );
     const organization = insertOrg.rows[0];
 
-    // Assign user to organization as admin (enforces one org per user via users.organization_id)
+    // Assign the creator as an organization manager.
     await assignUserToOrganization(user.id, organization.id, true);
 
     res.status(201).json({
@@ -167,7 +172,7 @@ router.post("/join", authMiddleware, async (req, res) => {
 
     // Look up the invite token (hashed for security)
     const inviteResult = await query(
-      `SELECT organization_id, expires_at, used_at 
+      `SELECT organization_id, role, expires_at, used_at
        FROM organization_invites 
        WHERE token_hash = $1`,
       [tokenHash],
@@ -232,7 +237,7 @@ router.post("/join", authMiddleware, async (req, res) => {
          WHERE token_hash = $2
            AND used_at IS NULL
            AND expires_at > NOW()
-         RETURNING organization_id`,
+         RETURNING organization_id, role`,
         [user.id, tokenHash],
       );
 
@@ -244,11 +249,14 @@ router.post("/join", authMiddleware, async (req, res) => {
         });
       }
 
+      const invitedRole = consumeResult.rows[0].role;
+      const isOrgAdmin = invitedRole === "clinician";
+
       await client.query(
         `UPDATE users
-         SET organization_id = $1, is_org_admin = $2
-         WHERE id = $3`,
-        [organization.id, false, user.id],
+         SET organization_id = $1, role = $2, is_org_admin = $3
+         WHERE id = $4`,
+        [organization.id, invitedRole, isOrgAdmin, user.id],
       );
 
       await client.query("COMMIT");
@@ -278,11 +286,17 @@ router.post("/join", authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/organizations/invite - generate a new invitation token (admin only)
-router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) => {
+// POST /api/organizations/invite - generate a new invitation token (manager only)
+router.post("/invite", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+
+    const parsed = CreateOrganizationInviteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return sendValidationError(res, parsed.error);
+    }
+    const { role } = parsed.data;
 
     const organization = await getUserOrganization(user.id);
     if (!organization) {
@@ -302,13 +316,14 @@ router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) 
 
     // Store hashed token (never store raw token)
     await query(
-      `INSERT INTO organization_invites (organization_id, token_hash, created_by, expires_at)
-       VALUES ($1, $2, $3, $4)`,
-      [organization.id, tokenHash, user.id, expiresAt],
+      `INSERT INTO organization_invites (organization_id, token_hash, role, created_by, expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [organization.id, tokenHash, role, user.id, expiresAt],
     );
 
     res.status(201).json({
       success: true,
+      role,
       invitationCode: rawToken, // Return raw token to user (only time it's visible)
       expiresAt: expiresAt.toISOString(),
       message: `Invitation code valid for ${INVITE_TOKEN_EXPIRY_DAYS} days. Share this code securely.`,
@@ -319,8 +334,8 @@ router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) 
   }
 });
 
-// PATCH /api/organizations/me - update current organization fields (billing/config)
-router.patch("/me", authMiddleware, async (req, res) => {
+// PATCH /api/organizations/me - update current organization fields (manager only)
+router.patch("/me", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;

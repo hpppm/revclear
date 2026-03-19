@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { APP_ROLES } from '../auth/roles';
 
 // SECURITY: Response validation schemas to detect unexpected data from backend
 // These schemas enforce defense-in-depth by validating API responses
@@ -63,7 +64,7 @@ export const UserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   full_name: z.string(),
-  role: z.enum(["admin", "clinician", "billing_staff"]),
+  role: z.enum(APP_ROLES),
   organization_id: z.string().uuid().optional().nullable(),
 }).strip();
 

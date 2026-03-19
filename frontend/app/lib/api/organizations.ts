@@ -1,5 +1,6 @@
 import { z } from "zod";
 import api from "./axios";
+import { ORGANIZATION_MEMBER_ROLES } from "../auth/roles";
 import { OrganizationResponseSchema } from "../validation/schemas";
 
 // SECURITY: All org responses are validated against OrganizationResponseSchema
@@ -20,6 +21,9 @@ const OrgCreateSchema = z.object({
 });
 
 const OrgUpdateSchema = OrgCreateSchema.partial();
+const OrgInviteSchema = z.object({
+  role: z.enum(ORGANIZATION_MEMBER_ROLES),
+});
 
 // SECURITY: Invite code must be a non-empty alphanumeric token.
 // Validates format before dispatching to prevent malformed values from
@@ -66,6 +70,9 @@ export const organizationsApi = {
     const safeCode = InviteCodeSchema.parse(invitationCode);
     return api.post("/organizations/join", { invitationCode: safeCode });
   },
+
+  createInvite: (payload: z.infer<typeof OrgInviteSchema>) =>
+    api.post("/organizations/invite", OrgInviteSchema.parse(payload)),
 
   updateCurrent: (payload: z.infer<typeof OrgUpdateSchema>) =>
     api.patch("/organizations/me", OrgUpdateSchema.parse(payload)),

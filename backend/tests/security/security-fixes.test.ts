@@ -158,17 +158,17 @@ describe("Fix 4: ensureEncounterOwnership uses AND not OR (soap.ts + transcribe.
 // FIX 5 — DB Flag Privilege Escalation → requireRole(['admin'])
 // ---------------------------------------------------------------------------
 describe("Fix 5: Admin access uses requireRole not is_org_admin DB flag", () => {
-  it("users.ts: GET / uses requireRole(['admin']) middleware", () => {
+  it("users.ts: GET / uses organization manager middleware", () => {
     const content = readRoute("users.ts");
     expect(content).toMatch(
-      /router\.get\(["']\/["'],\s*authMiddleware,\s*requireRole\(\["admin"\]\)/
+      /router\.get\(["']\/["'],\s*authMiddleware,\s*requireRole\(ORGANIZATION_MANAGER_ROLES\)/
     );
   });
 
-  it("users.ts: GET /:cognitoId uses requireRole(['admin']) middleware", () => {
+  it("users.ts: GET \/:cognitoId uses organization manager middleware", () => {
     const content = readRoute("users.ts");
     expect(content).toMatch(
-      /router\.get\(["']\/:cognitoId["'],\s*authMiddleware,\s*requireRole\(\["admin"\]\)/
+      /router\.get\(["']\/:cognitoId["'],\s*authMiddleware,\s*requireRole\(ORGANIZATION_MANAGER_ROLES\)/
     );
   });
 
@@ -178,10 +178,10 @@ describe("Fix 5: Admin access uses requireRole not is_org_admin DB flag", () => 
     expect(content).not.toMatch(/is_org_admin.*=== true/);
   });
 
-  it("organizations.ts: POST /invite uses requireRole(['admin']) middleware", () => {
+  it("organizations.ts: POST /invite uses organization manager middleware", () => {
     const content = readRoute("organizations.ts");
     expect(content).toMatch(
-      /router\.post\(["']\/invite["'],\s*authMiddleware,\s*requireRole\(\["admin"\]\)/
+      /router\.post\(["']\/invite["'],\s*authMiddleware,\s*requireRole\(ORGANIZATION_MANAGER_ROLES\)/
     );
   });
 
@@ -207,6 +207,15 @@ describe("Fix 7: organization invites are single-use under concurrent requests",
     expect(content).toMatch(/expires_at > NOW\(\)/);
     expect(content).toMatch(/client\.query\("COMMIT"\)/);
     expect(content).toMatch(/client\.query\("ROLLBACK"\)/);
+  });
+
+  it("organizations.ts stores and applies invite role during create and redeem", () => {
+    const content = readRoute("organizations.ts");
+
+    expect(content).toMatch(/CreateOrganizationInviteSchema/);
+    expect(content).toMatch(/INSERT INTO organization_invites \(organization_id, token_hash, role, created_by, expires_at\)/);
+    expect(content).toMatch(/RETURNING organization_id, role/);
+    expect(content).toMatch(/SET organization_id = \$1, role = \$2, is_org_admin = \$3/);
   });
 });
 

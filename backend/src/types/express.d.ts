@@ -31,7 +31,7 @@ declare global {
       id: string;
       email: string;
       full_name: string;
-      role?: string; // Derived from Cognito groups: 'admin' | 'clinician' | 'billing_staff'
+      role?: string; // Derived from Cognito groups: 'admin' | 'clinician' | 'nurse' | 'billing_staff' | 'receptionist'
       cognito_id: string;
       organization_id?: string;
       is_org_admin?: boolean;
