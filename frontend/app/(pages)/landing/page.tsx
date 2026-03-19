@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { BrandMark } from "@/app/components/ui/BrandMark";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -52,7 +53,7 @@ const steps = [
 ];
 
 const specialties = ["Mental Health", "Speech Therapy", "Physical Therapy"];
-const featureAccents = ["teal", "blue", "orange", "pink"];
+const featureAccents = ["teal", "teal", "orange", "pink"];
 
 export default function LandingPage() {
   return (
@@ -65,21 +66,19 @@ export default function LandingPage() {
         <header className="sticky top-0 z-30 border-b border-white/20 bg-white/70 backdrop-blur">
           <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-xl">R</span>
-              </div>
+              <BrandMark size="md" />
               <span className={`${display.className} text-2xl font-semibold`}>RevClear</span>
             </div>
             <div className="flex items-center gap-4">
               <Link
                 href="/login"
-                className="px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-all duration-200"
+                className="brand-button-secondary rounded-lg px-5 py-2.5 font-semibold shadow-sm transition-all duration-200"
               >
                 Sign In
               </Link>
               <Link
                 href="/signup"
-                className="px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-all duration-200"
+                className="brand-button-primary rounded-lg px-5 py-2.5 font-semibold shadow-sm transition-all duration-200"
               >
                 Get Started
               </Link>
@@ -104,7 +103,7 @@ export default function LandingPage() {
                     </span>
                   ))}
                 </span>
-                <span className="block text-blue-600">
+                <span className="block text-teal-600">
                   {["Clinical", "Workflow"].map((word, index) => (
                     <span
                       key={word}
@@ -151,7 +150,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
+                    <div className="h-10 w-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-semibold">
                       2
                     </div>
                     <div>
@@ -190,7 +189,7 @@ export default function LandingPage() {
                   className={`p-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all border-t-4 ${featureAccents[index % featureAccents.length] === "teal"
                     ? "border-t-teal-300 hover:border-teal-200"
                     : featureAccents[index % featureAccents.length] === "blue"
-                      ? "border-t-blue-300 hover:border-blue-200"
+                      ? "border-t-teal-300 hover:border-teal-200"
                       : featureAccents[index % featureAccents.length] === "orange"
                         ? "border-t-orange-300 hover:border-orange-200"
                         : "border-t-pink-200 hover:border-pink-200"
@@ -237,15 +236,13 @@ export default function LandingPage() {
       <footer className="bg-white border-t border-slate-200 py-12">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
-              <span className="text-white font-bold text-lg">R</span>
-            </div>
+            <BrandMark size="sm" />
             <span className={`${display.className} text-xl font-semibold`}>RevClear</span>
           </div>
           <p className="text-slate-500 text-sm">© 2026 RevClear. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="text-slate-500 hover:text-blue-600 text-sm transition-colors">Privacy Policy</a>
-            <a href="#" className="text-slate-500 hover:text-blue-600 text-sm transition-colors">Terms of Service</a>
+            <a href="#" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Privacy Policy</a>
+            <a href="#" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Terms of Service</a>
           </div>
         </div>
       </footer>

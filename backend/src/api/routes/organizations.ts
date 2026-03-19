@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import { z } from "zod";
 import { authMiddleware, requireRole } from "../../middleware/auth";
-import { query } from "../../config/db";
+import { getClient, query } from "../../config/db";
 import {
   assignUserToOrganization,
   getUserOrganization,
@@ -220,13 +220,44 @@ router.post("/join", authMiddleware, async (req, res) => {
       });
     }
 
-    // Mark invite as used
-    await query(
-      "UPDATE organization_invites SET used_at = NOW(), used_by = $1 WHERE token_hash = $2",
-      [user.id, tokenHash],
-    );
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
 
-    await assignUserToOrganization(user.id, organization.id, false);
+      // Consume the invite atomically so concurrent requests cannot redeem the
+      // same code more than once.
+      const consumeResult = await client.query(
+        `UPDATE organization_invites
+         SET used_at = NOW(), used_by = $1
+         WHERE token_hash = $2
+           AND used_at IS NULL
+           AND expires_at > NOW()
+         RETURNING organization_id`,
+        [user.id, tokenHash],
+      );
+
+      if (consumeResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          success: false,
+          message: "This invitation code has already been used or expired",
+        });
+      }
+
+      await client.query(
+        `UPDATE users
+         SET organization_id = $1, is_org_admin = $2
+         WHERE id = $3`,
+        [organization.id, false, user.id],
+      );
+
+      await client.query("COMMIT");
+    } catch (txError) {
+      await client.query("ROLLBACK");
+      throw txError;
+    } finally {
+      client.release();
+    }
 
     res.json({
       success: true,

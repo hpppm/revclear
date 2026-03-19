@@ -79,6 +79,19 @@ const ensureEncounterOwnership = async (
   return result.rows.length > 0;
 };
 
+const getLatestEncounterAudioKey = async (encounterId: string) => {
+  const result = await query(
+    `SELECT file_url
+     FROM audio_records
+     WHERE encounter_id = $1
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [encounterId],
+  );
+
+  return result.rows[0]?.file_url as string | undefined;
+};
+
 const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -136,16 +149,6 @@ router.post(
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
         logger.info({ encounterId, s3Key }, "transcribe: audio uploaded to S3");
 
-        // Update encounter with audio_key
-        await query(`UPDATE encounters SET audio_key = $1 WHERE id = $2`, [
-          s3Key,
-          encounterId,
-        ]);
-        logger.debug(
-          { encounterId },
-          "transcribe: encounter updated with audio_key",
-        );
-
         // Create a record in audio_records table
         await createAudioRecord({
           encounter_id: encounterId,
@@ -179,13 +182,10 @@ router.post(
         s3Key = parsed.data.s3Key;
 
         // SECURITY: Verify the provided s3Key matches the audio_key stored on
-        // the encounter. This prevents an authenticated user from supplying an
-        // arbitrary S3 path belonging to another user's encounter.
-        const encounterKeyResult = await query(
-          `SELECT audio_key FROM encounters WHERE id = $1`,
-          [encounterId],
-        );
-        const storedAudioKey = encounterKeyResult.rows[0]?.audio_key;
+        // latest uploaded audio record for the encounter. This prevents an
+        // authenticated user from supplying an arbitrary S3 path belonging to
+        // another user's encounter.
+        const storedAudioKey = await getLatestEncounterAudioKey(encounterId);
         if (!storedAudioKey || storedAudioKey !== s3Key) {
           return sendError(res, 403, "S3 key does not match encounter audio");
         }
@@ -329,17 +329,11 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
       return sendError(res, 404, "Encounter not found");
     }
 
-    // Get the encounter to find the audio_key
-    const result = await query(
-      `SELECT audio_key FROM encounters WHERE id = $1`,
-      [encounterId],
-    );
+    const audioKey = await getLatestEncounterAudioKey(encounterId);
 
-    if (result.rows.length === 0 || !result.rows[0].audio_key) {
+    if (!audioKey) {
       return sendError(res, 404, "Audio file not found for this encounter.");
     }
-
-    const audioKey = result.rows[0].audio_key;
 
     // Generate presigned URL
     const { getDownloadUrl } = await import("../../config/awsS3");
@@ -452,4 +446,3 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
 });
 
 export default router;
-

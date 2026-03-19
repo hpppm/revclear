@@ -52,9 +52,9 @@ const makeRes = () => {
 describe("Fix 1: S3 key path traversal prevention (transcribe.ts)", () => {
   const content = readRoute("transcribe.ts");
 
-  it("validates s3Key against encounter's stored audio_key before fetching from S3", () => {
-    // Must query DB to get storedAudioKey
-    expect(content).toMatch(/SELECT audio_key FROM encounters WHERE id/);
+  it("validates s3Key against the encounter's latest audio record before fetching from S3", () => {
+    expect(content).toMatch(/SELECT file_url/);
+    expect(content).toMatch(/FROM audio_records/);
   });
 
   it("returns 403 when provided s3Key does not match stored audio_key", () => {
@@ -147,6 +147,11 @@ describe("Fix 4: ensureEncounterOwnership uses AND not OR (soap.ts + transcribe.
     // codes.ts scopes by clinician_id only (no org fallback) — valid pattern
     expect(content).not.toMatch(/clinician_id = \$2 OR/);
   });
+
+  it("soap.ts mock route does not send an empty transcript into speechToSoap", () => {
+    const content = readRoute("soap.ts");
+    expect(content).not.toMatch(/transcript:\s*""/);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -186,6 +191,34 @@ describe("Fix 5: Admin access uses requireRole not is_org_admin DB flag", () => 
     expect(content).not.toMatch(
       /const isAdmin =.*is_org_admin.*user\.role/
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FIX 7 — Organization invites must be redeemed atomically
+// ---------------------------------------------------------------------------
+describe("Fix 7: organization invites are single-use under concurrent requests", () => {
+  it("organizations.ts atomically consumes invites with used_at IS NULL inside a transaction", () => {
+    const content = readRoute("organizations.ts");
+
+    expect(content).toMatch(/client\.query\("BEGIN"\)/);
+    expect(content).toMatch(/UPDATE organization_invites/);
+    expect(content).toMatch(/used_at IS NULL/);
+    expect(content).toMatch(/expires_at > NOW\(\)/);
+    expect(content).toMatch(/client\.query\("COMMIT"\)/);
+    expect(content).toMatch(/client\.query\("ROLLBACK"\)/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FIX 6 — Local AI endpoints allowed only on loopback in development
+// ---------------------------------------------------------------------------
+describe("Fix 6: local HTTP AI endpoint support is limited to loopback hosts", () => {
+  it("codeMatcher.ts allows localhost HTTP only in non-production", () => {
+    const content = readSrc("services/ai/providers/codeMatcher.ts");
+    expect(content).toMatch(/parsed\.hostname === "localhost"/);
+    expect(content).toMatch(/parsed\.hostname === "127\.0\.0\.1"/);
+    expect(content).toMatch(/process\.env\.NODE_ENV !== "production"/);
   });
 });
 

@@ -13,7 +13,7 @@ interface AuthSelectProps
 }
 
 const baseClasses =
-  "w-full bg-[#f9fafb] border border-[#e5e7eb] text-[#4f46e5] rounded-lg px-4 py-3 outline-none transition focus:border-[#4f46e5] focus:ring-2 focus:ring-[rgba(79,70,229,0.2)] appearance-none";
+  "brand-input w-full rounded-lg px-4 py-3 outline-none transition appearance-none";
 
 export default function AuthSelect({
   options,
