@@ -114,6 +114,7 @@ backup-root-files/
 # Personal notes
 NOTES.md
 TODO-personal.md
+SKILL.md
 
 # Terraform
 **/.terraform/*
