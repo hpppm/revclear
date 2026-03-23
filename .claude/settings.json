@@ -3,11 +3,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"backend/.*\\\\.(ts|js)$\"",
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \".*[/\\\\]backend[/\\\\].*\\\\.(ts|js)$\"",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const ns=i.tool_input?.new_string||'';const creds=/\\\\b(password|secret_key|api_key|auth_token|private_key)\\\\b/i.test(ns)&&!/process\\.env/.test(ns)&&!/(test|mock|example)/i.test(ns);const phi=/(patient|medical|phi|ssn|dob)/i.test(ns)&&/console\\\\.(log|debug)/.test(ns);if(phi){console.error('[RC] BLOCKED: PHI in console log (HIPAA)');process.exit(1)}if(creds)console.error('[RC] WARN: Hardcoded creds? Use process.env');console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const ns=i.tool_input?.new_string||'';const creds=/\\\\b(password|secret_key|api_key|auth_token|private_key|api_secret)\\\\b/i.test(ns)&&!/process\\.env/.test(ns)&&!/(test|mock|example)/i.test(ns);const phi=/(patient|medical|phi|ssn|dob)/i.test(ns)&&/console\\\\.(log|debug)/.test(ns);if(phi){console.error('[RC] BLOCKED: PHI in console log (HIPAA)');process.exit(1)}if(creds)console.error('[RC] WARN: Hardcoded creds? Use process.env');console.log(d)})\""
           }
         ]
       }
