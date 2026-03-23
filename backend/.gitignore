@@ -7,7 +7,6 @@
 .env.test.local
 .env.production
 .env.production.local
-SKILL.md
 
 
 # Python virtual environment
