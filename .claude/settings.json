@@ -89,5 +89,25 @@
       }
     ]
   },
+  "autoInvoke": [
+    {
+      "skill": "frontend-design",
+      "trigger": ["build.*component", "create.*page", "design.*UI", "style.*frontend", "dark.*theme"],
+      "applyTo": ["frontend/app/**/*.tsx", "frontend/components/**/*.tsx"],
+      "priority": "high"
+    },
+    {
+      "skill": "implement-backend",
+      "trigger": ["create.*route", "implement.*endpoint", "build.*API"],
+      "applyTo": ["backend/src/**/*.ts"],
+      "priority": "high"
+    },
+    {
+      "skill": "code-reviewer",
+      "trigger": ["after:fileModified"],
+      "applyTo": ["**/*.ts", "**/*.tsx"],
+      "priority": "medium"
+    }
+  ],
   "model": "sonnet"
 }
