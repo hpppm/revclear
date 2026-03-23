@@ -11,9 +11,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-    primary: "brand-button-primary disabled:bg-slate-300",
+    primary: "brand-button-primary disabled:opacity-40 disabled:cursor-not-allowed",
     secondary: "brand-button-secondary",
-    danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-slate-300",
+    danger: "bg-[var(--rc-rose)] text-white hover:bg-[var(--rc-rose-dim)] disabled:opacity-40",
     ghost: "brand-button-ghost",
 };
 
@@ -34,7 +34,7 @@ export default function Button({
 }: ButtonProps) {
     return (
         <button
-            className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold shadow-sm transition disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
             disabled={disabled || loading}
             {...props}
         >

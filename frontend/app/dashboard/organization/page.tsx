@@ -123,7 +123,7 @@ export default function OrganizationProfilePage() {
                      payload[key] = value;
                 }
             });
-            
+
              if (formData.edi_sftp_port) {
                 payload.edi_sftp_port = parseInt(formData.edi_sftp_port as string);
             }
@@ -133,7 +133,7 @@ export default function OrganizationProfilePage() {
             await loadOrganization(); // Reload to get updated data
             setIsEditing(false);
             // Optionally checkAuth if organization info is attached to user object in context
-            // await checkAuth(); 
+            // await checkAuth();
         } catch (error: any) {
             logger.error("Failed to save organization", error);
             let message = "Could not save organization.";
@@ -155,8 +155,8 @@ export default function OrganizationProfilePage() {
             <div className="max-w-6xl mx-auto px-6 py-8">
                 <Card>
                     <div className="text-center p-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--brand-600)] mx-auto mb-4"></div>
-                        <p className="text-slate-600">Loading organization...</p>
+                        <div className="animate-spin rounded-full h-12 w-12 mx-auto mb-4" style={{ borderBottom: '2px solid var(--rc-teal)' }}></div>
+                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-muted)' }}>Loading organization...</p>
                     </div>
                 </Card>
             </div>
@@ -168,7 +168,7 @@ export default function OrganizationProfilePage() {
              <div className="max-w-6xl mx-auto px-6 py-8">
                      <Card>
                         <div className="text-center p-8">
-                            <p className="text-slate-600 mb-4">No organization found.</p>
+                            <p className="font-mono text-sm mb-4" style={{ color: 'var(--rc-text-muted)' }}>No organization found.</p>
                             <Link href="/dashboard">
                                 <Button>Back to Dashboard</Button>
                             </Link>
@@ -194,7 +194,7 @@ export default function OrganizationProfilePage() {
 
             <Card>
                 {error && (
-                    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                    <div className="mb-6 rounded-lg px-4 py-3" style={{ background: 'var(--rc-rose-glow)', border: '1px solid rgba(244, 63, 94, 0.2)', color: 'var(--rc-rose)' }}>
                         {error}
                     </div>
                 )}
@@ -203,7 +203,7 @@ export default function OrganizationProfilePage() {
                     <div className="space-y-8">
                             {/* General Information */}
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">General Information</h3>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>General Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="Organization Name"
@@ -253,8 +253,8 @@ export default function OrganizationProfilePage() {
 
                             {/* Billing Information */}
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Billing Profile</h3>
-                                <p className="text-sm text-slate-600 mb-4">These details are used specifically for claims submission.</p>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>Billing Profile</h3>
+                                <p className="text-xs font-mono mb-4" style={{ color: 'var(--rc-text-muted)' }}>These details are used specifically for claims submission.</p>
                                 <Input
                                     label="Billing Name"
                                     value={formData.billing_name}
@@ -327,7 +327,8 @@ export default function OrganizationProfilePage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowAdvanced(!showAdvanced)}
-                                    className="flex items-center gap-2 text-lg font-semibold text-slate-900 border-b pb-2 mb-4 w-full"
+                                    className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide pb-2 mb-4 w-full"
+                                    style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}
                                 >
                                     <svg
                                         className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
@@ -341,7 +342,7 @@ export default function OrganizationProfilePage() {
                                 </button>
 
                                 {showAdvanced && (
-                                    <div className="pl-6 border-l-2 border-blue-200 space-y-4">
+                                    <div className="pl-6 space-y-4" style={{ borderLeft: '2px solid var(--rc-teal-dim)' }}>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <Input
                                                 label="EDI Sender ID"
@@ -373,11 +374,11 @@ export default function OrganizationProfilePage() {
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_username: e.target.value })}
                                             />
                                         </div>
-                                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                            <p className="text-sm text-blue-900 font-medium">
-                                                🔒 SFTP Credentials
+                                        <div className="mt-4 p-4 rounded-lg" style={{ background: 'var(--rc-teal-glow)', border: '1px solid rgba(0, 212, 184, 0.2)' }}>
+                                            <p className="text-sm font-medium font-mono" style={{ color: 'var(--rc-teal)' }}>
+                                                SFTP Credentials
                                             </p>
-                                            <p className="text-sm text-blue-700 mt-1">
+                                            <p className="text-sm mt-1 font-mono" style={{ color: 'var(--rc-text-muted)' }}>
                                                 SFTP passwords and private keys are managed securely on the server. Contact your administrator to update credentials.
                                             </p>
                                         </div>
@@ -385,7 +386,7 @@ export default function OrganizationProfilePage() {
                                 )}
                             </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-slate-200">
+                            <div className="flex gap-3 pt-4" style={{ borderTop: '1px solid var(--rc-border)' }}>
                                 <Button onClick={handleSave} loading={saving}>
                                     Save Changes
                                 </Button>
@@ -398,19 +399,19 @@ export default function OrganizationProfilePage() {
                     <div className="space-y-8">
                              {/* General Read-Only */}
                              <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">General Information</h3>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>General Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Organization Name</label>
-                                        <p className="text-slate-900 font-medium">{organization.name}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Organization Name</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.name}</p>
                                     </div>
                                      <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Phone</label>
-                                        <p className="text-slate-900 font-medium">{organization.phone || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Phone</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.phone || "—"}</p>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Address</label>
-                                        <p className="text-slate-900 font-medium">
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Address</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>
                                             {[
                                                 organization.address_line1,
                                                 organization.address_line2,
@@ -424,27 +425,27 @@ export default function OrganizationProfilePage() {
 
                              {/* Billing Read-Only */}
                              <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Billing Profile</h3>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>Billing Profile</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Billing Name</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_name || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Billing Name</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.billing_name || "—"}</p>
                                     </div>
                                      <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Billing Phone</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_phone || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Billing Phone</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.billing_phone || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Billing NPI</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_npi || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Billing NPI</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.billing_npi || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Billing Tax ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_tax_id || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Billing Tax ID</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.billing_tax_id || "—"}</p>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Billing Address</label>
-                                        <p className="text-slate-900 font-medium">
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Billing Address</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>
                                             {[
                                                 organization.billing_address_line1,
                                                 organization.billing_address_line2,
@@ -454,35 +455,35 @@ export default function OrganizationProfilePage() {
                                         </p>
                                     </div>
                                      <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Default POS</label>
-                                        <p className="text-slate-900 font-medium">{organization.default_place_of_service || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Default POS</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.default_place_of_service || "—"}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* EDI Read-Only */}
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">EDI & Clearinghouse</h3>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>EDI & Clearinghouse</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">EDI Sender ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sender_id || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>EDI Sender ID</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.edi_sender_id || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">EDI Receiver ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_receiver_id || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>EDI Receiver ID</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.edi_receiver_id || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Host</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_host || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>SFTP Host</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.edi_sftp_host || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Username</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_username || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>SFTP Username</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{organization.edi_sftp_username || "—"}</p>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Credentials</label>
-                                        <p className="text-slate-700 text-sm">🔒 Credentials managed securely on server</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>SFTP Credentials</label>
+                                        <p className="text-sm font-mono" style={{ color: 'var(--rc-text-faint)' }}>Credentials managed securely on server</p>
                                     </div>
                                 </div>
                             </div>

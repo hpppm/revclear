@@ -16,13 +16,14 @@ export default function AuthCheckbox({
   onChange,
 }: AuthCheckboxProps) {
   return (
-    <label className="flex items-start gap-3 text-sm text-[#374151]">
+    <label className="flex items-start gap-3 text-sm" style={{ color: 'var(--rc-text-secondary)' }}>
       <input
         type="checkbox"
         name={name}
         checked={checked}
         onChange={onChange}
-        className="mt-0.5 h-4 w-4 rounded border border-[var(--brand-500)] text-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+        className="mt-0.5 h-4 w-4 rounded"
+        style={{ accentColor: 'var(--rc-teal)' }}
         required={required}
       />
       <span>{label}</span>

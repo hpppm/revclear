@@ -195,21 +195,21 @@ export default function DashboardHome() {
         : null;
 
     return (
-        <div className="min-h-screen bg-slate-100">
-            <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="min-h-screen" style={{ background: 'var(--rc-deep)' }}>
+            <div className="max-w-6xl mx-auto px-6 py-8">
 
                 {/* Page header */}
-                <div className="sticky top-0 z-10 bg-slate-100 pb-4 mb-4 flex items-start justify-between">
+                <div className="sticky top-0 z-10 pb-4 mb-4 flex items-start justify-between animate-revealUp" style={{ background: 'var(--rc-deep)' }}>
                     <div>
-                        <p className="text-sm uppercase tracking-[0.12em] text-slate-500">
+                        <p className="text-[11px] uppercase tracking-[0.15em] font-mono" style={{ color: 'var(--rc-text-muted)' }}>
                             {organization ? organization.name : "Clinic workspace"}
                         </p>
-                        <h1 className="text-3xl font-semibold text-slate-900 mt-1">
+                        <h1 className="text-2xl font-semibold mt-1" style={{ color: 'var(--rc-text-primary)' }}>
                             {organization
                                 ? (greetingName ? `${greeting}, ${greetingName}` : "Dashboard")
                                 : "Welcome to RevClear"}
                         </h1>
-                        <p className="text-slate-500 mt-1 text-sm">
+                        <p className="mt-1 text-sm font-mono" style={{ color: 'var(--rc-text-muted)' }}>
                             {organization
                                 ? `Today · ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`
                                 : "Create a clinic or join with an invitation code to get started."}
@@ -221,14 +221,20 @@ export default function DashboardHome() {
                             <div className="relative">
                                 <button
                                     onClick={() => setNotifOpen((o) => !o)}
-                                    className="relative flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:border-slate-300 shadow-sm transition"
+                                    className="relative flex items-center justify-center h-9 w-9 rounded-lg transition"
+                                    style={{
+                                        background: 'var(--rc-surface)',
+                                        border: '1px solid var(--rc-border)',
+                                        color: 'var(--rc-text-muted)',
+                                    }}
                                     aria-label="Notifications"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
                                     {(claimsPending > 0) && (
-                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold font-mono"
+                                            style={{ background: 'var(--rc-rose)', color: 'white' }}>
                                             {claimsPending > 9 ? "9+" : claimsPending}
                                         </span>
                                     )}
@@ -239,70 +245,77 @@ export default function DashboardHome() {
                                         {/* Backdrop */}
                                         <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
                                         {/* Dropdown */}
-                                        <div className="absolute right-0 mt-2 w-72 rounded-xl bg-white border border-slate-200 shadow-lg z-20 overflow-hidden">
-                                            <div className="px-4 py-3 border-b border-slate-100">
-                                                <p className="text-sm font-semibold text-slate-900">Notifications</p>
+                                        <div className="absolute right-0 mt-2 w-72 rounded-xl glass-card z-20 overflow-hidden"
+                                            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                                            <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--rc-border)' }}>
+                                                <p className="text-sm font-semibold" style={{ color: 'var(--rc-text-primary)' }}>Notifications</p>
                                             </div>
-                                            <ul className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                                            <ul className="max-h-64 overflow-y-auto">
                                                 {claimsPending > 0 && (
-                                                    <li>
+                                                    <li style={{ borderBottom: '1px solid var(--rc-border)' }}>
                                                         <Link
                                                             href="/dashboard/claims"
                                                             onClick={() => setNotifOpen(false)}
-                                                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                                                            className="flex items-start gap-3 px-4 py-3 transition"
+                                                            style={{ color: 'var(--rc-text-primary)' }}
                                                         >
-                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                                                                style={{ background: 'var(--rc-amber-glow)', color: 'var(--rc-amber)' }}>
                                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                 </svg>
                                                             </span>
                                                             <div>
-                                                                <p className="text-sm font-medium text-slate-900">{claimsPending} claim{claimsPending > 1 ? "s" : ""} pending</p>
-                                                                <p className="text-xs text-slate-500 mt-0.5">Review and submit to proceed with billing.</p>
+                                                                <p className="text-sm font-medium">{claimsPending} claim{claimsPending > 1 ? "s" : ""} pending</p>
+                                                                <p className="text-xs mt-0.5" style={{ color: 'var(--rc-text-muted)' }}>Review and submit to proceed with billing.</p>
                                                             </div>
                                                         </Link>
                                                     </li>
                                                 )}
                                                 {encountersCount === 0 && (
-                                                    <li>
+                                                    <li style={{ borderBottom: '1px solid var(--rc-border)' }}>
                                                         <Link
                                                             href="/dashboard/encounters/create"
                                                             onClick={() => setNotifOpen(false)}
-                                                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                                                            className="flex items-start gap-3 px-4 py-3 transition"
+                                                            style={{ color: 'var(--rc-text-primary)' }}
                                                         >
-                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                                                                style={{ background: 'var(--rc-teal-glow)', color: 'var(--rc-teal)' }}>
                                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                 </svg>
                                                             </span>
                                                             <div>
-                                                                <p className="text-sm font-medium text-slate-900">No encounters yet</p>
-                                                                <p className="text-xs text-slate-500 mt-0.5">Start your first encounter to generate billing codes.</p>
+                                                                <p className="text-sm font-medium">No encounters yet</p>
+                                                                <p className="text-xs mt-0.5" style={{ color: 'var(--rc-text-muted)' }}>Start your first encounter to generate billing codes.</p>
                                                             </div>
                                                         </Link>
                                                     </li>
                                                 )}
                                                 {patients.length === 0 && (
-                                                    <li>
+                                                    <li style={{ borderBottom: '1px solid var(--rc-border)' }}>
                                                         <Link
                                                             href="/dashboard/patients/add"
                                                             onClick={() => setNotifOpen(false)}
-                                                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                                                            className="flex items-start gap-3 px-4 py-3 transition"
+                                                            style={{ color: 'var(--rc-text-primary)' }}
                                                         >
-                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                                                                style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa' }}>
                                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                                                 </svg>
                                                             </span>
                                                             <div>
-                                                                <p className="text-sm font-medium text-slate-900">No patients registered</p>
-                                                                <p className="text-xs text-slate-500 mt-0.5">Add your first patient to get started.</p>
+                                                                <p className="text-sm font-medium">No patients registered</p>
+                                                                <p className="text-xs mt-0.5" style={{ color: 'var(--rc-text-muted)' }}>Add your first patient to get started.</p>
                                                             </div>
                                                         </Link>
                                                     </li>
                                                 )}
                                                 {claimsPending === 0 && encountersCount > 0 && patients.length > 0 && (
-                                                    <li className="px-4 py-6 text-center text-sm text-slate-400">
+                                                    <li className="px-4 py-6 text-center text-sm" style={{ color: 'var(--rc-text-faint)' }}>
                                                         All caught up — no pending tasks.
                                                     </li>
                                                 )}
@@ -318,69 +331,71 @@ export default function DashboardHome() {
 
                 {/* Org loading skeleton */}
                 {orgLoading ? (
-                    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 animate-pulse">
-                        <div className="h-6 w-48 bg-slate-200 rounded mb-4"></div>
-                        <div className="h-4 w-64 bg-slate-200 rounded mb-2"></div>
-                        <div className="h-4 w-52 bg-slate-200 rounded"></div>
+                    <div className="glass-card rounded-xl p-8">
+                        <div className="h-5 w-48 animate-shimmer rounded mb-4"></div>
+                        <div className="h-4 w-64 animate-shimmer rounded mb-2"></div>
+                        <div className="h-4 w-52 animate-shimmer rounded"></div>
                     </div>
                 ) : organization ? (
                     <>
                         {/* Stat cards */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                             {/* Patients */}
-                            <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-5 py-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Patients</p>
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
+                            <div className="glass-card rounded-xl px-5 py-4 animate-revealUp stagger-1">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[11px] font-mono font-medium uppercase tracking-widest" style={{ color: 'var(--rc-text-muted)' }}>Patients</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
                                     </span>
                                 </div>
-                                <p className="text-3xl font-bold text-slate-900">{patients.length}</p>
+                                <p className="text-3xl font-bold font-mono" style={{ color: 'var(--rc-text-primary)' }}>{patients.length}</p>
                             </div>
                             {/* Encounters */}
-                            <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-5 py-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Encounters</p>
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
+                            <div className="glass-card rounded-xl px-5 py-4 animate-revealUp stagger-2">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[11px] font-mono font-medium uppercase tracking-widest" style={{ color: 'var(--rc-text-muted)' }}>Encounters</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'var(--rc-teal-glow)', color: 'var(--rc-teal)' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                     </span>
                                 </div>
-                                <p className="text-3xl font-bold text-slate-900">{encountersCount}</p>
+                                <p className="text-3xl font-bold font-mono" style={{ color: 'var(--rc-text-primary)' }}>{encountersCount}</p>
                             </div>
                             {/* Claims Pending */}
-                            <div className={`rounded-2xl border shadow-sm px-5 py-4 ${claimsPending > 0 ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"}`}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Claims Pending</p>
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-500">
+                            <div className="glass-card rounded-xl px-5 py-4 animate-revealUp stagger-3"
+                                style={claimsPending > 0 ? { borderColor: 'rgba(245, 158, 11, 0.2)', background: 'rgba(245, 158, 11, 0.06)' } : {}}>
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[11px] font-mono font-medium uppercase tracking-widest" style={{ color: 'var(--rc-text-muted)' }}>Pending</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'var(--rc-amber-glow)', color: 'var(--rc-amber)' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </span>
                                 </div>
-                                <p className="text-3xl font-bold text-amber-600">{claimsPending}</p>
+                                <p className="text-3xl font-bold font-mono" style={{ color: 'var(--rc-amber)' }}>{claimsPending}</p>
                             </div>
                             {/* Claims Approved */}
-                            <div className={`rounded-2xl border shadow-sm px-5 py-4 ${claimsApproved > 0 ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200"}`}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-medium uppercase tracking-widest text-slate-500">Claims Approved</p>
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-500">
+                            <div className="glass-card rounded-xl px-5 py-4 animate-revealUp stagger-4"
+                                style={claimsApproved > 0 ? { borderColor: 'rgba(0, 212, 184, 0.2)', background: 'rgba(0, 212, 184, 0.06)' } : {}}>
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-[11px] font-mono font-medium uppercase tracking-widest" style={{ color: 'var(--rc-text-muted)' }}>Approved</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'var(--rc-teal-glow)', color: 'var(--rc-teal)' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </span>
                                 </div>
-                                <p className="text-3xl font-bold text-emerald-600">{claimsApproved}</p>
+                                <p className="text-3xl font-bold font-mono" style={{ color: 'var(--rc-teal)' }}>{claimsApproved}</p>
                             </div>
                         </div>
 
                         {/* Recent patients */}
-                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm">
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                                <h2 className="text-sm font-semibold text-slate-900">Recent Patients</h2>
+                        <div className="glass-card rounded-xl animate-revealUp stagger-5">
+                            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--rc-border)' }}>
+                                <h2 className="text-sm font-semibold" style={{ color: 'var(--rc-text-primary)' }}>Recent Patients</h2>
                                 <Link
                                     href="/dashboard/patients"
                                     className="brand-button-primary rounded-lg px-4 py-2 text-xs font-semibold transition"
@@ -389,32 +404,40 @@ export default function DashboardHome() {
                                 </Link>
                             </div>
                             {patients.length === 0 ? (
-                                <div className="px-6 py-10 text-center text-sm text-slate-400">
-                                    No patients yet. Add your first patient to get started.
+                                <div className="px-6 py-10 text-center">
+                                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full" style={{ background: 'var(--rc-elevated)', color: 'var(--rc-text-muted)' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a4 4 0 100-8 4 4 0 000 8z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-sm" style={{ color: 'var(--rc-text-muted)' }}>
+                                        No patients yet. Add your first patient to get started.
+                                    </p>
                                 </div>
                             ) : (
-                                <ul className="divide-y divide-slate-100">
-                                    {patients.slice(0, 5).map((p) => {
+                                <ul>
+                                    {patients.slice(0, 5).map((p, idx) => {
                                         const dob = p.dob ? new Date(p.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
                                         const initials = p.name
                                             ? p.name.split(" ").slice(0, 2).map((n: string) => n.charAt(0).toUpperCase()).join("")
                                             : "?";
                                         return (
-                                            <li key={p.id}>
+                                            <li key={p.id} style={{ borderBottom: '1px solid var(--rc-border)' }}>
                                                 <Link
                                                     href={`/dashboard/patients/${p.id}`}
-                                                    className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition group"
+                                                    className="flex items-center justify-between px-6 py-3.5 transition group table-row-animate"
+                                                    style={{ animationDelay: `${idx * 50}ms` }}
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className="brand-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                                                        <div className="brand-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold font-mono">
                                                             {initials}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-medium text-slate-900 group-hover:text-[var(--brand-600)] transition-colors">{p.name}</p>
-                                                            <p className="text-xs text-slate-500 mt-0.5">DOB: {dob}</p>
+                                                            <p className="text-sm font-medium" style={{ color: 'var(--rc-text-primary)' }}>{p.name}</p>
+                                                            <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--rc-text-muted)' }}>DOB: {dob}</p>
                                                         </div>
                                                     </div>
-                                                    <span className="text-xs text-slate-400">{p.insuranceType || "Self-Pay"}</span>
+                                                    <span className="text-xs font-mono" style={{ color: 'var(--rc-text-faint)' }}>{p.insuranceType || "Self-Pay"}</span>
                                                 </Link>
                                             </li>
                                         );
@@ -425,34 +448,42 @@ export default function DashboardHome() {
                     </>
                 ) : (
                     /* No org — setup flow */
-                    <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-8">
+                    <div className="glass-card rounded-xl p-8 animate-revealUp">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                             <div className="lg:col-span-2 space-y-4">
                                 <div>
-                                    <p className="text-sm text-slate-500">Welcome to RevClear</p>
-                                    <h2 className="text-2xl font-semibold text-slate-900">Set up your clinic workspace</h2>
-                                    <p className="text-slate-600 mt-1">
+                                    <p className="text-sm font-mono" style={{ color: 'var(--rc-text-muted)' }}>Welcome to RevClear</p>
+                                    <h2 className="text-2xl font-semibold mt-1" style={{ color: 'var(--rc-text-primary)' }}>Set up your clinic workspace</h2>
+                                    <p className="mt-1" style={{ color: 'var(--rc-text-secondary)' }}>
                                         Create a new clinic or join with an invitation code from an existing organization.
                                         You can start adding patients as soon as you have a home clinic.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-3">
-                                    <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1">HIPAA-friendly defaults</span>
-                                    <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1">Multi-clinician ready</span>
+                                    <span className="inline-flex items-center rounded-full text-xs font-semibold font-mono px-3 py-1"
+                                        style={{ background: 'var(--rc-teal-glow)', color: 'var(--rc-teal)' }}>
+                                        HIPAA-friendly defaults
+                                    </span>
+                                    <span className="inline-flex items-center rounded-full text-xs font-semibold font-mono px-3 py-1"
+                                        style={{ background: 'var(--rc-teal-glow)', color: 'var(--rc-teal)' }}>
+                                        Multi-clinician ready
+                                    </span>
                                 </div>
                                 {orgError && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{orgError}</div>
+                                    <div className="rounded-lg px-4 py-3" style={{ background: 'var(--rc-rose-glow)', border: '1px solid rgba(244, 63, 94, 0.2)', color: 'var(--rc-rose)' }}>
+                                        {orgError}
+                                    </div>
                                 )}
                             </div>
                             <div className="space-y-4">
-                                <form onSubmit={handleCreate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                    <p className="text-sm font-semibold text-slate-900">Create an organization</p>
-                                    <p className="text-sm text-slate-600 mb-3">Pick a name so your team recognizes it.</p>
+                                <form onSubmit={handleCreate} className="glass-card rounded-xl p-4">
+                                    <p className="text-sm font-semibold" style={{ color: 'var(--rc-text-primary)' }}>Create an organization</p>
+                                    <p className="text-sm mb-3" style={{ color: 'var(--rc-text-muted)' }}>Pick a name so your team recognizes it.</p>
                                     <input
                                         value={orgName}
                                         onChange={(e) => setOrgName(e.target.value)}
                                         placeholder="Clinic name"
-                                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                        className="brand-input w-full rounded-lg px-3 py-2 text-sm font-mono"
                                     />
                                     <Button
                                         type="submit"
@@ -463,14 +494,14 @@ export default function DashboardHome() {
                                         Create organization
                                     </Button>
                                 </form>
-                                <form onSubmit={handleJoin} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <p className="text-sm font-semibold text-slate-900">Join with invite</p>
-                                    <p className="text-sm text-slate-600 mb-3">Enter the code shared by your clinic.</p>
+                                <form onSubmit={handleJoin} className="glass-card rounded-xl p-4">
+                                    <p className="text-sm font-semibold" style={{ color: 'var(--rc-text-primary)' }}>Join with invite</p>
+                                    <p className="text-sm mb-3" style={{ color: 'var(--rc-text-muted)' }}>Enter the code shared by your clinic.</p>
                                     <input
                                         value={inviteCode}
                                         onChange={(e) => setInviteCode(e.target.value)}
                                         placeholder="Invitation code"
-                                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                        className="brand-input w-full rounded-lg px-3 py-2 text-sm font-mono"
                                     />
                                     <Button
                                         type="submit"

@@ -7,6 +7,7 @@ import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient, Encounter } from "@/app/lib/types";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
+import Button from "@/app/components/ui/Button";
 import logger from "@/app/lib/logger";
 
 const mapPatientResponse = (data: any): Patient => ({
@@ -115,7 +116,7 @@ export default function PatientProfilePage() {
         }
 
         // Step 0: Setup
-        // Step 1: Audio/Transcription  
+        // Step 1: Audio/Transcription
         // Step 2: SOAP Note
         // Step 3: Medical Codes
         // Step 4: Review Claim
@@ -155,323 +156,328 @@ export default function PatientProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="text-slate-500">Loading patient profile...</div>
+            <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 mx-auto mb-4" style={{ borderBottom: '2px solid var(--rc-teal)' }}></div>
+                    <p className="font-mono text-sm" style={{ color: 'var(--rc-text-muted)' }}>Loading patient profile...</p>
+                </div>
             </div>
         );
     }
 
     if (error || !patient) {
         return (
-            <div className="min-h-screen bg-slate-50 p-8">
-                <div className="max-w-6xl mx-auto">
-                    <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
-                        {error || "Patient not found."}
-                    </div>
-                    <div className="mt-4">
-                        <BackButton href="/dashboard">Back to Dashboard</BackButton>
-                    </div>
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="rounded-lg p-4" style={{ background: 'var(--rc-rose-glow)', border: '1px solid rgba(244, 63, 94, 0.2)', color: 'var(--rc-rose)' }}>
+                    {error || "Patient not found."}
+                </div>
+                <div className="mt-4">
+                    <BackButton href="/dashboard">Back to Dashboard</BackButton>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
-            <div className="max-w-6xl mx-auto space-y-8">
-                {/* Patient Information Card */}
-                <Card>
-                    <div className="px-6 py-6">
-                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold">
-                                    {(patient.name || "U").charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h1 className="text-3xl font-bold text-slate-900">{patient.name}</h1>
-                                    <p className="text-slate-500 mt-1">Patient Profile</p>
-                                </div>
+        <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+            {/* Patient Information Card */}
+            <Card>
+                <div className="px-6 py-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 pb-6 mb-6" style={{ borderBottom: '1px solid var(--rc-border)' }}>
+                        <div className="flex items-center gap-4">
+                            <div className="brand-accent-icon flex h-16 w-16 items-center justify-center rounded-full text-2xl font-mono font-bold">
+                                {(patient.name || "U").charAt(0).toUpperCase()}
                             </div>
-                            <div className="flex gap-2">
-                                {!editMode ? (
-                                    <button
-                                        onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
-                                    >
-                                        Edit Profile
-                                    </button>
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={saving}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
-                                        >
-                                            {saving ? "Saving..." : "Save"}
-                                        </button>
-                                        <button
-                                            onClick={handleCancel}
-                                            disabled={saving}
-                                            className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium text-sm disabled:opacity-50"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </>
-                                )}
+                            <div>
+                                <h1 className="text-2xl font-semibold" style={{ color: 'var(--rc-text-primary)' }}>{patient.name}</h1>
+                                <p className="text-xs font-mono uppercase tracking-wide mt-1" style={{ color: 'var(--rc-text-muted)' }}>Patient Profile</p>
                             </div>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Date of Birth</p>
-                                {editMode && editedPatient ? (
-                                    <input
-                                        type="date"
-                                        value={editedPatient.dob || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                    />
-                                ) : (
-                                    <p className="text-slate-900 font-medium">{patient.dob ? new Date(patient.dob).toLocaleDateString() : "—"}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Gender</p>
-                                {editMode && editedPatient ? (
-                                    <select
-                                        value={editedPatient.gender || "U"}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                    >
-                                        <option value="M">Male</option>
-                                        <option value="F">Female</option>
-                                        <option value="O">Other</option>
-                                        <option value="U">Unknown</option>
-                                    </select>
-                                ) : (
-                                    <p className="text-slate-900 font-medium">
-                                        {patient.gender === "M" ? "Male" : patient.gender === "F" ? "Female" : patient.gender === "O" ? "Other" : patient.gender === "U" ? "Unknown" : "—"}
-                                    </p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Phone</p>
-                                {editMode && editedPatient ? (
-                                    <input
-                                        type="tel"
-                                        value={editedPatient.phone || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
-                                ) : (
-                                    <p className="text-slate-900 font-medium">{patient.phone || "—"}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Email</p>
-                                {editMode && editedPatient ? (
-                                    <input
-                                        type="email"
-                                        value={editedPatient.email || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
-                                ) : (
-                                    <p className="text-slate-900 font-medium">{patient.email || "—"}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Insurance Provider</p>
-                                {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insuranceType || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
-                                ) : (
-                                    <p className="text-slate-900 font-medium">{patient.insuranceType || "—"}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Policy Number</p>
-                                {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insuranceId || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
-                                ) : (
-                                    <p className="text-slate-900 font-medium">{patient.insuranceId || "—"}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Member ID</p>
-                                {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insurance_member_id || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
-                                ) : (
-                                    <p className="text-slate-900 font-medium">{patient.insurance_member_id || "—"}</p>
-                                )}
-                            </div>
-                            <div className="md:col-span-3">
-                                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Address</p>
-                                {editMode && editedPatient ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Street"
-                                            value={editedPatient.address_street || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="City"
-                                            value={editedPatient.address_city || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="State"
-                                            value={editedPatient.address_state || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="ZIP"
-                                            value={editedPatient.address_zip || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                    </div>
-                                ) : (
-                                    <p className="text-slate-900 font-medium">
-                                        {[
-                                            patient.address_street,
-                                            patient.address_city,
-                                            patient.address_state,
-                                            patient.address_zip
-                                        ].filter(Boolean).join(", ") || "—"}
-                                    </p>
-                                )}
-                            </div>
+                        <div className="flex gap-2">
+                            {!editMode ? (
+                                <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
+                                    Edit Profile
+                                </Button>
+                            ) : (
+                                <>
+                                    <Button onClick={handleSave} loading={saving} size="sm">
+                                        {saving ? "Saving..." : "Save"}
+                                    </Button>
+                                    <Button variant="secondary" size="sm" onClick={handleCancel} disabled={saving}>
+                                        Cancel
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
-                </Card>
 
-                {/* Encounters List Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold text-slate-900">Encounters History</h2>
-                        <Link
-                            href={`/dashboard/encounters/create?patientId=${patientId}`}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-                        >
-                            + Start New Encounter
-                        </Link>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Date of Birth</p>
+                            {editMode && editedPatient ? (
+                                <input
+                                    type="date"
+                                    value={editedPatient.dob || ""}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                />
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{patient.dob ? new Date(patient.dob).toLocaleDateString() : "—"}</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Gender</p>
+                            {editMode && editedPatient ? (
+                                <select
+                                    value={editedPatient.gender || "U"}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                >
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                    <option value="U">Unknown</option>
+                                </select>
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>
+                                    {patient.gender === "M" ? "Male" : patient.gender === "F" ? "Female" : patient.gender === "O" ? "Other" : patient.gender === "U" ? "Unknown" : "—"}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Phone</p>
+                            {editMode && editedPatient ? (
+                                <input
+                                    type="tel"
+                                    value={editedPatient.phone || ""}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                />
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{patient.phone || "—"}</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Email</p>
+                            {editMode && editedPatient ? (
+                                <input
+                                    type="email"
+                                    value={editedPatient.email || ""}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                />
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{patient.email || "—"}</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Insurance Provider</p>
+                            {editMode && editedPatient ? (
+                                <input
+                                    type="text"
+                                    value={editedPatient.insuranceType || ""}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                />
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{patient.insuranceType || "—"}</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Policy Number</p>
+                            {editMode && editedPatient ? (
+                                <input
+                                    type="text"
+                                    value={editedPatient.insuranceId || ""}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                />
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{patient.insuranceId || "—"}</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Member ID</p>
+                            {editMode && editedPatient ? (
+                                <input
+                                    type="text"
+                                    value={editedPatient.insurance_member_id || ""}
+                                    onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
+                                    className="brand-input font-mono text-sm rounded-lg px-3 py-2 w-full"
+                                />
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{patient.insurance_member_id || "—"}</p>
+                            )}
+                        </div>
+                        <div className="md:col-span-3">
+                            <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Address</p>
+                            {editMode && editedPatient ? (
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Street"
+                                        value={editedPatient.address_street || ""}
+                                        onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
+                                        className="brand-input font-mono text-sm rounded-lg px-3 py-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="City"
+                                        value={editedPatient.address_city || ""}
+                                        onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
+                                        className="brand-input font-mono text-sm rounded-lg px-3 py-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="State"
+                                        value={editedPatient.address_state || ""}
+                                        onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
+                                        className="brand-input font-mono text-sm rounded-lg px-3 py-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="ZIP"
+                                        value={editedPatient.address_zip || ""}
+                                        onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
+                                        className="brand-input font-mono text-sm rounded-lg px-3 py-2"
+                                    />
+                                </div>
+                            ) : (
+                                <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>
+                                    {[
+                                        patient.address_street,
+                                        patient.address_city,
+                                        patient.address_state,
+                                        patient.address_zip
+                                    ].filter(Boolean).join(", ") || "—"}
+                                </p>
+                            )}
+                        </div>
                     </div>
+                </div>
+            </Card>
 
-                    {encounters.length === 0 ? (
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
-                            <p className="text-slate-500">No encounters recorded for this patient.</p>
+            {/* Encounters List Section */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--rc-text-primary)' }}>Encounters History</h2>
+                    <Link
+                        href={`/dashboard/encounters/create?patientId=${patientId}`}
+                        className="brand-button-primary rounded-lg px-4 py-2 text-sm font-mono font-medium"
+                    >
+                        + Start New Encounter
+                    </Link>
+                </div>
+
+                {encounters.length === 0 ? (
+                    <Card>
+                        <div className="p-8 text-center">
+                            <p className="font-mono text-sm" style={{ color: 'var(--rc-text-faint)' }}>No encounters recorded for this patient.</p>
                             <Link
                                 href={`/dashboard/encounters/create?patientId=${patientId}`}
-                                className="text-blue-600 hover:text-blue-700 font-medium mt-2 inline-block"
+                                className="font-mono text-sm font-medium mt-2 inline-block transition-colors"
+                                style={{ color: 'var(--rc-teal)' }}
                             >
                                 Start the first encounter
                             </Link>
                         </div>
-                    ) : (
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="w-full table-fixed divide-y divide-slate-200">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th className="w-1/3 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                            Date
-                                        </th>
-                                        <th className="w-1/3 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                        <th className="w-1/3 px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-slate-200">
-                                    {encounters.map((encounter) => (
-                                        <tr key={encounter.id} className="hover:bg-slate-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                                                {new Date(encounter.date_of_service).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span
-                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${encounter.status === "completed"
-                                                        ? "bg-green-100 text-green-800"
+                    </Card>
+                ) : (
+                    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--rc-surface)', border: '1px solid var(--rc-border)' }}>
+                        <table className="w-full table-fixed">
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--rc-border)' }}>
+                                    <th className="w-1/3 px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--rc-text-faint)' }}>
+                                        Date
+                                    </th>
+                                    <th className="w-1/3 px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--rc-text-faint)' }}>
+                                        Status
+                                    </th>
+                                    <th className="w-1/3 px-6 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--rc-text-faint)' }}>
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {encounters.map((encounter, idx) => (
+                                    <tr
+                                        key={encounter.id}
+                                        className="animate-tableRowIn transition-colors"
+                                        style={{
+                                            borderBottom: idx < encounters.length - 1 ? '1px solid var(--rc-border)' : undefined,
+                                            animationDelay: `${idx * 50}ms`,
+                                        }}
+                                    >
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono" style={{ color: 'var(--rc-text-primary)' }}>
+                                            {new Date(encounter.date_of_service).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span
+                                                className="px-2 py-0.5 text-xs font-mono font-medium rounded-full"
+                                                style={
+                                                    encounter.status === "completed"
+                                                        ? { background: 'var(--rc-teal-glow)', color: 'var(--rc-teal)', border: '1px solid rgba(0, 212, 184, 0.2)' }
                                                         : encounter.status === "ready"
-                                                            ? "bg-blue-100 text-blue-800"
+                                                            ? { background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' }
                                                             : encounter.status === "in_progress"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-gray-100 text-gray-800"
-                                                        }`}
+                                                                ? { background: 'rgba(245, 158, 11, 0.1)', color: 'var(--rc-amber)', border: '1px solid rgba(245, 158, 11, 0.2)' }
+                                                                : { background: 'var(--rc-elevated)', color: 'var(--rc-text-muted)', border: '1px solid var(--rc-border)' }
+                                                }
+                                            >
+                                                {encounter.status === "ready"
+                                                    ? "Ready"
+                                                    : encounter.status === "completed"
+                                                        ? "Completed"
+                                                        : encounter.status?.replace("_", " ") || "Draft"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            {encounter.status === "ready" || encounter.status === "completed" ? (
+                                                <Link
+                                                    href={`/dashboard/encounters/${encounter.id}`}
+                                                    className="font-mono text-sm font-medium transition-colors"
+                                                    style={{ color: 'var(--rc-teal)' }}
                                                 >
-                                                    {encounter.status === "ready"
-                                                        ? "Ready"
-                                                        : encounter.status === "completed"
-                                                            ? "Completed"
-                                                            : encounter.status?.replace("_", " ") || "Draft"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                {encounter.status === "ready" || encounter.status === "completed" ? (
-                                                    <Link
-                                                        href={`/dashboard/encounters/${encounter.id}`}
-                                                        className="text-blue-600 hover:text-blue-900 font-semibold"
-                                                    >
-                                                        View
-                                                    </Link>
-                                                ) : (
-                                                    <Link
-                                                        href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                        className="text-green-600 hover:text-green-900 font-semibold"
-                                                    >
-                                                        Continue →
-                                                    </Link>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    aria-label="Delete encounter"
-                                                    onClick={() => handleDelete(encounter.id)}
-                                                    className="ml-4 text-slate-400 hover:text-red-600 disabled:opacity-50"
+                                                    View
+                                                </Link>
+                                            ) : (
+                                                <Link
+                                                    href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
+                                                    className="font-mono text-sm font-medium transition-colors"
+                                                    style={{ color: 'var(--rc-teal)' }}
                                                 >
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-5 w-5"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                                                    Continue
+                                                </Link>
+                                            )}
+                                            <button
+                                                type="button"
+                                                aria-label="Delete encounter"
+                                                onClick={() => handleDelete(encounter.id)}
+                                                className="ml-4 transition-colors"
+                                                style={{ color: 'var(--rc-text-faint)' }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--rc-rose)')}
+                                                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--rc-text-faint)')}
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-5 w-5"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -136,27 +136,27 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--brand-100)] px-4 py-12 font-sans">
-      <div className="w-full max-w-xl">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 gradient-mesh">
+      <div className="w-full max-w-xl animate-revealUp">
+        {/* Brand header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2">
             <Link href="/landing" className="cursor-pointer transition-transform hover:scale-105">
-              <BrandMark
-                size="lg"
-                className="shadow-[0_10px_20px_-10px_rgba(13,148,136,0.45)]"
-              />
+              <BrandMark size="lg" />
             </Link>
-            <span className="text-3xl font-bold text-[var(--brand-600)]">RevClear</span>
+            <span className="text-3xl font-semibold" style={{ color: 'var(--rc-teal)' }}>RevClear</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[var(--brand-100)] p-6 max-w-xl shadow-[0_30px_60px_-25px_rgba(15,23,42,0.55),0_18px_36px_-24px_rgba(15,23,42,0.4)]">
-          <div className="h-1.5 w-full rounded-full bg-linear-r from-[var(--brand-500)] to-[var(--brand-700)] mb-6" />
+        <div className="glass-card rounded-2xl p-6 max-w-xl">
+          {/* Teal accent bar */}
+          <div className="h-1 w-full rounded-full mb-6" style={{ background: 'linear-gradient(to right, var(--rc-teal), var(--rc-teal-dim))' }} />
+
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">
+            <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--rc-text-primary)' }}>
               Create Your Account
             </h1>
-            <p className="text-[rgba(13,148,136,0.68)]">
+            <p className="text-xs font-mono" style={{ color: 'var(--rc-text-muted)' }}>
               Join thousands of clinicians automating their workflow
             </p>
           </div>
@@ -197,7 +197,8 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="text-[#9ca3af] hover:text-[#6b7280] transition"
+                      className="transition"
+                      style={{ color: 'var(--rc-text-muted)' }}
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
@@ -262,7 +263,8 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirm((prev) => !prev)}
-                      className="text-[#9ca3af] hover:text-[#6b7280] transition"
+                      className="transition"
+                      style={{ color: 'var(--rc-text-muted)' }}
                       aria-label={
                         showConfirm ? "Hide password" : "Show password"
                       }
@@ -312,7 +314,8 @@ export default function SignupPage() {
               </AuthField>
             </AuthSection>
 
-            <div className="space-y-3 rounded-xl border border-[#e5e7eb] bg-white px-4 py-3">
+            {/* Agreements */}
+            <div className="space-y-3 rounded-xl px-4 py-3" style={{ background: 'var(--rc-surface)', border: '1px solid var(--rc-border)' }}>
               <AuthCheckbox
                 name="agreeTerms"
                 label="I agree to the Terms of Service and Privacy Policy"
@@ -352,8 +355,8 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                <p className="text-sm text-red-600 flex items-center gap-2">
+              <div className="rounded-xl p-4" style={{ background: 'var(--rc-rose-glow)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                <p className="text-sm flex items-center gap-2" style={{ color: 'var(--rc-rose)' }}>
                   <svg
                     className="w-5 h-5"
                     fill="currentColor"
@@ -370,13 +373,13 @@ export default function SignupPage() {
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Button
                 type="submit"
-                variant="secondary"
+                variant="primary"
                 size="lg"
                 loading={isLoading}
-                className="group w-full rounded-xl shadow-[0_12px_20px_-12px_rgba(13,148,136,0.25)] hover:shadow-[0_14px_24px_-12px_rgba(13,148,136,0.35)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
+                className="group w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--rc-teal-ring)] disabled:hover:translate-y-0"
               >
                 <span className="flex items-center justify-center gap-2">
                   Create Account
@@ -396,11 +399,12 @@ export default function SignupPage() {
                 </span>
               </Button>
 
-              <p className="text-center text-gray-500">
+              <p className="text-center text-sm" style={{ color: 'var(--rc-text-muted)' }}>
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                className="font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)] transition-colors"
+                  className="font-semibold transition-colors"
+                  style={{ color: 'var(--rc-teal)' }}
                 >
                   Sign In
                 </Link>

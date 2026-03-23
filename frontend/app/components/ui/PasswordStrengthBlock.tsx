@@ -16,24 +16,17 @@ function checkStrength(pw: string) {
 }
 
 function getStrengthColor(label: string) {
-  if (label === "Weak") return "text-red-500";
-  if (label === "Medium") return "text-yellow-500";
-  if (label === "Strong") return "text-green-500";
-  return "text-gray-400";
+  if (label === "Weak") return "var(--rc-rose)";
+  if (label === "Medium") return "var(--rc-amber)";
+  if (label === "Strong") return "var(--rc-teal)";
+  return "var(--rc-text-faint)";
 }
 
 function getStrengthBarWidth(label: string) {
-  if (label === "Weak") return "w-1/3";
-  if (label === "Medium") return "w-2/3";
-  if (label === "Strong") return "w-full";
-  return "w-0";
-}
-
-function getStrengthBarColor(label: string) {
-  if (label === "Weak") return "bg-red-500";
-  if (label === "Medium") return "bg-yellow-500";
-  if (label === "Strong") return "bg-green-500";
-  return "bg-gray-300";
+  if (label === "Weak") return "33%";
+  if (label === "Medium") return "66%";
+  if (label === "Strong") return "100%";
+  return "0%";
 }
 
 export default function PasswordStrengthBlock({
@@ -43,68 +36,52 @@ export default function PasswordStrengthBlock({
   if (!isVisible) return null;
 
   const strengthLabel = password ? checkStrength(password) : "Strength";
+  const color = getStrengthColor(strengthLabel);
 
   return (
     <>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-[#9ca3af]">
-            Strength bar
+          <span className="text-xs font-mono" style={{ color: 'var(--rc-text-faint)' }}>
+            Strength
           </span>
-          <span className={`text-xs font-medium ${getStrengthColor(strengthLabel)}`}>
+          <span className="text-xs font-mono font-medium" style={{ color }}>
             {strengthLabel}
           </span>
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--rc-elevated)' }}>
           <div
-            className={`h-full ${getStrengthBarWidth(strengthLabel)} ${getStrengthBarColor(strengthLabel)} transition-all duration-300`}
+            className="h-full transition-all duration-300 rounded-full"
+            style={{ width: getStrengthBarWidth(strengthLabel), background: color }}
           />
         </div>
       </div>
 
-      <div className="bg-white border border-[#e5e7eb] rounded-lg p-3 mt-2">
-        <p className="text-xs text-[#9ca3af] font-medium mb-2">
+      <div className="rounded-lg p-3 mt-2" style={{ background: 'var(--rc-surface)', border: '1px solid var(--rc-border)' }}>
+        <p className="text-xs font-mono mb-2" style={{ color: 'var(--rc-text-faint)' }}>
           Password must contain:
         </p>
-        <ul className="text-xs text-[#9ca3af] space-y-1">
+        <ul className="text-xs font-mono space-y-1" style={{ color: 'var(--rc-text-muted)' }}>
           <li className="flex items-center gap-2">
-            <span
-              className={
-                password.length >= 8 ? "text-[#C7A6E6]" : "text-gray-300"
-              }
-            >
+            <span style={{ color: password.length >= 8 ? 'var(--rc-teal)' : 'var(--rc-text-faint)' }}>
               {password.length >= 8 ? "✓" : "○"}
             </span>
             At least 8 characters
           </li>
           <li className="flex items-center gap-2">
-            <span
-              className={
-                /[A-Z]/.test(password) ? "text-[#C7A6E6]" : "text-gray-300"
-              }
-            >
+            <span style={{ color: /[A-Z]/.test(password) ? 'var(--rc-teal)' : 'var(--rc-text-faint)' }}>
               {/[A-Z]/.test(password) ? "✓" : "○"}
             </span>
             One uppercase letter
           </li>
           <li className="flex items-center gap-2">
-            <span
-              className={
-                /[0-9]/.test(password) ? "text-[#C7A6E6]" : "text-gray-300"
-              }
-            >
+            <span style={{ color: /[0-9]/.test(password) ? 'var(--rc-teal)' : 'var(--rc-text-faint)' }}>
               {/[0-9]/.test(password) ? "✓" : "○"}
             </span>
             One number
           </li>
           <li className="flex items-center gap-2">
-            <span
-              className={
-                /[^A-Za-z0-9]/.test(password)
-                  ? "text-[#C7A6E6]"
-                  : "text-gray-300"
-              }
-            >
+            <span style={{ color: /[^A-Za-z0-9]/.test(password) ? 'var(--rc-teal)' : 'var(--rc-text-faint)' }}>
               {/[^A-Za-z0-9]/.test(password) ? "✓" : "○"}
             </span>
             One special character (!@#$%)

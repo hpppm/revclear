@@ -96,26 +96,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--brand-50)] via-[#f4fffd] to-[var(--brand-100)] px-4 py-12 font-sans">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 gradient-mesh">
+      <div className="w-full max-w-md animate-revealUp">
+        <div className="glass-card rounded-2xl p-6 sm:p-8">
+          {/* Brand */}
           <div className="mb-6 text-center">
             <div className="inline-flex items-center gap-2">
               <Link href="/landing" className="cursor-pointer transition-transform hover:scale-105">
-                <BrandMark
-                  size="md"
-                  className="shadow-[0_10px_20px_-12px_rgba(13,148,136,0.45)]"
-                />
+                <BrandMark size="md" />
               </Link>
-              <span className="text-2xl font-bold text-[var(--brand-600)]">
+              <span className="text-2xl font-semibold" style={{ color: 'var(--rc-teal)' }}>
                 RevClear
               </span>
             </div>
           </div>
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">
+            <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--rc-text-primary)' }}>
               Welcome Back
             </h1>
+            <p className="text-xs font-mono" style={{ color: 'var(--rc-text-faint)' }}>Sign in to continue</p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -132,7 +131,8 @@ export default function LoginPage() {
                     required
                     rightElement={
                       <svg
-                        className="h-5 w-5 text-[var(--brand-600)]"
+                        className="h-5 w-5"
+                        style={{ color: 'var(--rc-teal)' }}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -152,7 +152,7 @@ export default function LoginPage() {
                     }
                   />
                   {errors.email && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
+                    <p className="text-sm flex items-center gap-1" style={{ color: 'var(--rc-rose)' }}>
                       <svg
                         className="w-4 h-4"
                         fill="currentColor"
@@ -182,7 +182,8 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="text-[#9ca3af] hover:text-[#6b7280] transition"
+                        className="transition"
+                        style={{ color: 'var(--rc-text-muted)' }}
                         aria-label={
                           showPassword ? "Hide password" : "Show password"
                         }
@@ -230,7 +231,7 @@ export default function LoginPage() {
                     }
                   />
                   {errors.password && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
+                    <p className="text-sm flex items-center gap-1" style={{ color: 'var(--rc-rose)' }}>
                       <svg
                         className="w-4 h-4"
                         fill="currentColor"
@@ -248,7 +249,8 @@ export default function LoginPage() {
                   <div className="flex justify-end">
                     <Link
                       href="/forgot-password"
-                      className="text-sm font-medium text-[var(--brand-600)] hover:text-[var(--brand-700)]"
+                      className="text-xs font-mono font-medium transition-colors"
+                      style={{ color: 'var(--rc-teal)' }}
                     >
                       Forgot password?
                     </Link>
@@ -258,8 +260,8 @@ export default function LoginPage() {
             </AuthSection>
 
             {errors.form && (
-              <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                <p className="text-sm text-red-600 flex items-center gap-2">
+              <div className="rounded-xl p-4" style={{ background: 'var(--rc-rose-glow)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                <p className="text-sm flex items-center gap-2" style={{ color: 'var(--rc-rose)' }}>
                   <svg
                     className="w-5 h-5"
                     fill="currentColor"
@@ -276,14 +278,14 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Button
                 type="submit"
                 variant="primary"
                 size="lg"
                 loading={isLoading}
                 disabled={isFormInvalid}
-                className="group w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
+                className="group w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--rc-teal-ring)] disabled:hover:translate-y-0"
               >
                 <span className="flex items-center justify-center gap-2">
                   Sign In
@@ -303,11 +305,12 @@ export default function LoginPage() {
                 </span>
               </Button>
 
-              <p className="text-center text-gray-500">
+              <p className="text-center text-sm" style={{ color: 'var(--rc-text-muted)' }}>
                 New here?{" "}
                 <Link
                   href="/signup"
-                  className="font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)] transition-colors"
+                  className="font-semibold transition-colors"
+                  style={{ color: 'var(--rc-teal)' }}
                 >
                   Create account
                 </Link>

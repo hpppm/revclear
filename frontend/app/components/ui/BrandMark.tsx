@@ -28,11 +28,16 @@ export function BrandMark({
 }: BrandMarkProps) {
   return (
     <div
-      className={`brand-button-primary grid shrink-0 place-items-center text-center shadow-md ${sizeClasses[size].container} ${className}`}
+      className={`grid shrink-0 place-items-center text-center ${sizeClasses[size].container} ${className}`}
+      style={{
+        background: 'var(--rc-teal)',
+        boxShadow: '0 4px 14px rgba(0, 212, 184, 0.35)',
+      }}
       aria-hidden="true"
     >
       <span
-        className={`block font-bold text-white leading-none ${sizeClasses[size].label} ${labelClassName}`}
+        className={`block font-bold leading-none font-mono ${sizeClasses[size].label} ${labelClassName}`}
+        style={{ color: 'var(--rc-deep)' }}
       >
         {label}
       </span>

@@ -15,7 +15,7 @@ export default function AuthField({
 }: AuthFieldProps) {
   return (
     <div className={`space-y-2 ${className}`}>
-      <label className="block text-sm font-semibold text-[#374151]">
+      <label className="block text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--rc-text-secondary)' }}>
         {label}
         {required ? " *" : ""}
       </label>

@@ -6,7 +6,7 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const baseClasses =
-  "brand-input w-full rounded-lg px-4 py-3 outline-none transition";
+  "brand-input w-full rounded-lg px-4 py-3 font-mono text-sm outline-none transition";
 
 export default function AuthInput({
   rightElement,

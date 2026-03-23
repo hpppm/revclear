@@ -22,8 +22,11 @@ export default function DashboardLayout({
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <p className="text-slate-600">Loading...</p>
+            <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rc-deep)' }}>
+                <div className="flex flex-col items-center gap-4">
+                    <div className="h-8 w-8 rounded-full border-2 border-[var(--rc-teal)] border-t-transparent animate-spin" />
+                    <p className="text-sm font-mono text-[var(--rc-text-muted)] tracking-wider uppercase">Loading</p>
+                </div>
             </div>
         );
     }
@@ -33,7 +36,7 @@ export default function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen bg-slate-100">
+        <div className="flex min-h-screen" style={{ background: 'var(--rc-deep)' }}>
             <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
             <main className={`flex-1 min-h-screen overflow-y-auto transition-all duration-300 ${collapsed ? "ml-16" : "ml-60"}`}>
                 {children}

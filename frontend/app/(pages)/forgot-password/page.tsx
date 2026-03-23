@@ -98,23 +98,23 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 font-sans">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 gradient-mesh">
+      <div className="w-full max-w-md animate-revealUp">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/landing" className="inline-flex items-center gap-2 group">
             <BrandMark size="lg" className="transition-transform group-hover:scale-105" />
-            <span className="text-3xl font-bold text-gray-900">RevClear</span>
+            <span className="text-3xl font-semibold" style={{ color: 'var(--rc-teal)' }}>RevClear</span>
           </Link>
         </div>
 
         {/* Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-xl shadow-gray-200/50 p-8">
+        <div className="glass-card rounded-2xl p-8">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--rc-text-primary)' }}>
               {step === "REQUEST" ? "Reset Password" : "Set New Password"}
             </h1>
-            <p className="text-gray-500">
+            <p className="text-xs font-mono" style={{ color: 'var(--rc-text-muted)' }}>
               {step === "REQUEST"
                 ? "Enter your email to receive reset instructions"
                 : "Enter the code sent to your email and your new password"}
@@ -122,7 +122,16 @@ export default function ForgotPasswordPage() {
           </div>
 
           {message && (
-            <div className={`mb-6 p-4 rounded-xl text-sm ${message.includes("success") || message.includes("sent") ? "bg-green-50 text-green-700 border border-green-100" : "bg-blue-50 text-blue-700 border border-blue-100"}`}>
+            <div
+              className="mb-6 p-4 rounded-xl text-sm font-mono"
+              style={{
+                background: message.includes("success")
+                  ? 'rgba(0, 212, 184, 0.1)'
+                  : 'rgba(0, 212, 184, 0.06)',
+                border: '1px solid rgba(0, 212, 184, 0.2)',
+                color: 'var(--rc-teal)',
+              }}
+            >
                {message}
             </div>
           )}
@@ -132,7 +141,8 @@ export default function ForgotPasswordPage() {
               {/* Email Field */}
               <div className="space-y-2">
                 <label
-                  className="block text-sm font-semibold text-gray-700"
+                  className="block text-xs font-medium uppercase tracking-wider"
+                  style={{ color: 'var(--rc-text-secondary)' }}
                   htmlFor="email"
                 >
                   Email Address
@@ -143,12 +153,12 @@ export default function ForgotPasswordPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+                  className="brand-input w-full rounded-lg px-4 py-3 font-mono text-sm outline-none transition"
                   placeholder="you@example.com"
                   autoComplete="email"
                 />
                 {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email}</p>
+                  <p className="text-sm" style={{ color: 'var(--rc-rose)' }}>{errors.email}</p>
                 )}
               </div>
 
@@ -168,7 +178,8 @@ export default function ForgotPasswordPage() {
                {/* Email Field (Read Only or Editable if they messed up) */}
                <div className="space-y-2">
                 <label
-                  className="block text-sm font-semibold text-gray-700"
+                  className="block text-xs font-medium uppercase tracking-wider"
+                  style={{ color: 'var(--rc-text-secondary)' }}
                   htmlFor="confirm-email"
                 >
                   Email Address
@@ -179,14 +190,15 @@ export default function ForgotPasswordPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-300 text-gray-500 rounded-xl px-4 py-3 outline-none"
+                  className="brand-input w-full rounded-lg px-4 py-3 font-mono text-sm outline-none opacity-60"
                 />
               </div>
 
               {/* Code Field */}
               <div className="space-y-2">
                 <label
-                  className="block text-sm font-semibold text-gray-700"
+                  className="block text-xs font-medium uppercase tracking-wider"
+                  style={{ color: 'var(--rc-text-secondary)' }}
                   htmlFor="code"
                 >
                   Verification Code
@@ -197,19 +209,20 @@ export default function ForgotPasswordPage() {
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+                  className="brand-input w-full rounded-lg px-4 py-3 font-mono text-sm outline-none transition"
                   placeholder="123456"
                   autoComplete="one-time-code"
                 />
                 {errors.code && (
-                  <p className="text-sm text-red-500">{errors.code}</p>
+                  <p className="text-sm" style={{ color: 'var(--rc-rose)' }}>{errors.code}</p>
                 )}
               </div>
 
               {/* New Password Field */}
               <div className="space-y-2">
                 <label
-                  className="block text-sm font-semibold text-gray-700"
+                  className="block text-xs font-medium uppercase tracking-wider"
+                  style={{ color: 'var(--rc-text-secondary)' }}
                   htmlFor="new-password"
                 >
                   New Password
@@ -220,18 +233,18 @@ export default function ForgotPasswordPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+                  className="brand-input w-full rounded-lg px-4 py-3 font-mono text-sm outline-none transition"
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
                 {errors.password && (
-                  <p className="text-sm text-red-500">{errors.password}</p>
+                  <p className="text-sm" style={{ color: 'var(--rc-rose)' }}>{errors.password}</p>
                 )}
               </div>
 
               {errors.form && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                  <p className="text-sm text-red-600">{errors.form}</p>
+                <div className="rounded-xl p-4" style={{ background: 'var(--rc-rose-glow)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                  <p className="text-sm" style={{ color: 'var(--rc-rose)' }}>{errors.form}</p>
                 </div>
               )}
 
@@ -252,7 +265,8 @@ export default function ForgotPasswordPage() {
           <div className="mt-6 text-center">
             <Link
               href="/login"
-              className="font-medium text-gray-500 hover:text-gray-900 transition-colors flex items-center justify-center gap-2"
+              className="font-mono text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              style={{ color: 'var(--rc-text-muted)' }}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

@@ -79,8 +79,8 @@ export default function ProfilePage() {
             <div className="max-w-6xl mx-auto px-6 py-8">
                 <Card>
                     <div className="text-center p-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--brand-600)] mx-auto mb-4"></div>
-                        <p className="text-slate-600">Loading profile...</p>
+                        <div className="animate-spin rounded-full h-12 w-12 mx-auto mb-4" style={{ borderBottom: '2px solid var(--rc-teal)' }}></div>
+                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-muted)' }}>Loading profile...</p>
                     </div>
                 </Card>
             </div>
@@ -110,32 +110,32 @@ export default function ProfilePage() {
             />
 
             <Card>
-                <div className="mb-8 flex flex-col gap-4 border-b border-slate-100 pb-6 md:flex-row md:items-center md:justify-between">
+                <div className="mb-8 flex flex-col gap-4 pb-6 md:flex-row md:items-center md:justify-between" style={{ borderBottom: '1px solid var(--rc-border)' }}>
                     <div className="flex items-center gap-4">
-                        <div className="brand-accent-icon flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold">
+                        <div className="brand-accent-icon flex h-16 w-16 items-center justify-center rounded-full text-2xl font-mono font-bold">
                             {user.full_name?.charAt(0).toUpperCase() || "U"}
                         </div>
                         <div>
-                            <h2 className="text-2xl font-semibold text-slate-900">{user.full_name}</h2>
-                            <p className="mt-1 text-sm capitalize text-slate-500">{user.role || "User"}</p>
-                            <p className="mt-1 text-sm text-slate-500">
+                            <h2 className="text-2xl font-semibold" style={{ color: 'var(--rc-text-primary)' }}>{user.full_name}</h2>
+                            <p className="mt-1 text-xs font-mono uppercase tracking-wide capitalize" style={{ color: 'var(--rc-text-muted)' }}>{user.role || "User"}</p>
+                            <p className="mt-1 text-xs font-mono" style={{ color: 'var(--rc-text-muted)' }}>
                                 {(user as any)?.organization?.name ? `Organization: ${(user as any).organization.name}` : "No Primary Organization"}
                             </p>
                         </div>
                     </div>
-                    <p className="text-sm text-slate-500">Member since {createdDate}</p>
+                    <p className="text-xs font-mono" style={{ color: 'var(--rc-text-faint)' }}>Member since {createdDate}</p>
                 </div>
 
                 {isEditing ? (
                     <div className="space-y-6">
                             {/* Account Info */}
                             <div className="space-y-4">
-                                <h4 className="text-md font-semibold text-slate-900 border-b pb-2">Account Information</h4>
+                                <h4 className="text-sm font-semibold uppercase tracking-wide pb-2" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>Account Information</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
-                                        <p className="text-slate-900 font-medium px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">{user.email}</p>
-                                        <p className="text-xs text-slate-500 mt-1">Managed by identity provider</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-secondary)' }}>Email Address</label>
+                                        <p className="font-mono text-sm px-3 py-2 rounded-lg" style={{ color: 'var(--rc-text-primary)', background: 'var(--rc-surface)', border: '1px solid var(--rc-border)' }}>{user.email}</p>
+                                        <p className="text-xs font-mono mt-1" style={{ color: 'var(--rc-text-faint)' }}>Managed by identity provider</p>
                                     </div>
                                     <Input
                                         label="Phone Number"
@@ -149,7 +149,7 @@ export default function ProfilePage() {
 
                             {/* Professional Details */}
                             <div className="space-y-4">
-                                <h4 className="text-md font-semibold text-slate-900 border-b pb-2">Professional Details</h4>
+                                <h4 className="text-sm font-semibold uppercase tracking-wide pb-2" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>Professional Details</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="Practitioner Type / Specialty"
@@ -189,7 +189,7 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-slate-200">
+                            <div className="flex gap-3 pt-4" style={{ borderTop: '1px solid var(--rc-border)' }}>
                                 <Button onClick={handleSave} loading={saving}>
                                     Save Changes
                                 </Button>
@@ -197,48 +197,48 @@ export default function ProfilePage() {
                                     Cancel
                                 </Button>
                             </div>
-                            {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+                            {error && <p className="text-sm mt-2" style={{ color: 'var(--rc-rose)' }}>{error}</p>}
                     </div>
                 ) : (
                     <div className="space-y-8">
                             {/* Account Info Read-Only */}
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Account Information</h3>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>Account Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
-                                        <p className="text-slate-900 font-medium">{user.email}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Email Address</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{user.email}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Phone</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).phone || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Phone</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{(user as any).phone || "—"}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Professional Details Read-Only */}
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Professional Details</h3>
+                                <h3 className="text-sm font-semibold uppercase tracking-wide pb-2 mb-4" style={{ color: 'var(--rc-text-primary)', borderBottom: '1px solid var(--rc-border)' }}>Professional Details</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Practitioner Type</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).practitioner_type || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Practitioner Type</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{(user as any).practitioner_type || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Taxonomy Code</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).taxonomy_code || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Taxonomy Code</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{(user as any).taxonomy_code || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">License ID</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).license_id || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>License ID</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{(user as any).license_id || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">License State</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).license_state || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>License State</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{(user as any).license_state || "—"}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Individual NPI</label>
-                                        <p className="text-slate-900 font-medium">{(user as any).npi || "—"}</p>
+                                        <label className="block text-xs font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--rc-text-muted)' }}>Individual NPI</label>
+                                        <p className="font-mono text-sm" style={{ color: 'var(--rc-text-primary)' }}>{(user as any).npi || "—"}</p>
                                     </div>
                                 </div>
                             </div>

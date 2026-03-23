@@ -25,8 +25,10 @@ type InputProps = TextInputProps | TextareaInputProps | SelectInputProps;
 export default function Input(props: InputProps) {
     const { label, helperText, error, className = "", variant = "text", ...rest } = props;
 
-    const baseClasses = "brand-input w-full rounded-lg border px-3 py-2 text-slate-900 shadow-sm";
-    const errorClasses = error ? "border-red-300 focus:border-red-500 focus:ring-red-100" : "border-slate-200";
+    const baseClasses = "brand-input w-full rounded-lg border px-3 py-2 text-sm shadow-sm font-mono";
+    const errorClasses = error
+        ? "border-[var(--rc-rose)] focus:border-[var(--rc-rose)] focus:ring-[var(--rc-rose-glow)]"
+        : "";
 
     const renderInput = () => {
         if (variant === "textarea") {
@@ -52,11 +54,15 @@ export default function Input(props: InputProps) {
     };
 
     return (
-        <label className="space-y-1 block">
-            {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
+        <label className="space-y-1.5 block">
+            {label && (
+                <span className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--rc-text-secondary)' }}>
+                    {label}
+                </span>
+            )}
             {renderInput()}
-            {helperText && !error && <p className="text-xs text-slate-500">{helperText}</p>}
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {helperText && !error && <p className="text-xs" style={{ color: 'var(--rc-text-muted)' }}>{helperText}</p>}
+            {error && <p className="text-xs" style={{ color: 'var(--rc-rose)' }}>{error}</p>}
         </label>
     );
 }

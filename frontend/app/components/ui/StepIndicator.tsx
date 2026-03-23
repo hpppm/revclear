@@ -12,59 +12,88 @@ interface StepIndicatorProps {
 
 export default function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
     return (
-        <div className="mb-8">
-            <div className="flex items-center justify-between">
-                {steps.map((step, index) => {
-                    const isCompleted = index < currentStep;
-                    const isCurrent = index === currentStep;
-                    const stepNumber = index + 1;
+        <div className="flex flex-col gap-0 pr-6">
+            {steps.map((step, index) => {
+                const isCompleted = index < currentStep;
+                const isCurrent = index === currentStep;
+                const stepNumber = index + 1;
+                const isLast = index === steps.length - 1;
 
-                    return (
-                        <React.Fragment key={index}>
-                            <div className="flex flex-col items-center flex-1">
-                                <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${isCompleted
-                                            ? "bg-blue-600 text-white"
-                                            : isCurrent
-                                                ? "bg-blue-100 text-blue-600 ring-2 ring-blue-600"
-                                                : "bg-slate-200 text-slate-500"
-                                        }`}
-                                >
-                                    {isCompleted ? (
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                    ) : (
-                                        stepNumber
-                                    )}
-                                </div>
-                                <div className="mt-2 text-center">
-                                    <p
-                                        className={`text-sm font-medium ${isCurrent ? "text-blue-600" : isCompleted ? "text-slate-700" : "text-slate-500"
-                                            }`}
-                                    >
-                                        {step.name}
-                                    </p>
-                                    {step.description && (
-                                        <p className="text-xs text-slate-500 mt-0.5">{step.description}</p>
-                                    )}
-                                </div>
+                return (
+                    <div key={index} className="flex items-start gap-3">
+                        {/* Vertical line + circle */}
+                        <div className="flex flex-col items-center">
+                            <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs font-semibold transition-all shrink-0 ${
+                                    isCompleted
+                                        ? "text-[var(--rc-deep)]"
+                                        : isCurrent
+                                            ? "text-[var(--rc-teal)]"
+                                            : "text-[var(--rc-text-muted)]"
+                                }`}
+                                style={{
+                                    background: isCompleted
+                                        ? 'var(--rc-teal)'
+                                        : isCurrent
+                                            ? 'var(--rc-teal-glow)'
+                                            : 'var(--rc-elevated)',
+                                    border: isCurrent
+                                        ? '2px solid var(--rc-teal)'
+                                        : '1px solid var(--rc-border)',
+                                    boxShadow: isCurrent
+                                        ? '0 0 12px rgba(0, 212, 184, 0.3)'
+                                        : isCompleted
+                                            ? '0 0 8px rgba(0, 212, 184, 0.2)'
+                                            : 'none',
+                                }}
+                            >
+                                {isCompleted ? (
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                ) : (
+                                    stepNumber
+                                )}
                             </div>
-                            {index < steps.length - 1 && (
+                            {/* Vertical connector line */}
+                            {!isLast && (
                                 <div
-                                    className={`flex-1 h-0.5 mx-2 transition-all ${isCompleted ? "bg-blue-600" : "bg-slate-200"
-                                        }`}
-                                    style={{ maxWidth: "100px" }}
+                                    className="w-px flex-1 min-h-[28px] transition-colors"
+                                    style={{
+                                        background: isCompleted
+                                            ? 'var(--rc-teal)'
+                                            : 'var(--rc-border)',
+                                    }}
                                 />
                             )}
-                        </React.Fragment>
-                    );
-                })}
-            </div>
+                        </div>
+
+                        {/* Label */}
+                        <div className="pt-1 pb-4">
+                            <p
+                                className={`text-sm font-medium font-mono tracking-wide ${
+                                    isCurrent
+                                        ? "text-[var(--rc-teal)]"
+                                        : isCompleted
+                                            ? "text-[var(--rc-text-primary)]"
+                                            : "text-[var(--rc-text-muted)]"
+                                }`}
+                            >
+                                {step.name}
+                            </p>
+                            {step.description && (
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--rc-text-faint)' }}>
+                                    {step.description}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }

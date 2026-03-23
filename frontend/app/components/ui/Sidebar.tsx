@@ -25,6 +25,15 @@ const navItems = [
         ),
     },
     {
+        label: "Encounters",
+        href: "/dashboard/encounters",
+        icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        ),
+    },
+    {
         label: "Claims",
         href: "/dashboard/claims",
         icon: (
@@ -64,86 +73,103 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     return (
         <aside
-            className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-white transition-all duration-300 ${
+            className={`fixed inset-y-0 left-0 z-40 flex flex-col transition-all duration-300 ${
                 collapsed ? "w-16" : "w-60"
             }`}
+            style={{ background: 'var(--rc-deep)', borderRight: '1px solid var(--rc-border)' }}
         >
             {/* Header: logo + hamburger */}
-            <div className="flex h-16 items-center justify-between border-b border-white/10 px-3">
+            <div className="flex h-14 items-center justify-between px-3" style={{ borderBottom: '1px solid var(--rc-border)' }}>
                 {!collapsed && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                         <BrandMark
                             label="RC"
                             size="sm"
                             className="rounded-lg"
                             labelClassName="text-sm tracking-tight"
                         />
-                        <span className="text-base font-semibold tracking-tight">RevClear</span>
+                        <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--rc-text-primary)' }}>
+                            RevClear
+                        </span>
                     </div>
                 )}
                 <button
                     onClick={onToggle}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
                         collapsed ? "mx-auto" : ""
                     }`}
+                    style={{ color: 'var(--rc-text-muted)' }}
                     aria-label="Toggle sidebar"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
-                            collapsed ? "justify-center" : ""
-                        } ${
-                            isActive(item.href)
-                                ? "brand-button-primary text-white"
-                                : "text-slate-400 hover:bg-white/5 hover:text-white"
-                        }`}
-                    >
-                        {item.icon}
-                        {!collapsed && item.label}
-                    </Link>
-                ))}
+            <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+                {navItems.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            title={collapsed ? item.label : undefined}
+                            className={`relative flex items-center gap-3 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                                collapsed ? "justify-center" : ""
+                            }`}
+                            style={{
+                                color: active ? 'var(--rc-teal)' : 'var(--rc-text-muted)',
+                                background: active ? 'var(--rc-teal-glow)' : 'transparent',
+                                borderLeft: active ? '2px solid var(--rc-teal)' : '2px solid transparent',
+                            }}
+                        >
+                            {item.icon}
+                            {!collapsed && (
+                                <span className="font-mono text-[13px] tracking-wide">
+                                    {item.label}
+                                </span>
+                            )}
+                        </Link>
+                    );
+                })}
             </nav>
 
             {/* Footer: profile + logout */}
-            <div className="border-t border-white/10 p-2 space-y-1">
+            <div className="p-2 space-y-0.5" style={{ borderTop: '1px solid var(--rc-border)' }}>
                 <Link
                     href="/dashboard/profile"
                     title={collapsed ? "Profile" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
+                    className={`relative flex items-center gap-3 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors ${
                         collapsed ? "justify-center" : ""
-                    } ${
-                        pathname === "/dashboard/profile"
-                            ? "brand-button-primary text-white"
-                            : "text-slate-400 hover:bg-white/5 hover:text-white"
                     }`}
+                    style={{
+                        color: pathname === "/dashboard/profile" ? 'var(--rc-teal)' : 'var(--rc-text-muted)',
+                        background: pathname === "/dashboard/profile" ? 'var(--rc-teal-glow)' : 'transparent',
+                        borderLeft: pathname === "/dashboard/profile" ? '2px solid var(--rc-teal)' : '2px solid transparent',
+                    }}
                 >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-white shrink-0">
+                    <div
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold font-mono shrink-0"
+                        style={{ background: 'var(--rc-elevated)', color: 'var(--rc-teal)', border: '1px solid var(--rc-border-active)' }}
+                    >
                         {userInitials}
                     </div>
-                    {!collapsed && <span className="truncate">{user?.email || "Profile"}</span>}
+                    {!collapsed && <span className="truncate font-mono text-[12px]">{user?.email || "Profile"}</span>}
                 </Link>
                 <button
                     onClick={logout}
                     title={collapsed ? "Sign out" : undefined}
-                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors ${
                         collapsed ? "justify-center" : ""
                     }`}
+                    style={{ color: 'var(--rc-text-muted)', borderLeft: '2px solid transparent' }}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
-                    {!collapsed && "Sign out"}
+                    {!collapsed && <span className="font-mono text-[13px]">Sign out</span>}
                 </button>
             </div>
         </aside>

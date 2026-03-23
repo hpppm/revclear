@@ -102,42 +102,56 @@ export default function WizardContainer({
     const canGoBack = currentStepData.canGoBack !== false && !isFirstStep && !isTransitioning;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl">
+        <div className="min-h-screen flex items-start justify-center p-6" style={{ background: 'var(--rc-deep)' }}>
+            <div className="w-full max-w-5xl">
                 {title && (
-                    <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
+                    <div className="mb-6 animate-revealUp">
+                        <h1 className="text-2xl font-semibold" style={{ color: 'var(--rc-text-primary)' }}>{title}</h1>
+                        <p className="text-sm font-mono mt-1" style={{ color: 'var(--rc-text-muted)' }}>
+                            Step {currentStep + 1} of {steps.length}
+                        </p>
                     </div>
                 )}
 
-                <Card className="min-h-[600px] flex flex-col">
-                    <StepIndicator
-                        steps={steps.map((s) => ({ name: s.name, description: s.description }))}
-                        currentStep={currentStep}
-                    />
-
-                    <div className="flex-1 overflow-auto">
-                        <div className="animate-fadeIn">{currentStepData.component}</div>
+                <div className="flex gap-8">
+                    {/* Left: Vertical step rail */}
+                    <div className="hidden md:block w-48 shrink-0 pt-2 animate-revealUp">
+                        <StepIndicator
+                            steps={steps.map((s) => ({ name: s.name, description: s.description }))}
+                            currentStep={currentStep}
+                        />
                     </div>
 
-                    <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
-                        {isFirstStep && onExit ? (
-                            <Button variant="ghost" onClick={onExit}>
-                                ← Exit Encounter
-                            </Button>
-                        ) : (
-                            <Button variant="ghost" onClick={handleBack} disabled={!canGoBack}>
-                                ← Back
-                            </Button>
-                        )}
-                        <div className="text-sm text-slate-500">
-                            Step {currentStep + 1} of {steps.length}
-                        </div>
-                        <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Ready for Submission" : "Continue →"}
-                        </Button>
+                    {/* Right: Content */}
+                    <div className="flex-1 min-w-0">
+                        <Card className="min-h-[500px] flex flex-col animate-revealUp stagger-1">
+                            <div className="flex-1 overflow-auto">
+                                <div className="animate-fadeIn">{currentStepData.component}</div>
+                            </div>
+
+                            <div
+                                className="flex justify-between items-center pt-5 mt-5"
+                                style={{ borderTop: '1px solid var(--rc-border)' }}
+                            >
+                                {isFirstStep && onExit ? (
+                                    <Button variant="ghost" onClick={onExit}>
+                                        ← Exit Encounter
+                                    </Button>
+                                ) : (
+                                    <Button variant="ghost" onClick={handleBack} disabled={!canGoBack}>
+                                        ← Back
+                                    </Button>
+                                )}
+                                <span className="text-xs font-mono" style={{ color: 'var(--rc-text-faint)' }}>
+                                    {currentStep + 1}/{steps.length}
+                                </span>
+                                <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
+                                    {isLastStep ? "Ready for Submission" : "Continue →"}
+                                </Button>
+                            </div>
+                        </Card>
                     </div>
-                </Card>
+                </div>
             </div>
         </div>
     );
