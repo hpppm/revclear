@@ -2,8 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm test)",
-      "Bash(grep -rn * frontend/app/lib/api --include=*.ts)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(grep -rn*)"
     ]
   }
 }
