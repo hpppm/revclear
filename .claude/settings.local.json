@@ -2,8 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm test)",
-      "Bash(grep -rn \"error.response\\\\|error.message\\\\|throw error\" \"C:\\\\Projects\\\\Dev\\\\revclear\\\\frontend\\\\app\\\\lib\\\\api\"\" --include=\"*.ts \")",
-      "Bash(npm run:*)"
+      "Bash(grep -rn * frontend/app/lib/api --include=*.ts)",
+      "Bash(npm run *)"
     ]
   }
 }

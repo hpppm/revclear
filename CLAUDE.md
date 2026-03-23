@@ -46,11 +46,14 @@ Core tables: `users`, `organizations`, `patients`, `encounters`, `claims`, `medi
 
 Schema: `backend/docs/db/revclear_schema_current.sql`
 
+> **Known Security Gap — Row-Level Security (RLS) Disabled**
+> The database schema runs with `SET row_security = off`. PHI isolation between organizations depends entirely on application-level `organization_id` scoping in every query. A single missing `WHERE organization_id = $1` clause would expose cross-tenant PHI. This must be evaluated and RLS enabled before production go-live. Track this as a pre-production security requirement.
+
 ### Authentication
 
 - AWS Cognito for user identity (JWT access tokens)
 - Backend verifies tokens via `aws-jwt-verify`
-- Frontend stores token in localStorage, uses `AuthContext` for state
+- JWT access tokens stored in `httpOnly` cookies (not localStorage) — see [JWT Token Security](#jwt-token-security-httponly-cookies) section for full cookie configuration
 
 ## Build and Development Commands
 
