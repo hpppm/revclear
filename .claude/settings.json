@@ -50,24 +50,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"backend/.*\\\\.(ts|tsx)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){try{execSync('npx tsc --noEmit --pretty false 2>&1',{cwd:'backend',encoding:'utf8',stdio:['pipe','pipe','pipe']});console.error('[RevClear Hook] TypeScript check passed for '+p.replace(/.*backend\\//,'backend/'))}catch(e){const lines=(e.stdout||'').split('\\n').filter(l=>l.includes(p.replace(/.*backend\\//,''))).slice(0,5);if(lines.length){console.error('[RevClear Hook] TypeScript errors:');lines.forEach(l=>console.error(l))}}}console.log(d)})\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"frontend/.*\\\\.(ts|tsx)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){try{execSync('npx tsc --noEmit --pretty false 2>&1',{cwd:'frontend',encoding:'utf8',stdio:['pipe','pipe','pipe']});console.error('[RevClear Hook] TypeScript check passed for '+p.replace(/.*frontend\\//,'frontend/'))}catch(e){const lines=(e.stdout||'').split('\\n').filter(l=>l.includes(p.replace(/.*frontend\\//,''))).slice(0,5);if(lines.length){console.error('[RevClear Hook] TypeScript errors:');lines.forEach(l=>console.error(l))}}}console.log(d)})\""
-          }
-        ]
-      },
-      {
         "matcher": "tool == \"Bash\" && tool_input.command matches \"git commit\"",
         "hooks": [
           {
@@ -89,25 +71,5 @@
       }
     ]
   },
-  "autoInvoke": [
-    {
-      "skill": "frontend-design",
-      "trigger": ["build.*component", "create.*page", "design.*UI", "style.*frontend", "dark.*theme"],
-      "applyTo": ["frontend/app/**/*.tsx", "frontend/components/**/*.tsx"],
-      "priority": "high"
-    },
-    {
-      "skill": "implement-backend",
-      "trigger": ["create.*route", "implement.*endpoint", "build.*API"],
-      "applyTo": ["backend/src/**/*.ts"],
-      "priority": "high"
-    },
-    {
-      "skill": "code-reviewer",
-      "trigger": ["after:fileModified"],
-      "applyTo": ["**/*.ts", "**/*.tsx"],
-      "priority": "medium"
-    }
-  ],
   "model": "sonnet"
 }
