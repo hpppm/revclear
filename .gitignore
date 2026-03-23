@@ -174,3 +174,6 @@ docker-compose.override.yml
 .docker/
 *docker-compose.prod.yml
 nul
+
+# Claude Code local overrides
+.claude/settings.local.json
