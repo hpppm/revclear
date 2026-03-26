@@ -172,6 +172,13 @@ export default function ReviewClaimStep({
             errs.push("ICD diagnosis pointers are required on each service line with a CPT code.");
         }
 
+        const hasNegativeCharge = (current.line_items || []).some(
+            (li: any) => li.procedure_code && Number(li.charge_amount) <= 0
+        );
+        if (hasNegativeCharge) {
+            errs.push("Charge amount must be greater than 0 on each service line.");
+        }
+
         setValidationErrors(errs);
         onValidationChange?.(errs.length === 0);
     };

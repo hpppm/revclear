@@ -6,6 +6,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
+import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -573,6 +574,16 @@ export default function EncounterPage() {
         !!metadata.date &&
         (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
       onNext: async () => {
+        const validation = EncounterDetailsFormSchema.safeParse({
+          patientId: metadata.patientId,
+          date: metadata.date,
+          encounterType: metadata.encounterType,
+        });
+        if (!validation.success) {
+          const first = validation.error.errors[0];
+          throw new Error(first ? first.message : "Please fix encounter details");
+        }
+
         // Step 1: Create or update encounter
         await persistSubscriber();
         if (!encounterId) {

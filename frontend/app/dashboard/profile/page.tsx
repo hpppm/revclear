@@ -8,12 +8,14 @@ import DashboardHeader from "@/app/components/ui/DashboardHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
+import { ProfileFormSchema } from "@/app/lib/validation/schemas";
 
 export default function ProfilePage() {
     const { user, checkAuth } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [formData, setFormData] = useState({
         phone: (user as any)?.phone || "",
         practitioner_type: (user as any)?.practitioner_type || "",
@@ -36,8 +38,21 @@ export default function ProfilePage() {
     }, [user]);
 
     const handleSave = async () => {
-        setSaving(true);
         setError(null);
+        setFieldErrors({});
+
+        const validation = ProfileFormSchema.safeParse(formData);
+        if (!validation.success) {
+            const errs: Record<string, string> = {};
+            validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+                const key = String(err.path[0]);
+                if (key && !errs[key]) errs[key] = err.message;
+            });
+            setFieldErrors(errs);
+            return;
+        }
+
+        setSaving(true);
         try {
             const payload = {
                 phone: formData.phone,
@@ -143,6 +158,7 @@ export default function ProfilePage() {
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 123-4567"
                                         helperText="For account notifications"
+                                        error={fieldErrors.phone}
                                     />
                                 </div>
                             </div>
@@ -156,12 +172,14 @@ export default function ProfilePage() {
                                         value={formData.practitioner_type}
                                         onChange={(e) => setFormData({ ...formData, practitioner_type: e.target.value })}
                                         placeholder="e.g. Clinical Psychologist"
+                                        error={fieldErrors.practitioner_type}
                                     />
                                     <Input
                                         label="Taxonomy Code"
                                         value={formData.taxonomy_code}
                                         onChange={(e) => setFormData({ ...formData, taxonomy_code: e.target.value })}
                                         placeholder="10-character code"
+                                        error={fieldErrors.taxonomy_code}
                                     />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -170,12 +188,14 @@ export default function ProfilePage() {
                                         value={formData.license_id}
                                         onChange={(e) => setFormData({ ...formData, license_id: e.target.value })}
                                         placeholder="State license number"
+                                        error={fieldErrors.license_id}
                                     />
                                     <Input
                                         label="License State"
                                         value={formData.license_state}
                                         onChange={(e) => setFormData({ ...formData, license_state: e.target.value })}
                                         placeholder="e.g. CA, NY"
+                                        error={fieldErrors.license_state}
                                     />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,6 +205,7 @@ export default function ProfilePage() {
                                         onChange={(e) => setFormData({ ...formData, npi: e.target.value })}
                                         placeholder="10-digit Type 1 NPI"
                                         helperText="Your personal NPI as rendering provider"
+                                        error={fieldErrors.npi}
                                     />
                                 </div>
                             </div>

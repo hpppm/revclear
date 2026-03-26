@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient, Encounter } from "@/app/lib/types";
+import { EditPatientFormSchema } from "@/app/lib/validation/schemas";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import logger from "@/app/lib/logger";
@@ -40,6 +41,7 @@ export default function PatientProfilePage() {
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
@@ -75,6 +77,29 @@ export default function PatientProfilePage() {
 
     const handleSave = async () => {
         if (!editedPatient) return;
+
+        const validation = EditPatientFormSchema.safeParse({
+            full_name: editedPatient.name,
+            dob: editedPatient.dob,
+            gender: editedPatient.gender,
+            phone: editedPatient.phone,
+            email: editedPatient.email,
+            address_street: editedPatient.address_street,
+            address_city: editedPatient.address_city,
+            address_state: editedPatient.address_state,
+            address_zip: editedPatient.address_zip,
+            insurance_provider: editedPatient.insuranceType,
+            insurance_policy_number: editedPatient.insuranceId,
+            insurance_member_id: editedPatient.insurance_member_id,
+            insurance_group_number: editedPatient.insurance_group_number,
+        });
+        if (!validation.success) {
+            const firstError = validation.error.errors[0];
+            setSaveError(firstError ? firstError.message : "Please fix validation errors");
+            return;
+        }
+        setSaveError(null);
+
         setSaving(true);
         try {
             await apiClient.patients.update(patientId, {
@@ -96,7 +121,7 @@ export default function PatientProfilePage() {
             setEditMode(false);
         } catch (err) {
             logger.error("Failed to update patient", err);
-            alert("Failed to update patient");
+            setSaveError("Failed to update patient");
         } finally {
             setSaving(false);
         }
@@ -216,6 +241,9 @@ export default function PatientProfilePage() {
                                         >
                                             Cancel
                                         </button>
+                                        {saveError && (
+                                            <p className="text-sm text-red-600 mt-1">{saveError}</p>
+                                        )}
                                     </>
                                 )}
                             </div>

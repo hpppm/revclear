@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
+import { SignupFormSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
 import AuthField from "@/app/components/ui/AuthField";
 import AuthInput from "@/app/components/ui/AuthInput";
@@ -82,6 +83,16 @@ export default function SignupPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+
+    const validation = SignupFormSchema.safeParse({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+    });
+    if (!validation.success) {
+      setError(validation.error.errors[0].message);
+      return;
+    }
 
     if (form.password !== form.confirm) {
       setError("Passwords do not match");

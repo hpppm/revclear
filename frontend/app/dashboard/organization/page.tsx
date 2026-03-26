@@ -10,6 +10,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
+import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
 
 export default function OrganizationProfilePage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -17,6 +18,7 @@ export default function OrganizationProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [isEditing, setIsEditing] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -111,8 +113,21 @@ export default function OrganizationProfilePage() {
     };
 
     const handleSave = async () => {
-        setSaving(true);
         setError(null);
+        setFieldErrors({});
+
+        const validation = OrganizationFormSchema.safeParse(formData);
+        if (!validation.success) {
+            const errs: Record<string, string> = {};
+            validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+                const key = String(err.path[0]);
+                if (key && !errs[key]) errs[key] = err.message;
+            });
+            setFieldErrors(errs);
+            return;
+        }
+
+        setSaving(true);
         try {
             const payload: Record<string, any> = {};
             Object.entries(formData).forEach(([key, value]) => {
@@ -364,6 +379,7 @@ export default function OrganizationProfilePage() {
                                                 label="SFTP Port"
                                                 value={formData.edi_sftp_port}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_port: e.target.value })}
+                                                error={fieldErrors.edi_sftp_port}
                                             />
                                         </div>
                                         <div className="mt-4">
