@@ -110,13 +110,14 @@ export default function WizardContainer({
                     </div>
                 )}
 
-                <Card className="min-h-[600px] flex flex-col">
+                <Card>
+                    <div className="flex flex-col min-h-[560px]">
                     <StepIndicator
                         steps={steps.map((s) => ({ name: s.name, description: s.description }))}
                         currentStep={currentStep}
                     />
 
-                    <div className="flex-1 overflow-auto">
+                    <div className="flex-1">
                         <div className="animate-fadeIn">{currentStepData.component}</div>
                     </div>
 
@@ -136,6 +137,7 @@ export default function WizardContainer({
                         <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
                             {isLastStep ? "Ready for Submission" : "Continue →"}
                         </Button>
+                    </div>
                     </div>
                 </Card>
             </div>

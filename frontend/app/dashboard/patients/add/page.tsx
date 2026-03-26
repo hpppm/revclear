@@ -100,6 +100,7 @@ export default function AddPatientPage() {
                   type="date"
                   value={formData.dob}
                   onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  required
                 />
                 <Input
                   label="Gender"

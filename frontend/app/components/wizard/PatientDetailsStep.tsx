@@ -66,6 +66,7 @@ export default function PatientDetailsStep({
           type="date"
           value={metadata.date}
           onChange={(e) => setMetadata({ ...metadata, date: e.target.value })}
+          required
         />
 
         <label className="space-y-1 block">
@@ -98,6 +99,7 @@ export default function PatientDetailsStep({
           id="patient-select"
           name="patient-select"
           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          required
           value={metadata.patientId}
         onChange={(e) => {
           const val = e.target.value;
@@ -173,6 +175,7 @@ export default function PatientDetailsStep({
                   label="Subscriber Name"
                   value={metadata.subscriber?.full_name || ""}
                   onChange={(e) => handleSubscriberChange("full_name", e.target.value)}
+                  required
                 />
                 <Input
                   label="Subscriber DOB"

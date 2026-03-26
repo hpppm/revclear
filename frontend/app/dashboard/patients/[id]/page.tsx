@@ -43,6 +43,7 @@ export default function PatientProfilePage() {
     const [editMode, setEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     useEffect(() => {
         if (patientId) {
@@ -76,6 +77,7 @@ export default function PatientProfilePage() {
     const handleSave = async () => {
         if (!editedPatient) return;
         setSaving(true);
+        setSaveError(null);
         try {
             await apiClient.patients.update(patientId, {
                 full_name: editedPatient.name,
@@ -96,7 +98,8 @@ export default function PatientProfilePage() {
             setEditMode(false);
         } catch (err) {
             logger.error("Failed to update patient", err);
-            alert("Failed to update patient");
+            const message = (err as any)?.response?.data?.message || (err as any)?.response?.data?.error || "Failed to update patient";
+            setSaveError(message);
         } finally {
             setSaving(false);
         }
@@ -216,6 +219,7 @@ export default function PatientProfilePage() {
                                         >
                                             Cancel
                                         </button>
+                                        {saveError && <p className="text-sm text-red-600">{saveError}</p>}
                                     </>
                                 )}
                             </div>
@@ -230,6 +234,7 @@ export default function PatientProfilePage() {
                                         value={editedPatient.dob || ""}
                                         onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
                                         className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
+                                        required
                                     />
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.dob ? new Date(patient.dob).toLocaleDateString() : "—"}</p>
