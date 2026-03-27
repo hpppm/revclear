@@ -1,8 +1,37 @@
 import { Router } from "express";
+import { z } from "zod";
 import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 import logger from "../../utils/logger";
+
+const SignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  attributes: z.record(z.string()).optional(),
+  practitionerType: z.string().optional(),
+  licenseId: z.string().optional(),
+});
+
+const ConfirmSignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Confirmation code must be 6 digits"),
+});
+
+const SigninSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const ConfirmForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Reset code must be 6 digits"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 const router = Router();
 
@@ -39,7 +68,11 @@ const REFRESH_COOKIE_OPTIONS = {
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
-  const { email, password, attributes, practitionerType, licenseId } = req.body;
+  const parsed = SignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.errors });
+  }
+  const { email, password, attributes, practitionerType, licenseId } = parsed.data;
 
   try {
     const result = await AuthService.signup(
@@ -86,7 +119,11 @@ router.post("/signup", async (req, res) => {
 
 // Confirm sign-up route
 router.post("/confirm-signup", async (req, res) => {
-  const { email, code } = req.body;
+  const parsed = ConfirmSignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.errors });
+  }
+  const { email, code } = parsed.data;
   try {
     await AuthService.confirmSignup(email, code);
     res.status(200).json({ message: "Account confirmed successfully." });
@@ -98,7 +135,11 @@ router.post("/confirm-signup", async (req, res) => {
 
 // Sign-in route
 router.post("/signin", async (req, res) => {
-  const { email, password } = req.body;
+  const parsed = SigninSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.errors });
+  }
+  const { email, password } = parsed.data;
   try {
     const response = await AuthService.signin(email, password);
     const authResult = response.AuthenticationResult;
@@ -206,10 +247,11 @@ router.post("/refresh-token", async (req, res) => {
 
 // Forgot password route
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: "Email is required." });
+  const parsed = ForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.errors });
   }
+  const { email } = parsed.data;
   try {
     await AuthService.forgotPassword(email);
   } catch (error: any) {
@@ -223,12 +265,11 @@ router.post("/forgot-password", async (req, res) => {
 
 // Confirm forgot password route
 router.post("/confirm-forgot-password", async (req, res) => {
-  const { email, code, newPassword } = req.body;
-  if (!email || !code || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "Email, code, and new password are required." });
+  const parsed = ConfirmForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.errors });
   }
+  const { email, code, newPassword } = parsed.data;
   try {
     await AuthService.confirmForgotPassword(email, code, newPassword);
     res.status(200).json({ message: "Password has been reset successfully." });
