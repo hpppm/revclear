@@ -66,7 +66,7 @@ export default function LoginPage() {
     const nextErrors: FieldErrors = {};
     const validation = LoginFormSchema.safeParse({ email, password });
     if (!validation.success) {
-      validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+      validation.error.issues.forEach((err) => {
         const field = err.path[0] as keyof FieldErrors;
         if (field && !nextErrors[field]) nextErrors[field] = err.message;
       });

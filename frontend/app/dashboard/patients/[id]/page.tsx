@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
@@ -45,9 +45,18 @@ export default function PatientProfilePage() {
     const [editMode, setEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+    // Track the last patientId fetched to prevent double-fetch.
+    // React 18 Strict Mode remounts with restored refs, so this ref remains set
+    // on the second mount and blocks the duplicate request. On real navigation
+    // to a different patient, patientId !== fetchedPatientIdRef.current so the
+    // fetch runs correctly.
+    const fetchedPatientIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (patientId) {
+        if (patientId && fetchedPatientIdRef.current !== patientId) {
+            fetchedPatientIdRef.current = patientId;
             fetchData();
         }
     }, [patientId]);
@@ -94,10 +103,17 @@ export default function PatientProfilePage() {
             insurance_group_number: editedPatient.insurance_group_number,
         });
         if (!validation.success) {
-            const firstError = validation.error.errors[0];
-            setSaveError(firstError ? firstError.message : "Please fix validation errors");
+            const errs: Record<string, string> = {};
+            validation.error.issues.forEach((err) => {
+                const key = String(err.path[0]);
+                if (key && !errs[key]) errs[key] = err.message;
+            });
+            setFieldErrors(errs);
+            const first = validation.error.issues[0];
+            setSaveError(first ? first.message : "Please fix validation errors");
             return;
         }
+        setFieldErrors({});
         setSaveError(null);
 
         setSaving(true);
@@ -129,6 +145,7 @@ export default function PatientProfilePage() {
 
     const handleCancel = () => {
         setEditedPatient(patient);
+        setFieldErrors({});
         setEditMode(false);
     };
 
@@ -253,12 +270,15 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Date of Birth</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="date"
-                                        value={editedPatient.dob || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                    />
+                                    <>
+                                        <input
+                                            type="date"
+                                            value={editedPatient.dob || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
+                                        />
+                                        {fieldErrors.dob && <p className="mt-1 text-sm text-red-500">{fieldErrors.dob}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.dob ? new Date(patient.dob).toLocaleDateString() : "—"}</p>
                                 )}
@@ -266,16 +286,19 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Gender</p>
                                 {editMode && editedPatient ? (
-                                    <select
-                                        value={editedPatient.gender || "U"}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                    >
-                                        <option value="M">Male</option>
-                                        <option value="F">Female</option>
-                                        <option value="O">Other</option>
-                                        <option value="U">Unknown</option>
-                                    </select>
+                                    <>
+                                        <select
+                                            value={editedPatient.gender || "U"}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
+                                        >
+                                            <option value="M">Male</option>
+                                            <option value="F">Female</option>
+                                            <option value="O">Other</option>
+                                            <option value="U">Unknown</option>
+                                        </select>
+                                        {fieldErrors.gender && <p className="mt-1 text-sm text-red-500">{fieldErrors.gender}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">
                                         {patient.gender === "M" ? "Male" : patient.gender === "F" ? "Female" : patient.gender === "O" ? "Other" : patient.gender === "U" ? "Unknown" : "—"}
@@ -285,12 +308,15 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Phone</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="tel"
-                                        value={editedPatient.phone || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="tel"
+                                            value={editedPatient.phone || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">{fieldErrors.phone}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.phone || "—"}</p>
                                 )}
@@ -298,12 +324,15 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Email</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="email"
-                                        value={editedPatient.email || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="email"
+                                            value={editedPatient.email || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.email && <p className="mt-1 text-sm text-red-500">{fieldErrors.email}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.email || "—"}</p>
                                 )}
@@ -311,12 +340,15 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Insurance Provider</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insuranceType || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editedPatient.insuranceType || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_provider}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insuranceType || "—"}</p>
                                 )}
@@ -324,12 +356,15 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Policy Number</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insuranceId || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editedPatient.insuranceId || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_policy_number}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insuranceId || "—"}</p>
                                 )}
@@ -337,12 +372,15 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Member ID</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insurance_member_id || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editedPatient.insurance_member_id || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.insurance_member_id && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_member_id}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insurance_member_id || "—"}</p>
                                 )}
@@ -351,34 +389,46 @@ export default function PatientProfilePage() {
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Address</p>
                                 {editMode && editedPatient ? (
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Street"
-                                            value={editedPatient.address_street || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="City"
-                                            value={editedPatient.address_city || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="State"
-                                            value={editedPatient.address_state || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="ZIP"
-                                            value={editedPatient.address_zip || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="Street"
+                                                value={editedPatient.address_street || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_street && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_street}</p>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="City"
+                                                value={editedPatient.address_city || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_city && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_city}</p>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="State"
+                                                value={editedPatient.address_state || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_state && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_state}</p>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="ZIP"
+                                                value={editedPatient.address_zip || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_zip && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_zip}</p>}
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-slate-900 font-medium">

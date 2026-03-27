@@ -46,7 +46,7 @@ export default function AddPatientPage() {
     const validation = CreatePatientFormSchema.safeParse(formData);
     if (!validation.success) {
       const errs: Record<string, string> = {};
-      validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+      validation.error.issues.forEach((err) => {
         const key = String(err.path[0]);
         if (key && !errs[key]) errs[key] = err.message;
       });
@@ -129,6 +129,7 @@ export default function AddPatientPage() {
                     { value: "U", label: "Unknown" },
                     { value: "O", label: "Other" },
                   ]}
+                  error={fieldErrors.gender}
                 />
                 <Input
                   label="Phone"
@@ -158,6 +159,7 @@ export default function AddPatientPage() {
                   value={formData.address_street}
                   onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
                   placeholder="123 Main St"
+                  error={fieldErrors.address_street}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
@@ -165,12 +167,14 @@ export default function AddPatientPage() {
                     value={formData.address_city}
                     onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
                     placeholder="Erie"
+                    error={fieldErrors.address_city}
                   />
                   <Input
                     label="State"
                     value={formData.address_state}
                     onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
                     placeholder="PA"
+                    error={fieldErrors.address_state}
                   />
                   <Input
                     label="ZIP Code"

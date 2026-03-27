@@ -44,7 +44,7 @@ export default function ProfilePage() {
         const validation = ProfileFormSchema.safeParse(formData);
         if (!validation.success) {
             const errs: Record<string, string> = {};
-            validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+            validation.error.issues.forEach((err) => {
                 const key = String(err.path[0]);
                 if (key && !errs[key]) errs[key] = err.message;
             });

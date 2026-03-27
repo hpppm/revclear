@@ -25,6 +25,7 @@ interface PatientDetailsStepProps {
   subscriberLoading: boolean;
   subscriberError?: string | null;
   subscriberSaving?: boolean;
+  encounterFieldErrors?: Record<string, string>;
 }
 
 export default function PatientDetailsStep({
@@ -37,6 +38,7 @@ export default function PatientDetailsStep({
   subscriberLoading,
   subscriberError,
   subscriberSaving,
+  encounterFieldErrors,
 }: PatientDetailsStepProps) {
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === metadata.patientId),
@@ -57,7 +59,7 @@ export default function PatientDetailsStep({
           const { [field]: _removed, ...rest } = prev;
           return rest;
         }
-        return { ...prev, [field]: result.error.errors[0]?.message || "Invalid value" };
+        return { ...prev, [field]: result.error.issues[0]?.message || "Invalid value" };
       });
     }
   };
@@ -79,6 +81,7 @@ export default function PatientDetailsStep({
           type="date"
           value={metadata.date}
           onChange={(e) => setMetadata({ ...metadata, date: e.target.value })}
+          error={encounterFieldErrors?.date}
         />
 
         <label className="space-y-1 block">
@@ -95,6 +98,7 @@ export default function PatientDetailsStep({
             <option value="phone">Phone</option>
             <option value="home_visit">Home Visit</option>
           </select>
+          {encounterFieldErrors?.encounterType && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.encounterType}</p>}
         </label>
       </div>
 
@@ -130,6 +134,7 @@ export default function PatientDetailsStep({
         </select>
         {loadingPatients && <p className="text-xs text-slate-500">Loading patients...</p>}
         {patientsError && <p className="text-xs text-amber-700">{patientsError}</p>}
+        {encounterFieldErrors?.patientId && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.patientId}</p>}
       </label>
 
       {selectedPatient && (

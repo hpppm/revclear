@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
     const validation = ForgotPasswordRequestSchema.safeParse({ email });
     if (!validation.success) {
       const fieldErrors: FieldErrors = {};
-      validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+      validation.error.issues.forEach((err) => {
         const field = err.path[0] as keyof FieldErrors;
         if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
       });
@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
     const validation = ForgotPasswordConfirmSchema.safeParse({ email, code, newPassword: password });
     if (!validation.success) {
       const nextErrors: FieldErrors = {};
-      validation.error.errors.forEach((err: { path: (string | number)[]; message: string }) => {
+      validation.error.issues.forEach((err) => {
         const field = err.path[0] === "newPassword" ? "password" : err.path[0] as keyof FieldErrors;
         if (field && !nextErrors[field]) nextErrors[field] = err.message;
       });

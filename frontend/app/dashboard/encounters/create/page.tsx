@@ -65,6 +65,7 @@ export default function EncounterPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [patientsError, setPatientsError] = useState<string | null>(null);
+  const [encounterFieldErrors, setEncounterFieldErrors] = useState<Record<string, string>>({});
   const [subscriberLoading, setSubscriberLoading] = useState(false);
   const [subscriberError, setSubscriberError] = useState<string | null>(null);
   const [subscriberSaving, setSubscriberSaving] = useState(false);
@@ -567,6 +568,7 @@ export default function EncounterPage() {
           subscriberLoading={subscriberLoading}
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
+          encounterFieldErrors={encounterFieldErrors}
         />
       ),
       canGoNext:
@@ -580,9 +582,16 @@ export default function EncounterPage() {
           encounterType: metadata.encounterType,
         });
         if (!validation.success) {
-          const first = validation.error.errors[0];
+          const errs: Record<string, string> = {};
+          validation.error.issues.forEach((err) => {
+            const key = String(err.path[0]);
+            if (key && !errs[key]) errs[key] = err.message;
+          });
+          setEncounterFieldErrors(errs);
+          const first = validation.error.issues[0];
           throw new Error(first ? first.message : "Please fix encounter details");
         }
+        setEncounterFieldErrors({});
 
         // Step 1: Create or update encounter
         await persistSubscriber();
