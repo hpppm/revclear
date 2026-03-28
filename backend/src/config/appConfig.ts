@@ -21,6 +21,9 @@ const EnvSchema = z.object({
   AWS_CLIENT_ID: z.string().min(1).optional(),
   ALLOWED_ORIGINS: z.string().optional(),
 
+  CLEARINGHOUSE_URL: z.string().url().optional(),
+  CLEARINGHOUSE_API_KEY: z.string().optional(),
+
   SOAP_API_URL: z.string().url().optional(),
   CODES_API_URL: z.string().url().optional(),
   AI_TRANSCRIBE_URL: z.string().url().optional(),
@@ -114,6 +117,10 @@ export const appConfig = {
       env.AI_TRANSCRIBE_URL || env.TRANSCRIBE_API_URL || env.TRANSCRIBE_URL,
     serverApiKey: env.AI_SERVER_API_KEY,
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
+  },
+  clearinghouse: {
+    url: env.CLEARINGHOUSE_URL,
+    apiKey: env.CLEARINGHOUSE_API_KEY,
   },
   auth: {
     // In development, keep auth flows limited to local test accounts unless overridden.

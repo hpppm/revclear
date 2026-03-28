@@ -5,6 +5,8 @@ import {
   encryptPHIJson,
 } from "../utils/crypto";
 import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
+import { submitClaimToClearinghouse } from "./clearinghouseService";
+import { buildEdi837String, encryptEdiExport } from "./ediService";
 
 interface PaginationOptions {
   limit?: number;
@@ -203,6 +205,79 @@ export class ClaimService {
     }
 
     return decryptClaimRow(result.rows[0]);
+  }
+
+  // ─── Submit claim to clearinghouse ────────────────────────────────────────
+
+  static async submit(id: string, organizationId: string, clinicianId: string) {
+    const claim = await this.findById(id, organizationId, clinicianId);
+    if (!claim) throw new AppError("Claim not found", 404);
+
+    if (claim.status === "accepted" || claim.status === "paid") {
+      throw new AppError("Claim has already been accepted or paid", 400);
+    }
+
+    // Send to clearinghouse
+    const response = await submitClaimToClearinghouse(claim);
+
+    // Map clearinghouse response to our status
+    const newStatus =
+      response.status === "accepted"
+        ? "submitted"
+        : response.status === "denied"
+        ? "denied"
+        : "in_progress";
+
+    // Update claim status and submission date
+    await query(
+      `UPDATE claims SET status = $1, rejection_reason = $2, submission_date = NOW() WHERE id = $3`,
+      [newStatus, response.reason || null, id],
+    );
+
+    // Record in claim_status_history
+    await this.recordStatusHistory(id, newStatus, response.reason);
+
+    return {
+      status: newStatus,
+      reason: response.reason,
+      transactionId: response.transactionId,
+    };
+  }
+
+  // ─── Record status change ──────────────────────────────────────────────────
+
+  static async recordStatusHistory(claimId: string, status: string, reason?: string) {
+    await query(
+      `INSERT INTO claim_status_history (claim_id, status, reason) VALUES ($1, $2, $3)`,
+      [claimId, status, reason || null],
+    );
+  }
+
+  // ─── Get status history ────────────────────────────────────────────────────
+
+  static async getStatusHistory(id: string, organizationId: string, clinicianId: string) {
+    const claim = await this.findById(id, organizationId, clinicianId);
+    if (!claim) throw new AppError("Claim not found", 404);
+
+    const result = await query(
+      `SELECT id, claim_id, status, reason, changed_at
+       FROM claim_status_history
+       WHERE claim_id = $1
+       ORDER BY changed_at ASC`,
+      [id],
+    );
+    return result.rows;
+  }
+
+  // ─── Download encrypted EDI 837 file ──────────────────────────────────────
+
+  static async downloadEdi(id: string, organizationId: string, clinicianId: string) {
+    const claim = await this.findById(id, organizationId, clinicianId);
+    if (!claim) throw new AppError("Claim not found", 404);
+
+    const ediString = buildEdi837String(claim);
+    const encrypted = encryptEdiExport(ediString);
+    return { encrypted, claimId: id };
   }
 
   static async delete(id: string, organizationId: string, clinicianId: string) {
