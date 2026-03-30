@@ -5,7 +5,6 @@
  * Without those values, claims are marked pending and can be submitted manually.
  */
 
-import fetch from "node-fetch";
 import logger from "../utils/logger";
 import { buildStediPayload } from "./ediService";
 import { appConfig } from "../config/appConfig";
