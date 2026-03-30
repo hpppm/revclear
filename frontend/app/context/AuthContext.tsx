@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("practitionerType");
+      // Clear tab-specific user identity
+      sessionStorage.removeItem("userId");
     }
     setUser(null);
     setIsAuthenticated(false);
@@ -74,6 +76,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const organization =
         payload.organization ?? fetchedUser.organization ?? null;
       const needsOrg = payload.requiresOrganization === true || !organization;
+
+      // SECURITY: Detect cross-tab cookie collision.
+      // Cookies are shared across all tabs on the same domain. If a second user
+      // logs in on another tab, their token overwrites this tab's cookie. We
+      // catch this by storing the expected user ID in sessionStorage (tab-specific)
+      // and comparing it against what the /me endpoint returns.
+      if (typeof window !== "undefined") {
+        const storedUserId = sessionStorage.getItem("userId");
+        const returnedUserId = fetchedUser.id as string | undefined;
+        if (storedUserId && returnedUserId && storedUserId !== returnedUserId) {
+          // Cookie was overwritten by a different user logging in on another tab.
+          // Force this tab back to login to prevent showing another user's data.
+          clearSensitiveData();
+          router.push("/login");
+          return;
+        }
+        if (returnedUserId) {
+          sessionStorage.setItem("userId", returnedUserId);
+        }
+      }
 
       setUser({ ...fetchedUser, organization });
       setIsAuthenticated(true);
@@ -178,6 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("practitionerType");
+      // Track this user as the owner of this tab so cross-tab cookie
+      // collisions can be detected in checkAuth.
+      if (safeUser.id) {
+        sessionStorage.setItem("userId", safeUser.id);
+      }
     }
 
     router.push("/dashboard");

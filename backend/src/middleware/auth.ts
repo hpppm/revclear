@@ -111,24 +111,20 @@ export const authMiddleware = async (
         .json({ error: "Authentication service unavailable" });
     }
 
-    // Try to get token from httpOnly cookie first (more secure)
-    // Fall back to Authorization header for backward compatibility
-    let token: string | undefined;
-
-    if (req.cookies?.accessToken) {
-      token = req.cookies.accessToken;
-    } else {
-      const authHeader = req.headers.authorization || "";
-      const [type, headerToken] = authHeader.split(" ");
-      if (type === "Bearer" && headerToken) {
-        token = headerToken;
-      }
-    }
+    // Token must come from the httpOnly cookie only.
+    // Bearer header fallback is removed — cookies are the sole token transport.
+    // This prevents scripts from injecting tokens via custom headers.
+    const token: string | undefined = req.cookies?.accessToken;
 
     if (!token) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
+    // SECURITY: Signature verification is the first and mandatory gate.
+    // jwtVerifier.verify() performs RS256 signature validation against
+    // Cognito's published JWKS before it evaluates any claim (exp, iss,
+    // client_id, token_use). A token with a missing or forged signature
+    // never reaches claim inspection — it is rejected here.
     let payload;
     try {
       payload = await jwtVerifier.verify(token);
@@ -160,17 +156,22 @@ export const authMiddleware = async (
       cognitoRole,
     } as any;
 
-    // Resolve DB user — database errors should not block authentication
+    // Resolve DB user — both lookup errors and missing records block the request.
+    // A valid Cognito token for a user with no DB record is rejected: they may
+    // have been deleted or may never have completed registration.
     try {
       const dbUser = await findUserByCognitoId(payload.sub);
-      if (dbUser) {
-        req.user = {
-          ...dbUser,
-          role: cognitoRole,
-        } as any;
+      if (!dbUser) {
+        logger.warn({ sub: payload.sub }, "Auth: Cognito user has no DB record");
+        return res.status(401).json({ error: "Authentication required" });
       }
+      req.user = {
+        ...dbUser,
+        role: cognitoRole,
+      } as any;
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
+      return res.status(503).json({ error: "Authentication service temporarily unavailable" });
     }
 
     next();
