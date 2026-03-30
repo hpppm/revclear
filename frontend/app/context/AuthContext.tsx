@@ -87,8 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const returnedUserId = fetchedUser.id as string | undefined;
         if (storedUserId && returnedUserId && storedUserId !== returnedUserId) {
           // Cookie was overwritten by a different user logging in on another tab.
-          // Force this tab back to login to prevent showing another user's data.
-          clearSensitiveData();
+          // Call full signout to clear the httpOnly cookie server-side — without
+          // this, the next checkAuth (triggered by the /login pathname change)
+          // would still get 200 from /me and immediately re-authenticate as the
+          // wrong user, creating a sign-in loop.
+          await performLogout();
           router.push("/login");
           return;
         }
@@ -113,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear state - httpOnly cookie will be cleared by backend on logout
       clearSensitiveData();
     }
-  }, [pathname, router, clearSensitiveData]);
+  }, [pathname, router, clearSensitiveData, performLogout]);
 
   useEffect(() => {
     void (async () => {

@@ -323,4 +323,18 @@ describe("Change 3: Cross-tab cookie collision detection in AuthContext.tsx", ()
       expect(setUserNullIdx).toBeGreaterThan(removeItemIdx);
     }
   );
+
+  (skip ? it.skip : it)(
+    "calls performLogout (not just clearSensitiveData) on collision to clear the server-side cookie",
+    () => {
+      // The cookie is httpOnly and lives server-side. If we only call clearSensitiveData,
+      // the cookie remains valid. The next checkAuth (triggered by the /login pathname
+      // change) would hit /me, get 200 with the wrong user, and re-authenticate — creating
+      // a sign-in loop. performLogout() calls the signout API endpoint to clear the cookie.
+      const collisionBlockStart = content!.indexOf("storedUserId !== returnedUserId");
+      const collisionBlockEnd = content!.indexOf("return;", collisionBlockStart);
+      const collision = content!.slice(collisionBlockStart, collisionBlockEnd);
+      expect(collision).toMatch(/await performLogout\(\)/);
+    }
+  );
 });

@@ -142,9 +142,14 @@ router.post(
           return sendError(res, 400, "Provided file is not an audio file.");
         }
 
-        // Generate a unique S3 key
+        // Generate a unique S3 key scoped to the organization.
+        // Path: audio/{orgId}/encounter_{encounterId}_{timestamp}{ext}
+        // This enforces tenant isolation at the storage layer — each org's
+        // audio lives under its own prefix, matching the IAM policy condition
+        // on the Cognito Identity Pool role.
         const originalExtension = path.extname(req.file.originalname);
-        s3Key = `audio/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
+        const orgPrefix = organizationId ?? "unscoped";
+        s3Key = `audio/${orgPrefix}/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
 
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
