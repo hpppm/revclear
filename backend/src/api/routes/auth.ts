@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
@@ -96,9 +97,20 @@ router.post("/confirm-signup", async (req, res) => {
   }
 });
 
+const SigninSchema = z.object({
+  email: z.string().min(1, "Email is required.").email("Invalid email format."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
+});
+
 // Sign-in route
 router.post("/signin", async (req, res) => {
   const { email, password } = req.body;
+
+  const validation = SigninSchema.safeParse({ email, password });
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error.issues[0].message });
+  }
+
   try {
     const response = await AuthService.signin(email, password);
     const authResult = response.AuthenticationResult;
@@ -142,7 +154,7 @@ router.post("/signin", async (req, res) => {
     // In development, surface the Cognito error name to aid debugging
     const devDetail =
       appConfig.env !== "production"
-        ? { debug_cognito_error: error.name, debug_message: error.message }
+        ? { cognito_error: error.name }
         : {};
     res.status(401).json({ error: "Invalid email or password.", ...devDetail });
   }
@@ -204,12 +216,19 @@ router.post("/refresh-token", async (req, res) => {
   }
 });
 
+const ForgotPasswordSchema = z.object({
+  email: z.string().min(1, "Email is required.").email("Invalid email format."),
+});
+
 // Forgot password route
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: "Email is required." });
+
+  const validation = ForgotPasswordSchema.safeParse({ email });
+  if (!validation.success) {
+    return res.status(400).json({ error: validation.error.issues[0].message });
   }
+
   try {
     await AuthService.forgotPassword(email);
   } catch (error: any) {

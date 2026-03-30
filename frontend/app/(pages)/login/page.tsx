@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
+import { LoginFormSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
 import AuthField from "@/app/components/ui/AuthField";
 import AuthInput from "@/app/components/ui/AuthInput";
@@ -63,8 +64,13 @@ export default function LoginPage() {
     event.preventDefault();
 
     const nextErrors: FieldErrors = {};
-    if (!email.trim()) nextErrors.email = "Email is required";
-    if (!password.trim()) nextErrors.password = "Password is required";
+    const validation = LoginFormSchema.safeParse({ email, password });
+    if (!validation.success) {
+      validation.error.issues.forEach((err) => {
+        const field = err.path[0] as keyof FieldErrors;
+        if (field && !nextErrors[field]) nextErrors[field] = err.message;
+      });
+    }
 
     setErrors(nextErrors);
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { ForgotPasswordRequestSchema, ForgotPasswordConfirmSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
 import Button from "@/app/components/ui/Button";
 
@@ -38,8 +39,14 @@ export default function ForgotPasswordPage() {
     setErrors({});
     setMessage("");
 
-    if (!email.trim()) {
-      setErrors({ email: "Email is required" });
+    const validation = ForgotPasswordRequestSchema.safeParse({ email });
+    if (!validation.success) {
+      const fieldErrors: FieldErrors = {};
+      validation.error.issues.forEach((err) => {
+        const field = err.path[0] as keyof FieldErrors;
+        if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+      });
+      setErrors(fieldErrors);
       return;
     }
 
@@ -65,12 +72,13 @@ export default function ForgotPasswordPage() {
     setErrors({});
     setMessage("");
 
-    const nextErrors: FieldErrors = {};
-    if (!email.trim()) nextErrors.email = "Email is required";
-    if (!code.trim()) nextErrors.code = "Code is required";
-    if (!password.trim()) nextErrors.password = "New password is required";
-
-    if (Object.keys(nextErrors).length > 0) {
+    const validation = ForgotPasswordConfirmSchema.safeParse({ email, code, newPassword: password });
+    if (!validation.success) {
+      const nextErrors: FieldErrors = {};
+      validation.error.issues.forEach((err) => {
+        const field = err.path[0] === "newPassword" ? "password" : err.path[0] as keyof FieldErrors;
+        if (field && !nextErrors[field]) nextErrors[field] = err.message;
+      });
       setErrors(nextErrors);
       return;
     }
