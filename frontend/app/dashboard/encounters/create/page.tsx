@@ -6,6 +6,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
+import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -64,6 +65,7 @@ export default function EncounterPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [patientsError, setPatientsError] = useState<string | null>(null);
+  const [encounterFieldErrors, setEncounterFieldErrors] = useState<Record<string, string>>({});
   const [subscriberLoading, setSubscriberLoading] = useState(false);
   const [subscriberError, setSubscriberError] = useState<string | null>(null);
   const [subscriberSaving, setSubscriberSaving] = useState(false);
@@ -566,6 +568,7 @@ export default function EncounterPage() {
           subscriberLoading={subscriberLoading}
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
+          encounterFieldErrors={encounterFieldErrors}
         />
       ),
       canGoNext:
@@ -573,6 +576,23 @@ export default function EncounterPage() {
         !!metadata.date &&
         (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
       onNext: async () => {
+        const validation = EncounterDetailsFormSchema.safeParse({
+          patientId: metadata.patientId,
+          date: metadata.date,
+          encounterType: metadata.encounterType,
+        });
+        if (!validation.success) {
+          const errs: Record<string, string> = {};
+          validation.error.issues.forEach((err) => {
+            const key = String(err.path[0]);
+            if (key && !errs[key]) errs[key] = err.message;
+          });
+          setEncounterFieldErrors(errs);
+          const first = validation.error.issues[0];
+          throw new Error(first ? first.message : "Please fix encounter details");
+        }
+        setEncounterFieldErrors({});
+
         // Step 1: Create or update encounter
         await persistSubscriber();
         if (!encounterId) {

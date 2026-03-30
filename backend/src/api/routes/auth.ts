@@ -70,7 +70,7 @@ const REFRESH_COOKIE_OPTIONS = {
 router.post("/signup", async (req, res) => {
   const parsed = SignupSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ success: false, errors: parsed.error.errors });
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
   const { email, password, attributes, practitionerType, licenseId } = parsed.data;
 
@@ -121,7 +121,7 @@ router.post("/signup", async (req, res) => {
 router.post("/confirm-signup", async (req, res) => {
   const parsed = ConfirmSignupSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ success: false, errors: parsed.error.errors });
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
   const { email, code } = parsed.data;
   try {
@@ -137,7 +137,7 @@ router.post("/confirm-signup", async (req, res) => {
 router.post("/signin", async (req, res) => {
   const parsed = SigninSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ success: false, errors: parsed.error.errors });
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
   const { email, password } = parsed.data;
   try {
@@ -183,7 +183,7 @@ router.post("/signin", async (req, res) => {
     // In development, surface the Cognito error name to aid debugging
     const devDetail =
       appConfig.env !== "production"
-        ? { debug_cognito_error: error.name, debug_message: error.message }
+        ? { cognito_error: error.name }
         : {};
     res.status(401).json({ error: "Invalid email or password.", ...devDetail });
   }
@@ -249,7 +249,7 @@ router.post("/refresh-token", async (req, res) => {
 router.post("/forgot-password", async (req, res) => {
   const parsed = ForgotPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ success: false, errors: parsed.error.errors });
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
   const { email } = parsed.data;
   try {
@@ -267,7 +267,7 @@ router.post("/forgot-password", async (req, res) => {
 router.post("/confirm-forgot-password", async (req, res) => {
   const parsed = ConfirmForgotPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ success: false, errors: parsed.error.errors });
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
   const { email, code, newPassword } = parsed.data;
   try {

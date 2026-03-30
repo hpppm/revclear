@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization, Patient } from "@/app/lib/types";
@@ -51,6 +51,12 @@ export default function DashboardHome() {
     const [isJoining, setIsJoining] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
 
+    // Prevent duplicate org fetches when auth context emits multiple values
+    const orgFetchInProgressRef = useRef(false);
+    // Prevent re-fetching patients/encounters/claims when org reference changes
+    // but the underlying data has already been loaded for this session
+    const dataFetchedRef = useRef(false);
+
     useEffect(() => {
         if (!authLoading && user) {
             loadOrganization();
@@ -59,12 +65,15 @@ export default function DashboardHome() {
 
     useEffect(() => {
         if (organization) {
-            loadPatients();
-            loadEncounters();
-            loadClaims();
+            if (!dataFetchedRef.current) {
+                dataFetchedRef.current = true;
+                loadPatients();
+                loadEncounters();
+                loadClaims();
+            }
         } else {
+            dataFetchedRef.current = false;
             setPatients([]);
-
             setEncountersCount(0);
             setClaimsPending(0);
             setClaimsApproved(0);
@@ -72,6 +81,8 @@ export default function DashboardHome() {
     }, [organization]);
 
     const loadOrganization = async () => {
+        if (orgFetchInProgressRef.current) return;
+        orgFetchInProgressRef.current = true;
         setOrgLoading(true);
         setOrgError(null);
         try {
@@ -94,6 +105,7 @@ export default function DashboardHome() {
                 setOrganization(null);
             }
         } finally {
+            orgFetchInProgressRef.current = false;
             setOrgLoading(false);
         }
     };
