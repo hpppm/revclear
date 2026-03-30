@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import { Readable } from "stream";
 import { z } from "zod";
+import { IdParamSchema } from "../../types/zod";
 import FormData from "form-data";
 import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
@@ -115,11 +116,11 @@ router.post(
       if (!user) return;
       const organizationId = await getRequestOrganizationId(user.id);
 
-      const encounterId = req.body.encounterId;
-
-      if (!encounterId) {
-        return sendError(res, 400, "Encounter ID is required.");
+      const parsedId = IdParamSchema.safeParse({ id: req.body.encounterId });
+      if (!parsedId.success) {
+        return sendError(res, 400, "Valid encounter ID is required.");
       }
+      const encounterId = parsedId.data.id;
 
       // Ensure the encounter belongs to the authenticated clinician
       const ownsEncounter = await ensureEncounterOwnership(

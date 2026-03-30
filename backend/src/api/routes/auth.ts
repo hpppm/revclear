@@ -5,6 +5,39 @@ import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 import logger from "../../utils/logger";
 
+const SignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+  attributes: z.record(z.string()).optional(),
+  practitionerType: z.string().optional(),
+  licenseId: z.string().optional(),
+});
+
+const ConfirmSignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Confirmation code must be 6 digits"),
+});
+
+const SigninSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const ConfirmForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Reset code must be 6 digits"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 const router = Router();
 
 // Cookie configuration for JWT tokens
@@ -40,7 +73,11 @@ const REFRESH_COOKIE_OPTIONS = {
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
-  const { email, password, attributes, practitionerType, licenseId } = req.body;
+  const parsed = SignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, password, attributes, practitionerType, licenseId } = parsed.data;
 
   try {
     const result = await AuthService.signup(
@@ -87,7 +124,11 @@ router.post("/signup", async (req, res) => {
 
 // Confirm sign-up route
 router.post("/confirm-signup", async (req, res) => {
-  const { email, code } = req.body;
+  const parsed = ConfirmSignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, code } = parsed.data;
   try {
     await AuthService.confirmSignup(email, code);
     res.status(200).json({ message: "Account confirmed successfully." });
@@ -97,20 +138,13 @@ router.post("/confirm-signup", async (req, res) => {
   }
 });
 
-const SigninSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Invalid email format."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-});
-
 // Sign-in route
 router.post("/signin", async (req, res) => {
-  const { email, password } = req.body;
-
-  const validation = SigninSchema.safeParse({ email, password });
-  if (!validation.success) {
-    return res.status(400).json({ error: validation.error.issues[0].message });
+  const parsed = SigninSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
-
+  const { email, password } = parsed.data;
   try {
     const response = await AuthService.signin(email, password);
     const authResult = response.AuthenticationResult;
@@ -216,19 +250,13 @@ router.post("/refresh-token", async (req, res) => {
   }
 });
 
-const ForgotPasswordSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Invalid email format."),
-});
-
 // Forgot password route
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-
-  const validation = ForgotPasswordSchema.safeParse({ email });
-  if (!validation.success) {
-    return res.status(400).json({ error: validation.error.issues[0].message });
+  const parsed = ForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
-
+  const { email } = parsed.data;
   try {
     await AuthService.forgotPassword(email);
   } catch (error: any) {
@@ -242,12 +270,11 @@ router.post("/forgot-password", async (req, res) => {
 
 // Confirm forgot password route
 router.post("/confirm-forgot-password", async (req, res) => {
-  const { email, code, newPassword } = req.body;
-  if (!email || !code || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "Email, code, and new password are required." });
+  const parsed = ConfirmForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
+  const { email, code, newPassword } = parsed.data;
   try {
     await AuthService.confirmForgotPassword(email, code, newPassword);
     res.status(200).json({ message: "Password has been reset successfully." });
