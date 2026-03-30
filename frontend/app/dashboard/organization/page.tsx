@@ -5,10 +5,12 @@ import Link from "next/link";
 import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
+import DashboardHeader from "@/app/components/ui/DashboardHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
+import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
 
 export default function OrganizationProfilePage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -16,6 +18,7 @@ export default function OrganizationProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [isEditing, setIsEditing] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -110,8 +113,21 @@ export default function OrganizationProfilePage() {
     };
 
     const handleSave = async () => {
-        setSaving(true);
         setError(null);
+        setFieldErrors({});
+
+        const validation = OrganizationFormSchema.safeParse(formData);
+        if (!validation.success) {
+            const errs: Record<string, string> = {};
+            validation.error.issues.forEach((err) => {
+                const key = String(err.path[0]);
+                if (key && !errs[key]) errs[key] = err.message;
+            });
+            setFieldErrors(errs);
+            return;
+        }
+
+        setSaving(true);
         try {
             const payload: Record<string, any> = {};
             Object.entries(formData).forEach(([key, value]) => {
@@ -151,10 +167,10 @@ export default function OrganizationProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+            <div className="max-w-6xl mx-auto px-6 py-8">
                 <Card>
                     <div className="text-center p-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--brand-600)] mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading organization...</p>
                     </div>
                 </Card>
@@ -164,8 +180,7 @@ export default function OrganizationProfilePage() {
 
     if (!organization) {
         return (
-             <div className="min-h-screen bg-slate-50 p-8">
-                <div className="max-w-4xl mx-auto">
+             <div className="max-w-6xl mx-auto px-6 py-8">
                      <Card>
                         <div className="text-center p-8">
                             <p className="text-slate-600 mb-4">No organization found.</p>
@@ -174,49 +189,33 @@ export default function OrganizationProfilePage() {
                             </Link>
                         </div>
                     </Card>
-                </div>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="mb-6">
-                    <Link
-                        href="/dashboard"
-                        className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium mb-4"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to Dashboard
-                    </Link>
-                    <div className="flex justify-between items-center">
-                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900">Organization Profile</h1>
-                            <p className="text-slate-600 mt-2">
-                                Manage your clinic&apos;s details, billing profile, and integration settings.
-                            </p>
-                         </div>
-                         {!isEditing && (
-                            <Button onClick={() => setIsEditing(true)}>
-                                Edit Organization
-                            </Button>
-                         )}
+        <div className="max-w-6xl mx-auto px-6 py-8">
+            <DashboardHeader
+                title="Organization Profile"
+                subtitle="Manage your clinic's details, billing profile, and integration settings."
+                actions={
+                    !isEditing ? (
+                        <Button variant="primary" size="sm" onClick={() => setIsEditing(true)}>
+                            Edit Organization
+                        </Button>
+                    ) : undefined
+                }
+            />
+
+            <Card>
+                {error && (
+                    <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                        {error}
                     </div>
-                </div>
+                )}
 
-                <Card>
-                    {error && (
-                        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-                            {error}
-                        </div>
-                    )}
-
-                    {isEditing ? (
-                        <div className="space-y-8">
+                {isEditing ? (
+                    <div className="space-y-8">
                             {/* General Information */}
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">General Information</h3>
@@ -380,6 +379,7 @@ export default function OrganizationProfilePage() {
                                                 label="SFTP Port"
                                                 value={formData.edi_sftp_port}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_port: e.target.value })}
+                                                error={fieldErrors.edi_sftp_port}
                                             />
                                         </div>
                                         <div className="mt-4">
@@ -409,9 +409,9 @@ export default function OrganizationProfilePage() {
                                     Cancel
                                 </Button>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-8">
+                    </div>
+                ) : (
+                    <div className="space-y-8">
                              {/* General Read-Only */}
                              <div>
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">General Information</h3>
@@ -502,10 +502,9 @@ export default function OrganizationProfilePage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </Card>
-            </div>
+                    </div>
+                )}
+            </Card>
         </div>
     );
 }

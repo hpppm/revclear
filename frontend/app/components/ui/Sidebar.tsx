@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
+import { BrandMark } from "@/app/components/ui/BrandMark";
 
 const navItems = [
     {
@@ -20,15 +21,6 @@ const navItems = [
         icon: (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        ),
-    },
-    {
-        label: "Encounters",
-        href: "/dashboard/encounters/create",
-        icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
         ),
     },
@@ -80,9 +72,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <div className="flex h-16 items-center justify-between border-b border-white/10 px-3">
                 {!collapsed && (
                     <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white font-bold text-sm shrink-0">
-                            RC
-                        </div>
+                        <BrandMark
+                            label="RC"
+                            size="sm"
+                            className="rounded-lg"
+                            labelClassName="text-sm tracking-tight"
+                        />
                         <span className="text-base font-semibold tracking-tight">RevClear</span>
                     </div>
                 )}
@@ -110,7 +105,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             collapsed ? "justify-center" : ""
                         } ${
                             isActive(item.href)
-                                ? "bg-teal-600 text-white"
+                                ? "brand-button-primary text-white"
                                 : "text-slate-400 hover:bg-white/5 hover:text-white"
                         }`}
                     >
@@ -129,7 +124,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         collapsed ? "justify-center" : ""
                     } ${
                         pathname === "/dashboard/profile"
-                            ? "bg-teal-600 text-white"
+                            ? "brand-button-primary text-white"
                             : "text-slate-400 hover:bg-white/5 hover:text-white"
                     }`}
                 >

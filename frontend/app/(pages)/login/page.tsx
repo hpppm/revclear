@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
+import { LoginFormSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
 import AuthField from "@/app/components/ui/AuthField";
 import AuthInput from "@/app/components/ui/AuthInput";
 import AuthSection from "@/app/components/ui/AuthSection";
+import { BrandMark } from "@/app/components/ui/BrandMark";
+import Button from "@/app/components/ui/Button";
 
 interface ApiErrorData {
   error?: string;
@@ -61,8 +64,13 @@ export default function LoginPage() {
     event.preventDefault();
 
     const nextErrors: FieldErrors = {};
-    if (!email.trim()) nextErrors.email = "Email is required";
-    if (!password.trim()) nextErrors.password = "Password is required";
+    const validation = LoginFormSchema.safeParse({ email, password });
+    if (!validation.success) {
+      validation.error.issues.forEach((err) => {
+        const field = err.path[0] as keyof FieldErrors;
+        if (field && !nextErrors[field]) nextErrors[field] = err.message;
+      });
+    }
 
     setErrors(nextErrors);
 
@@ -94,26 +102,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#e6f1ff] via-[#eef6ff] to-[#dbeafe] px-4 py-12 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--brand-50)] via-[#f4fffd] to-[var(--brand-100)] px-4 py-12 font-sans">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
           <div className="mb-6 text-center">
             <div className="inline-flex items-center gap-2">
-              <Link href="/landing" className="w-10 h-10 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-[0_10px_20px_-12px_rgba(79,70,229,0.45)] hover:bg-[#4338ca] transition-colors cursor-pointer">
-                <span className="text-white font-bold text-xl">R</span>
+              <Link href="/landing" className="cursor-pointer transition-transform hover:scale-105">
+                <BrandMark
+                  size="md"
+                  className="shadow-[0_10px_20px_-12px_rgba(13,148,136,0.45)]"
+                />
               </Link>
-              <span className="text-2xl font-bold text-[#4f46e5]">
+              <span className="text-2xl font-bold text-[var(--brand-600)]">
                 RevClear
               </span>
             </div>
           </div>
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-[#4f46e5] mb-2">
+            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">
               Welcome Back
             </h1>
-            <p className="text-[rgba(99,102,241,0.6)]">
-              Sign in to continue to your dashboard
-            </p>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -130,7 +138,7 @@ export default function LoginPage() {
                     required
                     rightElement={
                       <svg
-                        className="h-5 w-5 text-[#4f46e5]"
+                        className="h-5 w-5 text-[var(--brand-600)]"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -246,7 +254,7 @@ export default function LoginPage() {
                   <div className="flex justify-end">
                     <Link
                       href="/forgot-password"
-                      className="text-sm font-medium text-[#4f46e5] hover:text-[#4338ca]"
+                      className="text-sm font-medium text-[var(--brand-600)] hover:text-[var(--brand-700)]"
                     >
                       Forgot password?
                     </Link>
@@ -275,59 +283,37 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isFormInvalid || isLoading}
-                className="group w-full bg-[#4f46e5] text-white font-semibold py-3.5 rounded-xl shadow-[0_12px_20px_-12px_rgba(79,70,229,0.35)] hover:bg-[#4338ca] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#4f46e5] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                variant="primary"
+                size="lg"
+                loading={isLoading}
+                disabled={isFormInvalid}
+                className="group w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="animate-spin h-5 w-5 text-[#4f46e5]"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Signing in...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    Sign In
-                    <svg
-                      className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 7l5 5m0 0l-5 5m5-5H6"
-                      />
-                    </svg>
-                  </span>
-                )}
-              </button>
+                <span className="flex items-center justify-center gap-2">
+                  Sign In
+                  <svg
+                    className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </span>
+              </Button>
 
               <p className="text-center text-gray-500">
                 New here?{" "}
                 <Link
                   href="/signup"
-                  className="font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors"
+                  className="font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)] transition-colors"
                 >
                   Create account
                 </Link>

@@ -25,7 +25,7 @@ type InputProps = TextInputProps | TextareaInputProps | SelectInputProps;
 export default function Input(props: InputProps) {
     const { label, helperText, error, className = "", variant = "text", ...rest } = props;
 
-    const baseClasses = "w-full rounded-lg border px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+    const baseClasses = "brand-input w-full rounded-lg border px-3 py-2 text-slate-900 shadow-sm";
     const errorClasses = error ? "border-red-300 focus:border-red-500 focus:ring-red-100" : "border-slate-200";
 
     const renderInput = () => {

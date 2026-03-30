@@ -7,6 +7,7 @@ import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
+import { CreatePatientFormSchema } from "@/app/lib/validation/schemas";
 
 import BackButton from "@/app/components/ui/BackButton";
 
@@ -14,6 +15,7 @@ export default function AddPatientPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSelfPay, setIsSelfPay] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -38,8 +40,21 @@ export default function AddPatientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
+    setFieldErrors({});
+
+    const validation = CreatePatientFormSchema.safeParse(formData);
+    if (!validation.success) {
+      const errs: Record<string, string> = {};
+      validation.error.issues.forEach((err) => {
+        const key = String(err.path[0]);
+        if (key && !errs[key]) errs[key] = err.message;
+      });
+      setFieldErrors(errs);
+      return;
+    }
+
+    setSaving(true);
 
     try {
       // If self-pay, clear all insurance fields before submitting
@@ -93,6 +108,7 @@ export default function AddPatientPage() {
                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     placeholder="John Doe"
                     required
+                    error={fieldErrors.full_name}
                   />
                 </div>
                 <Input
@@ -100,6 +116,7 @@ export default function AddPatientPage() {
                   type="date"
                   value={formData.dob}
                   onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  error={fieldErrors.dob}
                 />
                 <Input
                   label="Gender"
@@ -112,6 +129,7 @@ export default function AddPatientPage() {
                     { value: "U", label: "Unknown" },
                     { value: "O", label: "Other" },
                   ]}
+                  error={fieldErrors.gender}
                 />
                 <Input
                   label="Phone"
@@ -119,6 +137,7 @@ export default function AddPatientPage() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="(555) 123-4567"
+                  error={fieldErrors.phone}
                 />
                 <Input
                   label="Email"
@@ -126,6 +145,7 @@ export default function AddPatientPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="john.doe@example.com"
+                  error={fieldErrors.email}
                 />
               </div>
             </div>
@@ -139,6 +159,7 @@ export default function AddPatientPage() {
                   value={formData.address_street}
                   onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
                   placeholder="123 Main St"
+                  error={fieldErrors.address_street}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
@@ -146,18 +167,21 @@ export default function AddPatientPage() {
                     value={formData.address_city}
                     onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
                     placeholder="Erie"
+                    error={fieldErrors.address_city}
                   />
                   <Input
                     label="State"
                     value={formData.address_state}
                     onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
                     placeholder="PA"
+                    error={fieldErrors.address_state}
                   />
                   <Input
                     label="ZIP Code"
                     value={formData.address_zip}
                     onChange={(e) => setFormData({ ...formData, address_zip: e.target.value })}
                     placeholder="16501"
+                    error={fieldErrors.address_zip}
                   />
                 </div>
               </div>

@@ -60,9 +60,15 @@ const validateExternalCodesUrl = (url: string): void => {
   } catch {
     throw new Error(`Invalid CODES_API_URL: "${url}"`);
   }
+  const isLocalHttpEndpoint =
+    parsed.protocol === "http:" &&
+    (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1");
+  const allowLocalHttp = process.env.NODE_ENV !== "production" && isLocalHttpEndpoint;
+
   // SECURITY: External AI endpoints must use HTTPS to prevent credential and
-  // PHI exposure over unencrypted connections.
-  if (parsed.protocol !== "https:") {
+  // PHI exposure over unencrypted connections. Local development may use a
+  // loopback HTTP endpoint when the AI server runs on the same machine.
+  if (parsed.protocol !== "https:" && !allowLocalHttp) {
     throw new Error(`CODES_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
   }
   // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
@@ -141,7 +147,7 @@ class OllamaCodeMatcher implements CodeMatcher {
     }
     // SECURITY: Enforce localhost-only binding before making any request.
     validateOllamaUrl(OLLAMA_BASE_URL);
-    const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/generate`;
+    const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
     const response = await fetch(url, {
@@ -149,7 +155,7 @@ class OllamaCodeMatcher implements CodeMatcher {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: OLLAMA_CODES_MODEL,
-        prompt: buildPrompt(input),
+        messages: [{ role: "user", content: buildPrompt(input) }],
         stream: false,
         format: "json",
       }),
@@ -167,8 +173,8 @@ class OllamaCodeMatcher implements CodeMatcher {
       throw new Error(`Ollama codes request failed with status ${response.status}`);
     }
 
-    const data = (await response.json()) as { response?: unknown };
-    const normalized = normalizeCodeOutput(data.response);
+    const data = (await response.json()) as { message?: { content?: unknown } };
+    const normalized = normalizeCodeOutput(data.message?.content);
     return SoapToCodesOutputSchema.parse(normalized);
   }
 }

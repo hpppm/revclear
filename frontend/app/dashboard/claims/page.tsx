@@ -146,7 +146,6 @@ export default function ClaimsPage() {
             <DashboardHeader
                 title="Claims"
                 subtitle="Track billing claims and their submission status."
-                backLink="/dashboard"
             />
 
             {/* Tabs */}

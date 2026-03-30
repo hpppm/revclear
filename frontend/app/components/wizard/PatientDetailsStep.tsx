@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Input from "../ui/Input";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import { Patient } from "@/app/lib/types";
+import { SubscriberFormSchema } from "@/app/lib/validation/schemas";
 
 interface PatientDetailsStepProps {
   metadata: {
@@ -24,6 +25,7 @@ interface PatientDetailsStepProps {
   subscriberLoading: boolean;
   subscriberError?: string | null;
   subscriberSaving?: boolean;
+  encounterFieldErrors?: Record<string, string>;
 }
 
 export default function PatientDetailsStep({
@@ -36,17 +38,30 @@ export default function PatientDetailsStep({
   subscriberLoading,
   subscriberError,
   subscriberSaving,
+  encounterFieldErrors,
 }: PatientDetailsStepProps) {
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === metadata.patientId),
     [patients, metadata.patientId]
   );
 
+  const [subscriberFieldErrors, setSubscriberFieldErrors] = useState<Record<string, string>>({});
+
   const handleSubscriberChange = (field: string, value: any) => {
-    setMetadata({
-      ...metadata,
-      subscriber: { ...(metadata.subscriber || {}), [field]: value },
-    });
+    const updated = { ...(metadata.subscriber || {}), [field]: value };
+    setMetadata({ ...metadata, subscriber: updated });
+
+    const fieldSchema = (SubscriberFormSchema as any).shape?.[field];
+    if (fieldSchema) {
+      const result = fieldSchema.safeParse(value);
+      setSubscriberFieldErrors((prev: Record<string, string>) => {
+        if (result.success) {
+          const { [field]: _removed, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [field]: result.error.issues[0]?.message || "Invalid value" };
+      });
+    }
   };
 
   return (
@@ -66,6 +81,7 @@ export default function PatientDetailsStep({
           type="date"
           value={metadata.date}
           onChange={(e) => setMetadata({ ...metadata, date: e.target.value })}
+          error={encounterFieldErrors?.date}
         />
 
         <label className="space-y-1 block">
@@ -82,6 +98,7 @@ export default function PatientDetailsStep({
             <option value="phone">Phone</option>
             <option value="home_visit">Home Visit</option>
           </select>
+          {encounterFieldErrors?.encounterType && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.encounterType}</p>}
         </label>
       </div>
 
@@ -117,6 +134,7 @@ export default function PatientDetailsStep({
         </select>
         {loadingPatients && <p className="text-xs text-slate-500">Loading patients...</p>}
         {patientsError && <p className="text-xs text-amber-700">{patientsError}</p>}
+        {encounterFieldErrors?.patientId && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.patientId}</p>}
       </label>
 
       {selectedPatient && (
@@ -173,12 +191,14 @@ export default function PatientDetailsStep({
                   label="Subscriber Name"
                   value={metadata.subscriber?.full_name || ""}
                   onChange={(e) => handleSubscriberChange("full_name", e.target.value)}
+                  error={subscriberFieldErrors.full_name}
                 />
                 <Input
                   label="Subscriber DOB"
                   type="date"
                   value={metadata.subscriber?.dob || ""}
                   onChange={(e) => handleSubscriberChange("dob", e.target.value)}
+                  error={subscriberFieldErrors.dob}
                 />
                 <Input
                   label="Subscriber Gender"
@@ -197,6 +217,7 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.phone || ""}
                   onChange={(e) => handleSubscriberChange("phone", e.target.value)}
                   placeholder="(555) 123-4567"
+                  error={subscriberFieldErrors.phone}
                 />
               </div>
               <Input
@@ -220,6 +241,7 @@ export default function PatientDetailsStep({
                   label="ZIP"
                   value={metadata.subscriber?.address_zip || ""}
                   onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
+                  error={subscriberFieldErrors.address_zip}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

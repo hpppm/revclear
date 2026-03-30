@@ -1,93 +1,23 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm run *)",
+      "Bash(grep -rn*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run dev|pnpm( run)? dev|yarn dev)\" && tool_input.command matches \"(backend|frontend)\"",
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \".*[/\\\\]backend[/\\\\].*\\\\.(ts|js)$\"",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"console.error('[RevClear Hook] Backend runs on port 3005, Frontend on port 3000');console.error('[RevClear Hook] Use separate tmux sessions for each: tmux new -s backend/frontend')\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"backend/.*\\\\.(ts|js)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const ns=i.tool_input?.new_string||'';if(/password|secret|key|token/i.test(ns)&&!/process\\.env/.test(ns)&&!/(test|mock|example)/i.test(ns)){console.error('[RevClear Hook] WARNING: Potential hardcoded credentials detected');console.error('[RevClear Hook] Use environment variables for sensitive data (HIPAA compliance)')}console.log(d)})\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"backend/.*\\\\.(ts|js)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const ns=i.tool_input?.new_string||'';if(/(patient|medical|phi|ssn|dob)/i.test(ns)&&/console\\.log|console\\.debug/.test(ns)){console.error('[RevClear Hook] BLOCKED: PHI logging detected - HIPAA violation');console.error('[RevClear Hook] Never log patient data or PHI to console');process.exit(1)}console.log(d)})\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"npm (install|i) \" && !tool_input.command matches \"--save-dev|-D\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"console.error('[RevClear Hook] Remember: Backend deps in backend/, Frontend deps in frontend/');console.error('[RevClear Hook] Verify you are in the correct directory')\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Write\" && tool_input.file_path matches \"backend/genkit/.*\\\\.ts$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"console.error('[RevClear Hook] Genkit flows require rebuild: npm run build:genkit');console.error('[RevClear Hook] Test flows in Genkit Dev UI on port 4001')\""
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"backend/.*\\\\.(ts|tsx)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){try{execSync('npx tsc --noEmit --pretty false 2>&1',{cwd:'backend',encoding:'utf8',stdio:['pipe','pipe','pipe']});console.error('[RevClear Hook] TypeScript check passed for '+p.replace(/.*backend\\//,'backend/'))}catch(e){const lines=(e.stdout||'').split('\\n').filter(l=>l.includes(p.replace(/.*backend\\//,''))).slice(0,5);if(lines.length){console.error('[RevClear Hook] TypeScript errors:');lines.forEach(l=>console.error(l))}}}console.log(d)})\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"frontend/.*\\\\.(ts|tsx)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){try{execSync('npx tsc --noEmit --pretty false 2>&1',{cwd:'frontend',encoding:'utf8',stdio:['pipe','pipe','pipe']});console.error('[RevClear Hook] TypeScript check passed for '+p.replace(/.*frontend\\//,'frontend/'))}catch(e){const lines=(e.stdout||'').split('\\n').filter(l=>l.includes(p.replace(/.*frontend\\//,''))).slice(0,5);if(lines.length){console.error('[RevClear Hook] TypeScript errors:');lines.forEach(l=>console.error(l))}}}console.log(d)})\""
-          }
-        ]
-      },
-      {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"git commit\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"console.error('[RevClear Hook] Commit created - ensure no PHI in commit message');console.error('[RevClear Hook] Run tests before push: npm test in backend/')\""
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"console.error('');console.error('═══════════════════════════════════════════════════════');console.error('  RevClear - Medical Claims Platform');console.error('  Backend: port 3005 | Frontend: port 3000');console.error('  Remember: HIPAA compliance - no PHI in logs/commits');console.error('═══════════════════════════════════════════════════════');console.error('')\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const ns=i.tool_input?.new_string||'';const creds=/\\\\b(password|secret_key|api_key|auth_token|private_key|api_secret)\\\\b/i.test(ns)&&!/process\\.env/.test(ns)&&!/(test|mock|example)/i.test(ns);const phi=/(patient|medical|phi|ssn|dob)/i.test(ns)&&/console\\\\.(log|debug)/.test(ns);if(phi){console.error('[RC] BLOCKED: PHI in console log (HIPAA)');process.exit(1)}if(creds)console.error('[RC] WARN: Hardcoded creds? Use process.env');console.log(d)})\""
           }
         ]
       }
     ]
-  },
-  "model": "sonnet"
+  }
 }

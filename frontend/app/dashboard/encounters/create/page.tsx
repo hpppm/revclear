@@ -6,6 +6,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
+import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -64,6 +65,7 @@ export default function EncounterPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [patientsError, setPatientsError] = useState<string | null>(null);
+  const [encounterFieldErrors, setEncounterFieldErrors] = useState<Record<string, string>>({});
   const [subscriberLoading, setSubscriberLoading] = useState(false);
   const [subscriberError, setSubscriberError] = useState<string | null>(null);
   const [subscriberSaving, setSubscriberSaving] = useState(false);
@@ -90,7 +92,13 @@ export default function EncounterPage() {
   const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
-  const hasLoadedRef = useRef(false);
+  const loadedEncounterIdRef = useRef<string | null>(null);
+
+  const searchEncounterId =
+    searchParams?.get("id") || searchParams?.get("encounterId") || null;
+  const searchStep = searchParams?.get("step") || null;
+  const searchPatientId = searchParams?.get("patientId") || null;
+  const parsedSearchStep = searchStep ? parseInt(searchStep) || 0 : null;
 
   const handleCodesSelected = (codes: MedicalCode[]) => {
     setSelectedCodes(codes);
@@ -119,17 +127,14 @@ export default function EncounterPage() {
 
   // URL state management and refresh recovery
   useEffect(() => {
-    const id = searchParams?.get("id") || searchParams?.get("encounterId");
-    const step = searchParams?.get("step");
-
-    if (id && !hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      setEncounterId(id);
+    if (searchEncounterId && loadedEncounterIdRef.current !== searchEncounterId) {
+      loadedEncounterIdRef.current = searchEncounterId;
+      setEncounterId(searchEncounterId);
       setLoading(true);
 
       // Fetch encounter data to restore state
       apiClient.encounters
-        .getById(id)
+        .getById(searchEncounterId)
         .then(async (res) => {
           const data = res.data?.data || res.data;
           logger.log("Refresh recovery - encounter data:", data);
@@ -158,7 +163,7 @@ export default function EncounterPage() {
               setS3Key(data.audio_key);
               // Fetch presigned URL for audio playback
               try {
-                const audioUrlRes = await apiClient.transcribe.getAudioUrl(id);
+                const audioUrlRes = await apiClient.transcribe.getAudioUrl(searchEncounterId);
                 logger.log("Audio URL response:", audioUrlRes.data);
                 if (audioUrlRes.data?.audioUrl) {
                   setAudioUrl(audioUrlRes.data.audioUrl);
@@ -174,7 +179,7 @@ export default function EncounterPage() {
             if (data.soap_result_id) {
               logger.log("Restoring SOAP with result_id:", data.soap_result_id);
               try {
-                const soapRes = await apiClient.soap.getForEncounter(id);
+                const soapRes = await apiClient.soap.getForEncounter(searchEncounterId);
                 logger.log("SOAP response:", soapRes.data);
 
                 // Extract the actual SOAP object from the response
@@ -196,7 +201,7 @@ export default function EncounterPage() {
             if (data.transcript_result_id) {
               logger.log("Restoring transcript with result_id:", data.transcript_result_id);
               try {
-                const transcriptRes = await apiClient.transcribe.getByEncounterId(id);
+                const transcriptRes = await apiClient.transcribe.getByEncounterId(searchEncounterId);
                 logger.log("Transcript response:", transcriptRes.data);
                 if (transcriptRes.data) {
                   setTranscript(transcriptRes.data);
@@ -211,7 +216,7 @@ export default function EncounterPage() {
 
             // Restore medical codes
             try {
-              const codesRes = await apiClient.codes.getSaved(id);
+              const codesRes = await apiClient.codes.getSaved(searchEncounterId);
               const codesData = codesRes.data?.data || [];
               if (codesData) {
                 logger.log("Restoring medical codes:", codesData);
@@ -237,18 +242,19 @@ export default function EncounterPage() {
     }
 
     // Restore step from URL
-    if (step) {
-      setCurrentStep(parseInt(step) || 0);
+    if (parsedSearchStep !== null) {
+      setCurrentStep((prev) =>
+        prev === parsedSearchStep ? prev : parsedSearchStep,
+      );
     }
-  }, [searchParams, encounterId]);
+  }, [searchEncounterId, parsedSearchStep]);
 
   useEffect(() => {
-    const param = searchParams?.get("patientId");
-    if (param) {
-      setMetadata((prev) => ({ ...prev, patientId: param }));
-      loadSubscriber(param);
+    if (searchPatientId && searchPatientId !== metadata.patientId) {
+      setMetadata((prev) => ({ ...prev, patientId: searchPatientId }));
+      loadSubscriber(searchPatientId);
     }
-  }, [searchParams]);
+  }, [searchPatientId, metadata.patientId]);
 
   const loadSubscriber = async (patientId: string) => {
     setSubscriberLoading(true);
@@ -304,12 +310,18 @@ export default function EncounterPage() {
 
   // Helper to update URL with encounter ID and step
   const updateUrl = (id: string, step: number) => {
-    router.push(`/dashboard/encounters/create?id=${id}&step=${step}`, { scroll: false });
+    if (searchEncounterId === id && parsedSearchStep === step) {
+      return;
+    }
+
+    router.replace(`/dashboard/encounters/create?id=${id}&step=${step}`, {
+      scroll: false,
+    });
   };
 
   // Helper to handle step changes
   const handleStepChange = (step: number) => {
-    setCurrentStep(step);
+    setCurrentStep((prev) => (prev === step ? prev : step));
     if (encounterId) {
       updateUrl(encounterId, step);
     }
@@ -451,6 +463,12 @@ export default function EncounterPage() {
     setGeneratingSoap(true);
 
     try {
+      const transcriptText = transcriptDraft.trim();
+      if (transcriptText) {
+        await apiClient.transcribe.saveTranscript(encounterId, transcriptText);
+        setTranscript({ text: transcriptText });
+      }
+
       const res = await apiClient.soap.generateFromTranscript(encounterId);
       const responseData = res.data?.data || res.data;
       const soapData = responseData?.soap || responseData;
@@ -550,6 +568,7 @@ export default function EncounterPage() {
           subscriberLoading={subscriberLoading}
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
+          encounterFieldErrors={encounterFieldErrors}
         />
       ),
       canGoNext:
@@ -557,6 +576,23 @@ export default function EncounterPage() {
         !!metadata.date &&
         (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
       onNext: async () => {
+        const validation = EncounterDetailsFormSchema.safeParse({
+          patientId: metadata.patientId,
+          date: metadata.date,
+          encounterType: metadata.encounterType,
+        });
+        if (!validation.success) {
+          const errs: Record<string, string> = {};
+          validation.error.issues.forEach((err) => {
+            const key = String(err.path[0]);
+            if (key && !errs[key]) errs[key] = err.message;
+          });
+          setEncounterFieldErrors(errs);
+          const first = validation.error.issues[0];
+          throw new Error(first ? first.message : "Please fix encounter details");
+        }
+        setEncounterFieldErrors({});
+
         // Step 1: Create or update encounter
         await persistSubscriber();
         if (!encounterId) {

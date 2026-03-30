@@ -3,8 +3,11 @@
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BrandMark } from "@/app/components/ui/BrandMark";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { ForgotPasswordRequestSchema, ForgotPasswordConfirmSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
+import Button from "@/app/components/ui/Button";
 
 type Step = "REQUEST" | "CONFIRM";
 
@@ -36,8 +39,14 @@ export default function ForgotPasswordPage() {
     setErrors({});
     setMessage("");
 
-    if (!email.trim()) {
-      setErrors({ email: "Email is required" });
+    const validation = ForgotPasswordRequestSchema.safeParse({ email });
+    if (!validation.success) {
+      const fieldErrors: FieldErrors = {};
+      validation.error.issues.forEach((err) => {
+        const field = err.path[0] as keyof FieldErrors;
+        if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+      });
+      setErrors(fieldErrors);
       return;
     }
 
@@ -63,12 +72,13 @@ export default function ForgotPasswordPage() {
     setErrors({});
     setMessage("");
 
-    const nextErrors: FieldErrors = {};
-    if (!email.trim()) nextErrors.email = "Email is required";
-    if (!code.trim()) nextErrors.code = "Code is required";
-    if (!password.trim()) nextErrors.password = "New password is required";
-
-    if (Object.keys(nextErrors).length > 0) {
+    const validation = ForgotPasswordConfirmSchema.safeParse({ email, code, newPassword: password });
+    if (!validation.success) {
+      const nextErrors: FieldErrors = {};
+      validation.error.issues.forEach((err) => {
+        const field = err.path[0] === "newPassword" ? "password" : err.path[0] as keyof FieldErrors;
+        if (field && !nextErrors[field]) nextErrors[field] = err.message;
+      });
       setErrors(nextErrors);
       return;
     }
@@ -101,9 +111,7 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/landing" className="inline-flex items-center gap-2 group">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
-              <span className="text-white font-bold text-2xl">R</span>
-            </div>
+            <BrandMark size="lg" className="transition-transform group-hover:scale-105" />
             <span className="text-3xl font-bold text-gray-900">RevClear</span>
           </Link>
         </div>
@@ -152,13 +160,16 @@ export default function ForgotPasswordPage() {
                 )}
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={isRequestInvalid || isLoading}
-                className="group w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl shadow-md hover:bg-blue-700 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                size="lg"
+                loading={isLoading}
+                disabled={isRequestInvalid}
+                className="w-full rounded-xl hover:-translate-y-0.5 transition-all duration-200 disabled:hover:translate-y-0"
               >
-                {isLoading ? "Sending..." : "Send Reset Code"}
-              </button>
+                Send Reset Code
+              </Button>
             </form>
           ) : (
             <form className="space-y-5" onSubmit={handleConfirmSubmit} noValidate>
@@ -232,13 +243,16 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              <button
+              <Button
                 type="submit"
-                disabled={isConfirmInvalid || isLoading}
-                className="group w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl shadow-md hover:bg-blue-700 hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                size="lg"
+                loading={isLoading}
+                disabled={isConfirmInvalid}
+                className="w-full rounded-xl hover:-translate-y-0.5 transition-all duration-200 disabled:hover:translate-y-0"
               >
-                {isLoading ? "Resetting..." : "Reset Password"}
-              </button>
+                Reset Password
+              </Button>
             </form>
           )}
 

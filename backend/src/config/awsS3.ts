@@ -31,7 +31,7 @@ export async function uploadFile(
     Key: key,
     Body: body,
     ContentType: contentType,
-    ServerSideEncryption: "AES256",
+    ServerSideEncryption: "aws:kms",
   });
 
   return s3Client.send(command);
@@ -80,6 +80,7 @@ export async function getUploadUrl(key: string, expiresIn: number = 3600) {
   const command = new PutObjectCommand({
     Bucket: bucketName,
     Key: key,
+    ServerSideEncryption: "aws:kms",
   });
 
   return getSignedUrl(s3Client, command, { expiresIn });

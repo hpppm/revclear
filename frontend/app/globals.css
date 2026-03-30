@@ -3,6 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --brand-50: #f0fdfa;
+  --brand-100: #ccfbf1;
+  --brand-200: #99f6e4;
+  --brand-500: #14b8a6;
+  --brand-600: #0d9488;
+  --brand-700: #0f766e;
+  --brand-ink: #134e4a;
+  --brand-ring: rgba(20, 184, 166, 0.2);
+  --surface-subtle: #f9fafb;
+  --border-subtle: #e5e7eb;
+  --text-muted: #9ca3af;
 }
 
 @theme inline {
@@ -33,4 +44,79 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.brand-button-primary {
+  background: var(--brand-600);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.brand-button-primary:hover {
+  background: var(--brand-700);
+}
+
+.brand-button-secondary {
+  background: #fff;
+  color: var(--brand-ink);
+  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.brand-button-secondary:hover {
+  border-color: var(--brand-500);
+  color: var(--brand-700);
+}
+
+.brand-button-ghost {
+  background: transparent;
+  color: var(--brand-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.brand-button-ghost:hover {
+  background: var(--brand-50);
+}
+
+.brand-input {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--brand-ink);
+}
+
+.brand-input::placeholder {
+  color: var(--text-muted);
+}
+
+.brand-input:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 2px var(--brand-ring);
+  outline: none;
+}
+
+.brand-input:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.brand-accent-surface {
+  background: var(--brand-50);
+  border-color: var(--brand-200);
+  color: var(--brand-ink);
+}
+
+.brand-accent-icon {
+  background: var(--brand-100);
+  color: var(--brand-700);
 }
