@@ -49,6 +49,7 @@ export default function TranscriptionStep({
         if (typeof transcript === "string") return transcript;
 
         // Handle explicit empty text result from Whisper
+        if (transcript.encrypted !== undefined) return null;
         if (transcript.text === "") {
             return "No speech detected in the audio file.";
         }

@@ -27,6 +27,7 @@ const allowedAudioTypes = [
 const extractTranscriptText = (t: any): string => {
   if (!t) return "";
   if (typeof t === "string") return t;
+  if (t.encrypted !== undefined) return "";
   if (t.text !== undefined) return t.text ?? "";
   if (t.summary !== undefined) return t.summary ?? "";
   if (Array.isArray(t.segments)) {
