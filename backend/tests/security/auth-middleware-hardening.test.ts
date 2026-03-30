@@ -1,0 +1,326 @@
+/**
+ * Auth Middleware Hardening Tests
+ *
+ * Verifies three security changes made in this PR:
+ *
+ * Change 1 — Bearer header fallback removed (auth.ts)
+ *   Tokens are accepted from httpOnly cookies only.
+ *   An Authorization: Bearer header is no longer a valid token transport.
+ *
+ * Change 2 — DB lookup failure blocks the request (auth.ts)
+ *   If findUserByCognitoId returns null or throws, the request is rejected
+ *   instead of silently calling next() with req.user undefined.
+ *
+ * Change 3 — Cross-tab cookie collision detection (AuthContext.tsx)
+ *   sessionStorage.userId is set on login and compared on every checkAuth()
+ *   call. A mismatch (cookie overwritten by another tab) redirects to /login.
+ */
+
+// ---------------------------------------------------------------------------
+// Mocks — must be hoisted before imports
+// ---------------------------------------------------------------------------
+
+const mockVerify = jest.fn();
+
+jest.mock("aws-jwt-verify", () => ({
+  CognitoJwtVerifier: {
+    create: jest.fn(() => ({
+      verify: mockVerify,
+      hydrate: jest.fn().mockResolvedValue(undefined),
+    })),
+  },
+}));
+
+jest.mock("../../src/config/db", () => ({
+  query: jest.fn(),
+  findUserByCognitoId: jest.fn(),
+  getClient: jest.fn(),
+}));
+
+// ---------------------------------------------------------------------------
+// Imports
+// ---------------------------------------------------------------------------
+
+import * as fs from "fs";
+import * as path from "path";
+import { findUserByCognitoId } from "../../src/config/db";
+
+const mockFindUser = findUserByCognitoId as jest.Mock;
+
+// Import authMiddleware AFTER mocks are in place
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { authMiddleware } = require("../../src/middleware/auth");
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const VALID_PAYLOAD = {
+  sub: "cognito-sub-123",
+  iss: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test",
+  client_id: "test-client-id",
+  token_use: "access",
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+  "cognito:groups": ["Users"],
+};
+
+const DB_USER = {
+  id: "db-user-uuid",
+  email: "test@example.com",
+  cognito_id: "cognito-sub-123",
+  organization_id: "org-uuid",
+  is_org_admin: false,
+};
+
+const makeReq = (overrides: Record<string, any> = {}) => ({
+  cookies: {},
+  headers: {},
+  ...overrides,
+});
+
+const makeRes = () => {
+  const res: any = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  return res;
+};
+
+// ---------------------------------------------------------------------------
+// Change 1 — Bearer header fallback removed
+// ---------------------------------------------------------------------------
+
+describe("Change 1: Bearer header is no longer accepted as token transport", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns 401 when token is sent via Authorization: Bearer header (no cookie)", async () => {
+    const req = makeReq({
+      cookies: {},
+      headers: { authorization: "Bearer valid.jwt.token" },
+    });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Authentication required" });
+    expect(next).not.toHaveBeenCalled();
+    // Verifier must NOT have been called — token was never extracted
+    expect(mockVerify).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when no cookie and no Authorization header", async () => {
+    const req = makeReq({ cookies: {}, headers: {} });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Authentication required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("proceeds past token extraction when accessToken cookie is present", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD);
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    // verify() was called with the cookie value
+    expect(mockVerify).toHaveBeenCalledWith("valid.jwt.token");
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("ignores Authorization header even when cookie is also absent", async () => {
+    const req = makeReq({
+      cookies: {},
+      headers: { authorization: "Bearer should-be-ignored" },
+    });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(mockVerify).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Change 2a — Invalid / tampered JWT is rejected before any claim access
+// ---------------------------------------------------------------------------
+
+describe("Change 2a: Signature verification rejects bad tokens before claims are read", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns 401 with 'Invalid token' when verify() throws a generic error", async () => {
+    mockVerify.mockRejectedValue(new Error("JwtInvalidSignatureError"));
+
+    const req = makeReq({ cookies: { accessToken: "tampered.jwt.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Invalid token" });
+    expect(next).not.toHaveBeenCalled();
+    // DB must NOT be queried — reject before touching the database
+    expect(mockFindUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 with 'Token expired' when verify() throws an expiry error", async () => {
+    mockVerify.mockRejectedValue(new Error("Token is expired"));
+
+    const req = makeReq({ cookies: { accessToken: "expired.jwt.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Token expired" });
+    expect(next).not.toHaveBeenCalled();
+    expect(mockFindUser).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Change 2b — DB lookup failure now blocks the request
+// ---------------------------------------------------------------------------
+
+describe("Change 2b: DB lookup failure blocks the request (no silent next())", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns 401 when findUserByCognitoId returns null (user not in DB)", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD);
+    mockFindUser.mockResolvedValue(null);
+
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Authentication required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when findUserByCognitoId throws (database error)", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD);
+    mockFindUser.mockRejectedValue(new Error("Connection timeout"));
+
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Authentication service temporarily unavailable",
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("attaches req.user and calls next() on the happy path", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD);
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.user).toBeDefined();
+    expect(req.user.id).toBe(DB_USER.id);
+    expect(req.user.role).toBe("clinician"); // mapped from cognito:groups = ['Users']
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("maps Cognito group 'Admin' to application role 'admin'", async () => {
+    mockVerify.mockResolvedValue({
+      ...VALID_PAYLOAD,
+      "cognito:groups": ["Admin"],
+    });
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.user.role).toBe("admin");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Change 3 — Cross-tab collision: static analysis of AuthContext
+// ---------------------------------------------------------------------------
+
+describe("Change 3: Cross-tab cookie collision detection in AuthContext.tsx", () => {
+  const authContextPath = path.join(
+    __dirname,
+    "../../../frontend/app/context/AuthContext.tsx"
+  );
+  const content = fs.existsSync(authContextPath)
+    ? fs.readFileSync(authContextPath, "utf-8")
+    : null;
+
+  const skip = content === null;
+
+  (skip ? it.skip : it)(
+    "stores userId in sessionStorage on login",
+    () => {
+      expect(content).toMatch(/sessionStorage\.setItem\(["']userId["']/);
+    }
+  );
+
+  (skip ? it.skip : it)(
+    "reads userId from sessionStorage in checkAuth",
+    () => {
+      expect(content).toMatch(/sessionStorage\.getItem\(["']userId["']/);
+    }
+  );
+
+  (skip ? it.skip : it)(
+    "redirects to /login when stored userId does not match returned userId",
+    () => {
+      expect(content).toMatch(/storedUserId !== returnedUserId/);
+      expect(content).toMatch(/router\.push\(["']\/login["']\)/);
+    }
+  );
+
+  (skip ? it.skip : it)(
+    "removes userId from sessionStorage on clearSensitiveData",
+    () => {
+      expect(content).toMatch(/sessionStorage\.removeItem\(["']userId["']\)/);
+    }
+  );
+
+  (skip ? it.skip : it)(
+    "clears sessionStorage before setting user state to prevent stale tab data",
+    () => {
+      // clearSensitiveData must call sessionStorage.removeItem before setUser(null)
+      const clearFnStart = content!.indexOf("const clearSensitiveData");
+      const removeItemIdx = content!.indexOf(
+        'sessionStorage.removeItem("userId")',
+        clearFnStart
+      );
+      const setUserNullIdx = content!.indexOf("setUser(null)", clearFnStart);
+      expect(removeItemIdx).toBeGreaterThan(clearFnStart);
+      expect(setUserNullIdx).toBeGreaterThan(removeItemIdx);
+    }
+  );
+});
