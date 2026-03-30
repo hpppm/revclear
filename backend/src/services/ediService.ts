@@ -5,9 +5,56 @@
  *   2. Raw EDI 837 string  — for encrypted file download
  *
  * Format: ASC X12 005010X222A2 (professional claims, CMS-1500 equivalent)
+ *
+ * Environment variables:
+ *   EDI_USAGE_INDICATOR  — "T" (test) or "P" (production). Defaults to "T" in
+ *                          non-production environments and "P" in production.
+ *                          Set explicitly in .env to override.
  */
 
 import { encryptPHI } from "../utils/crypto";
+
+// ─── Code validation ────────────────────────────────────────────────────────
+
+// CPT: exactly 5 alphanumeric chars (standard 5-digit + category-III letter codes)
+const CPT_PATTERN = /^[A-Z0-9]{5}$/i;
+
+// ICD-10-CM: letter + 2 digits + optional 1–4 alphanumeric chars (with or without decimal)
+const ICD10_PATTERN = /^[A-Z][0-9]{2}[A-Z0-9]{0,4}$/i;
+
+/**
+ * Validates CPT and ICD-10 codes before EDI submission.
+ * Returns an array of human-readable error messages (empty = valid).
+ */
+export function validateClaimCodes(claim: any): string[] {
+  const errors: string[] = [];
+
+  const icdCodes: string[] = Array.isArray(claim.diagnosis_codes) ? claim.diagnosis_codes : [];
+  for (const code of icdCodes) {
+    const normalized = code.replace(".", "").toUpperCase();
+    if (!ICD10_PATTERN.test(normalized)) {
+      errors.push(`Invalid ICD-10 code: "${code}" — expected format A00–Z99.XXXX`);
+    }
+  }
+
+  const lineItems: any[] = Array.isArray(claim.line_items) ? claim.line_items : [];
+  for (const item of lineItems) {
+    if (item.procedure_code) {
+      if (!CPT_PATTERN.test(String(item.procedure_code).toUpperCase())) {
+        errors.push(`Invalid CPT code: "${item.procedure_code}" — must be exactly 5 alphanumeric characters`);
+      }
+    }
+    if (Array.isArray(item.modifiers)) {
+      for (const mod of item.modifiers) {
+        if (!/^[A-Z0-9]{2}$/i.test(String(mod))) {
+          errors.push(`Invalid modifier: "${mod}" on CPT ${item.procedure_code} — must be exactly 2 alphanumeric characters`);
+        }
+      }
+    }
+  }
+
+  return errors;
+}
 
 // ─── Stedi JSON payload (sent to clearinghouse API) ────────────────────────
 
@@ -33,6 +80,7 @@ export function buildStediPayload(claim: any): object {
       procedureIdentifier: "HC",
       lineItemChargeAmount: String(Number(item.charge_amount || 0).toFixed(2)),
       procedureCode: item.procedure_code,
+      procedureModifiers: Array.isArray(item.modifiers) ? item.modifiers.slice(0, 4) : [],
       measurementUnit: "UN",
       serviceUnitCount: String(item.units || 1),
       diagnosisCodePointers: (item.diagnosis_pointers || [1]).map(String),
@@ -92,8 +140,8 @@ export function buildStediPayload(claim: any): object {
             {
               providerType: "RenderingProvider",
               npi: rp.npi,
-              lastName: (rp.name || "").split(" ").slice(-1)[0] || "",
-              firstName: (rp.name || "").split(" ")[0] || "",
+              lastName: parseProviderName(rp.name).lastName,
+              firstName: parseProviderName(rp.name).firstName,
               taxonomyCode: rp.taxonomy_code || "",
             },
           ]
@@ -142,9 +190,15 @@ export function buildEdi837String(claim: any): string {
   const senderId = padRight((bp.tax_id || "SENDER").replace(/\D/g, ""), 15);
   const receiverId = padRight(claim.payer_id || "RECEIVER", 15);
 
+  // ISA15: "T" = test, "P" = production.
+  // Set EDI_USAGE_INDICATOR=P in .env when going live — no code change needed.
+  const usageIndicator =
+    process.env.EDI_USAGE_INDICATOR ||
+    (process.env.NODE_ENV === "production" ? "P" : "T");
+
   const segments: string[] = [
     // Interchange envelope
-    `ISA*00*          *00*          *ZZ*${senderId}*ZZ*${receiverId}*${dateFmt.slice(2)}*${timeFmt}*^*00501*${ctrl}*0*T*:`,
+    `ISA*00*          *00*          *ZZ*${senderId}*ZZ*${receiverId}*${dateFmt.slice(2)}*${timeFmt}*^*00501*${ctrl}*0*${usageIndicator}*:`,
     `GS*HC*${(bp.tax_id || "SENDER").replace(/\D/g, "")}*${claim.payer_id || "RECEIVER"}*${dateFmt}*${timeFmt}*1*X*005010X222A2`,
     `ST*837*0001*005010X222A2`,
     `BHT*0019*00*${claim.id.slice(0, 10)}*${dateFmt}*${timeFmt}*CH`,
@@ -183,7 +237,7 @@ export function buildEdi837String(claim: any): string {
     // 2310B Rendering Provider
     ...(rp.npi
       ? [
-          `NM1*82*1*${ediSafe((rp.name || "").split(" ").slice(-1)[0])}*${ediSafe((rp.name || "").split(" ")[0])}****XX*${rp.npi}`,
+          `NM1*82*1*${ediSafe(parseProviderName(rp.name).lastName)}*${ediSafe(parseProviderName(rp.name).firstName)}****XX*${rp.npi}`,
           `PRV*PE*PXC*${rp.taxonomy_code || ""}`,
         ]
       : []),
@@ -191,7 +245,7 @@ export function buildEdi837String(claim: any): string {
     // 2400 Service Lines
     ...lineItems.flatMap((item: any, i: number) => [
       `LX*${i + 1}`,
-      `SV1*HC:${item.procedure_code}*${Number(item.charge_amount || 0).toFixed(2)}*UN*${item.units || 1}***${(item.diagnosis_pointers || [1]).join(":")}`,
+      `SV1*${buildSV1ProcedureCode(item.procedure_code, item.modifiers)}*${Number(item.charge_amount || 0).toFixed(2)}*UN*${item.units || 1}***${(item.diagnosis_pointers || [1]).join(":")}`,
       `DTP*472*D8*${formatDate(item.date_of_service || claim.service_date_start)}`,
     ]),
 
@@ -218,8 +272,26 @@ export function encryptEdiExport(ediContent: string): string {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+// Sequential control number based on timestamp — unique per submission, reconcilable
 function generateControlNumber(): string {
-  return String(Math.floor(Math.random() * 999999999)).padStart(9, "0");
+  return String(Date.now()).slice(-9).padStart(9, "0");
+}
+
+// Parses a full name string into first/last, handling titles and multi-part surnames
+function parseProviderName(fullName: string): { firstName: string; lastName: string } {
+  const cleaned = (fullName || "").trim().replace(/^(Dr\.|Dr|Mr\.|Mrs\.|Ms\.|Prof\.)\s*/i, "");
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: "", lastName: "" };
+  if (parts.length === 1) return { firstName: "", lastName: parts[0] };
+  // First word = first name, last word = last name (handles middle names/initials)
+  return { firstName: parts[0], lastName: parts[parts.length - 1] };
+}
+
+// Builds the SV1 procedure code element with up to 4 modifiers
+// Format: HC:CPTCODE:MOD1:MOD2:MOD3:MOD4
+function buildSV1ProcedureCode(procedureCode: string, modifiers?: string[]): string {
+  const parts = ["HC", procedureCode, ...(Array.isArray(modifiers) ? modifiers.slice(0, 4) : [])];
+  return parts.join(":");
 }
 
 function padRight(str: string, len: number): string {

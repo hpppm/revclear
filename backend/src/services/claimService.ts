@@ -6,7 +6,7 @@ import {
 } from "../utils/crypto";
 import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
 import { submitClaimToClearinghouse } from "./clearinghouseService";
-import { buildEdi837String, encryptEdiExport } from "./ediService";
+import { buildEdi837String, encryptEdiExport, validateClaimCodes } from "./ediService";
 
 interface PaginationOptions {
   limit?: number;
@@ -215,6 +215,12 @@ export class ClaimService {
 
     if (claim.status === "accepted" || claim.status === "paid") {
       throw new AppError("Claim has already been accepted or paid", 400);
+    }
+
+    // Validate CPT and ICD-10 codes before submitting
+    const codeErrors = validateClaimCodes(claim);
+    if (codeErrors.length > 0) {
+      throw new AppError(`Claim has invalid codes: ${codeErrors.join("; ")}`, 400);
     }
 
     // Send to clearinghouse
