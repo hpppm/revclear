@@ -35,7 +35,12 @@ const ForgotPasswordSchema = z.object({
 const ConfirmForgotPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
   code: z.string().regex(/^\d{6}$/, "Reset code must be 6 digits"),
-  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
 const router = Router();
@@ -197,35 +202,32 @@ router.post("/signin", async (req, res) => {
 // Sign-out route - does NOT require auth middleware
 // Users with expired tokens should still be able to clear cookies
 router.post("/signout", async (req, res) => {
-  try {
-    // Get token from cookie or header (may be expired, that's OK)
-    const accessToken =
-      req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
-    if (accessToken) {
-      try {
-        await AuthService.signout(accessToken);
-      } catch {
-        // Ignore errors - token may be expired/invalid
-      }
-    }
+  // Always clear httpOnly cookies first so the response is fast.
+  // GlobalSignOut (Cognito) invalidates all devices and can take several seconds —
+  // fire it with a 5-second timeout and let it fail silently if it's slow or the
+  // token is already expired. The cookie clear is the security-critical action.
+  res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
 
-    // Always clear httpOnly cookies
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-
-    res.status(200).json({ message: "Signed out successfully." });
-  } catch (error: any) {
-    // Even if signout fails, clear cookies and return success
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-    res.status(200).json({ message: "Signed out successfully." });
+  const accessToken = req.cookies?.accessToken;
+  if (accessToken) {
+    const timeout = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error("signout timeout")), 5000),
+    );
+    Promise.race([AuthService.signout(accessToken), timeout]).catch(() => {
+      // Token may be expired or Cognito may be slow — cookies already cleared
+    });
   }
+
+  res.status(200).json({ message: "Signed out successfully." });
 });
 
 // Refresh token route
 router.post("/refresh-token", async (req, res) => {
-  // Get refresh token from cookie or body
-  const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+  // Read refresh token from httpOnly cookie only — never from the request body.
+  // Accepting it via req.body would allow scripts (which cannot read httpOnly
+  // cookies) to inject an arbitrary token, defeating the cookie-only transport.
+  const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
     return res.status(400).json({ error: "Refresh token is required." });
   }
