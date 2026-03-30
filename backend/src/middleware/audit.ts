@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { createHash } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import logger from "../utils/logger";
@@ -136,6 +137,20 @@ const SENSITIVE_BODY_KEYS = [
 // Fields that should be partially masked (show last 4 chars)
 const PARTIAL_MASK_KEYS = ["phone", "phone_number", "phonenumber", "fax"];
 
+// UUIDs in URLs and query params can be used to enumerate patient records.
+// HIPAA 45 CFR § 164.312(b): resource identifiers that link to PHI must not
+// appear in cleartext in audit logs.
+const UUID_URL_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const UUID_VALUE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Replace UUID path segments with [id] so patient/encounter/claim record IDs
+// do not appear in cleartext in audit logs.
+// Input:  "/api/patients/d0e15346-304e-4220-9ea5-04a4879c6fa8"
+// Output: "/api/patients/[id]"
+function maskUrlUuids(url: string): string {
+  return url.replace(UUID_URL_PATTERN, "[id]");
+}
+
 // SECURITY: Mask the Cognito issuer URL to hide AWS region + User Pool ID.
 // Input:  "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_NZCFuSv1l"
 // Output: "cognito-idp.us-east-1.amazonaws.com/***"
@@ -161,6 +176,9 @@ function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: st
       clone[key] = val.length > 4 ? "****" + val.slice(-4) : "[REDACTED]";
     } else if (typeof obj[key] === "object" && obj[key] !== null) {
       clone[key] = sanitizeObject(obj[key], sensitiveKeys, partialMaskKeys);
+    } else if (typeof obj[key] === "string" && UUID_VALUE_PATTERN.test(obj[key] as string)) {
+      // Mask UUID values — they are record IDs that can be used to enumerate PHI
+      clone[key] = "[REDACTED]";
     } else {
       clone[key] = obj[key];
     }
@@ -189,7 +207,8 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
 
     const auth = (req as any).auth;
     const timestamp = new Date().toISOString();
-    const url = (req.originalUrl || req.url).split("?")[0];
+    // UUID segments replaced with [id] — req.originalUrl is not modified
+    const url = maskUrlUuids((req.originalUrl || req.url).split("?")[0]);
 
     // GENERAL log — written to application stdout (CloudWatch, ECS, etc.).
     // Must contain NO PHI, NO internal IDs, NO credential fields.
@@ -210,8 +229,8 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
       userId: req.user?.id || "anonymous",
       // Cognito sub for cross-system / cross-session correlation
       cognitoSub: auth?.sub || null,
-      // jti enables token replay detection across different IPs
-      tokenJti: auth?.jti || null,
+      // jti hashed: enables token replay detection without exposing the raw token ID
+      tokenJti: auth?.jti ? createHash('sha256').update(auth.jti).digest('hex').slice(0, 16) : null,
       // Issuer masked: hides AWS region + User Pool ID from logs
       tokenIssuer: maskTokenIssuer(auth?.iss),
       method: req.method,

@@ -66,3 +66,168 @@ export const UserSchema = z.object({
   role: z.enum(["admin", "clinician", "billing_staff"]),
   organization_id: z.string().uuid().optional().nullable(),
 }).strip();
+
+// ── Form input schemas ────────────────────────────────────────────────────────
+// These validate user input before it is sent to the API.
+// Distinct from the response schemas above which guard against unexpected data
+// flowing back from the backend.
+
+const phoneSchema = z
+  .string()
+  .regex(/^\+?[\d\s\-(). ]{7,15}$/, "Please enter a valid phone number")
+  .optional()
+  .or(z.literal(""));
+
+const zipSchema = z
+  .string()
+  .regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)")
+  .optional()
+  .or(z.literal(""));
+
+const npiSchema = z
+  .string()
+  .regex(/^\d{10}$/, "NPI must be exactly 10 digits")
+  .optional()
+  .or(z.literal(""));
+
+const dobPastSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+  .refine((d: string) => !d || new Date(d) < new Date(), "Date of birth cannot be in the future")
+  .optional()
+  .or(z.literal(""));
+
+export const LoginFormSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const SignupFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+});
+
+export const ForgotPasswordRequestSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export const ForgotPasswordConfirmSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  code: z.string().regex(/^\d{6}$/, "Verification code must be exactly 6 digits"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+});
+
+export const CreatePatientFormSchema = z.object({
+  full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+  dob: dobPastSchema,
+  gender: z.enum(["M", "F", "U", "O"]),
+  phone: phoneSchema,
+  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
+  address_street: z.string().max(200).optional().or(z.literal("")),
+  address_city: z.string().max(100).optional().or(z.literal("")),
+  address_state: z.string().max(2).optional().or(z.literal("")),
+  address_zip: zipSchema,
+  insurance_provider: z.string().max(100).optional().or(z.literal("")),
+  insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_member_id: z.string().max(50).optional().or(z.literal("")),
+  insurance_group_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_payer_id: z.string().max(50).optional().or(z.literal("")),
+  insurance_payer_name: z.string().max(100).optional().or(z.literal("")),
+});
+
+export const EditPatientFormSchema = z.object({
+  full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+  dob: dobPastSchema,
+  gender: z.enum(["M", "F", "U", "O"]).optional(),
+  phone: phoneSchema,
+  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
+  address_street: z.string().max(200).optional().or(z.literal("")),
+  address_city: z.string().max(100).optional().or(z.literal("")),
+  address_state: z.string().max(2).optional().or(z.literal("")),
+  address_zip: zipSchema,
+  insurance_provider: z.string().max(100).optional().or(z.literal("")),
+  insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_member_id: z.string().max(50).optional().or(z.literal("")),
+  insurance_group_number: z.string().max(50).optional().or(z.literal("")),
+});
+
+export const ProfileFormSchema = z.object({
+  phone: phoneSchema,
+  practitioner_type: z.string().max(100).optional().or(z.literal("")),
+  license_id: z.string().max(50).optional().or(z.literal("")),
+  license_state: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/, "License state must be a 2-letter abbreviation (e.g. CA)")
+    .optional()
+    .or(z.literal("")),
+  npi: npiSchema,
+  taxonomy_code: z
+    .string()
+    .regex(/^[A-Za-z0-9]{10}$/, "Taxonomy code must be exactly 10 alphanumeric characters")
+    .optional()
+    .or(z.literal("")),
+});
+
+export const OrganizationFormSchema = z.object({
+  name: z.string().max(200).optional().or(z.literal("")),
+  npi: npiSchema,
+  tax_id: z.string().max(20).optional().or(z.literal("")),
+  address_line1: z.string().max(200).optional().or(z.literal("")),
+  address_line2: z.string().max(200).optional().or(z.literal("")),
+  city: z.string().max(100).optional().or(z.literal("")),
+  state: z.string().max(2).optional().or(z.literal("")),
+  postal_code: zipSchema,
+  phone: phoneSchema,
+  billing_name: z.string().max(200).optional().or(z.literal("")),
+  billing_npi: npiSchema,
+  billing_tax_id: z.string().max(20).optional().or(z.literal("")),
+  billing_address_line1: z.string().max(200).optional().or(z.literal("")),
+  billing_address_line2: z.string().max(200).optional().or(z.literal("")),
+  billing_city: z.string().max(100).optional().or(z.literal("")),
+  billing_state: z.string().max(2).optional().or(z.literal("")),
+  billing_postal_code: zipSchema,
+  billing_phone: phoneSchema,
+  default_place_of_service: z.string().max(10).optional().or(z.literal("")),
+  edi_sender_id: z.string().max(50).optional().or(z.literal("")),
+  edi_receiver_id: z.string().max(50).optional().or(z.literal("")),
+  edi_sftp_host: z.string().max(200).optional().or(z.literal("")),
+  edi_sftp_username: z.string().max(100).optional().or(z.literal("")),
+  edi_sftp_port: z
+    .string()
+    .refine(
+      (v: string) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535),
+      "Port must be a number between 1 and 65535"
+    )
+    .optional()
+    .or(z.literal("")),
+});
+
+export const EncounterDetailsFormSchema = z.object({
+  patientId: z.string().min(1, "Please select a patient"),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+    .refine((d: string) => new Date(d) <= new Date(), "Date of service cannot be in the future"),
+  encounterType: z.enum(["office_visit", "telehealth", "phone", "home_visit"]),
+  chiefComplaint: z.string().max(500).optional().or(z.literal("")),
+});
+
+export const SubscriberFormSchema = z.object({
+  full_name: z.string().min(2, "Subscriber name must be at least 2 characters").max(100),
+  dob: dobPastSchema,
+  phone: phoneSchema,
+  address_zip: zipSchema,
+  member_id: z.string().max(50).optional().or(z.literal("")),
+  group_number: z.string().max(50).optional().or(z.literal("")),
+});
