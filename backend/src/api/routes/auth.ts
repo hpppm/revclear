@@ -20,8 +20,8 @@ const SignupSchema = z.object({
   attributes: z.object({
     name: z.string().min(1).max(100).optional(),
   }).strict().optional(),
-  practitionerType: z.string().optional(),
-  licenseId: z.string().optional(),
+  practitionerType: z.string().max(100).optional(),
+  licenseId: z.string().max(100).optional(),
 });
 
 const ConfirmSignupSchema = z.object({
