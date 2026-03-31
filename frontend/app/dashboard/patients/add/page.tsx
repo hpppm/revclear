@@ -57,7 +57,7 @@ export default function AddPatientPage() {
       const firstErrorKey = validation.error.issues[0]?.path?.[0];
       if (firstErrorKey) {
         setTimeout(() => {
-          const el = document.getElementById(`patient-add-${firstErrorKey}`);
+          const el = document.getElementById(`patient-add-${String(firstErrorKey)}`);
           if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 0);
       }
