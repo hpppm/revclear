@@ -77,21 +77,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         payload.organization ?? fetchedUser.organization ?? null;
       const needsOrg = payload.requiresOrganization === true || !organization;
 
-      // SECURITY: Detect cross-tab cookie collision.
-      // Cookies are shared across all tabs on the same domain. If a second user
-      // logs in on another tab, their token overwrites this tab's cookie. We
-      // catch this by storing the expected user ID in sessionStorage (tab-specific)
-      // and comparing it against what the /me endpoint returns.
       if (typeof window !== "undefined") {
+        // SECURITY: Cross-tab session replacement guard.
+        //
+        // When another tab logs in as a different user, the shared httpOnly cookie
+        // is overwritten with their token. We detect this two ways:
+        //   1. BroadcastChannel (instant): the login() call below broadcasts the
+        //      new userId; other tabs receive it and set "sessionEnded" immediately.
+        //   2. checkAuth mismatch (on next refresh): storedUserId ≠ returnedUserId.
+        //
+        // In either case we clear THIS tab's state and send the user to /login.
+        // We do NOT call signout/GlobalSignOut — that would terminate the other
+        // user's session too, because the cookie now belongs to them.
+        //
+        // The "sessionEnded" flag tells the NEXT checkAuth (triggered by the /login
+        // pathname change) to skip auto-authentication even though /me still returns
+        // 200 (the other user's valid cookie is present). Without this flag, the
+        // redirect to /login would immediately re-authenticate as the wrong user.
+        const sessionEnded = sessionStorage.getItem("sessionEnded");
+        if (sessionEnded === "true") {
+          sessionStorage.removeItem("sessionEnded");
+          clearSensitiveData();
+          return; // stay on /login, let the user re-enter their own credentials
+        }
+
         const storedUserId = sessionStorage.getItem("userId");
         const returnedUserId = fetchedUser.id as string | undefined;
         if (storedUserId && returnedUserId && storedUserId !== returnedUserId) {
-          // Cookie was overwritten by a different user logging in on another tab.
-          // Call full signout to clear the httpOnly cookie server-side — without
-          // this, the next checkAuth (triggered by the /login pathname change)
-          // would still get 200 from /me and immediately re-authenticate as the
-          // wrong user, creating a sign-in loop.
-          await performLogout();
+          // Mismatch — another tab logged in and overwrote the cookie.
+          // Set the flag so the upcoming /login checkAuth doesn't auto-authenticate.
+          sessionStorage.setItem("sessionEnded", "true");
+          clearSensitiveData();
           router.push("/login");
           return;
         }
@@ -116,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear state - httpOnly cookie will be cleared by backend on logout
       clearSensitiveData();
     }
-  }, [pathname, router, clearSensitiveData, performLogout]);
+  }, [pathname, router, clearSensitiveData]);
 
   useEffect(() => {
     void (async () => {
@@ -124,6 +140,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     })();
   }, [checkAuth]);
+
+  // SECURITY: BroadcastChannel cross-tab session replacement notification.
+  // When another tab calls login(), it broadcasts the new userId. This tab
+  // receives it immediately (no refresh needed) and, if the userId differs,
+  // ends this session gracefully without touching the shared cookie.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("BroadcastChannel" in window)) return;
+
+    const channel = new BroadcastChannel("revclear_auth");
+    channel.onmessage = (event: MessageEvent) => {
+      if (event.data?.type !== "login") return;
+      const incomingUserId = event.data.userId as string | undefined;
+      const currentUserId = sessionStorage.getItem("userId");
+      if (currentUserId && incomingUserId && currentUserId !== incomingUserId) {
+        sessionStorage.setItem("sessionEnded", "true");
+        clearSensitiveData();
+        router.push("/login");
+      }
+    };
+
+    return () => channel.close();
+  }, [clearSensitiveData, router]);
 
   // HIPAA: Automatic session timeout on inactivity
   const resetIdleTimer = useCallback(() => {
@@ -207,6 +245,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // collisions can be detected in checkAuth.
       if (safeUser.id) {
         sessionStorage.setItem("userId", safeUser.id);
+        sessionStorage.removeItem("sessionEnded");
+      }
+      // Notify other tabs immediately so they can end their sessions
+      // without waiting for the user to refresh.
+      if (safeUser.id && "BroadcastChannel" in window) {
+        const channel = new BroadcastChannel("revclear_auth");
+        channel.postMessage({ type: "login", userId: safeUser.id });
+        channel.close();
       }
     }
 

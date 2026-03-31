@@ -325,16 +325,38 @@ describe("Change 3: Cross-tab cookie collision detection in AuthContext.tsx", ()
   );
 
   (skip ? it.skip : it)(
-    "calls performLogout (not just clearSensitiveData) on collision to clear the server-side cookie",
+    "sets sessionEnded flag on collision instead of calling signout",
     () => {
-      // The cookie is httpOnly and lives server-side. If we only call clearSensitiveData,
-      // the cookie remains valid. The next checkAuth (triggered by the /login pathname
-      // change) would hit /me, get 200 with the wrong user, and re-authenticate — creating
-      // a sign-in loop. performLogout() calls the signout API endpoint to clear the cookie.
+      // The correct fix does NOT call signout/GlobalSignOut on collision.
+      // Calling signout would clear the shared httpOnly cookie, which now belongs
+      // to the OTHER user — it would terminate their session too.
+      // Instead we set a sessionEnded flag so the next checkAuth (on /login) skips
+      // auto-authentication, and the user is shown the sign-in form.
       const collisionBlockStart = content!.indexOf("storedUserId !== returnedUserId");
       const collisionBlockEnd = content!.indexOf("return;", collisionBlockStart);
       const collision = content!.slice(collisionBlockStart, collisionBlockEnd);
-      expect(collision).toMatch(/await performLogout\(\)/);
+      expect(collision).toMatch(/sessionStorage\.setItem\(["']sessionEnded["']/);
+      expect(collision).not.toMatch(/performLogout/);
+    }
+  );
+
+  (skip ? it.skip : it)(
+    "skips auto-authentication when sessionEnded flag is set",
+    () => {
+      // After the collision redirect lands on /login, checkAuth runs again.
+      // /me still returns 200 (the other user's valid cookie). Without the
+      // sessionEnded guard, checkAuth would authenticate as the wrong user.
+      expect(content).toMatch(/sessionStorage\.getItem\(["']sessionEnded["']\)/);
+      expect(content).toMatch(/sessionStorage\.removeItem\(["']sessionEnded["']\)/);
+    }
+  );
+
+  (skip ? it.skip : it)(
+    "broadcasts login event via BroadcastChannel so other tabs are notified immediately",
+    () => {
+      expect(content).toMatch(/BroadcastChannel/);
+      expect(content).toMatch(/revclear_auth/);
+      expect(content).toMatch(/type.*login|login.*type/);
     }
   );
 });
