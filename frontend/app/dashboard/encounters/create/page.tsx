@@ -131,14 +131,6 @@ export default function EncounterPage() {
     fetchPatients();
   }, [canManageEncounters]);
 
-  if (!canManageEncounters) {
-    return (
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <UnauthorizedState message="Your role does not have access to encounter workflows." />
-      </div>
-    );
-  }
-
   // URL state management and refresh recovery
   useEffect(() => {
     if (searchEncounterId && loadedEncounterIdRef.current !== searchEncounterId) {
@@ -331,6 +323,14 @@ export default function EncounterPage() {
       setSubscriberSaving(false);
     }
   };
+
+  if (!canManageEncounters) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <UnauthorizedState message="Your role does not have access to encounter workflows." />
+      </div>
+    );
+  }
 
   // Helper to update URL with encounter ID and step
   const updateUrl = (id: string, step: number) => {
