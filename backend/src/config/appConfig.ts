@@ -19,6 +19,7 @@ const EnvSchema = z.object({
   AWS_S3_BUCKET: z.string().min(1).optional(),
   AWS_USER_POOL_ID: z.string().min(1).optional(),
   AWS_CLIENT_ID: z.string().min(1).optional(),
+  AWS_IDENTITY_POOL_ID: z.string().min(1).optional(),
   ALLOWED_ORIGINS: z.string().optional(),
 
   CLEARINGHOUSE_URL: z.string().url().optional(),
@@ -105,6 +106,7 @@ export const appConfig = {
   aws: {
     region: env.AWS_REGION,
     s3Bucket: env.AWS_S3_BUCKET,
+    identityPoolId: env.AWS_IDENTITY_POOL_ID,
   },
   cognito: {
     userPoolId: env.AWS_USER_POOL_ID,

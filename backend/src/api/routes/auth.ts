@@ -5,6 +5,50 @@ import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 import logger from "../../utils/logger";
 
+const SignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+  // Strict whitelist — only `name` is needed at signup.
+  // An open z.record() would let attackers inject Cognito attributes such as
+  // custom:tenant_id, preferred_username, etc. Tenant assignment must happen
+  // server-side after signup, never from client-supplied input.
+  attributes: z.object({
+    name: z.string().min(1).max(100).optional(),
+  }).strict().optional(),
+  practitionerType: z.string().max(100).optional(),
+  licenseId: z.string().max(100).optional(),
+});
+
+const ConfirmSignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Confirmation code must be 6 digits"),
+});
+
+const SigninSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const ConfirmForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Reset code must be 6 digits"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+});
+
 const router = Router();
 
 // Cookie configuration for JWT tokens
@@ -40,7 +84,11 @@ const REFRESH_COOKIE_OPTIONS = {
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
-  const { email, password, attributes, practitionerType, licenseId } = req.body;
+  const parsed = SignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, password, attributes, practitionerType, licenseId } = parsed.data;
 
   try {
     const result = await AuthService.signup(
@@ -87,7 +135,11 @@ router.post("/signup", async (req, res) => {
 
 // Confirm sign-up route
 router.post("/confirm-signup", async (req, res) => {
-  const { email, code } = req.body;
+  const parsed = ConfirmSignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, code } = parsed.data;
   try {
     await AuthService.confirmSignup(email, code);
     res.status(200).json({ message: "Account confirmed successfully." });
@@ -97,20 +149,13 @@ router.post("/confirm-signup", async (req, res) => {
   }
 });
 
-const SigninSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Invalid email format."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-});
-
 // Sign-in route
 router.post("/signin", async (req, res) => {
-  const { email, password } = req.body;
-
-  const validation = SigninSchema.safeParse({ email, password });
-  if (!validation.success) {
-    return res.status(400).json({ error: validation.error.issues[0].message });
+  const parsed = SigninSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
-
+  const { email, password } = parsed.data;
   try {
     const response = await AuthService.signin(email, password);
     const authResult = response.AuthenticationResult;
@@ -163,35 +208,32 @@ router.post("/signin", async (req, res) => {
 // Sign-out route - does NOT require auth middleware
 // Users with expired tokens should still be able to clear cookies
 router.post("/signout", async (req, res) => {
-  try {
-    // Get token from cookie or header (may be expired, that's OK)
-    const accessToken =
-      req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
-    if (accessToken) {
-      try {
-        await AuthService.signout(accessToken);
-      } catch {
-        // Ignore errors - token may be expired/invalid
-      }
-    }
+  // Always clear httpOnly cookies first so the response is fast.
+  // GlobalSignOut (Cognito) invalidates all devices and can take several seconds —
+  // fire it with a 5-second timeout and let it fail silently if it's slow or the
+  // token is already expired. The cookie clear is the security-critical action.
+  res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
 
-    // Always clear httpOnly cookies
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-
-    res.status(200).json({ message: "Signed out successfully." });
-  } catch (error: any) {
-    // Even if signout fails, clear cookies and return success
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-    res.status(200).json({ message: "Signed out successfully." });
+  const accessToken = req.cookies?.accessToken;
+  if (accessToken) {
+    const timeout = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error("signout timeout")), 5000),
+    );
+    Promise.race([AuthService.signout(accessToken), timeout]).catch(() => {
+      // Token may be expired or Cognito may be slow — cookies already cleared
+    });
   }
+
+  res.status(200).json({ message: "Signed out successfully." });
 });
 
 // Refresh token route
 router.post("/refresh-token", async (req, res) => {
-  // Get refresh token from cookie or body
-  const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+  // Read refresh token from httpOnly cookie only — never from the request body.
+  // Accepting it via req.body would allow scripts (which cannot read httpOnly
+  // cookies) to inject an arbitrary token, defeating the cookie-only transport.
+  const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
     return res.status(400).json({ error: "Refresh token is required." });
   }
@@ -216,19 +258,13 @@ router.post("/refresh-token", async (req, res) => {
   }
 });
 
-const ForgotPasswordSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Invalid email format."),
-});
-
 // Forgot password route
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-
-  const validation = ForgotPasswordSchema.safeParse({ email });
-  if (!validation.success) {
-    return res.status(400).json({ error: validation.error.issues[0].message });
+  const parsed = ForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
-
+  const { email } = parsed.data;
   try {
     await AuthService.forgotPassword(email);
   } catch (error: any) {
@@ -242,12 +278,11 @@ router.post("/forgot-password", async (req, res) => {
 
 // Confirm forgot password route
 router.post("/confirm-forgot-password", async (req, res) => {
-  const { email, code, newPassword } = req.body;
-  if (!email || !code || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "Email, code, and new password are required." });
+  const parsed = ConfirmForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
+  const { email, code, newPassword } = parsed.data;
   try {
     await AuthService.confirmForgotPassword(email, code, newPassword);
     res.status(200).json({ message: "Password has been reset successfully." });

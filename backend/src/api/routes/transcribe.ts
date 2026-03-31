@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import { Readable } from "stream";
 import { z } from "zod";
+import { IdParamSchema } from "../../types/zod";
 import FormData from "form-data";
 import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
@@ -115,11 +116,11 @@ router.post(
       if (!user) return;
       const organizationId = await getRequestOrganizationId(user.id);
 
-      const encounterId = req.body.encounterId;
-
-      if (!encounterId) {
-        return sendError(res, 400, "Encounter ID is required.");
+      const parsedId = IdParamSchema.safeParse({ id: req.body.encounterId });
+      if (!parsedId.success) {
+        return sendError(res, 400, "Valid encounter ID is required.");
       }
+      const encounterId = parsedId.data.id;
 
       // Ensure the encounter belongs to the authenticated clinician
       const ownsEncounter = await ensureEncounterOwnership(
@@ -141,9 +142,14 @@ router.post(
           return sendError(res, 400, "Provided file is not an audio file.");
         }
 
-        // Generate a unique S3 key
+        // Generate a unique S3 key scoped to the organization.
+        // Path: audio/{orgId}/encounter_{encounterId}_{timestamp}{ext}
+        // This enforces tenant isolation at the storage layer — each org's
+        // audio lives under its own prefix, matching the IAM policy condition
+        // on the Cognito Identity Pool role.
         const originalExtension = path.extname(req.file.originalname);
-        s3Key = `audio/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
+        const orgPrefix = organizationId ?? "unscoped";
+        s3Key = `audio/${orgPrefix}/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
 
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
