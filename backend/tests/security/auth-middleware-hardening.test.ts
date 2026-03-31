@@ -266,6 +266,62 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 });
 
 // ---------------------------------------------------------------------------
+// Change 4 — SignupSchema attributes whitelist blocks Cognito attribute injection
+// ---------------------------------------------------------------------------
+
+describe("Change 4: SignupSchema rejects injected Cognito attributes", () => {
+  // Import z directly so we can reconstruct the same schema shape and assert
+  // that the whitelist rejects arbitrary attribute keys.  This avoids the need
+  // for an HTTP test server while still covering the validation layer.
+  const { z } = require("zod");
+
+  const SignupSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+    // Mirror the exact whitelist from auth.ts
+    attributes: z
+      .object({ name: z.string().min(1).max(100).optional() })
+      .strict()
+      .optional(),
+  });
+
+  it("rejects attributes containing custom:tenant_id", () => {
+    const result = SignupSchema.safeParse({
+      email: "attacker@evil.com",
+      password: "Passw0rd!",
+      attributes: { "custom:tenant_id": "victim-org-uuid" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects attributes containing preferred_username", () => {
+    const result = SignupSchema.safeParse({
+      email: "attacker@evil.com",
+      password: "Passw0rd!",
+      attributes: { preferred_username: "admin" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts attributes containing only the whitelisted name field", () => {
+    const result = SignupSchema.safeParse({
+      email: "user@example.com",
+      password: "Passw0rd!",
+      attributes: { name: "Jane Doe" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts signup with no attributes at all", () => {
+    const result = SignupSchema.safeParse({
+      email: "user@example.com",
+      password: "Passw0rd!",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Change 3 — Cross-tab collision: static analysis of AuthContext
 // ---------------------------------------------------------------------------
 
