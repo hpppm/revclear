@@ -124,6 +124,7 @@ export interface Patient {
   address_zip?: string;
   // Insurance fields
   insurance_member_id?: string;
+  insurance_policy_number?: string;
 }
 
 export interface MedicalCode {

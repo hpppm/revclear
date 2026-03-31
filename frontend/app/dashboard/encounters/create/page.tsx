@@ -107,6 +107,20 @@ export default function EncounterPage() {
     setSelectedCodes(codes);
   };
 
+  const hasSelectedCodes = selectedCodes.some((code) => code.type === "CPT" || code.type === "ICD-10");
+
+  const isSubscriberComplete = metadata.relationship === "self" || (
+    !!metadata.subscriber?.full_name &&
+    !!metadata.subscriber?.dob &&
+    !!metadata.subscriber?.gender &&
+    !!metadata.subscriber?.address_street &&
+    !!metadata.subscriber?.address_city &&
+    !!metadata.subscriber?.address_state &&
+    !!metadata.subscriber?.address_zip &&
+    !!metadata.subscriber?.member_id &&
+    !!metadata.subscriber?.group_number
+  );
+
   const handleClaimChange = (claim: any) => {
     setClaimDraft(claim);
   };
@@ -343,7 +357,7 @@ export default function EncounterPage() {
       const response = await apiClient.patients.getAll();
       const rawPatients = response.data?.data || [];
 
-      const mappedPatients: Patient[] = Array.isArray(rawPatients)
+          const mappedPatients: Patient[] = Array.isArray(rawPatients)
         ? rawPatients.map((p: any) => ({
           id: p.id,
           name: p.full_name,
@@ -353,6 +367,8 @@ export default function EncounterPage() {
           email: p.email,
           insuranceType: p.insurance_provider,
           insuranceId: p.insurance_policy_number,
+          insurance_policy_number: p.insurance_policy_number,
+          insurance_member_id: p.insurance_member_id,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
           insurance_payer_name: p.insurance_payer_name,
@@ -366,7 +382,10 @@ export default function EncounterPage() {
         }))
         : [];
 
-      setPatients(mappedPatients);
+      const filteredPatients = searchPatientId
+        ? mappedPatients.filter((patient) => patient.id === searchPatientId)
+        : mappedPatients;
+      setPatients(filteredPatients);
     } catch (err) {
       logger.error("Patient fetch failed.", err);
       setPatients([]);
@@ -584,7 +603,7 @@ export default function EncounterPage() {
       canGoNext:
         !!metadata.patientId &&
         !!metadata.date &&
-        (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
+        isSubscriberComplete,
       onNext: async () => {
         const validation = EncounterDetailsFormSchema.safeParse({
           patientId: metadata.patientId,
@@ -697,7 +716,7 @@ export default function EncounterPage() {
           onSelectionChange={handleCodesSelected}
         />
       ),
-      canGoNext: true, // Codes are optional
+      canGoNext: hasSelectedCodes,
       onNext: async () => {
         await handleSaveCodes();
       },

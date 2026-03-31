@@ -22,6 +22,7 @@ const mapPatientResponse = (data: any): Patient => ({
     email: data.email,
     insuranceType: data.insurance_provider,
     insuranceId: data.insurance_policy_number,
+    insurance_policy_number: data.insurance_policy_number,
     insurance_member_id: data.insurance_member_id,
     insurance_group_number: data.insurance_group_number,
     insurance_payer_id: data.insurance_payer_id,
@@ -120,6 +121,13 @@ export default function PatientProfilePage() {
             setFieldErrors(errs);
             const first = validation.error.issues[0];
             setSaveError(first ? first.message : "Please fix validation errors");
+            const firstErrorKey = validation.error.issues[0]?.path?.[0];
+            if (firstErrorKey) {
+                setTimeout(() => {
+                    const el = document.getElementById(`patient-edit-${firstErrorKey}`);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 0);
+            }
             return;
         }
         setFieldErrors({});
@@ -289,6 +297,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <input
+                                            id="patient-edit-dob"
                                             type="date"
                                             value={editedPatient.dob || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
@@ -305,6 +314,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <select
+                                            id="patient-edit-gender"
                                             value={editedPatient.gender || "U"}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
@@ -327,6 +337,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <input
+                                            id="patient-edit-phone"
                                             type="tel"
                                             value={editedPatient.phone || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
@@ -343,6 +354,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <input
+                                            id="patient-edit-email"
                                             type="email"
                                             value={editedPatient.email || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
@@ -359,6 +371,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <input
+                                            id="patient-edit-insurance_provider"
                                             type="text"
                                             value={editedPatient.insuranceType || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
@@ -375,6 +388,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <input
+                                            id="patient-edit-insurance_policy_number"
                                             type="text"
                                             value={editedPatient.insuranceId || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
@@ -391,6 +405,7 @@ export default function PatientProfilePage() {
                                 {editMode && editedPatient ? (
                                     <>
                                         <input
+                                            id="patient-edit-insurance_member_id"
                                             type="text"
                                             value={editedPatient.insurance_member_id || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
@@ -408,6 +423,7 @@ export default function PatientProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                                         <div>
                                             <input
+                                                id="patient-edit-address_street"
                                                 type="text"
                                                 placeholder="Street"
                                                 value={editedPatient.address_street || ""}
@@ -418,6 +434,7 @@ export default function PatientProfilePage() {
                                         </div>
                                         <div>
                                             <input
+                                                id="patient-edit-address_city"
                                                 type="text"
                                                 placeholder="City"
                                                 value={editedPatient.address_city || ""}
@@ -428,6 +445,7 @@ export default function PatientProfilePage() {
                                         </div>
                                         <div>
                                             <input
+                                                id="patient-edit-address_state"
                                                 type="text"
                                                 placeholder="State"
                                                 value={editedPatient.address_state || ""}
@@ -438,6 +456,7 @@ export default function PatientProfilePage() {
                                         </div>
                                         <div>
                                             <input
+                                                id="patient-edit-address_zip"
                                                 type="text"
                                                 placeholder="ZIP"
                                                 value={editedPatient.address_zip || ""}

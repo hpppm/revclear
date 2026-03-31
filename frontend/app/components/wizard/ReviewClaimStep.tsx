@@ -317,6 +317,19 @@ export default function ReviewClaimStep({
                 next.subscriber_relationship = patient.insurance_relationship;
             }
 
+            if (!next.payer_name && patient?.insurance_payer_name) {
+                next.payer_name = patient.insurance_payer_name;
+            }
+            if (!next.payer_name && patient?.insurance_provider) {
+                next.payer_name = patient.insurance_provider;
+            }
+            if (!next.payer_id && patient?.insurance_payer_id) {
+                next.payer_id = patient.insurance_payer_id;
+            }
+            if (!next.insurance_provider && patient?.insurance_provider) {
+                next.insurance_provider = patient.insurance_provider;
+            }
+
             // If relationship is self, ensure patient details are used if subscriber record is missing/empty
             if (next.subscriber_relationship === 'self' && patient) {
                 if (!next.subscriber) next.subscriber = {};

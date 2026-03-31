@@ -191,6 +191,13 @@ export default function OrganizationProfilePage() {
                 if (key && !errs[key]) errs[key] = err.message;
             });
             setFieldErrors(errs);
+            const firstErrorKey = validation.error.issues[0]?.path?.[0];
+            if (firstErrorKey) {
+                setTimeout(() => {
+                    const el = document.getElementById(`org-field-${firstErrorKey}`);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 0);
+            }
             return;
         }
 
@@ -200,9 +207,9 @@ export default function OrganizationProfilePage() {
             Object.entries(formData).forEach(([key, value]) => {
                 if (typeof value === "string") {
                     const trimmed = value.trim();
-                    if (trimmed !== "") payload[key] = trimmed;
+                    payload[key] = trimmed;
                 } else if (value !== undefined) {
-                     payload[key] = value;
+                    payload[key] = value;
                 }
             });
             
@@ -322,6 +329,7 @@ export default function OrganizationProfilePage() {
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">General Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
+                                        id="org-field-name"
                                         label="Organization Name"
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -329,6 +337,7 @@ export default function OrganizationProfilePage() {
                                         error={fieldErrors.name}
                                     />
                                      <Input
+                                        id="org-field-phone"
                                         label="Phone"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -338,6 +347,7 @@ export default function OrganizationProfilePage() {
                                 </div>
                                 <div className="mt-4 space-y-4">
                                      <Input
+                                        id="org-field-address_line1"
                                         label="Address Line 1"
                                         value={formData.address_line1}
                                         onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
@@ -345,6 +355,7 @@ export default function OrganizationProfilePage() {
                                         error={fieldErrors.address_line1}
                                     />
                                     <Input
+                                        id="org-field-address_line2"
                                         label="Address Line 2"
                                         value={formData.address_line2}
                                         onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
@@ -353,18 +364,21 @@ export default function OrganizationProfilePage() {
                                     />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <Input
+                                            id="org-field-city"
                                             label="City"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                                             error={fieldErrors.city}
                                         />
                                         <Input
+                                            id="org-field-state"
                                             label="State"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                                             error={fieldErrors.state}
                                         />
                                         <Input
+                                            id="org-field-postal_code"
                                             label="Postal Code"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
@@ -379,6 +393,7 @@ export default function OrganizationProfilePage() {
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Billing Profile</h3>
                                 <p className="text-sm text-slate-600 mb-4">These details are used specifically for claims submission.</p>
                                 <Input
+                                    id="org-field-billing_name"
                                     label="Billing Name"
                                     value={formData.billing_name}
                                     onChange={(e) => setFormData({ ...formData, billing_name: e.target.value })}
@@ -387,6 +402,7 @@ export default function OrganizationProfilePage() {
                                 />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                     <Input
+                                        id="org-field-billing_npi"
                                         label="Billing NPI"
                                         value={formData.billing_npi}
                                         onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
@@ -394,6 +410,7 @@ export default function OrganizationProfilePage() {
                                         error={fieldErrors.billing_npi}
                                     />
                                     <Input
+                                        id="org-field-billing_tax_id"
                                         label="Billing Tax ID"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
@@ -403,6 +420,7 @@ export default function OrganizationProfilePage() {
                                 </div>
                                 <div className="mt-4 space-y-4">
                                      <Input
+                                        id="org-field-billing_address_line1"
                                         label="Billing Address Line 1"
                                         value={formData.billing_address_line1}
                                         onChange={(e) => setFormData({ ...formData, billing_address_line1: e.target.value })}
@@ -410,6 +428,7 @@ export default function OrganizationProfilePage() {
                                         error={fieldErrors.billing_address_line1}
                                     />
                                     <Input
+                                        id="org-field-billing_address_line2"
                                         label="Billing Address Line 2"
                                         value={formData.billing_address_line2}
                                         onChange={(e) => setFormData({ ...formData, billing_address_line2: e.target.value })}
@@ -418,18 +437,21 @@ export default function OrganizationProfilePage() {
                                     />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <Input
+                                            id="org-field-billing_city"
                                             label="Billing City"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
                                             error={fieldErrors.billing_city}
                                         />
                                         <Input
+                                            id="org-field-billing_state"
                                             label="Billing State"
                                             value={formData.billing_state}
                                             onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
                                             error={fieldErrors.billing_state}
                                         />
                                         <Input
+                                            id="org-field-billing_postal_code"
                                             label="Billing Postal Code"
                                             value={formData.billing_postal_code}
                                             onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
@@ -438,6 +460,7 @@ export default function OrganizationProfilePage() {
                                     </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
+                                            id="org-field-billing_phone"
                                             label="Billing Phone"
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
@@ -445,6 +468,7 @@ export default function OrganizationProfilePage() {
                                             error={fieldErrors.billing_phone}
                                         />
                                         <Input
+                                            id="org-field-default_place_of_service"
                                             label="Default Place of Service"
                                             value={formData.default_place_of_service}
                                             onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
@@ -477,12 +501,14 @@ export default function OrganizationProfilePage() {
                                     <div className="pl-6 border-l-2 border-blue-200 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <Input
+                                                id="org-field-edi_sender_id"
                                                 label="EDI Sender ID"
                                                 value={formData.edi_sender_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_sender_id: e.target.value })}
                                                 error={fieldErrors.edi_sender_id}
                                             />
                                             <Input
+                                                id="org-field-edi_receiver_id"
                                                 label="EDI Receiver ID"
                                                 value={formData.edi_receiver_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_receiver_id: e.target.value })}
@@ -491,6 +517,7 @@ export default function OrganizationProfilePage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                             <Input
+                                                id="org-field-edi_sftp_host"
                                                 label="SFTP Host"
                                                 value={formData.edi_sftp_host}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_host: e.target.value })}
@@ -505,6 +532,7 @@ export default function OrganizationProfilePage() {
                                         </div>
                                         <div className="mt-4">
                                             <Input
+                                                id="org-field-edi_sftp_username"
                                                 label="SFTP Username"
                                                 value={formData.edi_sftp_username}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_username: e.target.value })}

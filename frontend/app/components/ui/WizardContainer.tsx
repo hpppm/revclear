@@ -35,6 +35,7 @@ export default function WizardContainer({
 }: WizardContainerProps) {
     const [currentStep, setCurrentStep] = useState(initialStep);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const contentRef = useRef<HTMLDivElement | null>(null);
     // Track whether the current step change came from user navigation (not external sync)
     const userNavigatedRef = useRef(false);
 
@@ -50,6 +51,12 @@ export default function WizardContainer({
             onStepChange(currentStep);
         }
     }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    }, [currentStep]);
 
     const handleNext = async () => {
         const currentStepData = steps[currentStep];
@@ -116,7 +123,7 @@ export default function WizardContainer({
                         currentStep={currentStep}
                     />
 
-                    <div className="flex-1 overflow-auto">
+                    <div ref={contentRef} className="flex-1 overflow-auto">
                         <div className="animate-fadeIn">{currentStepData.component}</div>
                     </div>
 

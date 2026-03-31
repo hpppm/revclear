@@ -25,6 +25,9 @@ export default function MedicalCodesStep({
                 <p className="text-slate-600">
                     Generate and select ICD-10 and CPT codes for billing.
                 </p>
+                <p className="text-xs text-slate-500 mt-1">
+                    Select at least one ICD-10 or CPT code to continue.
+                </p>
             </div>
 
             {soap && encounterId ? (

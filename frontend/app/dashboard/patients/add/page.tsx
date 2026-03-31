@@ -54,6 +54,13 @@ export default function AddPatientPage() {
         if (key && !errs[key]) errs[key] = err.message;
       });
       setFieldErrors(errs);
+      const firstErrorKey = validation.error.issues[0]?.path?.[0];
+      if (firstErrorKey) {
+        setTimeout(() => {
+          const el = document.getElementById(`patient-add-${firstErrorKey}`);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 0);
+      }
       return;
     }
 
@@ -114,6 +121,7 @@ export default function AddPatientPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Input
+                    id="patient-add-full_name"
                     label="Full Name"
                     value={formData.full_name}
                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
@@ -123,6 +131,7 @@ export default function AddPatientPage() {
                   />
                 </div>
                 <Input
+                  id="patient-add-dob"
                   label="Date of Birth"
                   type="date"
                   value={formData.dob}
@@ -130,6 +139,7 @@ export default function AddPatientPage() {
                   error={fieldErrors.dob}
                 />
                 <Input
+                  id="patient-add-gender"
                   label="Gender"
                   variant="select"
                   value={formData.gender}
@@ -143,6 +153,7 @@ export default function AddPatientPage() {
                   error={fieldErrors.gender}
                 />
                 <Input
+                  id="patient-add-phone"
                   label="Phone"
                   type="tel"
                   value={formData.phone}
@@ -151,6 +162,7 @@ export default function AddPatientPage() {
                   error={fieldErrors.phone}
                 />
                 <Input
+                  id="patient-add-email"
                   label="Email"
                   type="email"
                   value={formData.email}
@@ -166,6 +178,7 @@ export default function AddPatientPage() {
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Address</h2>
               <div className="space-y-4">
                 <Input
+                  id="patient-add-address_street"
                   label="Street Address"
                   value={formData.address_street}
                   onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
@@ -174,6 +187,7 @@ export default function AddPatientPage() {
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
+                    id="patient-add-address_city"
                     label="City"
                     value={formData.address_city}
                     onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
@@ -181,6 +195,7 @@ export default function AddPatientPage() {
                     error={fieldErrors.address_city}
                   />
                   <Input
+                    id="patient-add-address_state"
                     label="State"
                     value={formData.address_state}
                     onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
@@ -188,6 +203,7 @@ export default function AddPatientPage() {
                     error={fieldErrors.address_state}
                   />
                   <Input
+                    id="patient-add-address_zip"
                     label="ZIP Code"
                     value={formData.address_zip}
                     onChange={(e) => setFormData({ ...formData, address_zip: e.target.value })}
@@ -247,42 +263,54 @@ export default function AddPatientPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
+                    id="patient-add-insurance_provider"
                     label="Insurance Provider"
                     value={formData.insurance_provider}
                     onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
                     placeholder="Blue Cross Blue Shield"
+                    error={fieldErrors.insurance_provider}
                   />
                   <Input
+                    id="patient-add-insurance_policy_number"
                     label="Policy Number"
                     value={formData.insurance_policy_number}
                     onChange={(e) => setFormData({ ...formData, insurance_policy_number: e.target.value })}
                     placeholder="ABC123456789"
+                    error={fieldErrors.insurance_policy_number}
                   />
                   <Input
+                    id="patient-add-insurance_member_id"
                     label="Member ID"
                     value={formData.insurance_member_id}
                     onChange={(e) => setFormData({ ...formData, insurance_member_id: e.target.value })}
                     placeholder="Member/Subscriber ID"
                     helperText="Insurance member or subscriber ID"
+                    error={fieldErrors.insurance_member_id}
                   />
                   <Input
+                    id="patient-add-insurance_group_number"
                     label="Group Number"
                     value={formData.insurance_group_number}
                     onChange={(e) => setFormData({ ...formData, insurance_group_number: e.target.value })}
                     placeholder="Group number"
+                    error={fieldErrors.insurance_group_number}
                   />
                   <Input
+                    id="patient-add-insurance_payer_id"
                     label="Payer ID"
                     value={formData.insurance_payer_id}
                     onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
                     placeholder="Clearinghouse payer ID"
                     helperText="For electronic claim submission"
+                    error={fieldErrors.insurance_payer_id}
                   />
                   <Input
+                    id="patient-add-insurance_payer_name"
                     label="Payer Name"
                     value={formData.insurance_payer_name}
                     onChange={(e) => setFormData({ ...formData, insurance_payer_name: e.target.value })}
                     placeholder="Insurance payer name"
+                    error={fieldErrors.insurance_payer_name}
                   />
                 </div>
               )}

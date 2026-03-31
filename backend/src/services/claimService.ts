@@ -431,7 +431,7 @@ export class ClaimService {
       insurance_provider: patient.insurance_provider || "Unknown",
       status: "draft",
       payer_id: patient.insurance_payer_id || "PAYER001",
-      payer_name: patient.insurance_provider || "Unknown Payer",
+      payer_name: patient.insurance_payer_name || patient.insurance_provider || "Unknown Payer",
       claim_type: "professional",
       submission_type: "initial",
       patient_responsibility: 0,
