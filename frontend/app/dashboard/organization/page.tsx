@@ -194,7 +194,7 @@ export default function OrganizationProfilePage() {
             const firstErrorKey = validation.error.issues[0]?.path?.[0];
             if (firstErrorKey) {
                 setTimeout(() => {
-                    const el = document.getElementById(`org-field-${firstErrorKey}`);
+                    const el = document.getElementById(`org-field-${String(firstErrorKey)}`);
                     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 0);
             }
