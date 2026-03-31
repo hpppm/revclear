@@ -185,12 +185,74 @@ describe("Fix 5: Admin access uses requireRole not is_org_admin DB flag", () => 
     );
   });
 
+  it("organizations.ts: GET /members uses organization manager middleware", () => {
+    const content = readRoute("organizations.ts");
+    expect(content).toMatch(
+      /router\.get\(["']\/members["'],\s*authMiddleware,\s*requireRole\(ORGANIZATION_MANAGER_ROLES\)/
+    );
+  });
+
+  it("organizations.ts: GET /invites uses organization manager middleware", () => {
+    const content = readRoute("organizations.ts");
+    expect(content).toMatch(
+      /router\.get\(["']\/invites["'],\s*authMiddleware,\s*requireRole\(ORGANIZATION_MANAGER_ROLES\)/
+    );
+  });
+
   it("organizations.ts: does NOT use is_org_admin DB flag for invite authorization", () => {
     const content = readRoute("organizations.ts");
     // The inline is_org_admin check should be gone from the invite route
     expect(content).not.toMatch(
       /const isAdmin =.*is_org_admin.*user\.role/
     );
+  });
+});
+
+describe("RBAC capability enforcement on feature routes", () => {
+  it("patients.ts uses patient read/write capabilities", () => {
+    const content = readRoute("patients.ts");
+    expect(content).toMatch(/requireCapability\("read_patients"\)/);
+    expect(content).toMatch(/requireCapability\("write_patients"\)/);
+  });
+
+  it("encounters.ts uses encounter capability on all routes", () => {
+    const content = readRoute("encounters.ts");
+    expect(content).toMatch(/router\.get\(["']\/["'],\s*authMiddleware,\s*requireCapability\("manage_encounters"\)/);
+    expect(content).toMatch(/router\.post\(["']\/["'],\s*authMiddleware,\s*requireCapability\("manage_encounters"\)/);
+    expect(content).toMatch(/router\.put\(["']\/:id["'],\s*authMiddleware,\s*requireCapability\("manage_encounters"\)/);
+    expect(content).toMatch(/router\.delete\(["']\/:id["'],\s*authMiddleware,\s*requireCapability\("manage_encounters"\)/);
+  });
+
+  it("claims.ts uses claims capability on all routes", () => {
+    const content = readRoute("claims.ts");
+    expect(content).toMatch(/requireCapability\("manage_claims"\)/);
+    expect(content).toMatch(/router\.get\(["']\/encounter\/:encounterId\/preview["'],\s*authMiddleware,\s*requireCapability\("manage_claims"\)/);
+  });
+
+  it("soap.ts, codes.ts, and transcribe.ts use clinical AI capability", () => {
+    expect(readRoute("soap.ts")).toMatch(/requireCapability\("use_clinical_ai"\)/);
+    expect(readRoute("codes.ts")).toMatch(/requireCapability\("use_clinical_ai"\)/);
+    expect(readRoute("transcribe.ts")).toMatch(/requireCapability\("use_clinical_ai"\)/);
+  });
+});
+
+describe("Role-based data minimization on organization and patient reads", () => {
+  it("organization routes filter organization responses by role", () => {
+    const organizationsContent = readRoute("organizations.ts");
+    const meContent = readRoute("me.ts");
+
+    expect(organizationsContent).toMatch(/filterOrganizationForRole\(\s*organization,\s*getEffectiveOrganizationRole\(user\)/);
+    expect(organizationsContent).toMatch(/filterOrganizationForRole\(\s*updated,\s*getEffectiveOrganizationRole\(user\)/);
+    expect(meContent).toMatch(/filterOrganizationForRole\(organization, effectiveRole\)/);
+    expect(meContent).not.toMatch(/cognitoRole/);
+  });
+
+  it("patients.ts filters patient and subscriber responses by role", () => {
+    const content = readRoute("patients.ts");
+
+    expect(content).toMatch(/filterPatientForRole\(patient, req\.user\?\.role\)/);
+    expect(content).toMatch(/filterPatientForRole\(patient, role\)/);
+    expect(content).toMatch(/filterSubscriberForRole\(subscriber, req\.user\?\.role\)/);
   });
 });
 
@@ -217,6 +279,16 @@ describe("Fix 7: organization invites are single-use under concurrent requests",
     expect(content).toMatch(/RETURNING organization_id, role/);
     expect(content).toMatch(/SET organization_id = \$1, role = \$2, is_org_admin = \$3/);
   });
+
+  it("organizations.ts exposes members and invite listing queries for the organization page", () => {
+    const content = readRoute("organizations.ts");
+
+    expect(content).toMatch(/SELECT id, email, full_name, role, created_at/);
+    expect(content).toMatch(/FROM users/);
+    expect(content).toMatch(/WHERE organization_id = \$1/);
+    expect(content).toMatch(/FROM organization_invites oi/);
+    expect(content).toMatch(/JOIN users creator ON creator\.id = oi\.created_by/);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -238,9 +310,9 @@ describe("requireRole middleware logic", () => {
   // Needs to import after mock is set up
   const { requireRole } = require("../../src/middleware/auth");
 
-  const makeReq = (role?: string) => ({
-    user: role ? { role } : undefined,
-    auth: role ? { cognitoRole: role } : undefined,
+  const makeReq = (role?: string, organizationId = "org-1") => ({
+    user: role ? { role, organization_id: organizationId } : undefined,
+    auth: undefined,
   });
 
   it("calls next() when role matches", () => {
@@ -288,11 +360,12 @@ describe("requireRole middleware logic", () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it("falls back to cognitoRole when req.user is absent", () => {
-    const req = { user: undefined, auth: { cognitoRole: "admin" } } as any;
+  it("requires organization membership instead of Cognito role fallback", () => {
+    const req = { user: { role: "admin", organization_id: null }, auth: undefined } as any;
     const res = makeRes();
     const next = jest.fn();
     requireRole(["admin"])(req, res, next);
-    expect(next).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
   });
 });

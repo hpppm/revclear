@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAuthorization } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient, Encounter } from "@/app/lib/types";
 import { EditPatientFormSchema } from "@/app/lib/validation/schemas";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 import logger from "@/app/lib/logger";
 
 const mapPatientResponse = (data: any): Patient => ({
@@ -35,6 +37,7 @@ const mapPatientResponse = (data: any): Patient => ({
 export default function PatientProfilePage() {
     const params = useParams();
     const patientId = params?.id as string;
+    const { canReadPatients, canWritePatients, canManageEncounters } = useAuthorization();
 
     const [patient, setPatient] = useState<Patient | null>(null);
     const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -55,11 +58,16 @@ export default function PatientProfilePage() {
     const fetchedPatientIdRef = useRef<string | null>(null);
 
     useEffect(() => {
+        if (!canReadPatients) {
+            setLoading(false);
+            return;
+        }
+
         if (patientId && fetchedPatientIdRef.current !== patientId) {
             fetchedPatientIdRef.current = patientId;
             fetchData();
         }
-    }, [patientId]);
+    }, [patientId, canReadPatients]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -85,6 +93,7 @@ export default function PatientProfilePage() {
     };
 
     const handleSave = async () => {
+        if (!canWritePatients) return;
         if (!editedPatient) return;
 
         const validation = EditPatientFormSchema.safeParse({
@@ -195,6 +204,14 @@ export default function PatientProfilePage() {
         }
     };
 
+    if (!canReadPatients) {
+        return (
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <UnauthorizedState message="Your role does not have access to patient details." />
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -235,19 +252,19 @@ export default function PatientProfilePage() {
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                {!editMode ? (
+                                {!editMode && canWritePatients ? (
                                     <button
                                         onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                                        className="brand-button-primary px-4 py-2 rounded-lg font-medium text-sm"
                                     >
                                         Edit Profile
                                     </button>
-                                ) : (
+                                ) : editMode ? (
                                     <>
                                         <button
                                             onClick={handleSave}
                                             disabled={saving}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
+                                            className="brand-button-primary px-4 py-2 rounded-lg font-medium text-sm disabled:bg-slate-300"
                                         >
                                             {saving ? "Saving..." : "Save"}
                                         </button>
@@ -262,7 +279,7 @@ export default function PatientProfilePage() {
                                             <p className="text-sm text-red-600 mt-1">{saveError}</p>
                                         )}
                                     </>
-                                )}
+                                ) : null}
                             </div>
                         </div>
 
@@ -449,23 +466,27 @@ export default function PatientProfilePage() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-semibold text-slate-900">Encounters History</h2>
-                        <Link
-                            href={`/dashboard/encounters/create?patientId=${patientId}`}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-                        >
-                            + Start New Encounter
-                        </Link>
+                        {canManageEncounters && (
+                            <Link
+                                href={`/dashboard/encounters/create?patientId=${patientId}`}
+                                className="brand-button-primary rounded-lg px-4 py-2 text-sm font-semibold shadow-sm"
+                            >
+                                + Start New Encounter
+                            </Link>
+                        )}
                     </div>
 
                     {encounters.length === 0 ? (
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
                             <p className="text-slate-500">No encounters recorded for this patient.</p>
-                            <Link
-                                href={`/dashboard/encounters/create?patientId=${patientId}`}
-                                className="text-blue-600 hover:text-blue-700 font-medium mt-2 inline-block"
-                            >
-                                Start the first encounter
-                            </Link>
+                            {canManageEncounters && (
+                                <Link
+                                    href={`/dashboard/encounters/create?patientId=${patientId}`}
+                                    className="mt-2 inline-block font-medium text-[var(--brand-600)] hover:text-[var(--brand-700)]"
+                                >
+                                    Start the first encounter
+                                </Link>
+                            )}
                         </div>
                     ) : (
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -508,40 +529,46 @@ export default function PatientProfilePage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                {encounter.status === "ready" || encounter.status === "completed" ? (
-                                                    <Link
-                                                        href={`/dashboard/encounters/${encounter.id}`}
-                                                        className="text-blue-600 hover:text-blue-900 font-semibold"
-                                                    >
-                                                        View
-                                                    </Link>
+                                                {canManageEncounters ? (
+                                                    <>
+                                                        {encounter.status === "ready" || encounter.status === "completed" ? (
+                                                            <Link
+                                                                href={`/dashboard/encounters/${encounter.id}`}
+                                                                className="font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)]"
+                                                            >
+                                                                View
+                                                            </Link>
+                                                        ) : (
+                                                            <Link
+                                                                href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
+                                                                className="font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)]"
+                                                            >
+                                                                Continue →
+                                                            </Link>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            aria-label="Delete encounter"
+                                                            onClick={() => handleDelete(encounter.id)}
+                                                            className="ml-4 text-slate-400 hover:text-red-600 disabled:opacity-50"
+                                                        >
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                className="h-5 w-5"
+                                                                viewBox="0 0 20 20"
+                                                                fill="currentColor"
+                                                            >
+                                                                <path
+                                                                    fillRule="evenodd"
+                                                                    d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z"
+                                                                    clipRule="evenodd"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                    </>
                                                 ) : (
-                                                    <Link
-                                                        href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                        className="text-green-600 hover:text-green-900 font-semibold"
-                                                    >
-                                                        Continue →
-                                                    </Link>
+                                                    <span className="text-slate-400">No encounter access</span>
                                                 )}
-                                                <button
-                                                    type="button"
-                                                    aria-label="Delete encounter"
-                                                    onClick={() => handleDelete(encounter.id)}
-                                                    className="ml-4 text-slate-400 hover:text-red-600 disabled:opacity-50"
-                                                >
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-5 w-5"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </button>
                                             </td>
                                         </tr>
                                     ))}

@@ -3,7 +3,11 @@ import { QueryResultRow } from "pg";
 import { authMiddleware } from "../../middleware/auth";
 import { findUserByCognitoId, createUser, query } from "../../config/db";
 import { UpdateUserSchema } from "../../types/zod";
-import { getUserOrganization } from "../../utils/organization";
+import {
+  filterOrganizationForRole,
+  getEffectiveOrganizationRole,
+  getUserOrganization,
+} from "../../utils/organization";
 import logger from "../../utils/logger";
 
 const router = Router();
@@ -39,22 +43,21 @@ router.get("/", authMiddleware, async (req, res) => {
 
     if (user) {
       logger.debug({ userId: user.id }, 'GET /api/me: user resolved');
-      // Include role from Cognito groups in response
-      const cognitoRole = req.auth?.cognitoRole || user.role;
+      const effectiveRole = getEffectiveOrganizationRole(user);
       const organization = await getUserOrganization(user.id);
       if (!organization) {
         return res.json({
           success: true,
           requiresOrganization: true,
           message: "User must create or join an organization.",
-          user: { ...user, role: cognitoRole },
+          user: { ...user, role: null },
           organization: null,
         });
       }
       return res.json({
         success: true,
-        user: { ...user, role: cognitoRole },
-        organization,
+        user: { ...user, role: effectiveRole },
+        organization: filterOrganizationForRole(organization, effectiveRole),
       });
     }
 
@@ -63,7 +66,6 @@ router.get("/", authMiddleware, async (req, res) => {
     logger.info({ cognitoId }, 'GET /api/me: creating new user');
 
     const fullName = safeEmail;
-    const cognitoRole = req.auth?.cognitoRole || "clinician";
 
     const newUser = await createUser(cognitoId, safeEmail, fullName);
     const organization = await getUserOrganization(newUser.id);
@@ -74,8 +76,8 @@ router.get("/", authMiddleware, async (req, res) => {
       message: organization
         ? undefined
         : "User created. Please create or join an organization.",
-      user: { ...newUser, role: cognitoRole },
-      organization,
+      user: { ...newUser, role: null },
+      organization: filterOrganizationForRole(organization, undefined),
     });
   } catch (err: any) {
     logger.error({ err: err.message }, 'GET /api/me: error');
@@ -140,7 +142,7 @@ router.patch("/", authMiddleware, async (req, res) => {
 
   try {
     const result = await query(
-      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at`,
+      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, organization_id, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at`,
       values,
     );
 
@@ -153,7 +155,14 @@ router.patch("/", authMiddleware, async (req, res) => {
     }
 
     const organization = await getUserOrganization(updatedUser.id);
-    return res.json({ ...updatedUser, organization });
+    return res.json({
+      ...updatedUser,
+      role: getEffectiveOrganizationRole(updatedUser) ?? null,
+      organization: filterOrganizationForRole(
+        organization,
+        getEffectiveOrganizationRole(updatedUser),
+      ),
+    });
   } catch (err: any) {
     logger.error({ err: err.message }, 'PATCH /api/me: error');
     return res.status(500).json({

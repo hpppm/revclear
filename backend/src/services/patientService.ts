@@ -1,4 +1,5 @@
 import { query } from "../config/db";
+import { AppRole, ORGANIZATION_MANAGER_ROLES } from "../constants/roles";
 import { AppError } from "../utils/AppError";
 import {
   decryptPHITextFields,
@@ -83,6 +84,65 @@ export const SUBSCRIBER_ENCRYPTED_FIELDS = [
 const PATIENT_ENCRYPTED_FIELD_SET = new Set<string>(PATIENT_ENCRYPTED_FIELDS);
 const SUBSCRIBER_ENCRYPTED_FIELD_SET = new Set<string>(SUBSCRIBER_ENCRYPTED_FIELDS);
 
+const PATIENT_FRONT_DESK_FIELDS = [
+  "id",
+  "full_name",
+  "dob",
+  "gender",
+  "phone",
+  "email",
+  "address_street",
+  "address_city",
+  "address_state",
+  "address_zip",
+  "insurance_provider",
+  "insurance_policy_number",
+  "insurance_member_id",
+  "insurance_group_number",
+  "insurance_payer_id",
+  "insurance_payer_name",
+  "insurance_relationship",
+  "subscriber_id",
+  "plan_name",
+  "subscriber",
+  "created_at",
+  "updated_at",
+] as const;
+
+const PATIENT_NURSE_FIELDS = [
+  ...PATIENT_FRONT_DESK_FIELDS,
+] as const;
+
+const PATIENT_MANAGER_FIELDS = [
+  ...PATIENT_NURSE_FIELDS,
+  "clinician_id",
+  "organization_id",
+  "primary_clinician_id",
+] as const;
+
+const SUBSCRIBER_ALLOWED_FIELDS = [
+  "id",
+  "patient_id",
+  "full_name",
+  "dob",
+  "gender",
+  "phone",
+  "address_street",
+  "address_city",
+  "address_state",
+  "address_zip",
+  "member_id",
+  "group_number",
+  "plan_name",
+  "created_at",
+  "updated_at",
+] as const;
+
+const PATIENT_FRONT_DESK_FIELD_SET = new Set<string>(PATIENT_FRONT_DESK_FIELDS);
+const PATIENT_NURSE_FIELD_SET = new Set<string>(PATIENT_NURSE_FIELDS);
+const PATIENT_MANAGER_FIELD_SET = new Set<string>(PATIENT_MANAGER_FIELDS);
+const SUBSCRIBER_ALLOWED_FIELD_SET = new Set<string>(SUBSCRIBER_ALLOWED_FIELDS);
+
 const maybeEncryptField = (field: string, value: any) =>
   PATIENT_ENCRYPTED_FIELD_SET.has(field) || SUBSCRIBER_ENCRYPTED_FIELD_SET.has(field)
     ? encryptPHIText(value ?? null)
@@ -101,6 +161,40 @@ export const decryptSubscriberRow = <T extends Record<string, any> | null | unde
     subscriber,
     SUBSCRIBER_ENCRYPTED_FIELD_SET,
   ) as T;
+
+export const filterPatientForRole = <
+  T extends Record<string, any> | null | undefined,
+>(
+  patient: T,
+  role?: AppRole | string | null,
+): T => {
+  if (!patient) return patient;
+  const allowedFieldSet =
+    role && ORGANIZATION_MANAGER_ROLES.includes(role as AppRole)
+      ? PATIENT_MANAGER_FIELD_SET
+      : role === "nurse"
+        ? PATIENT_NURSE_FIELD_SET
+        : PATIENT_FRONT_DESK_FIELD_SET;
+
+  const filteredEntries = Object.entries(patient).filter(([key]) =>
+    allowedFieldSet.has(key),
+  );
+
+  return Object.fromEntries(filteredEntries) as T;
+};
+
+export const filterSubscriberForRole = <
+  T extends Record<string, any> | null | undefined,
+>(
+  subscriber: T,
+  _role?: AppRole | string | null,
+): T => {
+  if (!subscriber) return subscriber;
+  const filteredEntries = Object.entries(subscriber).filter(([key]) =>
+    SUBSCRIBER_ALLOWED_FIELD_SET.has(key),
+  );
+  return Object.fromEntries(filteredEntries) as T;
+};
 
 // Explicit column list for subscriber queries - data minimization
 const SUBSCRIBER_SELECT_COLUMNS = `

@@ -94,6 +94,11 @@ const npiSchema = z
 const dobPastSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+  .refine((d: string) => {
+    if (!d) return true;
+    const date = new Date(d);
+    return !isNaN(date.getTime()) && date.getFullYear() >= 1900;
+  }, "Please enter a valid date (year > 1900)")
   .refine((d: string) => !d || new Date(d) < new Date(), "Date of birth cannot be in the future")
   .optional()
   .or(z.literal(""));
@@ -135,10 +140,10 @@ export const CreatePatientFormSchema = z.object({
   gender: z.enum(["M", "F", "U", "O"]),
   phone: phoneSchema,
   email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
-  address_street: z.string().max(200).optional().or(z.literal("")),
-  address_city: z.string().max(100).optional().or(z.literal("")),
-  address_state: z.string().max(2).optional().or(z.literal("")),
-  address_zip: zipSchema,
+  address_street: z.string().min(1, "Street address is required").max(200),
+  address_city: z.string().min(1, "City is required").max(100),
+  address_state: z.string().length(2, "State must be a 2-letter abbreviation"),
+  address_zip: z.string().regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)"),
   insurance_provider: z.string().max(100).optional().or(z.literal("")),
   insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
   insurance_member_id: z.string().max(50).optional().or(z.literal("")),
@@ -153,10 +158,10 @@ export const EditPatientFormSchema = z.object({
   gender: z.enum(["M", "F", "U", "O"]).optional(),
   phone: phoneSchema,
   email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
-  address_street: z.string().max(200).optional().or(z.literal("")),
-  address_city: z.string().max(100).optional().or(z.literal("")),
-  address_state: z.string().max(2).optional().or(z.literal("")),
-  address_zip: zipSchema,
+  address_street: z.string().min(1, "Street address is required").max(200),
+  address_city: z.string().min(1, "City is required").max(100),
+  address_state: z.string().length(2, "State must be a 2-letter abbreviation"),
+  address_zip: z.string().regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)"),
   insurance_provider: z.string().max(100).optional().or(z.literal("")),
   insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
   insurance_member_id: z.string().max(50).optional().or(z.literal("")),

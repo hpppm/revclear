@@ -2,17 +2,18 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
-import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { EncounterDetailsFormSchema, SubscriberFormSchema } from "@/app/lib/validation/schemas";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
 import SoapGenerationStep from "@/app/components/wizard/SoapGenerationStep";
 import MedicalCodesStep from "@/app/components/wizard/MedicalCodesStep";
 import ReviewClaimStep from "@/app/components/wizard/ReviewClaimStep";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 const allowedAudioTypes = [
   "audio/mpeg",
@@ -38,6 +39,7 @@ const extractTranscriptText = (t: any): string => {
 
 export default function EncounterPage() {
   const { user } = useAuth();
+  const { canManageEncounters, canManageClaims, canWritePatients } = useAuthorization();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -123,8 +125,17 @@ export default function EncounterPage() {
   }, [user]);
 
   useEffect(() => {
+    if (!canManageEncounters) return;
     fetchPatients();
-  }, []);
+  }, [canManageEncounters]);
+
+  if (!canManageEncounters) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <UnauthorizedState message="Your role does not have access to encounter workflows." />
+      </div>
+    );
+  }
 
   // URL state management and refresh recovery
   useEffect(() => {
@@ -278,16 +289,13 @@ export default function EncounterPage() {
 
   const persistSubscriber = async () => {
     if (!metadata.patientId) return;
+    if (!canWritePatients) return;
     setSubscriberSaving(true);
     setSubscriberError(null);
     try {
       if (metadata.relationship === "self") {
         setMetadata((prev) => ({ ...prev, subscriber: null }));
         return;
-      }
-      if (!metadata.subscriber?.full_name) {
-        setSubscriberError("Subscriber name is required when relationship is not self");
-        throw new Error("Missing subscriber name");
       }
       const subPayload = {
         ...metadata.subscriber,
@@ -570,6 +578,7 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
+          canEditPatientData={canWritePatients}
         />
       ),
       canGoNext:
@@ -592,6 +601,15 @@ export default function EncounterPage() {
           const first = validation.error.issues[0];
           throw new Error(first ? first.message : "Please fix encounter details");
         }
+        
+        if (metadata.relationship !== "self") {
+          const subValidation = SubscriberFormSchema.safeParse(metadata.subscriber || {});
+          if (!subValidation.success) {
+            setSubscriberError("Please complete all required subscriber/insurance fields. Scroll down to fix errors.");
+            throw new Error("Missing required subscriber fields");
+          }
+        }
+
         setEncounterFieldErrors({});
 
         // Step 1: Create or update encounter
@@ -684,7 +702,7 @@ export default function EncounterPage() {
         await handleSaveCodes();
       },
     },
-    {
+    ...(canManageClaims ? [{
       name: "Review Claim",
       description: "Review and finalize",
       component: (
@@ -720,7 +738,7 @@ export default function EncounterPage() {
           });
         }
       },
-    },
+    }] : []),
   ];
 
   return (

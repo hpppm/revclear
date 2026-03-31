@@ -5,6 +5,8 @@ import { ORGANIZATION_MANAGER_ROLES } from "../../constants/roles";
 import { getClient, query } from "../../config/db";
 import {
   assignUserToOrganization,
+  filterOrganizationForRole,
+  getEffectiveOrganizationRole,
   getUserOrganization,
 } from "../../utils/organization";
 import { getAuthenticatedUser } from "../../utils/auth";
@@ -33,17 +35,6 @@ const ORG_SAFE_COLUMNS = `
   .replace(/\s+/g, " ")
   .trim();
 
-// SECURITY: Strip sensitive fields from organization responses (defense-in-depth)
-const SENSITIVE_ORG_FIELDS = [
-  "edi_sftp_password",
-  "edi_sftp_private_key",
-] as const;
-function stripSensitiveOrgFields(org: any): any {
-  if (!org) return org;
-  const { edi_sftp_password, edi_sftp_private_key, ...safeOrg } = org;
-  return safeOrg;
-}
-
 const sendValidationError = (res: Response, error: z.ZodError) =>
   res.status(400).json({ success: false, errors: error.errors });
 
@@ -54,6 +45,22 @@ const requireUser = async (req: any, res: Response) => {
     return null;
   }
   return user;
+};
+
+const requireOrganizationForUser = async (req: any, res: Response) => {
+  const user = await requireUser(req, res);
+  if (!user) return null;
+
+  const organization = await getUserOrganization(user.id);
+  if (!organization) {
+    res.status(400).json({
+      success: false,
+      message: "User must belong to an organization",
+    });
+    return null;
+  }
+
+  return { user, organization };
 };
 
 // GET /api/organizations/me - current organization for the authenticated user
@@ -74,13 +81,102 @@ router.get("/me", authMiddleware, async (req, res) => {
 
     res.json({
       success: true,
-      organization: stripSensitiveOrgFields(organization),
+      organization: filterOrganizationForRole(
+        organization,
+        getEffectiveOrganizationRole(user),
+      ),
     });
   } catch (error) {
     logger.error({ err: error }, 'GET organizations/me: error');
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch organization" });
+  }
+});
+
+// GET /api/organizations/members - list current organization members (manager only)
+router.get("/members", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req, res) => {
+  try {
+    const context = await requireOrganizationForUser(req, res);
+    if (!context) return;
+
+    const result = await query(
+      `SELECT id, email, full_name, role, created_at
+       FROM users
+       WHERE organization_id = $1
+       ORDER BY created_at ASC`,
+      [context.organization.id],
+    );
+
+    res.json({
+      success: true,
+      members: result.rows,
+    });
+  } catch (error) {
+    logger.error({ err: error }, "GET organizations/members: error");
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch organization members",
+    });
+  }
+});
+
+// GET /api/organizations/invites - list invite codes for current organization (manager only)
+router.get("/invites", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req, res) => {
+  try {
+    const context = await requireOrganizationForUser(req, res);
+    if (!context) return;
+
+    const result = await query(
+      `SELECT oi.id,
+              oi.role,
+              oi.created_at,
+              oi.expires_at,
+              oi.used_at,
+              creator.id AS created_by_id,
+              creator.email AS created_by_email,
+              creator.full_name AS created_by_name,
+              redeemer.id AS used_by_id,
+              redeemer.email AS used_by_email,
+              redeemer.full_name AS used_by_name
+       FROM organization_invites oi
+       JOIN users creator ON creator.id = oi.created_by
+       LEFT JOIN users redeemer ON redeemer.id = oi.used_by
+       WHERE oi.organization_id = $1
+       ORDER BY oi.created_at DESC`,
+      [context.organization.id],
+    );
+
+    const invites = result.rows.map((row) => ({
+      id: row.id,
+      role: row.role,
+      created_at: row.created_at,
+      expires_at: row.expires_at,
+      used_at: row.used_at,
+      created_by: {
+        id: row.created_by_id,
+        email: row.created_by_email,
+        full_name: row.created_by_name,
+      },
+      used_by: row.used_by_id
+        ? {
+            id: row.used_by_id,
+            email: row.used_by_email,
+            full_name: row.used_by_name,
+          }
+        : null,
+    }));
+
+    res.json({
+      success: true,
+      invites,
+    });
+  } catch (error) {
+    logger.error({ err: error }, "GET organizations/invites: error");
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch organization invites",
+    });
   }
 });
 
@@ -144,7 +240,7 @@ router.post("/", authMiddleware, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      organization: stripSensitiveOrgFields(organization),
+      organization: filterOrganizationForRole(organization, "clinician"),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -269,7 +365,7 @@ router.post("/join", authMiddleware, async (req, res) => {
 
     res.json({
       success: true,
-      organization: stripSensitiveOrgFields(organization),
+      organization: filterOrganizationForRole(organization, invite.role),
     });
   } catch (error: any) {
     if (error?.code === "23505") {
@@ -414,7 +510,13 @@ router.patch("/me", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), asy
     );
     const updated = updateResult.rows[0];
 
-    res.json({ success: true, organization: stripSensitiveOrgFields(updated) });
+    res.json({
+      success: true,
+      organization: filterOrganizationForRole(
+        updated,
+        getEffectiveOrganizationRole(user),
+      ),
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);

@@ -7,6 +7,7 @@ import { IdParamSchema } from "../../types/zod";
 import FormData from "form-data";
 import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
+import { requireCapability } from "../../middleware/authorization";
 import { getFile, uploadFile } from "../../config/awsS3";
 import { createAudioRecord, createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
@@ -108,6 +109,7 @@ const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
 router.post(
   "/",
   authMiddleware,
+  requireCapability("use_clinical_ai"),
   json(),
   upload.single("audio"),
   async (req, res) => {
@@ -314,7 +316,7 @@ router.post(
  * @route GET /api/transcribe/audio/:encounterId
  * @description Gets a presigned URL for the audio file
  */
-router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
+router.get("/audio/:encounterId", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -356,7 +358,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
  * @route GET /api/transcribe/:encounterId
  * @description Retrieves the transcript for a given encounter
  */
-router.get("/:encounterId", authMiddleware, async (req, res) => {
+router.get("/:encounterId", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -394,7 +396,7 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
  * @route PUT /api/transcribe/:encounterId
  * @description Save/overwrite transcript text for an encounter (e.g., after manual edits).
  */
-router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
+router.put("/:encounterId", authMiddleware, requireCapability("use_clinical_ai"), json(), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;

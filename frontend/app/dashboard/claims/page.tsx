@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { useAuthorization } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
 import DashboardHeader from "@/app/components/ui/DashboardHeader";
 import Badge from "@/app/components/ui/Badge";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 type Claim = {
     id: string;
@@ -42,11 +44,16 @@ function formatCurrency(amount: number | null) {
 }
 
 export default function ClaimsPage() {
+    const { canManageClaims, canManageEncounters } = useAuthorization();
     const [claims, setClaims] = useState<Claim[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!canManageClaims) {
+            setLoading(false);
+            return;
+        }
         const loadClaims = async () => {
             setLoading(true);
             setError(null);
@@ -62,7 +69,15 @@ export default function ClaimsPage() {
             }
         };
         loadClaims();
-    }, []);
+    }, [canManageClaims]);
+
+    if (!canManageClaims) {
+        return (
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <UnauthorizedState message="Your role does not have access to claims workflows." />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto px-6 py-8">
@@ -88,12 +103,14 @@ export default function ClaimsPage() {
                     </div>
                     <p className="text-sm font-medium text-slate-700">No claims yet</p>
                     <p className="text-xs text-slate-400 mt-1">Claims are generated automatically from completed encounters.</p>
-                    <Link
-                        href="/dashboard/encounters/create"
-                        className="brand-button-primary mt-6 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
-                    >
-                        Start an encounter
-                    </Link>
+                    {canManageEncounters && (
+                        <Link
+                            href="/dashboard/encounters/create"
+                            className="brand-button-primary mt-6 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
+                        >
+                            Start an encounter
+                        </Link>
+                    )}
                 </div>
             ) : (
                 <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
@@ -132,12 +149,18 @@ export default function ClaimsPage() {
                                 {claims.map((claim) => (
                                     <tr key={claim.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4">
-                                            <Link
-                                                href={`/dashboard/encounters/${claim.encounter_id}`}
-                                                className="font-mono text-xs text-[var(--brand-600)] hover:text-[var(--brand-700)] hover:underline"
-                                            >
-                                                {claim.id.slice(0, 8).toUpperCase()}
-                                            </Link>
+                                            {canManageEncounters ? (
+                                                <Link
+                                                    href={`/dashboard/encounters/${claim.encounter_id}`}
+                                                    className="font-mono text-xs text-[var(--brand-600)] hover:text-[var(--brand-700)] hover:underline"
+                                                >
+                                                    {claim.id.slice(0, 8).toUpperCase()}
+                                                </Link>
+                                            ) : (
+                                                <span className="font-mono text-xs text-slate-700">
+                                                    {claim.id.slice(0, 8).toUpperCase()}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
                                             {formatDate(claim.service_date_start)}

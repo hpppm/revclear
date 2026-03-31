@@ -2,7 +2,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
-import { APP_ROLES } from "../constants/roles";
+import { getEffectiveOrganizationRole } from "../utils/organization";
 import logger from "../utils/logger";
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
@@ -76,44 +76,6 @@ if (userPoolId && clientId) {
   }
 }
 
-/**
- * Map Cognito group names to application roles.
- * Supported Cognito groups include:
- * "Admin", "Clinician", "Users", "Nurse", "BillingStaff", "Receptionist"
- * Application roles:
- * "admin", "clinician", "nurse", "billing_staff", "receptionist"
- *
- * IMPORTANT: Cognito group membership is the source of truth for roles.
- * The `cognito:groups` claim is automatically included in access tokens
- * when a user belongs to a Cognito User Pool group.
- */
-function mapCognitoGroupsToRole(groups: string[] | undefined): string {
-  if (!groups || groups.length === 0) {
-    return "clinician"; // Default role for users not in any group
-  }
-
-  const normalizedGroups = groups.map((group) =>
-    group.trim().toLowerCase().replace(/[\s-]+/g, "_"),
-  );
-  const groupToRole: Record<string, (typeof APP_ROLES)[number]> = {
-    admin: "admin",
-    clinician: "clinician",
-    users: "clinician",
-    nurse: "nurse",
-    billingstaff: "billing_staff",
-    billing_staff: "billing_staff",
-    receptionist: "receptionist",
-  };
-
-  for (const group of normalizedGroups) {
-    const mappedRole = groupToRole[group];
-    if (mappedRole) {
-      return mappedRole;
-    }
-  }
-  return "clinician";
-}
-
 export const authMiddleware = async (
   req: Request,
   res: Response,
@@ -156,11 +118,12 @@ export const authMiddleware = async (
       });
     }
 
-    // Extract Cognito groups from JWT and map to application role
+    // Preserve raw Cognito groups for diagnostics only.
+    // Application authorization is derived from the organization membership
+    // stored in the database.
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
       | undefined;
-    const cognitoRole = mapCognitoGroupsToRole(cognitoGroups);
 
     // Attach ONLY minimal claims to req.auth — never spread the full payload.
     req.auth = {
@@ -170,7 +133,6 @@ export const authMiddleware = async (
       exp: payload.exp,
       iat: payload.iat,
       cognitoGroups,
-      cognitoRole,
     } as any;
 
     // Resolve DB user — both lookup errors and missing records block the request.
@@ -182,10 +144,7 @@ export const authMiddleware = async (
         logger.warn({ sub: payload.sub }, "Auth: Cognito user has no DB record");
         return res.status(401).json({ error: "Authentication required" });
       }
-      req.user = {
-        ...dbUser,
-        role: cognitoRole,
-      } as any;
+      req.user = dbUser as any;
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
       return res.status(503).json({ error: "Authentication service temporarily unavailable" });
@@ -209,7 +168,7 @@ export const authMiddleware = async (
  */
 export const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = req.user?.role || (req.auth as any)?.cognitoRole;
+    const userRole = getEffectiveOrganizationRole(req.user);
 
     if (!userRole) {
       return res.status(401).json({ error: "Authentication required" });

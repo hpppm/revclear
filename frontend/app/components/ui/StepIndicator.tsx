@@ -24,9 +24,9 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                             <div className="flex flex-col items-center flex-1">
                                 <div
                                     className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${isCompleted
-                                            ? "bg-blue-600 text-white"
+                                            ? "bg-[var(--brand-600)] text-white"
                                             : isCurrent
-                                                ? "bg-blue-100 text-blue-600 ring-2 ring-blue-600"
+                                                ? "bg-[var(--brand-100)] text-[var(--brand-700)] ring-2 ring-[var(--brand-600)]"
                                                 : "bg-slate-200 text-slate-500"
                                         }`}
                                 >
@@ -44,7 +44,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                                 </div>
                                 <div className="mt-2 text-center">
                                     <p
-                                        className={`text-sm font-medium ${isCurrent ? "text-blue-600" : isCompleted ? "text-slate-700" : "text-slate-500"
+                                        className={`text-sm font-medium ${isCurrent ? "text-[var(--brand-700)]" : isCompleted ? "text-slate-700" : "text-slate-500"
                                             }`}
                                     >
                                         {step.name}
@@ -56,7 +56,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
                             </div>
                             {index < steps.length - 1 && (
                                 <div
-                                    className={`flex-1 h-0.5 mx-2 transition-all ${isCompleted ? "bg-blue-600" : "bg-slate-200"
+                                    className={`flex-1 h-0.5 mx-2 transition-all ${isCompleted ? "bg-[var(--brand-600)]" : "bg-slate-200"
                                         }`}
                                     style={{ maxWidth: "100px" }}
                                 />

@@ -11,7 +11,14 @@ import React, {
 import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import type { AppRole } from "@/app/lib/auth/roles";
-import { isOrganizationManager } from "@/app/lib/auth/roles";
+import {
+  canManageClaims,
+  canManageEncounters,
+  canReadPatients,
+  canUseClinicalAI,
+  canWritePatients,
+  isOrganizationManager,
+} from "@/app/lib/auth/roles";
 import { User } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
@@ -304,6 +311,11 @@ export function useAuthorization() {
     isNurse: user?.role === "nurse",
     isBillingStaff: user?.role === "billing_staff",
     isReceptionist: user?.role === "receptionist",
+    canReadPatients: canReadPatients(user?.role),
+    canWritePatients: canWritePatients(user?.role),
+    canManageEncounters: canManageEncounters(user?.role),
+    canUseClinicalAI: canUseClinicalAI(user?.role),
+    canManageClaims: canManageClaims(user?.role),
     canManageOrganization: isOrganizationManager(user?.role),
     canManageUsers: isOrganizationManager(user?.role),
   };

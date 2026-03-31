@@ -24,6 +24,33 @@ const OrgUpdateSchema = OrgCreateSchema.partial();
 const OrgInviteSchema = z.object({
   role: z.enum(ORGANIZATION_MEMBER_ROLES),
 });
+const OrganizationMemberSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  full_name: z.string(),
+  role: z.enum([
+    "admin",
+    "clinician",
+    "nurse",
+    "billing_staff",
+    "receptionist",
+  ]),
+  created_at: z.string().optional(),
+});
+const OrganizationInviteActorSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  full_name: z.string(),
+});
+const OrganizationInviteSchema = z.object({
+  id: z.string().uuid(),
+  role: z.enum(ORGANIZATION_MEMBER_ROLES),
+  created_at: z.string(),
+  expires_at: z.string(),
+  used_at: z.string().nullable().optional(),
+  created_by: OrganizationInviteActorSchema,
+  used_by: OrganizationInviteActorSchema.nullable().optional(),
+});
 
 // SECURITY: Invite code must be a non-empty alphanumeric token.
 // Validates format before dispatching to prevent malformed values from
@@ -59,6 +86,20 @@ export const organizationsApi = {
   getCurrent: async () => {
     const response = await api.get("/organizations/me");
     assertNoCredentialLeak(response);
+    return response;
+  },
+
+  getMembers: async () => {
+    const response = await api.get("/organizations/members");
+    const payload = (response.data as { members?: unknown })?.members ?? [];
+    z.array(OrganizationMemberSchema).parse(payload);
+    return response;
+  },
+
+  getInvites: async () => {
+    const response = await api.get("/organizations/invites");
+    const payload = (response.data as { invites?: unknown })?.invites ?? [];
+    z.array(OrganizationInviteSchema).parse(payload);
     return response;
   },
 

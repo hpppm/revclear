@@ -10,10 +10,10 @@ const UUID = z.string().uuid("Invalid patient ID format");
 // Fields callers are allowed to write — internal server fields are omitted.
 const PatientWriteSchema = z.object({
   full_name: z.string().min(1).optional(),
-  dob: z.string().optional(),
-  gender: z.string().optional(),
-  email: z.string().email().optional().nullable(),
-  phone: z.string().optional().nullable(),
+  dob: z.string().optional().or(z.literal("")),
+  gender: z.string().optional().or(z.literal("")),
+  email: z.string().email().optional().nullable().or(z.literal("")),
+  phone: z.string().optional().nullable().or(z.literal("")),
   // Insurance fields — insurance_provider and insurance_policy_number are the
   // legacy column names used by the backend and patient profile page.
   insurance_provider: z.string().optional().nullable(),

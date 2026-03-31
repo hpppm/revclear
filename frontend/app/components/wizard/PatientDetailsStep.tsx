@@ -26,6 +26,7 @@ interface PatientDetailsStepProps {
   subscriberError?: string | null;
   subscriberSaving?: boolean;
   encounterFieldErrors?: Record<string, string>;
+  canEditPatientData?: boolean;
 }
 
 export default function PatientDetailsStep({
@@ -39,6 +40,7 @@ export default function PatientDetailsStep({
   subscriberError,
   subscriberSaving,
   encounterFieldErrors,
+  canEditPatientData = false,
 }: PatientDetailsStepProps) {
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === metadata.patientId),
@@ -163,6 +165,7 @@ export default function PatientDetailsStep({
               variant="select"
               value={metadata.relationship || "self"}
               onChange={(e) => setMetadata({ ...metadata, relationship: e.target.value })}
+              disabled={!canEditPatientData}
               options={[
                 { value: "self", label: "Self" },
                 { value: "spouse", label: "Spouse" },
@@ -192,6 +195,7 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.full_name || ""}
                   onChange={(e) => handleSubscriberChange("full_name", e.target.value)}
                   error={subscriberFieldErrors.full_name}
+                  disabled={!canEditPatientData}
                 />
                 <Input
                   label="Subscriber DOB"
@@ -199,12 +203,14 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.dob || ""}
                   onChange={(e) => handleSubscriberChange("dob", e.target.value)}
                   error={subscriberFieldErrors.dob}
+                  disabled={!canEditPatientData}
                 />
                 <Input
                   label="Subscriber Gender"
                   variant="select"
                   value={metadata.subscriber?.gender || "M"}
                   onChange={(e) => handleSubscriberChange("gender", e.target.value)}
+                  disabled={!canEditPatientData}
                   options={[
                     { value: "M", label: "Male" },
                     { value: "F", label: "Female" },
@@ -218,6 +224,7 @@ export default function PatientDetailsStep({
                   onChange={(e) => handleSubscriberChange("phone", e.target.value)}
                   placeholder="(555) 123-4567"
                   error={subscriberFieldErrors.phone}
+                  disabled={!canEditPatientData}
                 />
               </div>
               <Input
@@ -225,23 +232,27 @@ export default function PatientDetailsStep({
                 value={metadata.subscriber?.address_street || ""}
                 onChange={(e) => handleSubscriberChange("address_street", e.target.value)}
                 placeholder="123 Main St"
+                disabled={!canEditPatientData}
               />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
                   label="City"
                   value={metadata.subscriber?.address_city || ""}
                   onChange={(e) => handleSubscriberChange("address_city", e.target.value)}
+                  disabled={!canEditPatientData}
                 />
                 <Input
                   label="State"
                   value={metadata.subscriber?.address_state || ""}
                   onChange={(e) => handleSubscriberChange("address_state", e.target.value)}
+                  disabled={!canEditPatientData}
                 />
                 <Input
                   label="ZIP"
                   value={metadata.subscriber?.address_zip || ""}
                   onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
                   error={subscriberFieldErrors.address_zip}
+                  disabled={!canEditPatientData}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -249,11 +260,13 @@ export default function PatientDetailsStep({
                   label="Subscriber Member ID"
                   value={metadata.subscriber?.member_id || ""}
                   onChange={(e) => handleSubscriberChange("member_id", e.target.value)}
+                  disabled={!canEditPatientData}
                 />
                 <Input
                   label="Subscriber Group Number"
                   value={metadata.subscriber?.group_number || ""}
                   onChange={(e) => handleSubscriberChange("group_number", e.target.value)}
+                  disabled={!canEditPatientData}
                 />
               </div>
             </div>
