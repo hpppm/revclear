@@ -124,7 +124,7 @@ export default function PatientProfilePage() {
             const firstErrorKey = validation.error.issues[0]?.path?.[0];
             if (firstErrorKey) {
                 setTimeout(() => {
-                    const el = document.getElementById(`patient-edit-${firstErrorKey}`);
+                    const el = document.getElementById(`patient-edit-${String(firstErrorKey)}`);
                     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 0);
             }
