@@ -43,6 +43,20 @@ function isFresh(creds: ScopedCredentials): boolean {
   return creds.expiration.getTime() - Date.now() > 5 * 60 * 1000;
 }
 
+// Purge expired entries every 30 minutes so the Map doesn't grow unbounded
+// in long-running server processes.
+const CACHE_PURGE_INTERVAL_MS = 30 * 60 * 1000;
+const cachePurgeTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [userId, creds] of credentialCache) {
+    if (creds.expiration.getTime() <= now) {
+      credentialCache.delete(userId);
+    }
+  }
+}, CACHE_PURGE_INTERVAL_MS);
+// Don't keep the process alive just for this timer
+cachePurgeTimer.unref();
+
 /**
  * Exchange a Cognito access token for scoped IAM credentials.
  * Result is cached per userId until 5 minutes before expiry.
