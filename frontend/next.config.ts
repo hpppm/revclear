@@ -1,13 +1,9 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 // SECURITY: ignoreBuildErrors was removed — TypeScript errors must be fixed
 // before deployment. Silencing them masks type-unsafe API payloads and
 // allows unvalidated data to reach production.
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
   async headers() {
     return [
       // NOTE: CSP with nonces is now handled by middleware.ts
