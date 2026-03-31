@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization, Patient } from "@/app/lib/types";
@@ -278,7 +278,7 @@ export default function DashboardHome() {
                                                 {encountersCount === 0 && (
                                                     <li>
                                                         <Link
-                                                            href="/dashboard/encounters/create"
+                                                            href="/dashboard/patients"
                                                             onClick={() => setNotifOpen(false)}
                                                             className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
                                                         >

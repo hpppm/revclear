@@ -39,26 +39,33 @@ export class EncounterService {
     const offset = options?.offset ?? 0;
     const patientId = options?.patientId;
 
-    // Build WHERE clause with optional patient_id filter
-    const baseWhere =
-      "(organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))";
+    // Build WHERE clause with optional patient_id filter (aliased to e.*)
     const params: any[] = [organizationId, clinicianId];
+    let whereClause = "(e.organization_id = $1 OR (e.organization_id IS NULL AND e.clinician_id = $2))";
 
-    let whereClause = baseWhere;
     if (patientId) {
       params.push(patientId);
-      whereClause += ` AND patient_id = $${params.length}`;
+      whereClause += ` AND e.patient_id = $${params.length}`;
     }
 
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM encounters WHERE ${whereClause}`,
+      `SELECT COUNT(*) as total FROM encounters e WHERE ${whereClause}`,
       params,
     );
-    const total = parseInt(countResult.rows[0].total);
+    const total = parseInt(countResult.rows[0].total) || 0;
 
     const queryParams = [...params, limit, offset];
     const result = await query(
-      `SELECT id, patient_id, clinician_id, organization_id, date_of_service, transcript_result_id, soap_result_id, status, created_at, updated_at FROM encounters WHERE ${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      `SELECT e.id, e.patient_id, e.clinician_id, e.organization_id,
+              e.date_of_service, e.transcript_result_id, e.soap_result_id,
+              e.status, e.encounter_type, e.place_of_service,
+              e.created_at, e.updated_at,
+              p.full_name AS patient_name
+       FROM encounters e
+       LEFT JOIN patients p ON e.patient_id = p.id
+       WHERE ${whereClause}
+       ORDER BY e.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       queryParams,
     );
     return { data: result.rows, total };

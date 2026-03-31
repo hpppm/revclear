@@ -570,6 +570,7 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
+          patientLocked={!!searchPatientId}
         />
       ),
       canGoNext:

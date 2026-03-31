@@ -71,7 +71,7 @@ export default function AddPatientPage() {
         : formData;
 
       await apiClient.patients.create(dataToSubmit);
-      router.push("/dashboard"); // Navigate to dashboard after saving
+      router.push("/dashboard/patients");
     } catch (error) {
       logger.error("Failed to create patient", error);
       const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
@@ -86,8 +86,8 @@ export default function AddPatientPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <BackButton href="/dashboard">
-            Back to Dashboard
+          <BackButton href="/dashboard/patients">
+            Back to Patients
           </BackButton>
           <h1 className="text-3xl font-bold text-slate-900">Add New Patient</h1>
           <p className="text-slate-600 mt-2">

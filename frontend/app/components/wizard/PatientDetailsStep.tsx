@@ -26,6 +26,7 @@ interface PatientDetailsStepProps {
   subscriberError?: string | null;
   subscriberSaving?: boolean;
   encounterFieldErrors?: Record<string, string>;
+  patientLocked?: boolean;
 }
 
 export default function PatientDetailsStep({
@@ -39,6 +40,7 @@ export default function PatientDetailsStep({
   subscriberError,
   subscriberSaving,
   encounterFieldErrors,
+  patientLocked = false,
 }: PatientDetailsStepProps) {
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === metadata.patientId),
@@ -111,30 +113,40 @@ export default function PatientDetailsStep({
 
       <label className="space-y-1 block">
         <span className="text-sm font-medium text-slate-700">Patient</span>
-        <select
-          id="patient-select"
-          name="patient-select"
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          value={metadata.patientId}
-        onChange={(e) => {
-          const val = e.target.value;
-          const picked = patients.find((p) => p.id === val);
-          const rel = picked?.insurance_relationship || "self";
-          setMetadata({ ...metadata, patientId: val, subscriber: null, relationship: rel });
-          if (val) loadSubscriber(val);
-        }}
-      >
-          <option value="">Select a patient</option>
-          {patients.map((patient) => (
-            <option key={patient.id} value={patient.id}>
-              {patient.name}
-              {patient.age ? ` (${patient.age})` : ""}
-            </option>
-          ))}
-        </select>
-        {loadingPatients && <p className="text-xs text-slate-500">Loading patients...</p>}
-        {patientsError && <p className="text-xs text-amber-700">{patientsError}</p>}
-        {encounterFieldErrors?.patientId && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.patientId}</p>}
+        {patientLocked ? (
+          <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900 flex items-center justify-between">
+            <span>{selectedPatient?.name || "Loading..."}</span>
+            <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Locked</span>
+          </div>
+        ) : (
+          <>
+            <select
+              id="patient-select"
+              name="patient-select"
+              disabled={loadingPatients}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400"
+              value={metadata.patientId}
+              onChange={(e) => {
+                const val = e.target.value;
+                const picked = patients.find((p) => p.id === val);
+                const rel = picked?.insurance_relationship || "self";
+                setMetadata({ ...metadata, patientId: val, subscriber: null, relationship: rel });
+                if (val) loadSubscriber(val);
+              }}
+            >
+              <option value="">Select a patient</option>
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.name}
+                  {patient.age ? ` (${patient.age})` : ""}
+                </option>
+              ))}
+            </select>
+            {loadingPatients && <p className="text-xs text-slate-500">Loading patients...</p>}
+            {patientsError && <p className="text-xs text-amber-700">{patientsError}</p>}
+            {encounterFieldErrors?.patientId && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.patientId}</p>}
+          </>
+        )}
       </label>
 
       {selectedPatient && (
