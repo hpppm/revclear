@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
@@ -14,6 +14,7 @@ import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
 import SoapGenerationStep from "@/app/components/wizard/SoapGenerationStep";
 import MedicalCodesStep from "@/app/components/wizard/MedicalCodesStep";
 import ReviewClaimStep from "@/app/components/wizard/ReviewClaimStep";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 const allowedAudioTypes = [
   "audio/mpeg",
@@ -39,6 +40,7 @@ const extractTranscriptText = (t: any): string => {
 
 export default function EncounterPage() {
   const { user } = useAuth();
+  const { canManageEncounters, canManageClaims, canWritePatients } = useAuthorization();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -125,8 +127,17 @@ export default function EncounterPage() {
   }, [user]);
 
   useEffect(() => {
+    if (!canManageEncounters) return;
     fetchPatients();
-  }, []);
+  }, [canManageEncounters]);
+
+  if (!canManageEncounters) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <UnauthorizedState message="Your role does not have access to encounter workflows." />
+      </div>
+    );
+  }
 
   // URL state management and refresh recovery
   useEffect(() => {
@@ -281,6 +292,7 @@ export default function EncounterPage() {
 
   const persistSubscriber = async () => {
     if (!metadata.patientId) return;
+    if (!canWritePatients) return;
     setSubscriberSaving(true);
     setSubscriberError(null);
     try {
@@ -614,6 +626,15 @@ export default function EncounterPage() {
           const first = validation.error.issues[0];
           throw new Error(first ? first.message : "Please fix encounter details");
         }
+        
+        if (metadata.relationship !== "self") {
+          const subValidation = SubscriberFormSchema.safeParse(metadata.subscriber || {});
+          if (!subValidation.success) {
+            setSubscriberError("Please complete all required subscriber/insurance fields. Scroll down to fix errors.");
+            throw new Error("Missing required subscriber fields");
+          }
+        }
+
         setEncounterFieldErrors({});
 
         // Validate patient insurance fields before any API call
@@ -736,7 +757,7 @@ export default function EncounterPage() {
         await handleSaveCodes();
       },
     },
-    {
+    ...(canManageClaims ? [{
       name: "Review Claim",
       description: "Review and finalize",
       component: (
@@ -775,7 +796,7 @@ export default function EncounterPage() {
           });
         }
       },
-    },
+    }] : []),
   ];
 
   return (

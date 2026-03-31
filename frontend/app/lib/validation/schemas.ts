@@ -145,6 +145,7 @@ export const ForgotPasswordConfirmSchema = z.object({
 // Shared required patient fields used by both create and edit
 const patientRequiredFields = {
   full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+<<<<<<< HEAD
   dob: z
     .string()
     .min(1, "Date of birth is required")
@@ -196,6 +197,39 @@ export const CreatePatientFormSchema = z
 export const EditPatientFormSchema = z
   .object(patientRequiredFields)
   .superRefine(enforceInsuranceFields);
+=======
+  dob: dobPastSchema,
+  gender: z.enum(["M", "F", "U", "O"]),
+  phone: phoneSchema,
+  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
+  address_street: z.string().min(1, "Street address is required").max(200),
+  address_city: z.string().min(1, "City is required").max(100),
+  address_state: z.string().length(2, "State must be a 2-letter abbreviation"),
+  address_zip: z.string().regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)"),
+  insurance_provider: z.string().max(100).optional().or(z.literal("")),
+  insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_member_id: z.string().max(50).optional().or(z.literal("")),
+  insurance_group_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_payer_id: z.string().max(50).optional().or(z.literal("")),
+  insurance_payer_name: z.string().max(100).optional().or(z.literal("")),
+});
+
+export const EditPatientFormSchema = z.object({
+  full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+  dob: dobPastSchema,
+  gender: z.enum(["M", "F", "U", "O"]).optional(),
+  phone: phoneSchema,
+  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
+  address_street: z.string().min(1, "Street address is required").max(200),
+  address_city: z.string().min(1, "City is required").max(100),
+  address_state: z.string().length(2, "State must be a 2-letter abbreviation"),
+  address_zip: z.string().regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)"),
+  insurance_provider: z.string().max(100).optional().or(z.literal("")),
+  insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_member_id: z.string().max(50).optional().or(z.literal("")),
+  insurance_group_number: z.string().max(50).optional().or(z.literal("")),
+});
+>>>>>>> fbed93b7 (WIP: save changes before rebasing main)
 
 export const ProfileFormSchema = z.object({
   phone: phoneSchema,

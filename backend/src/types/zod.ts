@@ -77,8 +77,10 @@ export const CreateOrganizationInviteSchema = z.object({
 export const PatientSchema = z.object({
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Jane Doe" }),
   dob: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    .union([
+      z.literal(""),
+      z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    ])
     .transform((val) => val ? val.split('T')[0] : val)
     .optional()
     .nullable()

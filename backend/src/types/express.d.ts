@@ -20,8 +20,6 @@ interface ExtendedCognitoJwtPayload {
   iat: number;
   /** Raw Cognito group names extracted from the token */
   cognitoGroups?: string[];
-  /** Application role derived from cognitoGroups */
-  cognitoRole?: string;
 }
 
 declare global {
@@ -31,9 +29,9 @@ declare global {
       id: string;
       email: string;
       full_name: string;
-      role?: string; // Derived from Cognito groups: 'admin' | 'clinician' | 'nurse' | 'billing_staff' | 'receptionist'
+      role?: string | null; // Organization membership role stored in the database
       cognito_id: string;
-      organization_id?: string;
+      organization_id?: string | null;
       is_org_admin?: boolean;
       [key: string]: any; // Allow other DB columns
     }
@@ -47,7 +45,7 @@ declare global {
 
     interface Request {
       auth?: ExtendedCognitoJwtPayload; // The raw JWT payload from Cognito with groups
-      user?: User; // The resolved database user with role from Cognito
+      user?: User; // The resolved database user with organization membership role
       organization?: Organization; // The resolved organization
       file?: Express.Multer.File; // Multer file upload
     }

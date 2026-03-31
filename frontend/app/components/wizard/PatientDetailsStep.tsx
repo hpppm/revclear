@@ -263,6 +263,7 @@ export default function PatientDetailsStep({
                   variant="select"
                   value={metadata.subscriber?.gender || "M"}
                   onChange={(e) => handleSubscriberChange("gender", e.target.value)}
+                  disabled={!canEditPatientData}
                   options={[
                     { value: "M", label: "Male" },
                     { value: "F", label: "Female" },
@@ -310,6 +311,7 @@ export default function PatientDetailsStep({
                   onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("address_zip", e.target.value)}
                   error={subscriberFieldErrors.address_zip}
+                  disabled={!canEditPatientData}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

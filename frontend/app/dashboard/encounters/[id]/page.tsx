@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuthorization } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 export default function EncounterSummaryPage() {
+    const { canManageEncounters, canManageClaims, canUseClinicalAI } = useAuthorization();
     const params = useParams();
     const router = useRouter();
     const encounterId = params?.id as string;
@@ -29,11 +32,15 @@ export default function EncounterSummaryPage() {
     const [claimExpanded, setClaimExpanded] = useState(false);
 
     useEffect(() => {
+        if (!canManageEncounters) {
+            setLoading(false);
+            return;
+        }
         if (encounterId) {
             fetchEncounterData();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [encounterId]);
+    }, [encounterId, canManageEncounters]);
 
     const fetchEncounterData = async () => {
         setLoading(true);
@@ -45,17 +52,19 @@ export default function EncounterSummaryPage() {
             setEncounter(encounterData);
 
             // Fetch claim
-            try {
-                const claimRes = await apiClient.encounters.previewClaim(encounterId);
-                const claimData = claimRes.data?.data || claimRes.data;
-                logger.log("Claim loaded");
-                setClaim(claimData);
-            } catch {
-                logger.log("No claim found");
+            if (canManageClaims) {
+                try {
+                    const claimRes = await apiClient.encounters.previewClaim(encounterId);
+                    const claimData = claimRes.data?.data || claimRes.data;
+                    logger.log("Claim loaded");
+                    setClaim(claimData);
+                } catch {
+                    logger.log("No claim found");
+                }
             }
 
             // Fetch transcript if available
-            if (encounterData.transcript_result_id) {
+            if (canUseClinicalAI && encounterData.transcript_result_id) {
                 try {
                     const transcriptRes = await apiClient.transcribe.getByEncounterId(encounterId);
                     const transcriptData = transcriptRes.data?.text || transcriptRes.data?.data?.text || "";
@@ -67,7 +76,7 @@ export default function EncounterSummaryPage() {
             }
 
             // Fetch SOAP if available
-            if (encounterData.soap_result_id) {
+            if (canUseClinicalAI && encounterData.soap_result_id) {
                 try {
                     const soapRes = await apiClient.soap.getForEncounter(encounterId);
                     const soapData = soapRes.data?.data || soapRes.data;
@@ -93,7 +102,7 @@ export default function EncounterSummaryPage() {
     };
 
     const handleTranscribe = async () => {
-        if (!encounterId || !encounter?.audio_key) {
+        if (!canUseClinicalAI || !encounterId || !encounter?.audio_key) {
             setTranscribeError("No uploaded audio is available for this encounter.");
             return;
         }
@@ -134,6 +143,7 @@ export default function EncounterSummaryPage() {
     };
 
     const handleSubmit = async () => {
+        if (!canManageClaims) return;
         setSubmitting(true);
         try {
             // Update encounter status to completed
@@ -224,6 +234,16 @@ export default function EncounterSummaryPage() {
         );
     }
 
+    if (!canManageEncounters) {
+        return (
+            <div className="min-h-screen bg-slate-50 p-8">
+                <div className="max-w-4xl mx-auto">
+                    <UnauthorizedState message="Your role does not have access to encounter details." />
+                </div>
+            </div>
+        );
+    }
+
     if (!encounter) {
         return (
             <div className="min-h-screen bg-slate-50 p-8">
@@ -255,6 +275,7 @@ export default function EncounterSummaryPage() {
                 </div>
 
                 {/* Transcription Section */}
+                {canUseClinicalAI && (
                 <Card>
                     <button
                         onClick={() => setTranscriptExpanded(!transcriptExpanded)}
@@ -295,8 +316,10 @@ export default function EncounterSummaryPage() {
                         </div>
                     )}
                 </Card>
+                )}
 
                 {/* SOAP Note Section */}
+                {canUseClinicalAI && (
                 <Card>
                     <button
                         onClick={() => setSoapExpanded(!soapExpanded)}
@@ -351,8 +374,10 @@ export default function EncounterSummaryPage() {
                         </div>
                     )}
                 </Card>
+                )}
 
                 {/* Claim Section */}
+                {canManageClaims && (
                 <Card>
                     <button
                         onClick={() => setClaimExpanded(!claimExpanded)}
@@ -412,9 +437,10 @@ export default function EncounterSummaryPage() {
                         </div>
                     )}
                 </Card>
+                )}
 
                 {/* Submit Button */}
-                {encounter.status === "ready" && (
+                {canManageClaims && encounter.status === "ready" && (
                     <div className="flex justify-end">
                         <Button
                             onClick={handleSubmit}
@@ -427,7 +453,7 @@ export default function EncounterSummaryPage() {
                     </div>
                 )}
 
-                {encounter.status === "completed" && (
+                {canManageClaims && encounter.status === "completed" && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                         <p className="text-blue-800 font-medium flex items-center justify-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>

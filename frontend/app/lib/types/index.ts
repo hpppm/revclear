@@ -75,6 +75,30 @@ export interface OrganizationMembership {
   organization?: Organization;
 }
 
+export interface OrganizationMember {
+  id: string;
+  email: string;
+  full_name: string;
+  role: AppRole;
+  created_at?: string;
+}
+
+export interface OrganizationInviteActor {
+  id: string;
+  email: string;
+  full_name: string;
+}
+
+export interface OrganizationInvite {
+  id: string;
+  role: "clinician" | "nurse" | "billing_staff" | "receptionist";
+  created_at: string;
+  expires_at: string;
+  used_at?: string | null;
+  created_by: OrganizationInviteActor;
+  used_by?: OrganizationInviteActor | null;
+}
+
 export interface Patient {
   id: string;
   name: string;
