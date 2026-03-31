@@ -73,6 +73,13 @@ type EncryptedJsonEnvelope = {
   ciphertext: string;
 };
 
+// Legacy envelope written by earlier versions of this module.
+// Format: { encrypted: "ivBase64:tagBase64:ciphertextBase64" }
+// The inner string is identical to what decryptPHI() expects.
+type LegacyEncryptedJsonEnvelope = {
+  encrypted: string;
+};
+
 type PHIRecord = Record<string, any>;
 
 export function isEncryptedPHIJson(value: unknown): value is EncryptedJsonEnvelope {
@@ -81,6 +88,15 @@ export function isEncryptedPHIJson(value: unknown): value is EncryptedJsonEnvelo
     value !== null &&
     (value as Record<string, unknown>)[ENCRYPTED_JSON_MARKER] === true &&
     typeof (value as Record<string, unknown>).ciphertext === "string"
+  );
+}
+
+function isLegacyEncryptedPHIJson(value: unknown): value is LegacyEncryptedJsonEnvelope {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).encrypted === "string" &&
+    (value as Record<string, unknown>)[ENCRYPTED_JSON_MARKER] !== true
   );
 }
 
@@ -96,11 +112,15 @@ export function encryptPHIJson<T>(value: T): T | EncryptedJsonEnvelope {
 }
 
 export function decryptPHIJson<T>(value: T | EncryptedJsonEnvelope): T {
-  if (!isEncryptedPHIJson(value)) {
-    return value as T;
+  if (isEncryptedPHIJson(value)) {
+    return JSON.parse(decryptPHI(value.ciphertext)) as T;
   }
-
-  return JSON.parse(decryptPHI(value.ciphertext)) as T;
+  // Backward compat: rows written by older code use { encrypted: "iv:tag:ct" }.
+  // decryptPHI() accepts that string directly.
+  if (isLegacyEncryptedPHIJson(value)) {
+    return JSON.parse(decryptPHI(value.encrypted)) as T;
+  }
+  return value as T;
 }
 
 export function isEncryptedPHIText(value: unknown): value is string {
