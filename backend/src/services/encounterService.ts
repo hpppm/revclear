@@ -1,6 +1,7 @@
 import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
 import {
+  decryptPHIText,
   decryptPHITextFields,
   encryptPHIText,
 } from "../utils/crypto";
@@ -68,7 +69,11 @@ export class EncounterService {
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       queryParams,
     );
-    return { data: result.rows, total };
+    const rows = result.rows.map((row: any) => ({
+      ...row,
+      patient_name: decryptPHIText(row.patient_name),
+    }));
+    return { data: rows, total };
   }
 
   static async findById(
