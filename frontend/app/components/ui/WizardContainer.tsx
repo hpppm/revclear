@@ -35,6 +35,7 @@ export default function WizardContainer({
 }: WizardContainerProps) {
     const [currentStep, setCurrentStep] = useState(initialStep);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [stepError, setStepError] = useState<string | null>(null);
     // Track whether the current step change came from user navigation (not external sync)
     const userNavigatedRef = useRef(false);
 
@@ -42,6 +43,7 @@ export default function WizardContainer({
         // Sync step from parent (URL restore) without triggering onStepChange
         userNavigatedRef.current = false;
         setCurrentStep(initialStep);
+        setStepError(null);
     }, [initialStep]);
 
     useEffect(() => {
@@ -56,6 +58,7 @@ export default function WizardContainer({
 
         setIsTransitioning(true);
         try {
+            setStepError(null);
             // Call onNext callback if it exists
             if (currentStepData.onNext) {
                 await currentStepData.onNext();
@@ -67,8 +70,9 @@ export default function WizardContainer({
             } else {
                 onComplete();
             }
-        } catch {
+        } catch (err: any) {
             logger.error("Error in step transition");
+            setStepError(err?.message || "Please fix the errors above before continuing.");
         } finally {
             setIsTransitioning(false);
         }
@@ -120,21 +124,24 @@ export default function WizardContainer({
                         <div className="animate-fadeIn">{currentStepData.component}</div>
                     </div>
 
+                    {stepError && (
+                        <p className="mt-4 text-sm text-red-600 text-center">{stepError}</p>
+                    )}
                     <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
                         {isFirstStep && onExit ? (
                             <Button variant="ghost" onClick={onExit}>
-                                ← Exit Encounter
+                                Exit
                             </Button>
                         ) : (
                             <Button variant="ghost" onClick={handleBack} disabled={!canGoBack}>
-                                ← Back
+                                Back
                             </Button>
                         )}
                         <div className="text-sm text-slate-500">
                             Step {currentStep + 1} of {steps.length}
                         </div>
                         <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Ready for Submission" : "Continue →"}
+                            {isLastStep ? "Submit" : "Continue"}
                         </Button>
                     </div>
                 </Card>

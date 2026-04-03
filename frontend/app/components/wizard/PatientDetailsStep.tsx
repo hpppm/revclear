@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Input from "../ui/Input";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import { Patient } from "@/app/lib/types";
-import { SubscriberFormSchema } from "@/app/lib/validation/schemas";
 
 interface PatientDetailsStepProps {
   metadata: {
@@ -45,24 +44,13 @@ export default function PatientDetailsStep({
     [patients, metadata.patientId]
   );
 
-  const [subscriberFieldErrors, setSubscriberFieldErrors] = useState<Record<string, string>>({});
-
   const handleSubscriberChange = (field: string, value: any) => {
     const updated = { ...(metadata.subscriber || {}), [field]: value };
     setMetadata({ ...metadata, subscriber: updated });
-
-    const fieldSchema = (SubscriberFormSchema as any).shape?.[field];
-    if (fieldSchema) {
-      const result = fieldSchema.safeParse(value);
-      setSubscriberFieldErrors((prev: Record<string, string>) => {
-        if (result.success) {
-          const { [field]: _removed, ...rest } = prev;
-          return rest;
-        }
-        return { ...prev, [field]: result.error.issues[0]?.message || "Invalid value" };
-      });
-    }
   };
+
+  // Subscriber errors come from parent via encounterFieldErrors with subscriber_ prefix
+  const subErr = (field: string) => encounterFieldErrors?.[`subscriber_${field}`];
 
   return (
     <div className="space-y-6">
@@ -116,14 +104,14 @@ export default function PatientDetailsStep({
           name="patient-select"
           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           value={metadata.patientId}
-        onChange={(e) => {
-          const val = e.target.value;
-          const picked = patients.find((p) => p.id === val);
-          const rel = picked?.insurance_relationship || "self";
-          setMetadata({ ...metadata, patientId: val, subscriber: null, relationship: rel });
-          if (val) loadSubscriber(val);
-        }}
-      >
+          onChange={(e) => {
+            const val = e.target.value;
+            const picked = patients.find((p) => p.id === val);
+            const rel = picked?.insurance_relationship || "self";
+            setMetadata({ ...metadata, patientId: val, subscriber: null, relationship: rel });
+            if (val) loadSubscriber(val);
+          }}
+        >
           <option value="">Select a patient</option>
           {patients.map((patient) => (
             <option key={patient.id} value={patient.id}>
@@ -144,7 +132,7 @@ export default function PatientDetailsStep({
               <p className="text-sm font-semibold text-slate-900">Selected Patient</p>
               <p className="text-sm text-slate-700 mt-1">
                 {selectedPatient.name}
-                {selectedPatient.dob && ` • DOB: ${new Date(selectedPatient.dob).toLocaleDateString("en-US")}`}
+                {selectedPatient.dob && (() => { const [y, m, d] = selectedPatient.dob.split("T")[0].split("-"); return ` • DOB: ${m}/${d}/${y}`; })()}
               </p>
               <p className="text-xs text-slate-500">
                 {selectedPatient.insuranceType || "Insurance not set"} • {selectedPatient.insuranceId || "Member ID not set"}
@@ -170,8 +158,8 @@ export default function PatientDetailsStep({
                 { value: "other", label: "Other" },
               ]}
             />
-            <Input label="Insurance Provider" value={selectedPatient.insuranceType || ""} disabled />
-            <Input label="Member / Policy ID" value={selectedPatient.insuranceId || ""} disabled />
+            <Input label="Insurance Provider" value={selectedPatient.insuranceType || ""} disabled error={!selectedPatient.insuranceType ? "Required — update patient profile" : undefined} />
+            <Input label="Member / Policy ID" value={selectedPatient.insuranceId || ""} disabled error={!selectedPatient.insuranceId ? "Required — update patient profile" : undefined} />
             <Input label="Group Number" value={selectedPatient.insurance_group_number || ""} disabled />
             <Input label="Payer ID" value={selectedPatient.insurance_payer_id || ""} disabled />
           </div>
@@ -188,17 +176,17 @@ export default function PatientDetailsStep({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
-                  label="Subscriber Name"
+                  label="Subscriber Name *"
                   value={metadata.subscriber?.full_name || ""}
                   onChange={(e) => handleSubscriberChange("full_name", e.target.value)}
-                  error={subscriberFieldErrors.full_name}
+                  error={subErr("full_name")}
                 />
                 <Input
-                  label="Subscriber DOB"
+                  label="Subscriber DOB *"
                   type="date"
-                  value={metadata.subscriber?.dob || ""}
+                  value={metadata.subscriber?.dob?.split("T")[0] || ""}
                   onChange={(e) => handleSubscriberChange("dob", e.target.value)}
-                  error={subscriberFieldErrors.dob}
+                  error={subErr("dob")}
                 />
                 <Input
                   label="Subscriber Gender"
@@ -213,11 +201,11 @@ export default function PatientDetailsStep({
                   ]}
                 />
                 <Input
-                  label="Subscriber Phone"
+                  label="Subscriber Phone *"
                   value={metadata.subscriber?.phone || ""}
                   onChange={(e) => handleSubscriberChange("phone", e.target.value)}
                   placeholder="(555) 123-4567"
-                  error={subscriberFieldErrors.phone}
+                  error={subErr("phone")}
                 />
               </div>
               <Input
@@ -238,17 +226,18 @@ export default function PatientDetailsStep({
                   onChange={(e) => handleSubscriberChange("address_state", e.target.value)}
                 />
                 <Input
-                  label="ZIP"
+                  label="ZIP *"
                   value={metadata.subscriber?.address_zip || ""}
                   onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
-                  error={subscriberFieldErrors.address_zip}
+                  error={subErr("address_zip")}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
-                  label="Subscriber Member ID"
+                  label="Subscriber Member ID *"
                   value={metadata.subscriber?.member_id || ""}
                   onChange={(e) => handleSubscriberChange("member_id", e.target.value)}
+                  error={subErr("member_id")}
                 />
                 <Input
                   label="Subscriber Group Number"
