@@ -14,7 +14,13 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const isDev = process.env.NODE_ENV === "development";
-  const apiOrigin = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005/api";
+  let apiOrigin = "http://localhost:3005";
+  try {
+    apiOrigin = new URL(apiUrl).origin;
+  } catch {
+    apiOrigin = apiUrl.replace(/\/api\/?$/, "");
+  }
   const connectSrc = isDev
     ? [
         "'self'",

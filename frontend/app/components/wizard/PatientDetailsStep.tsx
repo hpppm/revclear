@@ -60,6 +60,7 @@ interface PatientDetailsStepProps {
   subscriberSaving?: boolean;
   encounterFieldErrors?: Record<string, string>;
   lockedPatientId?: string | null;
+  canEditPatientData?: boolean;
 }
 
 export default function PatientDetailsStep({
@@ -74,6 +75,7 @@ export default function PatientDetailsStep({
   subscriberSaving,
   encounterFieldErrors,
   lockedPatientId,
+  canEditPatientData = true,
 }: PatientDetailsStepProps) {
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === metadata.patientId),

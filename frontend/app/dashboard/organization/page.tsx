@@ -129,20 +129,20 @@ export default function OrganizationProfilePage() {
         }
     }, [organization]);
 
+    const extractOrgFromResponse = (payload: any) => {
+        if (!payload) return null;
+        if (payload.data?.organization) return payload.data.organization;
+        if (payload.data?.data) return payload.data.data;
+        if (payload.data) return payload.data;
+        if (payload.organization) return payload.organization;
+        return payload;
+    };
+
     const loadOrganization = async () => {
         setLoading(true);
         try {
             const response = await apiClient.organizations.getCurrent();
-            // Helper to extract org same as dashboard
-            const extractOrg = (payload: any) => {
-                if (!payload) return null;
-                if (payload.data?.organization) return payload.data.organization;
-                if (payload.data?.data) return payload.data.data;
-                if (payload.data) return payload.data;
-                if (payload.organization) return payload.organization;
-                return payload;
-            };
-            setOrganization(extractOrg(response));
+            setOrganization(extractOrgFromResponse(response));
         } catch (error) {
             logger.error("Failed to load organization", error);
             setError("Failed to load organization details.");
@@ -212,8 +212,13 @@ export default function OrganizationProfilePage() {
             }
 
 
-            await apiClient.organizations.updateCurrent(payload);
-            await loadOrganization(); // Reload to get updated data
+            const response = await apiClient.organizations.updateCurrent(payload);
+            const updatedOrganization = extractOrgFromResponse(response);
+            if (updatedOrganization) {
+                setOrganization(updatedOrganization);
+            } else {
+                await loadOrganization();
+            }
             setIsEditing(false);
             // Optionally checkAuth if organization info is attached to user object in context
             // await checkAuth(); 
@@ -450,7 +455,6 @@ export default function OrganizationProfilePage() {
                                             placeholder="(555) 555-5555"
                                             error={fieldErrors.billing_phone}
                                         />
-<<<<<<< HEAD
                                         <label className="space-y-1 block">
                                             <span className="text-sm font-medium text-slate-700">Default Place of Service</span>
                                             <select

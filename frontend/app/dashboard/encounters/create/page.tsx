@@ -6,7 +6,7 @@ import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
-import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { EncounterDetailsFormSchema, SubscriberFormSchema } from "@/app/lib/validation/schemas";
 import { SubscriberWritePayload } from "@/app/lib/api/patients";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";

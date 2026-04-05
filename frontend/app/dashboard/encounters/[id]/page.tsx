@@ -9,6 +9,7 @@ import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
 import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
+import DashboardHeader from "@/app/components/ui/DashboardHeader";
 
 export default function EncounterSummaryPage() {
     const { canManageEncounters, canManageClaims, canUseClinicalAI } = useAuthorization();
@@ -228,8 +229,10 @@ export default function EncounterSummaryPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="text-slate-500">Loading encounter summary...</div>
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+                    Loading claim review...
+                </div>
             </div>
         );
     }
@@ -246,33 +249,31 @@ export default function EncounterSummaryPage() {
 
     if (!encounter) {
         return (
-            <div className="min-h-screen bg-slate-50 p-8">
-                <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="space-y-4">
                     <p className="text-red-600">Encounter not found</p>
-                    <BackButton href="/dashboard">Back to Dashboard</BackButton>
+                    <BackButton href="/dashboard/claims">Back to Claims</BackButton>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <BackButton href={`/dashboard/patients/${encounter.patient_id}`}>
-                    Back to Patient
+        <div className="max-w-6xl mx-auto px-6 py-8">
+            <div className="space-y-6">
+                <BackButton href="/dashboard/claims">
+                    Back to Claims
                 </BackButton>
 
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Encounter Summary</h1>
-                    <p className="text-slate-600 mt-1">
-                        {new Date(encounter.date_of_service).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                        })}
-                    </p>
-                </div>
+                <DashboardHeader
+                    title="Claim Review"
+                    subtitle={new Date(encounter.date_of_service).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                    })}
+                />
 
                 {/* Transcription Section */}
                 {canUseClinicalAI && (
