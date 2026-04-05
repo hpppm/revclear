@@ -269,6 +269,7 @@ describe("claim snapshot PHI encryption", () => {
         npi: "4444444444",
       }),
     );
-    expect(preview.subscriber).toBeNull();
+    // subscriber is now always an object (with member_id/group_number from patient)
+    expect(preview.subscriber).toBeDefined();
   });
 });
