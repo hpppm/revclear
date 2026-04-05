@@ -264,7 +264,8 @@ export default function EncounterPage() {
       const res = await apiClient.patients.getSubscriber(patientId);
       const subscriber = res.data?.data || null;
       if (subscriber) {
-        setMetadata((prev) => ({ ...prev, subscriber, relationship: "other" }));
+        const normalised = { ...subscriber, dob: subscriber.dob?.split("T")[0] || subscriber.dob };
+        setMetadata((prev) => ({ ...prev, subscriber: normalised, relationship: "other" }));
       } else {
         setMetadata((prev) => ({ ...prev, subscriber: null, relationship: "self" }));
       }
@@ -289,13 +290,28 @@ export default function EncounterPage() {
         setSubscriberError("Subscriber name is required when relationship is not self");
         throw new Error("Missing subscriber name");
       }
-      const subPayload = {
-        ...metadata.subscriber,
+      const sub = metadata.subscriber;
+      // Strip null/empty values — backend schema uses .optional() not .nullable()
+      const subPayload: Record<string, any> = {
+        full_name: sub?.full_name || undefined,
+        dob: sub?.dob?.split("T")[0] || undefined,
+        gender: sub?.gender || undefined,
+        phone: sub?.phone || undefined,
+        address_street: sub?.address_street || undefined,
+        address_city: sub?.address_city || undefined,
+        address_state: sub?.address_state || undefined,
+        address_zip: sub?.address_zip || undefined,
+        member_id: sub?.member_id || undefined,
+        group_number: sub?.group_number || undefined,
         relationship: metadata.relationship || "other",
       };
+      // Remove undefined keys so they don't get sent as null
+      Object.keys(subPayload).forEach((k) => subPayload[k] === undefined && delete subPayload[k]);
       const res = await apiClient.patients.upsertSubscriber(metadata.patientId, subPayload);
       const saved = res.data?.data || res.data;
-      setMetadata((prev) => ({ ...prev, subscriber: saved }));
+      // Normalise DOB back to YYYY-MM-DD so next save doesn't send ISO timestamp
+      const normalisedSaved = { ...saved, dob: saved?.dob?.split("T")[0] || saved?.dob };
+      setMetadata((prev) => ({ ...prev, subscriber: normalisedSaved }));
       await apiClient.patients.update(metadata.patientId, {
         insurance_relationship: metadata.relationship || "other",
         subscriber_id: saved?.id,
@@ -572,10 +588,19 @@ export default function EncounterPage() {
           encounterFieldErrors={encounterFieldErrors}
         />
       ),
-      canGoNext:
-        !!metadata.patientId &&
-        !!metadata.date &&
-        (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
+      canGoNext: (() => {
+        if (!metadata.patientId || !metadata.date) return false;
+        const p = patients.find((pt) => pt.id === metadata.patientId);
+        if (!p) return false;
+        if (p.insuranceType !== "SELF_PAY") {
+          if (!p.insuranceType || !p.insuranceId) return false;
+        }
+        if (metadata.relationship !== "self") {
+          const sub = metadata.subscriber;
+          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id) return false;
+        }
+        return true;
+      })(),
       onNext: async () => {
         const validation = EncounterDetailsFormSchema.safeParse({
           patientId: metadata.patientId,
@@ -593,6 +618,19 @@ export default function EncounterPage() {
           throw new Error(first ? first.message : "Please fix encounter details");
         }
         setEncounterFieldErrors({});
+
+        // Validate required subscriber fields
+        if (metadata.relationship !== "self") {
+          const subErrs: Record<string, string> = {};
+          if (!metadata.subscriber?.full_name) subErrs.subscriber_full_name = "Subscriber name is required";
+          if (!metadata.subscriber?.dob) subErrs.subscriber_dob = "Date of birth is required";
+          if (!metadata.subscriber?.phone) subErrs.subscriber_phone = "Phone number is required";
+          if (!metadata.subscriber?.member_id) subErrs.subscriber_member_id = "Member ID is required";
+          if (Object.keys(subErrs).length > 0) {
+            setEncounterFieldErrors(subErrs);
+            throw new Error("Please fill in all required subscriber fields.");
+          }
+        }
 
         // Step 1: Create or update encounter
         await persistSubscriber();

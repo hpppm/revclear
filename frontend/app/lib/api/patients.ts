@@ -35,14 +35,17 @@ const PatientWriteSchema = z.object({
 });
 
 const SubscriberWriteSchema = z.object({
-  subscriber_full_name: z.string().optional().nullable(),
-  subscriber_dob: z.string().optional().nullable(),
-  subscriber_gender: z.string().optional().nullable(),
-  subscriber_relationship: z.string().optional().nullable(),
-  subscriber_address_street: z.string().optional().nullable(),
-  subscriber_address_city: z.string().optional().nullable(),
-  subscriber_address_state: z.string().optional().nullable(),
-  subscriber_address_zip: z.string().optional().nullable(),
+  full_name: z.string().optional().nullable(),
+  dob: z.string().optional().nullable(),
+  gender: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  address_street: z.string().optional().nullable(),
+  address_city: z.string().optional().nullable(),
+  address_state: z.string().optional().nullable(),
+  address_zip: z.string().optional().nullable(),
+  member_id: z.string().optional().nullable(),
+  group_number: z.string().optional().nullable(),
+  relationship: z.enum(["self", "spouse", "child", "other"]).optional(),
 });
 
 export type PatientWritePayload = z.infer<typeof PatientWriteSchema>;

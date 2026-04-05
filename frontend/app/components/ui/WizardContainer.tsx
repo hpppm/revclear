@@ -35,6 +35,7 @@ export default function WizardContainer({
 }: WizardContainerProps) {
     const [currentStep, setCurrentStep] = useState(initialStep);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [stepError, setStepError] = useState<string | null>(null);
     // Track whether the current step change came from user navigation (not external sync)
     const userNavigatedRef = useRef(false);
 
@@ -55,8 +56,8 @@ export default function WizardContainer({
         const currentStepData = steps[currentStep];
 
         setIsTransitioning(true);
+        setStepError(null);
         try {
-            // Call onNext callback if it exists
             if (currentStepData.onNext) {
                 await currentStepData.onNext();
             }
@@ -67,8 +68,9 @@ export default function WizardContainer({
             } else {
                 onComplete();
             }
-        } catch {
+        } catch (err: any) {
             logger.error("Error in step transition");
+            setStepError(err?.message || "Please fix the errors above before continuing.");
         } finally {
             setIsTransitioning(false);
         }
@@ -119,6 +121,10 @@ export default function WizardContainer({
                     <div className="flex-1 overflow-auto">
                         <div className="animate-fadeIn">{currentStepData.component}</div>
                     </div>
+
+                    {stepError && (
+                        <p className="mt-4 text-sm text-red-600 text-center">{stepError}</p>
+                    )}
 
                     <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
                         {isFirstStep && onExit ? (

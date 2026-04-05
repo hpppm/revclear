@@ -43,6 +43,20 @@ export default function AddPatientPage() {
     setError(null);
     setFieldErrors({});
 
+    // Required field checks before API call
+    const requiredErrs: Record<string, string> = {};
+    if (!formData.full_name.trim()) requiredErrs.full_name = "Full name is required";
+    if (!formData.dob) requiredErrs.dob = "Date of birth is required";
+    if (!formData.phone.trim()) requiredErrs.phone = "Phone number is required";
+    if (!isSelfPay) {
+      if (!formData.insurance_provider.trim()) requiredErrs.insurance_provider = "Insurance provider is required";
+      if (!formData.insurance_member_id.trim()) requiredErrs.insurance_member_id = "Member ID is required";
+    }
+    if (Object.keys(requiredErrs).length > 0) {
+      setFieldErrors(requiredErrs);
+      return;
+    }
+
     const validation = CreatePatientFormSchema.safeParse(formData);
     if (!validation.success) {
       const errs: Record<string, string> = {};
@@ -57,8 +71,7 @@ export default function AddPatientPage() {
     setSaving(true);
 
     try {
-      // If self-pay, clear all insurance fields before submitting
-      const dataToSubmit = isSelfPay
+      const base = isSelfPay
         ? {
           ...formData,
           insurance_provider: "SELF_PAY",
@@ -70,12 +83,26 @@ export default function AddPatientPage() {
         }
         : formData;
 
+      // Strip empty strings so optional backend fields receive undefined not ""
+      const dataToSubmit = Object.fromEntries(
+        Object.entries(base).filter(([, v]) => v !== "")
+      );
+
       await apiClient.patients.create(dataToSubmit);
-      router.push("/dashboard"); // Navigate to dashboard after saving
-    } catch (error) {
+      router.push("/dashboard");
+    } catch (error: any) {
       logger.error("Failed to create patient", error);
-      const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
-      setError(message);
+      const backendErrors: any[] = error?.response?.data?.errors || [];
+      if (backendErrors.length > 0) {
+        const errs: Record<string, string> = {};
+        backendErrors.forEach((e: any) => {
+          const key = String(e.path?.[0] || "");
+          if (key && !errs[key]) errs[key] = e.message;
+        });
+        setFieldErrors(errs);
+      } else {
+        setError(error?.response?.data?.error || "Failed to create patient");
+      }
     } finally {
       setSaving(false);
     }
@@ -236,10 +263,11 @@ export default function AddPatientPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
-                    label="Insurance Provider"
+                    label="Insurance Provider *"
                     value={formData.insurance_provider}
                     onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
                     placeholder="Blue Cross Blue Shield"
+                    error={fieldErrors.insurance_provider}
                   />
                   <Input
                     label="Policy Number"
@@ -248,11 +276,12 @@ export default function AddPatientPage() {
                     placeholder="ABC123456789"
                   />
                   <Input
-                    label="Member ID"
+                    label="Member ID *"
                     value={formData.insurance_member_id}
                     onChange={(e) => setFormData({ ...formData, insurance_member_id: e.target.value })}
                     placeholder="Member/Subscriber ID"
                     helperText="Insurance member or subscriber ID"
+                    error={fieldErrors.insurance_member_id}
                   />
                   <Input
                     label="Group Number"

@@ -226,7 +226,15 @@ export const EncounterDetailsFormSchema = z.object({
 export const SubscriberFormSchema = z.object({
   full_name: z.string().min(2, "Subscriber name must be at least 2 characters").max(100),
   dob: dobPastSchema,
-  phone: phoneSchema,
+  gender: z.enum(["M", "F", "U", "O"]).optional(),
+  phone: z
+    .string()
+    .regex(/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/, "Please enter a valid 10-digit phone number")
+    .optional()
+    .or(z.literal("")),
+  address_street: z.string().max(200).optional().or(z.literal("")),
+  address_city: z.string().max(100).optional().or(z.literal("")),
+  address_state: z.string().max(2, "State must be 2 characters").optional().or(z.literal("")),
   address_zip: zipSchema,
   member_id: z.string().max(50).optional().or(z.literal("")),
   group_number: z.string().max(50).optional().or(z.literal("")),
