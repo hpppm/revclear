@@ -225,7 +225,29 @@ export class ClaimService {
       organization.id,
     );
     if (existing) {
-      return existing;
+      // Always override rendering_provider with current clinician data
+      // and subscriber.member_id from patient — these may be stale in saved claims
+      const patientForHydration = existing.patient_id ? await query(
+        `SELECT full_name, insurance_member_id, insurance_group_number, insurance_policy_number FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
+        [existing.patient_id, organization.id, user.id]
+      ).then(r => r.rows[0] ? decryptPatientRow(r.rows[0]) : null).catch(() => null) : null;
+
+      return {
+        ...existing,
+        rendering_provider: {
+          ...(existing.rendering_provider || {}),
+          name: user.full_name || existing.rendering_provider?.name || "",
+          npi: user.npi || existing.rendering_provider?.npi || "",
+          taxonomy_code: user.taxonomy_code || existing.rendering_provider?.taxonomy_code || "",
+        },
+        patient_name: existing.patient_name || patientForHydration?.full_name || null,
+        insurance_policy_number: existing.insurance_policy_number || patientForHydration?.insurance_policy_number || null,
+        subscriber: {
+          ...(existing.subscriber || {}),
+          member_id: existing.subscriber?.member_id || patientForHydration?.insurance_member_id || null,
+          group_number: existing.subscriber?.group_number || patientForHydration?.insurance_group_number || null,
+        },
+      };
     }
 
     const encounter = await this.requireOwnedEncounter(
@@ -425,13 +447,15 @@ export class ClaimService {
       encounter_id: encounter.id,
       clinician_id: encounter.clinician_id,
       patient_id: encounter.patient_id,
+      patient_name: patient.full_name || null,
       diagnosis_codes: icdCodes,
       procedure_codes: cptCodes.map((c) => c.code),
       total_amount: totalAmount,
-      insurance_provider: patient.insurance_provider || "Unknown",
+      insurance_provider: patient.insurance_provider || null,
+      insurance_policy_number: patient.insurance_policy_number || null,
       status: "draft",
-      payer_id: patient.insurance_payer_id || "PAYER001",
-      payer_name: patient.insurance_provider || "Unknown Payer",
+      payer_id: patient.insurance_payer_id || null,
+      payer_name: patient.insurance_payer_name || patient.insurance_provider || null,
       claim_type: "professional",
       submission_type: "initial",
       patient_responsibility: 0,
@@ -443,7 +467,10 @@ export class ClaimService {
       service_facility: serviceFacility,
       rendering_provider: renderingProvider,
       subscriber_relationship: patient.insurance_relationship || "self",
-      subscriber: subscriber || null,
+      subscriber: subscriber || {
+        member_id: patient.insurance_member_id || null,
+        group_number: patient.insurance_group_number || null,
+      },
     };
   }
 }
