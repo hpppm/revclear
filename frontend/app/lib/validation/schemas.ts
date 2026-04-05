@@ -93,7 +93,8 @@ const npiSchema = z
 const dobPastSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
-  .refine((d: string) => !d || new Date(d) < new Date(), "Date of birth cannot be in the future")
+  .refine((d: string) => !d || new Date(d) >= new Date("1900-01-01"), "Date of birth cannot be before 1900-01-01")
+  .refine((d: string) => !d || new Date(d) <= new Date(), "Date of birth cannot be in the future")
   .optional()
   .or(z.literal(""));
 
@@ -150,14 +151,14 @@ export const EditPatientFormSchema = z.object({
   full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
   dob: dobPastSchema,
   gender: z.enum(["M", "F", "U", "O"]).optional(),
-  phone: phoneSchema,
+  phone: z.string().regex(/^\+?[\d\s\-(). ]{7,15}$/, "Please enter a valid phone number").min(1, "Phone number is required"),
   email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
   address_street: z.string().max(200).optional().or(z.literal("")),
   address_city: z.string().max(100).optional().or(z.literal("")),
   address_state: z.string().max(2).optional().or(z.literal("")),
   address_zip: zipSchema,
-  insurance_provider: z.string().max(100).optional().or(z.literal("")),
-  insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
+  insurance_provider: z.string().min(1, "Insurance provider is required").max(100),
+  insurance_policy_number: z.string().min(1, "Policy number is required").max(50),
   insurance_member_id: z.string().max(50).optional().or(z.literal("")),
   insurance_group_number: z.string().max(50).optional().or(z.literal("")),
 });

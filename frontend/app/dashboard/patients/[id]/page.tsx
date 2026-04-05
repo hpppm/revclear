@@ -46,6 +46,9 @@ export default function PatientProfilePage() {
     const [saving, setSaving] = useState(false);
     const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const [editingValue, setEditingValue] = useState('');
+    const [fieldSaving, setFieldSaving] = useState(false);
 
     // Track the last patientId fetched to prevent double-fetch.
     // React 18 Strict Mode remounts with restored refs, so this ref remains set
@@ -87,20 +90,21 @@ export default function PatientProfilePage() {
     const handleSave = async () => {
         if (!editedPatient) return;
 
+        const ne = (v: string | null | undefined) => v ?? "";
         const validation = EditPatientFormSchema.safeParse({
             full_name: editedPatient.name,
-            dob: editedPatient.dob,
-            gender: editedPatient.gender,
-            phone: editedPatient.phone,
-            email: editedPatient.email,
-            address_street: editedPatient.address_street,
-            address_city: editedPatient.address_city,
-            address_state: editedPatient.address_state,
-            address_zip: editedPatient.address_zip,
-            insurance_provider: editedPatient.insuranceType,
-            insurance_policy_number: editedPatient.insuranceId,
-            insurance_member_id: editedPatient.insurance_member_id,
-            insurance_group_number: editedPatient.insurance_group_number,
+            dob: ne(editedPatient.dob),
+            gender: editedPatient.gender ?? undefined,
+            phone: ne(editedPatient.phone),
+            email: ne(editedPatient.email),
+            address_street: ne(editedPatient.address_street),
+            address_city: ne(editedPatient.address_city),
+            address_state: ne(editedPatient.address_state),
+            address_zip: ne(editedPatient.address_zip),
+            insurance_provider: ne(editedPatient.insuranceType),
+            insurance_policy_number: ne(editedPatient.insuranceId),
+            insurance_member_id: ne(editedPatient.insurance_member_id),
+            insurance_group_number: ne(editedPatient.insurance_group_number),
         });
         if (!validation.success) {
             const errs: Record<string, string> = {};
@@ -109,8 +113,7 @@ export default function PatientProfilePage() {
                 if (key && !errs[key]) errs[key] = err.message;
             });
             setFieldErrors(errs);
-            const first = validation.error.issues[0];
-            setSaveError(first ? first.message : "Please fix validation errors");
+            setSaveError("Please fix the errors below before saving.");
             return;
         }
         setFieldErrors({});
@@ -118,20 +121,22 @@ export default function PatientProfilePage() {
 
         setSaving(true);
         try {
+            const nullIfEmpty = (v: string | null | undefined) =>
+                v === "" ? null : v ?? null;
             await apiClient.patients.update(patientId, {
                 full_name: editedPatient.name,
-                dob: editedPatient.dob,
+                dob: nullIfEmpty(editedPatient.dob),
                 gender: editedPatient.gender,
-                phone: editedPatient.phone,
-                email: editedPatient.email,
-                address_street: editedPatient.address_street,
-                address_city: editedPatient.address_city,
-                address_state: editedPatient.address_state,
-                address_zip: editedPatient.address_zip,
-                insurance_provider: editedPatient.insuranceType,
-                insurance_policy_number: editedPatient.insuranceId,
-                insurance_member_id: editedPatient.insurance_member_id,
-                insurance_group_number: editedPatient.insurance_group_number,
+                phone: nullIfEmpty(editedPatient.phone),
+                email: nullIfEmpty(editedPatient.email),
+                address_street: nullIfEmpty(editedPatient.address_street),
+                address_city: nullIfEmpty(editedPatient.address_city),
+                address_state: nullIfEmpty(editedPatient.address_state),
+                address_zip: nullIfEmpty(editedPatient.address_zip),
+                insurance_provider: nullIfEmpty(editedPatient.insuranceType),
+                insurance_policy_number: nullIfEmpty(editedPatient.insuranceId),
+                insurance_member_id: nullIfEmpty(editedPatient.insurance_member_id),
+                insurance_group_number: nullIfEmpty(editedPatient.insurance_group_number),
             });
             setPatient(editedPatient);
             setEditMode(false);
@@ -143,10 +148,42 @@ export default function PatientProfilePage() {
         }
     };
 
+    const clearFieldError = (field: string) => {
+        if (fieldErrors[field]) {
+            setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+        }
+    };
+
     const handleCancel = () => {
         setEditedPatient(patient);
         setFieldErrors({});
         setEditMode(false);
+    };
+
+    const handleFieldSave = async (field: 'name' | 'insurance_provider', value: string) => {
+        setFieldSaving(true);
+        try {
+            const payload = field === 'name'
+                ? { full_name: value }
+                : { insurance_provider: value || null };
+            await apiClient.patients.update(patientId, payload);
+            setPatient((prev) => prev ? {
+                ...prev,
+                name: field === 'name' ? value : prev.name,
+                insuranceType: field === 'insurance_provider' ? value : prev.insuranceType,
+            } : prev);
+            setEditedPatient((prev) => prev ? {
+                ...prev,
+                name: field === 'name' ? value : prev.name,
+                insuranceType: field === 'insurance_provider' ? value : prev.insuranceType,
+            } : prev);
+            setEditingField(null);
+        } catch (err) {
+            logger.error('Failed to save field', err);
+            setSaveError('Failed to save. Please try again.');
+        } finally {
+            setFieldSaving(false);
+        }
     };
 
     // Determine which step to continue from based on encounter data
@@ -230,38 +267,87 @@ export default function PatientProfilePage() {
                                     {(patient.name || "U").charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <h1 className="text-3xl font-bold text-slate-900">{patient.name}</h1>
+                                    <div className="flex items-center gap-2">
+                                        {editingField === 'name' ? (
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    value={editingValue}
+                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                    className="text-3xl font-bold text-slate-900 border-b-2 border-blue-500 outline-none bg-transparent w-64"
+                                                    autoFocus
+                                                />
+                                                <button
+                                                    onClick={() => handleFieldSave('name', editingValue)}
+                                                    disabled={fieldSaving}
+                                                    className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                                                    title="Save name"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingField(null)}
+                                                    disabled={fieldSaving}
+                                                    className="text-slate-400 hover:text-red-500 disabled:opacity-50"
+                                                    title="Cancel"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h1 className="text-3xl font-bold text-slate-900">{patient.name}</h1>
+                                                {!editMode && (
+                                                    <button
+                                                        onClick={() => { setEditingField('name'); setEditingValue(patient.name); }}
+                                                        className="text-slate-400 hover:text-blue-600 transition-colors"
+                                                        title="Edit name"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                     <p className="text-slate-500 mt-1">Patient Profile</p>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                {!editMode ? (
-                                    <button
-                                        onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
-                                    >
-                                        Edit Profile
-                                    </button>
-                                ) : (
-                                    <>
+                            <div>
+                                <div className="flex gap-2">
+                                    {!editMode ? (
                                         <button
-                                            onClick={handleSave}
-                                            disabled={saving}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
+                                            onClick={() => setEditMode(true)}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
                                         >
-                                            {saving ? "Saving..." : "Save"}
+                                            Edit Profile
                                         </button>
-                                        <button
-                                            onClick={handleCancel}
-                                            disabled={saving}
-                                            className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium text-sm disabled:opacity-50"
-                                        >
-                                            Cancel
-                                        </button>
-                                        {saveError && (
-                                            <p className="text-sm text-red-600 mt-1">{saveError}</p>
-                                        )}
-                                    </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={handleSave}
+                                                disabled={saving}
+                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
+                                            >
+                                                {saving ? "Saving..." : "Save"}
+                                            </button>
+                                            <button
+                                                onClick={handleCancel}
+                                                disabled={saving}
+                                                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium text-sm disabled:opacity-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                                {editMode && saveError && (
+                                    <p className="text-sm text-red-600 mt-2">Please fix the errors below before saving.</p>
                                 )}
                             </div>
                         </div>
@@ -274,7 +360,9 @@ export default function PatientProfilePage() {
                                         <input
                                             type="date"
                                             value={editedPatient.dob || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
+                                            min="1900-01-01"
+                                            max={new Date().toISOString().split('T')[0]}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, dob: e.target.value }); clearFieldError('dob'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
                                         />
                                         {fieldErrors.dob && <p className="mt-1 text-sm text-red-500">{fieldErrors.dob}</p>}
@@ -289,7 +377,7 @@ export default function PatientProfilePage() {
                                     <>
                                         <select
                                             value={editedPatient.gender || "U"}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, gender: e.target.value as any }); clearFieldError('gender'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
                                         >
                                             <option value="M">Male</option>
@@ -312,7 +400,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="tel"
                                             value={editedPatient.phone || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, phone: e.target.value }); clearFieldError('phone'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                         />
                                         {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">{fieldErrors.phone}</p>}
@@ -328,7 +416,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="email"
                                             value={editedPatient.email || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, email: e.target.value }); clearFieldError('email'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                         />
                                         {fieldErrors.email && <p className="mt-1 text-sm text-red-500">{fieldErrors.email}</p>}
@@ -344,7 +432,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="text"
                                             value={editedPatient.insuranceType || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, insuranceType: e.target.value }); clearFieldError('insurance_provider'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                         />
                                         {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_provider}</p>}
@@ -360,7 +448,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="text"
                                             value={editedPatient.insuranceId || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, insuranceId: e.target.value }); clearFieldError('insurance_policy_number'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                         />
                                         {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_policy_number}</p>}
@@ -376,7 +464,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="text"
                                             value={editedPatient.insurance_member_id || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value }); clearFieldError('insurance_member_id'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                         />
                                         {fieldErrors.insurance_member_id && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_member_id}</p>}
@@ -394,7 +482,7 @@ export default function PatientProfilePage() {
                                                 type="text"
                                                 placeholder="Street"
                                                 value={editedPatient.address_street || ""}
-                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
+                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_street: e.target.value }); clearFieldError('address_street'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                             />
                                             {fieldErrors.address_street && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_street}</p>}
@@ -404,7 +492,7 @@ export default function PatientProfilePage() {
                                                 type="text"
                                                 placeholder="City"
                                                 value={editedPatient.address_city || ""}
-                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
+                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_city: e.target.value }); clearFieldError('address_city'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                             />
                                             {fieldErrors.address_city && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_city}</p>}
@@ -414,7 +502,7 @@ export default function PatientProfilePage() {
                                                 type="text"
                                                 placeholder="State"
                                                 value={editedPatient.address_state || ""}
-                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
+                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_state: e.target.value }); clearFieldError('address_state'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                             />
                                             {fieldErrors.address_state && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_state}</p>}
@@ -424,7 +512,7 @@ export default function PatientProfilePage() {
                                                 type="text"
                                                 placeholder="ZIP"
                                                 value={editedPatient.address_zip || ""}
-                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
+                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_zip: e.target.value }); clearFieldError('address_zip'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
                                             />
                                             {fieldErrors.address_zip && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_zip}</p>}
