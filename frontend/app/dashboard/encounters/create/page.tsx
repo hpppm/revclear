@@ -344,7 +344,7 @@ export default function EncounterPage() {
           phone: p.phone,
           email: p.email,
           insuranceType: p.insurance_provider,
-          insuranceId: p.insurance_policy_number,
+          insuranceId: p.insurance_member_id || p.insurance_policy_number,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
           insurance_payer_name: p.insurance_payer_name,
