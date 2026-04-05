@@ -198,6 +198,8 @@ export default function PatientDetailsStep({
                   type="date"
                   value={metadata.subscriber?.dob || ""}
                   onChange={(e) => handleSubscriberChange("dob", e.target.value)}
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                   error={subscriberFieldErrors.dob}
                 />
                 <Input
