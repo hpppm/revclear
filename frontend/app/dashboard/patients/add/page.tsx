@@ -50,6 +50,7 @@ export default function AddPatientPage() {
     if (!formData.phone.trim()) requiredErrs.phone = "Phone number is required";
     if (!isSelfPay) {
       if (!formData.insurance_provider.trim()) requiredErrs.insurance_provider = "Insurance provider is required";
+      if (!formData.insurance_policy_number.trim()) requiredErrs.insurance_policy_number = "Policy number is required";
       if (!formData.insurance_member_id.trim()) requiredErrs.insurance_member_id = "Member ID is required";
     }
     if (Object.keys(requiredErrs).length > 0) {
@@ -270,10 +271,11 @@ export default function AddPatientPage() {
                     error={fieldErrors.insurance_provider}
                   />
                   <Input
-                    label="Policy Number"
+                    label="Policy Number *"
                     value={formData.insurance_policy_number}
                     onChange={(e) => setFormData({ ...formData, insurance_policy_number: e.target.value })}
                     placeholder="ABC123456789"
+                    error={fieldErrors.insurance_policy_number}
                   />
                   <Input
                     label="Member ID *"
