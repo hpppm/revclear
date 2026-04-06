@@ -53,6 +53,26 @@ export default function PatientProfilePage() {
     // to a different patient, patientId !== fetchedPatientIdRef.current so the
     // fetch runs correctly.
     const fetchedPatientIdRef = useRef<string | null>(null);
+    const saveErrorRef = useRef<HTMLDivElement>(null);
+    const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const fieldErrorsRef = useRef<Record<string, string>>({});
+    const [scrollTrigger, setScrollTrigger] = useState(0);
+
+    useEffect(() => { fieldErrorsRef.current = fieldErrors; }, [fieldErrors]);
+
+    useEffect(() => {
+        if (scrollTrigger === 0) return;
+        const order = ["dob", "phone", "email", "insurance_provider", "insurance_policy_number", "insurance_member_id"];
+        const errs = fieldErrorsRef.current;
+        const firstKey = order.find((k) => errs[k]);
+        setTimeout(() => {
+            if (firstKey && fieldRefs.current[firstKey]) {
+                fieldRefs.current[firstKey]!.scrollIntoView({ behavior: "smooth", block: "center" });
+            } else if (saveErrorRef.current) {
+                saveErrorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }, 50);
+    }, [scrollTrigger]);
 
     useEffect(() => {
         if (patientId && fetchedPatientIdRef.current !== patientId) {
@@ -111,6 +131,7 @@ export default function PatientProfilePage() {
             setFieldErrors(errs);
             const first = validation.error.issues[0];
             setSaveError(first ? first.message : "Please fix validation errors");
+            setScrollTrigger((n) => n + 1);
             return;
         }
         setFieldErrors({});
@@ -259,7 +280,9 @@ export default function PatientProfilePage() {
                                             Cancel
                                         </button>
                                         {saveError && (
-                                            <p className="text-sm text-red-600 mt-1">{saveError}</p>
+                                            <div ref={saveErrorRef}>
+                                                <p className="text-sm text-red-600 mt-1">{saveError}</p>
+                                            </div>
                                         )}
                                     </>
                                 )}
@@ -267,7 +290,7 @@ export default function PatientProfilePage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.dob = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Date of Birth</p>
                                 {editMode && editedPatient ? (
                                     <>
@@ -275,9 +298,9 @@ export default function PatientProfilePage() {
                                             type="date"
                                             value={editedPatient.dob || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 ${fieldErrors.dob ? "border-red-500" : "border-slate-300"}`}
                                         />
-                                        {fieldErrors.dob && <p className="mt-1 text-sm text-red-500">{fieldErrors.dob}</p>}
+                                        {fieldErrors.dob && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.dob ? new Date(patient.dob).toLocaleDateString() : "—"}</p>
@@ -305,7 +328,7 @@ export default function PatientProfilePage() {
                                     </p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.phone = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Phone</p>
                                 {editMode && editedPatient ? (
                                     <>
@@ -313,15 +336,15 @@ export default function PatientProfilePage() {
                                             type="tel"
                                             value={editedPatient.phone || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.phone ? "border-red-500" : "border-slate-300"}`}
                                         />
-                                        {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">{fieldErrors.phone}</p>}
+                                        {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.phone || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.email = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Email</p>
                                 {editMode && editedPatient ? (
                                     <>
@@ -337,7 +360,7 @@ export default function PatientProfilePage() {
                                     <p className="text-slate-900 font-medium">{patient.email || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.insurance_provider = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Insurance Provider</p>
                                 {editMode && editedPatient ? (
                                     <>
@@ -345,15 +368,15 @@ export default function PatientProfilePage() {
                                             type="text"
                                             value={editedPatient.insuranceType || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_provider ? "border-red-500" : "border-slate-300"}`}
                                         />
-                                        {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_provider}</p>}
+                                        {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insuranceType || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.insurance_policy_number = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Policy Number</p>
                                 {editMode && editedPatient ? (
                                     <>
@@ -361,15 +384,15 @@ export default function PatientProfilePage() {
                                             type="text"
                                             value={editedPatient.insuranceId || ""}
                                             onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_policy_number ? "border-red-500" : "border-slate-300"}`}
                                         />
-                                        {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_policy_number}</p>}
+                                        {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insuranceId || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.insurance_member_id = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Member ID</p>
                                 {editMode && editedPatient ? (
                                     <>

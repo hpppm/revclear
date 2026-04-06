@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import Button from "../ui/Button";
@@ -10,18 +10,40 @@ interface ReviewClaimStepProps {
     encounterId: string | null;
     onClaimChange?: (claim: any) => void;
     onValidationChange?: (isValid: boolean) => void;
+    submitAttempt?: number;
 }
 
 export default function ReviewClaimStep({
     encounterId,
     onClaimChange,
     onValidationChange,
+    submitAttempt,
 }: ReviewClaimStepProps) {
+    const billingNameRef = useRef<HTMLDivElement>(null);
+    const billingNpiRef = useRef<HTMLDivElement>(null);
+    const billingTaxIdRef = useRef<HTMLDivElement>(null);
+    const billingStreetRef = useRef<HTMLDivElement>(null);
+    const billingCityRef = useRef<HTMLDivElement>(null);
+    const billingStateRef = useRef<HTMLDivElement>(null);
+    const billingZipRef = useRef<HTMLDivElement>(null);
+    const serviceFacilityNameRef = useRef<HTMLDivElement>(null);
+    const serviceFacilityNpiRef = useRef<HTMLDivElement>(null);
+    const serviceStreetRef = useRef<HTMLDivElement>(null);
+    const serviceCityRef = useRef<HTMLDivElement>(null);
+    const serviceStateRef = useRef<HTMLDivElement>(null);
+    const serviceZipRef = useRef<HTMLDivElement>(null);
+    const renderingNameRef = useRef<HTMLDivElement>(null);
+    const renderingNpiRef = useRef<HTMLDivElement>(null);
     const [claim, setClaim] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const validationErrorsRef = useRef<string[]>([]);
     const [_prefilling, setPrefilling] = useState(false);
+
+    useEffect(() => {
+        validationErrorsRef.current = validationErrors;
+    }, [validationErrors]);
 
     useEffect(() => {
         if (encounterId) {
@@ -29,6 +51,33 @@ export default function ReviewClaimStep({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [encounterId]);
+
+    useEffect(() => {
+        if (!submitAttempt || submitAttempt === 0) return;
+        const errs = validationErrorsRef.current;
+        if (errs.length === 0) return;
+        // Ordered top-to-bottom on page
+        const checks: [boolean, React.RefObject<HTMLDivElement | null>][] = [
+            [errs.some((e) => e.includes("Billing provider name")), billingNameRef],
+            [errs.some((e) => e.includes("Billing provider NPI")), billingNpiRef],
+            [errs.some((e) => e.includes("Billing provider Tax ID")), billingTaxIdRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingStreetRef.current?.querySelector("input")?.value, billingStreetRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingCityRef.current?.querySelector("input")?.value, billingCityRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingStateRef.current?.querySelector("input")?.value, billingStateRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingZipRef.current?.querySelector("input")?.value, billingZipRef],
+            [errs.some((e) => e.includes("Service facility name")), serviceFacilityNameRef],
+            [errs.some((e) => e.includes("Service facility NPI")), serviceFacilityNpiRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceStreetRef.current?.querySelector("input")?.value, serviceStreetRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceCityRef.current?.querySelector("input")?.value, serviceCityRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceStateRef.current?.querySelector("input")?.value, serviceStateRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceZipRef.current?.querySelector("input")?.value, serviceZipRef],
+            [errs.some((e) => e.includes("Rendering provider name")), renderingNameRef],
+            [errs.some((e) => e.includes("Rendering provider NPI")), renderingNpiRef],
+        ];
+        const first = checks.find(([cond]) => cond);
+        if (first) first[1].current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, [submitAttempt]);
+
 
     const fetchClaimPreview = async () => {
         if (!encounterId) return;
@@ -105,6 +154,10 @@ export default function ReviewClaimStep({
         handleUpdateLineItem(index, "modifiers", mods);
     };
 
+    const isValidNpiFormat = (v: string) => /^\d{10}$/.test((v || "").trim());
+    const isValidTaxIdFormat = (v: string) => /^\d{2}-?\d{7}$/.test((v || "").replace(/\s/g, ""));
+    const nameHasLetters = (v: string) => /[A-Za-z]/.test((v || "").trim()) && (v || "").trim().length >= 2;
+
     const requiredAddressMissing = (addressObj: any) => {
         if (!addressObj) return true;
         // If backend sends a combined address string and it is non-empty, treat it as present.
@@ -128,8 +181,45 @@ export default function ReviewClaimStep({
             || (current.line_items || []).some((li: any) => li.procedure_code);
         if (!hasCpt) errs.push("At least one CPT/procedure code is required.");
 
+        const isValidZip = (v: string) => /^\d{5}(-\d{4})?$/.test((v || "").trim());
+        const isValidState = (v: string) => /^[A-Za-z]{2}$/.test((v || "").trim());
+
+        const nameError = (val: string, label: string) => {
+            if (!val) return `${label} is required.`;
+            if (!nameHasLetters(val)) return `${label} must contain letters (e.g. "Clinic Name").`;
+            return null;
+        };
+
+        const billingNameErr = nameError(current.billing_provider?.name, "Billing provider name");
+        if (billingNameErr) errs.push(billingNameErr);
+
+        if (!current.billing_provider?.npi) {
+            errs.push("Billing provider NPI is required.");
+        } else if (!isValidNpiFormat(current.billing_provider.npi)) {
+            errs.push("Billing provider NPI must be exactly 10 digits.");
+        }
+        if (!current.billing_provider?.tax_id) {
+            errs.push("Billing provider Tax ID is required.");
+        } else if (!isValidTaxIdFormat(current.billing_provider.tax_id)) {
+            errs.push("Billing provider Tax ID must be in format XX-XXXXXXX.");
+        }
+
+        const renderingNameErr = nameError(current.rendering_provider?.name, "Rendering provider name");
+        if (renderingNameErr) errs.push(renderingNameErr);
+
         if (!current.rendering_provider?.npi) {
             errs.push("Rendering provider NPI is required.");
+        } else if (!isValidNpiFormat(current.rendering_provider.npi)) {
+            errs.push("Rendering provider NPI must be exactly 10 digits.");
+        }
+
+        const facilityNameErr = nameError(current.service_facility?.name, "Service facility name");
+        if (facilityNameErr) errs.push(facilityNameErr);
+
+        if (!current.service_facility?.npi) {
+            errs.push("Service facility NPI is required.");
+        } else if (!isValidNpiFormat(current.service_facility.npi)) {
+            errs.push("Service facility NPI must be exactly 10 digits.");
         }
 
         const rel = current.subscriber_relationship || current.subscriber?.relationship;
@@ -153,11 +243,29 @@ export default function ReviewClaimStep({
             }
         }
 
-        if (requiredAddressMissing(current.billing_provider?.address || current.billing_provider)) {
+        const billingAddr = {
+            street: current.billing_provider?.street || current.billing_provider?.address?.street,
+            city: current.billing_provider?.city || current.billing_provider?.address?.city,
+            state: current.billing_provider?.state || current.billing_provider?.address?.state,
+            zip: current.billing_provider?.zip || current.billing_provider?.address?.zip,
+        };
+        if (requiredAddressMissing(billingAddr)) {
             errs.push("Billing provider address (street, city, state, ZIP) is required.");
+        } else {
+            if (billingAddr.zip && !isValidZip(billingAddr.zip)) errs.push("Billing provider ZIP must be 5 digits.");
+            if (billingAddr.state && !isValidState(billingAddr.state)) errs.push("Billing provider state must be 2 letters.");
         }
-        if (requiredAddressMissing(current.service_facility?.address || current.service_facility)) {
+        const serviceAddr = {
+            street: current.service_facility?.street || current.service_facility?.address?.street,
+            city: current.service_facility?.city || current.service_facility?.address?.city,
+            state: current.service_facility?.state || current.service_facility?.address?.state,
+            zip: current.service_facility?.zip || current.service_facility?.address?.zip,
+        };
+        if (requiredAddressMissing(serviceAddr)) {
             errs.push("Service facility address (street, city, state, ZIP) is required.");
+        } else {
+            if (serviceAddr.zip && !isValidZip(serviceAddr.zip)) errs.push("Service facility ZIP must be 5 digits.");
+            if (serviceAddr.state && !isValidState(serviceAddr.state)) errs.push("Service facility state must be 2 letters.");
         }
 
         const hasServiceDate = current.service_date_start || current.service_date_end || current.date_of_service;
@@ -394,11 +502,9 @@ export default function ReviewClaimStep({
         <div className="space-y-8 max-w-4xl mx-auto">
             <div className="space-y-2 text-center">
                 <h2 className="text-3xl font-semibold text-slate-900">Review Claim</h2>
-                <p className="text-slate-600 text-sm">Stacked, step-by-step review. Fix any blockers below.</p>
-                <p className="text-xs text-slate-500">Changes save when you complete the encounter.</p>
             </div>
 
-            {validationErrors.length > 0 && (
+            {!!submitAttempt && submitAttempt > 0 && validationErrors.length > 0 && (
                 <Card className="border border-red-200 bg-red-50 p-4">
                     <h4 className="text-sm font-semibold text-red-800 mb-2">Fix before submitting</h4>
                     <ul className="list-disc pl-5 space-y-1 text-sm text-red-700">
@@ -559,17 +665,23 @@ export default function ReviewClaimStep({
                     <p className="text-sm text-slate-600">Solo or organization billing details.</p>
                 </div>
                 <div className="space-y-3">
-                    <Input
-                        label="Billing Provider Name"
-                        value={claim.billing_provider?.name || ""}
-                        onChange={(e) => handleUpdateNested("billing_provider", "name", e.target.value)}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div ref={billingNameRef}>
                         <Input
-                            label="NPI (Type 1)"
-                            value={claim.billing_provider?.npi || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "npi", e.target.value)}
+                            label="Billing Provider Name *"
+                            value={claim.billing_provider?.name || ""}
+                            onChange={(e) => handleUpdateNested("billing_provider", "name", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 ? (!claim.billing_provider?.name ? "Required" : !nameHasLetters(claim.billing_provider.name) ? "Must contain letters (e.g. \"Clinic Name\")" : undefined) : undefined}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div ref={billingNpiRef}>
+                            <Input
+                                label="NPI (Type 1) *"
+                                value={claim.billing_provider?.npi || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "npi", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && (!claim.billing_provider?.npi || !/^\d{10}$/.test(claim.billing_provider.npi)) ? (!claim.billing_provider?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
+                            />
+                        </div>
                         <Input
                             label="Organization NPI (Type 2, optional)"
                             value={claim.billing_provider?.organization_npi || claim.billing_provider?.clinic_npi || ""}
@@ -577,11 +689,14 @@ export default function ReviewClaimStep({
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input
-                            label="Tax ID"
-                            value={claim.billing_provider?.tax_id || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "tax_id", e.target.value)}
-                        />
+                        <div ref={billingTaxIdRef}>
+                            <Input
+                                label="Tax ID *"
+                                value={claim.billing_provider?.tax_id || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "tax_id", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 ? (!claim.billing_provider?.tax_id ? "Required" : !isValidTaxIdFormat(claim.billing_provider.tax_id) ? "Must be in format XX-XXXXXXX" : undefined) : undefined}
+                            />
+                        </div>
                         <Input
                             label="Phone (optional)"
                             value={claim.billing_provider?.phone || ""}
@@ -593,27 +708,39 @@ export default function ReviewClaimStep({
                         value={claim.billing_provider?.taxonomy_code || ""}
                         onChange={(e) => handleUpdateNested("billing_provider", "taxonomy_code", e.target.value)}
                     />
-                    <Input
-                        label="Address Street"
-                        value={claim.billing_provider?.street || claim.billing_provider?.address?.street || ""}
-                        onChange={(e) => handleUpdateNested("billing_provider", "street", e.target.value)}
-                    />
+                    <div ref={billingStreetRef}>
+                        <Input
+                            label="Address Street *"
+                            value={claim.billing_provider?.street || claim.billing_provider?.address?.street || ""}
+                            onChange={(e) => handleUpdateNested("billing_provider", "street", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.street && !claim.billing_provider?.address?.street ? "Required" : undefined}
+                        />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <Input
-                            label="City"
-                            value={claim.billing_provider?.city || claim.billing_provider?.address?.city || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "city", e.target.value)}
-                        />
-                        <Input
-                            label="State"
-                            value={claim.billing_provider?.state || claim.billing_provider?.address?.state || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "state", e.target.value)}
-                        />
-                        <Input
-                            label="ZIP"
-                            value={claim.billing_provider?.zip || claim.billing_provider?.address?.zip || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "zip", e.target.value)}
-                        />
+                        <div ref={billingCityRef}>
+                            <Input
+                                label="City *"
+                                value={claim.billing_provider?.city || claim.billing_provider?.address?.city || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "city", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.city && !claim.billing_provider?.address?.city ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={billingStateRef}>
+                            <Input
+                                label="State *"
+                                value={claim.billing_provider?.state || claim.billing_provider?.address?.state || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "state", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.state && !claim.billing_provider?.address?.state ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={billingZipRef}>
+                            <Input
+                                label="ZIP *"
+                                value={claim.billing_provider?.zip || claim.billing_provider?.address?.zip || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "zip", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.zip && !claim.billing_provider?.address?.zip ? "Required" : undefined}
+                            />
+                        </div>
                     </div>
                 </div>
             </Card>
@@ -624,17 +751,23 @@ export default function ReviewClaimStep({
                     <p className="text-sm text-slate-600">Where the service occurred.</p>
                 </div>
                 <div className="space-y-3">
-                    <Input
-                        label="Facility Name"
-                        value={claim.service_facility?.name || ""}
-                        onChange={(e) => handleUpdateNested("service_facility", "name", e.target.value)}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div ref={serviceFacilityNameRef}>
                         <Input
-                            label="Facility NPI"
-                            value={claim.service_facility?.npi || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "npi", e.target.value)}
+                            label="Facility Name *"
+                            value={claim.service_facility?.name || ""}
+                            onChange={(e) => handleUpdateNested("service_facility", "name", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 ? (!claim.service_facility?.name ? "Required" : !nameHasLetters(claim.service_facility.name) ? "Must contain letters (e.g. \"City Clinic\")" : undefined) : undefined}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div ref={serviceFacilityNpiRef}>
+                            <Input
+                                label="Facility NPI *"
+                                value={claim.service_facility?.npi || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "npi", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && (!claim.service_facility?.npi || !/^\d{10}$/.test(claim.service_facility.npi)) ? (!claim.service_facility?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
+                            />
+                        </div>
                         <Input
                             label="Place of Service (POS)"
                             value={claim.service_facility?.place_of_service || "11"}
@@ -646,27 +779,39 @@ export default function ReviewClaimStep({
                         value={claim.service_facility?.phone || ""}
                         onChange={(e) => handleUpdateNested("service_facility", "phone", e.target.value)}
                     />
-                    <Input
-                        label="Address Street"
-                        value={claim.service_facility?.street || claim.service_facility?.address?.street || ""}
-                        onChange={(e) => handleUpdateNested("service_facility", "street", e.target.value)}
-                    />
+                    <div ref={serviceStreetRef}>
+                        <Input
+                            label="Address Street *"
+                            value={claim.service_facility?.street || claim.service_facility?.address?.street || ""}
+                            onChange={(e) => handleUpdateNested("service_facility", "street", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.street && !claim.service_facility?.address?.street ? "Required" : undefined}
+                        />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <Input
-                            label="City"
-                            value={claim.service_facility?.city || claim.service_facility?.address?.city || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "city", e.target.value)}
-                        />
-                        <Input
-                            label="State"
-                            value={claim.service_facility?.state || claim.service_facility?.address?.state || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "state", e.target.value)}
-                        />
-                        <Input
-                            label="ZIP"
-                            value={claim.service_facility?.zip || claim.service_facility?.address?.zip || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "zip", e.target.value)}
-                        />
+                        <div ref={serviceCityRef}>
+                            <Input
+                                label="City *"
+                                value={claim.service_facility?.city || claim.service_facility?.address?.city || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "city", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.city && !claim.service_facility?.address?.city ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={serviceStateRef}>
+                            <Input
+                                label="State *"
+                                value={claim.service_facility?.state || claim.service_facility?.address?.state || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "state", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.state && !claim.service_facility?.address?.state ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={serviceZipRef}>
+                            <Input
+                                label="ZIP *"
+                                value={claim.service_facility?.zip || claim.service_facility?.address?.zip || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "zip", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.zip && !claim.service_facility?.address?.zip ? "Required" : undefined}
+                            />
+                        </div>
                     </div>
                 </div>
             </Card>
@@ -677,17 +822,22 @@ export default function ReviewClaimStep({
                     <p className="text-sm text-slate-600">Who performed the service (required).</p>
                 </div>
                 <div className="space-y-3">
-                    <Input
-                        label="Rendering Provider Name"
-                        value={claim.rendering_provider?.name || claim.billing_provider?.name || ""}
-                        onChange={(e) => handleUpdateNested("rendering_provider", "name", e.target.value)}
-                    />
-                    <Input
-                        label="Rendering Provider NPI"
-                        value={claim.rendering_provider?.npi || ""}
-                        onChange={(e) => handleUpdateNested("rendering_provider", "npi", e.target.value)}
-                        helperText="Required"
-                    />
+                    <div ref={renderingNameRef}>
+                        <Input
+                            label="Rendering Provider Name *"
+                            value={claim.rendering_provider?.name || ""}
+                            onChange={(e) => handleUpdateNested("rendering_provider", "name", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 ? (!claim.rendering_provider?.name ? "Required" : !nameHasLetters(claim.rendering_provider.name) ? "Must contain letters (e.g. \"Dr. Smith\")" : undefined) : undefined}
+                        />
+                    </div>
+                    <div ref={renderingNpiRef}>
+                        <Input
+                            label="Rendering Provider NPI *"
+                            value={claim.rendering_provider?.npi || ""}
+                            onChange={(e) => handleUpdateNested("rendering_provider", "npi", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 && !claim.rendering_provider?.npi ? "Required" : undefined}
+                        />
+                    </div>
                     <Input
                         label="Taxonomy Code"
                         value={claim.rendering_provider?.taxonomy_code || ""}

@@ -93,6 +93,7 @@ export default function EncounterPage() {
   const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
+  const [claimSubmitAttempt, setClaimSubmitAttempt] = useState(0);
   const loadedEncounterIdRef = useRef<string | null>(null);
 
   const searchEncounterId =
@@ -692,11 +693,13 @@ export default function EncounterPage() {
           encounterId={encounterId}
           onClaimChange={handleClaimChange}
           onValidationChange={setClaimValid}
+          submitAttempt={claimSubmitAttempt}
         />
       ),
-      canGoNext: claimValid,
+      canGoNext: true,
       onNext: async () => {
         if (!claimValid) {
+          setClaimSubmitAttempt((n) => n + 1);
           throw new Error("Claim is missing required fields.");
         }
         // Step 5: Create or update claim, then finalize encounter status
