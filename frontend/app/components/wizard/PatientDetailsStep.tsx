@@ -285,7 +285,7 @@ export default function PatientDetailsStep({
                   label="State"
                   variant="select"
                   value={metadata.subscriber?.address_state || ""}
-                  onChange={(e) => handleSubscriberChange("address_state", e.target.value)}
+                  onChange={(e) => { handleSubscriberChange("address_state", e.target.value); handleSubscriberBlur("address_state", e.target.value); }}
                   options={US_STATES}
                   error={subscriberFieldErrors.address_state}
                 />
@@ -309,6 +309,8 @@ export default function PatientDetailsStep({
                   label="Subscriber Group Number"
                   value={metadata.subscriber?.group_number || ""}
                   onChange={(e) => handleSubscriberChange("group_number", e.target.value)}
+                  onBlur={(e) => handleSubscriberBlur("group_number", e.target.value)}
+                  error={subscriberFieldErrors.group_number}
                 />
               </div>
             </div>

@@ -43,29 +43,31 @@ export default function AddPatientPage() {
     setError(null);
     setFieldErrors({});
 
-    // Required field checks before API call
-    const requiredErrs: Record<string, string> = {};
-    if (!formData.full_name.trim()) requiredErrs.full_name = "Full name is required";
-    if (!formData.dob) requiredErrs.dob = "Date of birth is required";
-    if (!formData.phone.trim()) requiredErrs.phone = "Phone number is required";
+    // Collect all validation errors at once so every red field shows simultaneously
+    const allErrors: Record<string, string> = {};
+
+    // Required field checks
+    if (!formData.full_name.trim()) allErrors.full_name = "Full name is required";
+    if (!formData.dob) allErrors.dob = "Date of birth is required";
+    if (!formData.phone.trim()) allErrors.phone = "Phone number is required";
     if (!isSelfPay) {
-      if (!formData.insurance_provider.trim()) requiredErrs.insurance_provider = "Insurance provider is required";
-      if (!formData.insurance_policy_number.trim()) requiredErrs.insurance_policy_number = "Policy number is required";
-      if (!formData.insurance_member_id.trim()) requiredErrs.insurance_member_id = "Member ID is required";
-    }
-    if (Object.keys(requiredErrs).length > 0) {
-      setFieldErrors(requiredErrs);
-      return;
+      if (!formData.insurance_provider.trim()) allErrors.insurance_provider = "Insurance provider is required";
+      if (!formData.insurance_policy_number.trim()) allErrors.insurance_policy_number = "Policy number is required";
+      if (!formData.insurance_member_id.trim()) allErrors.insurance_member_id = "Member ID is required";
     }
 
+    // Zod format validation — runs alongside required checks so format errors also show
     const validation = CreatePatientFormSchema.safeParse(formData);
     if (!validation.success) {
-      const errs: Record<string, string> = {};
       validation.error.issues.forEach((err) => {
         const key = String(err.path[0]);
-        if (key && !errs[key]) errs[key] = err.message;
+        // Don't overwrite a "required" message with a format message for the same field
+        if (key && !allErrors[key]) allErrors[key] = err.message;
       });
-      setFieldErrors(errs);
+    }
+
+    if (Object.keys(allErrors).length > 0) {
+      setFieldErrors(allErrors);
       return;
     }
 
@@ -290,6 +292,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_group_number}
                     onChange={(e) => setFormData({ ...formData, insurance_group_number: e.target.value })}
                     placeholder="Group number"
+                    error={fieldErrors.insurance_group_number}
                   />
                   <Input
                     label="Payer ID"
@@ -297,12 +300,14 @@ export default function AddPatientPage() {
                     onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
                     placeholder="Clearinghouse payer ID"
                     helperText="For electronic claim submission"
+                    error={fieldErrors.insurance_payer_id}
                   />
                   <Input
                     label="Payer Name"
                     value={formData.insurance_payer_name}
                     onChange={(e) => setFormData({ ...formData, insurance_payer_name: e.target.value })}
                     placeholder="Insurance payer name"
+                    error={fieldErrors.insurance_payer_name}
                   />
                 </div>
               )}
