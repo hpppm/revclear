@@ -5,16 +5,20 @@
  *
  * Prerequisites:
  *   TEST_EMAIL, TEST_PASSWORD — credentials for a test user with an existing org
- *   BASE_URL (optional, defaults to http://localhost:3000)
+ *   BASE_URL   (optional, default http://localhost:3000)
+ *   API_URL    (optional, default http://localhost:3005/api)
  *
- * Run from the frontend/ directory:
+ * Run from frontend/:
  *   npx playwright test
  */
 
 import { test, expect, Page } from "@playwright/test";
 
-// ── Shared test data ─────────────────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────────────────
 
+const API_BASE = process.env.API_URL ?? "http://localhost:3005/api";
+
+// Billing profile data used across all claim tests
 const ORG_BILLING = {
   billing_name: "Test Billing Clinic",
   billing_npi: "1234567890",
@@ -25,7 +29,63 @@ const ORG_BILLING = {
   billing_postal_code: "62701",
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── API helpers (page.request shares browser auth cookies) ───────────────────
+
+/**
+ * Create a patient, encounter, and ICD+CPT codes in one shot via the backend
+ * API. Returns the encounter ID ready for use in the claim preview step.
+ *
+ * Uses page.request so the authenticated browser session cookies are forwarded
+ * to port 3005 — no separate login needed.
+ */
+async function setupEncounterWithCodes(page: Page): Promise<string> {
+  const today = new Date().toISOString().split("T")[0];
+
+  // 1. Create patient
+  const patientRes = await page.request.post(`${API_BASE}/patients`, {
+    data: { full_name: `E2E Patient ${Date.now()}`, gender: "U" },
+  });
+  expect(patientRes.ok(), `Create patient failed: ${await patientRes.text()}`).toBeTruthy();
+  const patientBody = await patientRes.json();
+  const patientId: string = patientBody.data?.id ?? patientBody.id;
+  expect(patientId, "Expected patient ID in response").toBeTruthy();
+
+  // 2. Create encounter
+  const encRes = await page.request.post(`${API_BASE}/encounters`, {
+    data: { patient_id: patientId, date_of_service: today, status: "draft" },
+  });
+  expect(encRes.ok(), `Create encounter failed: ${await encRes.text()}`).toBeTruthy();
+  const encBody = await encRes.json();
+  const encounterId: string = encBody.data?.id ?? encBody.id;
+  expect(encounterId, "Expected encounter ID in response").toBeTruthy();
+
+  // 3. Save one ICD and one CPT code (required by preview endpoint)
+  const codesRes = await page.request.post(`${API_BASE}/encounters/${encounterId}/codes`, {
+    data: {
+      codes: [
+        {
+          code: "Z00.00",
+          codeType: "ICD",
+          description: "Encounter for general adult medical examination",
+          category: "Preventive",
+          isAiSuggested: false,
+        },
+        {
+          code: "99213",
+          codeType: "CPT",
+          description: "Office or other outpatient visit, established patient",
+          category: "Evaluation and Management",
+          isAiSuggested: false,
+        },
+      ],
+    },
+  });
+  expect(codesRes.ok(), `Save codes failed: ${await codesRes.text()}`).toBeTruthy();
+
+  return encounterId;
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
 
 async function goToOrgProfile(page: Page) {
   await page.goto("/dashboard/organization");
@@ -82,7 +142,7 @@ test.describe("Organization Profile — Save Changes", () => {
     await page.getByLabel(/billing npi/i).fill("12345");
     await page.getByRole("button", { name: /save changes/i }).click();
 
-    // Form should remain open — edit mode stays active on validation failure
+    // Form stays open — edit mode remains active on validation failure
     await expect(page.getByLabel(/billing npi/i)).toBeVisible();
   });
 
@@ -100,61 +160,12 @@ test.describe("Organization Profile — Save Changes", () => {
   });
 });
 
-// ── Patient + Encounter helpers ───────────────────────────────────────────────
-
-async function createPatientViaUI(page: Page, name: string): Promise<string> {
-  await page.goto("/dashboard/patients/create");
-  await page.waitForLoadState("networkidle");
-
-  await page.getByLabel(/full name/i).fill(name);
-
-  // Pick first available gender option
-  const genderSelect = page
-    .locator("select")
-    .filter({ hasText: /male|female|unknown/i })
-    .first();
-  if (await genderSelect.isVisible()) {
-    await genderSelect.selectOption({ index: 1 });
-  }
-
-  const policyField = page.getByLabel(/insurance policy/i);
-  if (await policyField.isVisible()) await policyField.fill("POL-E2E-001");
-
-  const memberField = page.getByLabel(/member id/i);
-  if (await memberField.isVisible()) await memberField.fill("MEM-E2E-001");
-
-  await page.getByRole("button", { name: /create patient|save/i }).click();
-
-  await page.waitForURL(/\/dashboard\/patients\/[^/]+$/, { timeout: 15000 });
-  return page.url().split("/").pop() as string;
-}
-
-async function goToEncounterReviewStep(
-  page: Page,
-  patientId: string
-): Promise<void> {
-  await page.goto(
-    `/dashboard/encounters/create?patientId=${patientId}&step=4`
-  );
-  await page.waitForLoadState("networkidle");
-
-  // Capture encounter ID from URL if present and navigate with it
-  const match = page.url().match(/[?&]id=([^&]+)/);
-  if (match) {
-    await page.goto(
-      `/dashboard/encounters/create?id=${match[1]}&step=4`
-    );
-    await page.waitForLoadState("networkidle");
-  }
-}
-
 // ── Bug 2: Claim Auto-Population ─────────────────────────────────────────────
 
 test.describe("Claim Form — Auto-population from Org Billing Profile", () => {
+  // Ensure org has billing data before each claim test
   test.beforeEach(async ({ page }) => {
-    // Ensure org has billing data saved before each claim test
     await goToOrgProfile(page);
-
     const editBtn = page.getByRole("button", { name: /edit organization/i });
     if (await editBtn.isVisible({ timeout: 3000 })) {
       await editBtn.click();
@@ -164,77 +175,69 @@ test.describe("Claim Form — Auto-population from Org Billing Profile", () => {
     }
   });
 
-  test("billing provider name pre-populates from org profile on claim review", async ({
-    page,
-  }) => {
-    const patientId = await createPatientViaUI(
-      page,
-      `E2E Billing Test ${Date.now()}`
-    );
-    await goToEncounterReviewStep(page, patientId);
+  test("billing provider name pre-populates from org profile on claim review", async ({ page }) => {
+    // Create a fully-wired encounter (patient + encounter + codes) via API
+    const encounterId = await setupEncounterWithCodes(page);
 
-    // Billing provider section must be visible
+    // Navigate directly to step 4 (Review Claim)
+    await page.goto(`/dashboard/encounters/create?id=${encounterId}&step=4`);
+    await page.waitForLoadState("networkidle");
+
+    // The claim preview builds and the billing provider section appears
     await page
       .getByText(/billing provider/i)
       .first()
-      .waitFor({ timeout: 15000 });
+      .waitFor({ timeout: 20000 });
 
-    // Try input value first, fall back to text content
-    const billingInput = page
-      .getByLabel(/billing.*name|provider.*name/i)
-      .first();
-
+    // Billing name should be pre-filled (either as input value or displayed text)
+    const billingInput = page.getByLabel(/billing.*name|provider.*name/i).first();
     if (await billingInput.isVisible({ timeout: 3000 })) {
       const val = await billingInput.inputValue();
-      expect(val.length).toBeGreaterThan(0);
+      expect(val.length, "Billing provider name must be pre-filled").toBeGreaterThan(0);
     } else {
-      await expect(page.getByText(ORG_BILLING.billing_name)).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(page.getByText(ORG_BILLING.billing_name)).toBeVisible({ timeout: 5000 });
     }
   });
 
-  test("service facility section is visible and pre-populated", async ({
-    page,
-  }) => {
-    const patientId = await createPatientViaUI(
-      page,
-      `E2E Facility Test ${Date.now()}`
-    );
-    await goToEncounterReviewStep(page, patientId);
+  test("service facility section is visible and populated", async ({ page }) => {
+    const encounterId = await setupEncounterWithCodes(page);
 
+    await page.goto(`/dashboard/encounters/create?id=${encounterId}&step=4`);
+    await page.waitForLoadState("networkidle");
+
+    // Service facility heading must be present
     await page
       .getByText(/service facility/i)
       .first()
-      .waitFor({ timeout: 15000 });
+      .waitFor({ timeout: 20000 });
 
     await expect(page.getByText(/service facility/i).first()).toBeVisible();
+
+    // Facility name should come from org.name
+    const facilityInput = page.getByLabel(/facility.*name|service.*name/i).first();
+    if (await facilityInput.isVisible({ timeout: 3000 })) {
+      const val = await facilityInput.inputValue();
+      expect(val.length, "Service facility name must be pre-filled").toBeGreaterThan(0);
+    }
   });
 
-  test("rendering provider section is visible on claim review step", async ({
-    page,
-  }) => {
-    const patientId = await createPatientViaUI(
-      page,
-      `E2E Rendering Test ${Date.now()}`
-    );
-    await goToEncounterReviewStep(page, patientId);
+  test("rendering provider section is visible on claim review step", async ({ page }) => {
+    const encounterId = await setupEncounterWithCodes(page);
+
+    await page.goto(`/dashboard/encounters/create?id=${encounterId}&step=4`);
+    await page.waitForLoadState("networkidle");
 
     await page
       .getByText(/rendering provider/i)
       .first()
-      .waitFor({ timeout: 15000 });
+      .waitFor({ timeout: 20000 });
 
-    await expect(
-      page.getByText(/rendering provider/i).first()
-    ).toBeVisible();
+    await expect(page.getByText(/rendering provider/i).first()).toBeVisible();
   });
 
-  test("org profile shows saved billing data without re-entering it", async ({
-    page,
-  }) => {
-    // Verify that after the beforeEach saves billing data,
-    // it appears in read-only view without the user having to type it again
+  test("org profile shows saved billing data — claim fields need no manual re-entry", async ({ page }) => {
+    // Verify that the org profile persists the billing data in read-only view
+    // (pre-condition that enables auto-population)
     await goToOrgProfile(page);
     await expect(page.getByText(ORG_BILLING.billing_name)).toBeVisible();
     await expect(page.getByText(ORG_BILLING.billing_npi)).toBeVisible();
