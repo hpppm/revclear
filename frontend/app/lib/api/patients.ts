@@ -1,5 +1,6 @@
 import { z } from "zod";
 import api from "./axios";
+import { deduplicateGet } from "./deduplicate";
 
 // SECURITY: Explicit schemas strip any injected internal fields
 // (organization_id, clinician_id, role) that callers must not control.
@@ -51,9 +52,10 @@ const safeId = (id: string) => encodeURIComponent(UUID.parse(id));
 
 export const patientsApi = {
   getAll: (params?: { limit?: number; offset?: number }) =>
-    api.get("/patients", { params }),
+    deduplicateGet("patients.getAll", () => api.get("/patients", { params })),
 
-  getById: (id: string) => api.get(`/patients/${safeId(id)}`),
+  getById: (id: string) =>
+    deduplicateGet(`patients.getById.${id}`, () => api.get(`/patients/${safeId(id)}`)),
 
   create: (data: PatientWritePayload) =>
     api.post("/patients", PatientWriteSchema.parse(data)),
@@ -63,7 +65,8 @@ export const patientsApi = {
 
   delete: (id: string) => api.delete(`/patients/${safeId(id)}`),
 
-  getSubscriber: (id: string) => api.get(`/patients/${safeId(id)}/subscriber`),
+  getSubscriber: (id: string) =>
+    deduplicateGet(`patients.getSubscriber.${id}`, () => api.get(`/patients/${safeId(id)}/subscriber`)),
 
   upsertSubscriber: (id: string, data: SubscriberWritePayload) =>
     api.put(`/patients/${safeId(id)}/subscriber`, SubscriberWriteSchema.parse(data)),
