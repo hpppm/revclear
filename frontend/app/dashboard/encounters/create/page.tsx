@@ -7,6 +7,7 @@ import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { SubscriberWritePayload } from "@/app/lib/api/patients";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -54,7 +55,7 @@ export default function EncounterPage() {
     encounterType?: string;
     chiefComplaint?: string;
     relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
+    subscriber?: (Partial<SubscriberWritePayload> & { id?: string }) | null;
     patientName?: string;
   }>({
     patientId: "",
@@ -291,22 +292,19 @@ export default function EncounterPage() {
         throw new Error("Missing subscriber name");
       }
       const sub = metadata.subscriber;
-      // Strip null/empty values — backend schema uses .optional() not .nullable()
-      const subPayload: Record<string, any> = {
-        full_name: sub?.full_name || undefined,
-        dob: sub?.dob?.split("T")[0] || undefined,
+      const subPayload: SubscriberWritePayload = {
+        full_name: sub?.full_name ?? "",
+        dob: sub?.dob?.split("T")[0] ?? "",
+        phone: sub?.phone ?? "",
+        member_id: sub?.member_id ?? "",
         gender: sub?.gender || undefined,
-        phone: sub?.phone || undefined,
         address_street: sub?.address_street || undefined,
         address_city: sub?.address_city || undefined,
         address_state: sub?.address_state || undefined,
         address_zip: sub?.address_zip || undefined,
-        member_id: sub?.member_id || undefined,
         group_number: sub?.group_number || undefined,
         relationship: metadata.relationship || "other",
       };
-      // Remove undefined keys so they don't get sent as null
-      Object.keys(subPayload).forEach((k) => subPayload[k] === undefined && delete subPayload[k]);
       const res = await apiClient.patients.upsertSubscriber(metadata.patientId, subPayload);
       const saved = res.data?.data || res.data;
       // Normalise DOB back to YYYY-MM-DD so next save doesn't send ISO timestamp

@@ -229,13 +229,12 @@ export const SubscriberFormSchema = z.object({
   gender: z.enum(["M", "F", "U", "O"]).optional(),
   phone: z
     .string()
-    .regex(/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/, "Please enter a valid 10-digit phone number")
-    .optional()
-    .or(z.literal("")),
+    .min(1, "Phone number is required")
+    .regex(/^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/, "Please enter a valid 10-digit phone number"),
   address_street: z.string().max(200).optional().or(z.literal("")),
   address_city: z.string().max(100).optional().or(z.literal("")),
   address_state: z.string().max(2, "State must be 2 characters").optional().or(z.literal("")),
   address_zip: zipSchema,
-  member_id: z.string().max(50).optional().or(z.literal("")),
+  member_id: z.string().min(1, "Member ID is required").max(50),
   group_number: z.string().max(50).optional().or(z.literal("")),
 });

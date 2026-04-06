@@ -35,16 +35,16 @@ const PatientWriteSchema = z.object({
 });
 
 const SubscriberWriteSchema = z.object({
-  full_name: z.string().optional().nullable(),
-  dob: z.string().optional().nullable(),
-  gender: z.string().optional().nullable(),
-  phone: z.string().optional().nullable(),
-  address_street: z.string().optional().nullable(),
-  address_city: z.string().optional().nullable(),
-  address_state: z.string().optional().nullable(),
-  address_zip: z.string().optional().nullable(),
-  member_id: z.string().optional().nullable(),
-  group_number: z.string().optional().nullable(),
+  full_name: z.string().min(1, "Subscriber name is required").max(100),
+  dob: z.string().min(1, "Date of birth is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  member_id: z.string().min(1, "Member ID is required").max(50),
+  gender: z.string().optional(),
+  address_street: z.string().optional(),
+  address_city: z.string().optional(),
+  address_state: z.string().optional(),
+  address_zip: z.string().optional(),
+  group_number: z.string().optional(),
   relationship: z.enum(["self", "spouse", "child", "other"]).optional(),
 });
 

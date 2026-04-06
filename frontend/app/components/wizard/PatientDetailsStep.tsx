@@ -6,6 +6,7 @@ import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import { Patient } from "@/app/lib/types";
 import { SubscriberFormSchema } from "@/app/lib/validation/schemas";
+import { SubscriberWritePayload } from "@/app/lib/api/patients";
 
 const US_STATES = [
   { value: "", label: "Select state" },
@@ -37,6 +38,8 @@ const US_STATES = [
   { value: "DC", label: "DC — Washington D.C." },
 ];
 
+type SubscriberData = Partial<SubscriberWritePayload> & { id?: string };
+
 interface PatientDetailsStepProps {
   metadata: {
     date: string;
@@ -45,9 +48,9 @@ interface PatientDetailsStepProps {
     encounterType?: string;
     chiefComplaint?: string;
     relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
+    subscriber?: SubscriberData | null;
   };
-  setMetadata: (metadata: any) => void;
+  setMetadata: (metadata: PatientDetailsStepProps["metadata"]) => void;
   patients: Patient[];
   loadingPatients: boolean;
   patientsError: string | null;
@@ -77,7 +80,7 @@ export default function PatientDetailsStep({
 
   const [subscriberFieldErrors, setSubscriberFieldErrors] = useState<Record<string, string>>({});
 
-  const handleSubscriberChange = (field: string, value: any) => {
+  const handleSubscriberChange = (field: string, value: string) => {
     const updated = { ...(metadata.subscriber || {}), [field]: value };
     setMetadata({ ...metadata, subscriber: updated });
     // Clear error as soon as user starts correcting the field
@@ -86,8 +89,8 @@ export default function PatientDetailsStep({
     }
   };
 
-  const handleSubscriberBlur = (field: string, value: any) => {
-    const fieldSchema = (SubscriberFormSchema as any).shape?.[field];
+  const handleSubscriberBlur = (field: string, value: string) => {
+    const fieldSchema = SubscriberFormSchema.shape[field as keyof typeof SubscriberFormSchema.shape];
     if (!fieldSchema) return;
     const result = fieldSchema.safeParse(value);
     setSubscriberFieldErrors((prev) => {
@@ -197,7 +200,7 @@ export default function PatientDetailsStep({
               label="Relationship to Subscriber"
               variant="select"
               value={metadata.relationship || "self"}
-              onChange={(e) => setMetadata({ ...metadata, relationship: e.target.value })}
+              onChange={(e) => setMetadata({ ...metadata, relationship: e.target.value as "self" | "spouse" | "child" | "other" })}
               options={[
                 { value: "self", label: "Self" },
                 { value: "spouse", label: "Spouse" },
