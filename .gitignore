@@ -147,6 +147,10 @@ whisper_layer/
 revclear_audit_*.txt
 trust.json
 
+# Ops / infra verification scripts (contain real resource IDs — keep in private ops repo)
+backend/tests/security/aws-*.sh
+backend/tests/security/*-verify.sh
+
 # Private documentation (keep these out of repo)
 GEMINI.md
 *-private.md
