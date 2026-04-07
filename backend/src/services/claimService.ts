@@ -225,7 +225,80 @@ export class ClaimService {
       organization.id,
     );
     if (existing) {
-      return existing;
+      // Always refresh live fields from current org/clinician data — these may be
+      // stale in claims created before the org billing profile was fully saved.
+      const patientForHydration = existing.patient_id ? await query(
+        `SELECT full_name, insurance_member_id, insurance_group_number, insurance_policy_number FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
+        [existing.patient_id, organization.id, user.id]
+      ).then(r => r.rows[0] ? decryptPatientRow(r.rows[0]) : null).catch(() => null) : null;
+
+      // Refresh billing_provider from current org (fill any missing/empty fields)
+      const billingProvider = { ...(existing.billing_provider || {}) };
+      if (!billingProvider.name) billingProvider.name = organization?.billing_name || organization?.name || "";
+      if (!billingProvider.npi) billingProvider.npi = organization?.billing_npi || organization?.npi || "";
+      if (!billingProvider.tax_id) billingProvider.tax_id = organization?.billing_tax_id || organization?.tax_id || "";
+      if (!billingProvider.phone) billingProvider.phone = organization?.billing_phone || organization?.phone || "";
+      if (!billingProvider.street && organization?.billing_address_line1) {
+        const line2 = organization.billing_address_line2 ? `, ${organization.billing_address_line2}` : "";
+        billingProvider.street = `${organization.billing_address_line1}${line2}`;
+      }
+      if (!billingProvider.city) billingProvider.city = organization?.billing_city || "";
+      if (!billingProvider.state) billingProvider.state = organization?.billing_state || "";
+      if (!billingProvider.zip) billingProvider.zip = organization?.billing_postal_code || "";
+      if (!billingProvider.address || !billingProvider.address.street) {
+        billingProvider.address = {
+          street: billingProvider.street || "",
+          city: billingProvider.city || "",
+          state: billingProvider.state || "",
+          zip: billingProvider.zip || "",
+        };
+      }
+
+      // Refresh service_facility from current org
+      const serviceFacility = { ...(existing.service_facility || {}) };
+      if (!serviceFacility.name) serviceFacility.name = organization?.name || organization?.billing_name || "";
+      if (!serviceFacility.npi) serviceFacility.npi = organization?.npi || organization?.billing_npi || "";
+      if (!serviceFacility.place_of_service) serviceFacility.place_of_service = organization?.default_place_of_service || "11";
+      if (!serviceFacility.phone) serviceFacility.phone = organization?.phone || organization?.billing_phone || "";
+      if (!serviceFacility.street) {
+        const src = organization?.address_line1 || organization?.billing_address_line1;
+        if (src) {
+          const line2 = (organization?.address_line2 || organization?.billing_address_line2)
+            ? `, ${organization.address_line2 || organization.billing_address_line2}`
+            : "";
+          serviceFacility.street = `${src}${line2}`;
+        }
+      }
+      if (!serviceFacility.city) serviceFacility.city = organization?.city || organization?.billing_city || "";
+      if (!serviceFacility.state) serviceFacility.state = organization?.state || organization?.billing_state || "";
+      if (!serviceFacility.zip) serviceFacility.zip = organization?.postal_code || organization?.billing_postal_code || "";
+      if (!serviceFacility.address || !serviceFacility.address.street) {
+        serviceFacility.address = {
+          street: serviceFacility.street || "",
+          city: serviceFacility.city || "",
+          state: serviceFacility.state || "",
+          zip: serviceFacility.zip || "",
+        };
+      }
+
+      return {
+        ...existing,
+        billing_provider: billingProvider,
+        service_facility: serviceFacility,
+        rendering_provider: {
+          ...(existing.rendering_provider || {}),
+          name: user.full_name || existing.rendering_provider?.name || "",
+          npi: user.npi || existing.rendering_provider?.npi || "",
+          taxonomy_code: user.taxonomy_code || existing.rendering_provider?.taxonomy_code || "",
+        },
+        patient_name: existing.patient_name || patientForHydration?.full_name || null,
+        insurance_policy_number: existing.insurance_policy_number || patientForHydration?.insurance_policy_number || null,
+        subscriber: {
+          ...(existing.subscriber || {}),
+          member_id: existing.subscriber?.member_id || patientForHydration?.insurance_member_id || null,
+          group_number: existing.subscriber?.group_number || patientForHydration?.insurance_group_number || null,
+        },
+      };
     }
 
     const encounter = await this.requireOwnedEncounter(
@@ -425,13 +498,15 @@ export class ClaimService {
       encounter_id: encounter.id,
       clinician_id: encounter.clinician_id,
       patient_id: encounter.patient_id,
+      patient_name: patient.full_name || null,
       diagnosis_codes: icdCodes,
       procedure_codes: cptCodes.map((c) => c.code),
       total_amount: totalAmount,
-      insurance_provider: patient.insurance_provider || "Unknown",
+      insurance_provider: patient.insurance_provider || null,
+      insurance_policy_number: patient.insurance_policy_number || null,
       status: "draft",
-      payer_id: patient.insurance_payer_id || "PAYER001",
-      payer_name: patient.insurance_provider || "Unknown Payer",
+      payer_id: patient.insurance_payer_id || null,
+      payer_name: patient.insurance_payer_name || patient.insurance_provider || null,
       claim_type: "professional",
       submission_type: "initial",
       patient_responsibility: 0,
@@ -443,7 +518,10 @@ export class ClaimService {
       service_facility: serviceFacility,
       rendering_provider: renderingProvider,
       subscriber_relationship: patient.insurance_relationship || "self",
-      subscriber: subscriber || null,
+      subscriber: subscriber || {
+        member_id: patient.insurance_member_id || null,
+        group_number: patient.insurance_group_number || null,
+      },
     };
   }
 }
