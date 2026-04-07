@@ -142,6 +142,7 @@ const patientRequiredFields = {
     .string()
     .min(1, "Date of birth is required")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+    .refine((d: string) => new Date(d) >= new Date("1900-01-01"), "Date of birth cannot be before 1900-01-01")
     .refine((d: string) => new Date(d) < new Date(), "Date of birth cannot be in the future"),
   gender: z.enum(["M", "F", "U", "O"], { error: "Gender is required" }),
   phone: z
