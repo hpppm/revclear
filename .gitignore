@@ -152,11 +152,23 @@ GEMINI.md
 *-private.md
 .claude/*
 !.claude/settings.json
+.claude/settings.local.json
+
+# Internal docs — schema, testing, and security details never in repo
+backend/docs/db/
+backend/docs/phi-rollout-plan.md
+backend/docs/BACKEND_REVCLEAR_v1.1.0.md
+backend/docs/dashboard/
+backend/docs/testing/
+backend/tests/manual/
+.github/workflows/Test AWS identity
 
 # Test result output files
 *-test-results.txt
 *test-results.txt
 jest-test-results.txt
+frontend/test-results/
+frontend/playwright/.auth/
 
 # Security audit/fix documentation (internal only, not for public repo)
 SECURITY_FIXES*.md
