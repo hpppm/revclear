@@ -150,6 +150,8 @@ export default function AddPatientPage() {
                   type="date"
                   value={formData.dob}
                   onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                   required
                   error={fieldErrors.dob}
                 />

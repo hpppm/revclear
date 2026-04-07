@@ -393,7 +393,7 @@ export default function PatientProfilePage() {
                                             type="date"
                                             value={editedPatient.dob || ""}
                                             min="1900-01-01"
-                                            max={new Date().toISOString().split('T')[0]}
+                                            max={new Date().toISOString().split("T")[0]}
                                             onChange={(e) => { setEditedPatient({ ...editedPatient, dob: e.target.value }); clearFieldError('dob'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 ${fieldErrors.dob ? "border-red-500" : "border-slate-300"}`}
                                         />

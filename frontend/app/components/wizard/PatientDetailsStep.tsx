@@ -253,6 +253,8 @@ export default function PatientDetailsStep({
                   type="date"
                   value={metadata.subscriber?.dob?.split("T")[0] || ""}
                   onChange={(e) => handleSubscriberChange("dob", e.target.value)}
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                   onBlur={(e) => handleSubscriberBlur("dob", e.target.value)}
                   error={subscriberFieldErrors.dob || encounterFieldErrors?.subscriber_dob}
                 />
