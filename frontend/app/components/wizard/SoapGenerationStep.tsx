@@ -110,7 +110,7 @@ export default function SoapGenerationStep({
                     <div className="flex-1 p-4 overflow-auto max-h-[480px]">
                         {transcriptText ? (
                             <pre className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-sans">
-                                {transcriptText}
+                                {String(transcriptText ?? "")}
                             </pre>
                         ) : (
                             <p className="text-sm text-slate-400 italic">No transcript available.</p>
