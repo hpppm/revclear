@@ -198,7 +198,7 @@ describe("Change 2a: Signature verification rejects bad tokens before claims are
 describe("Change 2b: DB lookup failure blocks the request (no silent next())", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("returns 401 when findUserByCognitoId returns null (user not in DB)", async () => {
+  it("calls next() with req.user unset when findUserByCognitoId returns null (new-user first-login flow)", async () => {
     mockVerify.mockResolvedValue(VALID_PAYLOAD);
     mockFindUser.mockResolvedValue(null);
 
@@ -208,9 +208,11 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 
     await authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "Authentication required" });
-    expect(next).not.toHaveBeenCalled();
+    // null DB record is intentional: new users reach GET /api/me which provisions them.
+    // The middleware must not block here — req.user will simply be unset.
+    expect(next).toHaveBeenCalled();
+    expect((req as any).user).toBeUndefined();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("returns 503 when findUserByCognitoId throws (database error)", async () => {
