@@ -261,14 +261,14 @@ export default function EncountersPage() {
                                                     {encounter.status === "ready" || encounter.status === "completed" ? (
                                                         <Link
                                                             href={`/dashboard/encounters/${encounter.id}`}
-                                                            className="text-sm font-semibold text-(--brand-600) hover:text-(--brand-700)"
+                                                            className="inline-flex h-6 items-center text-sm font-semibold text-(--brand-600) hover:text-(--brand-700)"
                                                         >
                                                             View
                                                         </Link>
                                                     ) : (
                                                         <Link
                                                             href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                            className="text-sm font-semibold text-(--brand-600) hover:text-(--brand-700)"
+                                                            className="inline-flex h-6 items-center text-sm font-semibold text-(--brand-600) hover:text-(--brand-700)"
                                                         >
                                                             Continue
                                                         </Link>
@@ -278,9 +278,9 @@ export default function EncountersPage() {
                                                         aria-label="Delete encounter"
                                                         disabled={deletingId === encounter.id}
                                                         onClick={() => setConfirmDeleteId(encounter.id)}
-                                                        className="text-slate-300 hover:text-red-500 disabled:opacity-40 transition"
+                                                        className="inline-flex h-6 w-6 items-center justify-center text-slate-300 hover:text-red-500 disabled:opacity-40 transition"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                             <path fillRule="evenodd" d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z" clipRule="evenodd" />
                                                         </svg>
                                                     </button>

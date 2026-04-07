@@ -269,7 +269,7 @@ export default function PatientProfilePage() {
                     <div className="px-6 py-6">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
                             <div className="flex items-center gap-4">
-                                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold">
+                                <div className="h-16 w-16 rounded-full brand-accent-icon flex items-center justify-center text-2xl font-bold">
                                     {(patient.name || "U").charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -496,7 +496,7 @@ export default function PatientProfilePage() {
                         <h2 className="text-xl font-semibold text-slate-900">Encounters History</h2>
                         <Link
                             href={`/dashboard/encounters/create?patientId=${patientId}`}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                            className="brand-button-primary rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm"
                         >
                             + Start New Encounter
                         </Link>
@@ -507,7 +507,7 @@ export default function PatientProfilePage() {
                             <p className="text-slate-500">No encounters recorded for this patient.</p>
                             <Link
                                 href={`/dashboard/encounters/create?patientId=${patientId}`}
-                                className="text-blue-600 hover:text-blue-700 font-medium mt-2 inline-block"
+                                className="text-(--brand-600) hover:text-(--brand-700) font-medium mt-2 inline-block"
                             >
                                 Start the first encounter
                             </Link>
@@ -539,10 +539,10 @@ export default function PatientProfilePage() {
                                                     className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${encounter.status === "completed"
                                                         ? "bg-green-100 text-green-800"
                                                         : encounter.status === "ready"
-                                                            ? "bg-blue-100 text-blue-800"
+                                                            ? "bg-teal-100 text-teal-800"
                                                             : encounter.status === "in_progress"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-gray-100 text-gray-800"
+                                                                ? "bg-amber-100 text-amber-800"
+                                                                : "bg-slate-100 text-slate-700"
                                                         }`}
                                                 >
                                                     {encounter.status === "ready" ? "Ready" : encounter.status === "completed" ? "Completed" : encounter.status === "in_progress" ? "In Progress" : encounter.status === "ready_for_review" ? "Ready for Review" : encounter.status === "archived" ? "Archived" : encounter.status === "scheduled" ? "Scheduled" : "Draft"}

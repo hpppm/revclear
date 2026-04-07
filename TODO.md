@@ -1,0 +1,2 @@
+- [x] Fix encounter row action alignment in `frontend/app/dashboard/encounters/page.tsx`
+- [x] Update TODO after completing the alignment fix

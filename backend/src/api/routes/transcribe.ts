@@ -116,9 +116,26 @@ router.post(
       if (!user) return;
       const organizationId = await getRequestOrganizationId(user.id);
 
-      const parsedId = IdParamSchema.safeParse({ id: req.body.encounterId });
+      const rawEncounterId =
+        req.body?.encounterId ??
+        req.body?.encounter_id ??
+        req.query?.encounterId ??
+        req.query?.encounter_id;
+
+      const parsedId = IdParamSchema.safeParse({ id: rawEncounterId });
       if (!parsedId.success) {
-        return sendError(res, 400, "Valid encounter ID is required.");
+        logger.warn(
+          {
+            bodyKeys: Object.keys(req.body || {}),
+            queryKeys: Object.keys((req as any).query || {}),
+          },
+          "transcribe: invalid or missing encounter id",
+        );
+        return sendError(
+          res,
+          400,
+          "Valid encounter ID is required (encounterId or encounter_id).",
+        );
       }
       const encounterId = parsedId.data.id;
 
@@ -305,7 +322,37 @@ router.post(
       });
     } catch (error: any) {
       logger.error({ err: error }, "transcribe: processing error");
-      sendError(res, 500, "Failed to process audio file");
+
+      const message = String(error?.message || "");
+      if (
+        message.includes("Only audio files are allowed") ||
+        message.includes("Unexpected field") ||
+        message.includes("LIMIT_FILE_SIZE")
+      ) {
+        return sendError(res, 400, "Invalid audio upload. Please provide a supported audio file under 50MB.");
+      }
+
+      if (message.includes("AI transcription failed")) {
+        return sendError(
+          res,
+          502,
+          "AI transcription service failed to process this audio. Please try again shortly.",
+        );
+      }
+
+      if (message.includes("S3 object has no body")) {
+        return sendError(
+          res,
+          404,
+          "Uploaded audio could not be retrieved for transcription.",
+        );
+      }
+
+      return sendError(
+        res,
+        500,
+        "Transcription processing failed due to a server error.",
+      );
     }
   }
 );
