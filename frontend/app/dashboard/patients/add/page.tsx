@@ -46,7 +46,7 @@ export default function AddPatientPage() {
     // Apply self-pay override before validation so the schema sees "SELF_PAY"
     // as the insurance_provider (satisfying the required check) and skips the
     // conditional policy/member fields.
-    const dataToSubmit = isSelfPay
+    const base = isSelfPay
       ? {
         ...formData,
         insurance_provider: "SELF_PAY",
@@ -58,27 +58,58 @@ export default function AddPatientPage() {
       }
       : formData;
 
-    const validation = CreatePatientFormSchema.safeParse(dataToSubmit);
+    // Collect all validation errors at once so every red field shows simultaneously
+    const allErrors: Record<string, string> = {};
+
+    // Required field checks (fast path before Zod for clearer messages)
+    if (!base.full_name.trim()) allErrors.full_name = "Full name is required";
+    if (!base.dob) allErrors.dob = "Date of birth is required";
+    if (!base.phone.trim()) allErrors.phone = "Phone number is required";
+    if (!isSelfPay) {
+      if (!base.insurance_provider.trim()) allErrors.insurance_provider = "Insurance provider is required";
+      if (!base.insurance_policy_number.trim()) allErrors.insurance_policy_number = "Policy number is required";
+      if (!base.insurance_member_id.trim()) allErrors.insurance_member_id = "Member ID is required";
+    }
+
+    // Zod format validation — runs against base (with self-pay override applied)
+    // so self-pay patients are never blocked by insurance field validation.
+    const validation = CreatePatientFormSchema.safeParse(base);
     if (!validation.success) {
-      const errs: Record<string, string> = {};
       validation.error.issues.forEach((err) => {
         const key = String(err.path[0]);
-        if (key && !errs[key]) errs[key] = err.message;
+        // Don't overwrite a "required" message with a format message for the same field
+        if (key && !allErrors[key]) allErrors[key] = err.message;
       });
-      setFieldErrors(errs);
+    }
+
+    if (Object.keys(allErrors).length > 0) {
+      setFieldErrors(allErrors);
       return;
     }
 
     setSaving(true);
 
     try {
+      // Strip empty strings so optional backend fields receive undefined not ""
+      const dataToSubmit = Object.fromEntries(
+        Object.entries(base).filter(([, v]) => v !== "")
+      );
 
       await apiClient.patients.create(dataToSubmit);
-      router.push("/dashboard"); // Navigate to dashboard after saving
+      router.push("/dashboard/patients");
     } catch (error) {
       logger.error("Failed to create patient", error);
-      const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to create patient";
-      setError(message);
+      const backendErrors: any[] = (error as any)?.response?.data?.errors || [];
+      if (backendErrors.length > 0) {
+        const errs: Record<string, string> = {};
+        backendErrors.forEach((e: any) => {
+          const key = String(e.path?.[0] || "");
+          if (key && !errs[key]) errs[key] = e.message;
+        });
+        setFieldErrors(errs);
+      } else {
+        setError((error as any)?.response?.data?.error || "Failed to create patient");
+      }
     } finally {
       setSaving(false);
     }
@@ -89,8 +120,8 @@ export default function AddPatientPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <BackButton href="/dashboard">
-            Back to Dashboard
+          <BackButton href="/dashboard/patients">
+            Back to Patients
           </BackButton>
           <h1 className="text-3xl font-bold text-slate-900">Add New Patient</h1>
           <p className="text-slate-600 mt-2">
@@ -247,7 +278,7 @@ export default function AddPatientPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
-                    label="Insurance Provider"
+                    label="Insurance Provider *"
                     value={formData.insurance_provider}
                     onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
                     placeholder="Blue Cross Blue Shield"
@@ -255,7 +286,7 @@ export default function AddPatientPage() {
                     error={fieldErrors.insurance_provider}
                   />
                   <Input
-                    label="Policy Number"
+                    label="Policy Number *"
                     value={formData.insurance_policy_number}
                     onChange={(e) => setFormData({ ...formData, insurance_policy_number: e.target.value })}
                     placeholder="ABC123456789"
@@ -263,7 +294,7 @@ export default function AddPatientPage() {
                     error={fieldErrors.insurance_policy_number}
                   />
                   <Input
-                    label="Member ID"
+                    label="Member ID *"
                     value={formData.insurance_member_id}
                     onChange={(e) => setFormData({ ...formData, insurance_member_id: e.target.value })}
                     placeholder="Member/Subscriber ID"
@@ -276,6 +307,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_group_number}
                     onChange={(e) => setFormData({ ...formData, insurance_group_number: e.target.value })}
                     placeholder="Group number"
+                    error={fieldErrors.insurance_group_number}
                   />
                   <Input
                     label="Payer ID"
@@ -283,12 +315,14 @@ export default function AddPatientPage() {
                     onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
                     placeholder="Clearinghouse payer ID"
                     helperText="For electronic claim submission"
+                    error={fieldErrors.insurance_payer_id}
                   />
                   <Input
                     label="Payer Name"
                     value={formData.insurance_payer_name}
                     onChange={(e) => setFormData({ ...formData, insurance_payer_name: e.target.value })}
                     placeholder="Insurance payer name"
+                    error={fieldErrors.insurance_payer_name}
                   />
                 </div>
               )}
@@ -302,7 +336,7 @@ export default function AddPatientPage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/dashboard/patients")}
                 disabled={saving}
               >
                 Cancel
