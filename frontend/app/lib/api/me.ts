@@ -1,5 +1,6 @@
 import { z } from "zod";
 import api from "./axios";
+import { deduplicateGet } from "./deduplicate";
 
 // SECURITY: Explicit schema blocks injection of privileged fields.
 // Callers cannot send organization_id, role, is_admin, cognito_id, or
@@ -27,7 +28,7 @@ const ProfileUpdateSchema = z.object({
 export type ProfileUpdatePayload = z.infer<typeof ProfileUpdateSchema>;
 
 export const meApi = {
-  getProfile: () => api.get("/me"),
+  getProfile: () => deduplicateGet("me.getProfile", () => api.get("/me")),
 
   updateProfile: (payload: ProfileUpdatePayload) =>
     api.patch("/me", ProfileUpdateSchema.parse(payload)),

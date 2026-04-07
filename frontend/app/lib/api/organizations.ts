@@ -17,6 +17,23 @@ const OrgCreateSchema = z.object({
   state: z.string().optional().nullable(),
   postal_code: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  // Billing profile fields
+  billing_name: z.string().optional().nullable(),
+  billing_npi: z.string().optional().nullable(),
+  billing_tax_id: z.string().optional().nullable(),
+  billing_address_line1: z.string().optional().nullable(),
+  billing_address_line2: z.string().optional().nullable(),
+  billing_city: z.string().optional().nullable(),
+  billing_state: z.string().optional().nullable(),
+  billing_postal_code: z.string().optional().nullable(),
+  billing_phone: z.string().optional().nullable(),
+  default_place_of_service: z.string().optional().nullable(),
+  // EDI/SFTP fields (credentials excluded — managed server-side)
+  edi_sender_id: z.string().optional().nullable(),
+  edi_receiver_id: z.string().optional().nullable(),
+  edi_sftp_host: z.string().optional().nullable(),
+  edi_sftp_username: z.string().optional().nullable(),
+  edi_sftp_port: z.number().int().optional().nullable(),
 });
 
 const OrgUpdateSchema = OrgCreateSchema.partial();
