@@ -35,6 +35,7 @@ export default function WizardContainer({
 }: WizardContainerProps) {
     const [currentStep, setCurrentStep] = useState(initialStep);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [stepError, setStepError] = useState<string | null>(null);
     // Track whether the current step change came from user navigation (not external sync)
     const userNavigatedRef = useRef(false);
 
@@ -55,8 +56,8 @@ export default function WizardContainer({
         const currentStepData = steps[currentStep];
 
         setIsTransitioning(true);
+        setStepError(null);
         try {
-            // Call onNext callback if it exists
             if (currentStepData.onNext) {
                 await currentStepData.onNext();
             }
@@ -67,8 +68,9 @@ export default function WizardContainer({
             } else {
                 onComplete();
             }
-        } catch {
+        } catch (err: any) {
             logger.error("Error in step transition");
+            setStepError(err?.message || "Please fix the errors above before continuing.");
         } finally {
             setIsTransitioning(false);
         }
@@ -120,21 +122,28 @@ export default function WizardContainer({
                         <div className="animate-fadeIn">{currentStepData.component}</div>
                     </div>
 
+                    {stepError && (
+                        <p className="mt-4 text-sm text-red-600 text-center">{stepError}</p>
+                    )}
+
                     <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
                         {isFirstStep && onExit ? (
                             <Button variant="ghost" onClick={onExit}>
-                                ← Exit Encounter
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                Exit
                             </Button>
                         ) : (
                             <Button variant="ghost" onClick={handleBack} disabled={!canGoBack}>
-                                ← Back
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                Back
                             </Button>
                         )}
                         <div className="text-sm text-slate-500">
                             Step {currentStep + 1} of {steps.length}
                         </div>
                         <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Ready for Submission" : "Continue →"}
+                            {isLastStep ? "Submit for Review" : "Continue"}
+                            {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                         </Button>
                     </div>
                 </Card>

@@ -22,6 +22,10 @@ interface SelectInputProps extends BaseInputProps, React.SelectHTMLAttributes<HT
 
 type InputProps = TextInputProps | TextareaInputProps | SelectInputProps;
 
+function scrollToCenter(el: HTMLElement) {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 export default function Input(props: InputProps) {
     const { label, helperText, error, className = "", variant = "text", ...rest } = props;
 
@@ -31,13 +35,25 @@ export default function Input(props: InputProps) {
     const renderInput = () => {
         if (variant === "textarea") {
             const textareaProps = rest as Omit<TextareaInputProps, 'variant' | 'label' | 'helperText' | 'error' | 'className'>;
-            return <textarea className={`${baseClasses} ${errorClasses} ${className}`} {...textareaProps} />;
+            const { onFocus, ...remainingTextarea } = textareaProps;
+            return (
+                <textarea
+                    className={`${baseClasses} ${errorClasses} ${className}`}
+                    onFocus={(e) => { scrollToCenter(e.currentTarget); onFocus?.(e); }}
+                    {...remainingTextarea}
+                />
+            );
         }
 
         if (variant === "select") {
             const { options = [], ...selectProps } = rest as SelectInputProps;
+            const { onFocus, ...remainingSelect } = selectProps;
             return (
-                <select className={`${baseClasses} ${errorClasses} ${className}`} {...selectProps}>
+                <select
+                    className={`${baseClasses} ${errorClasses} ${className}`}
+                    onFocus={(e) => { scrollToCenter(e.currentTarget); onFocus?.(e); }}
+                    {...remainingSelect}
+                >
                     {options.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                             {opt.label}
@@ -48,7 +64,15 @@ export default function Input(props: InputProps) {
         }
 
         const inputProps = rest as Omit<TextInputProps, 'variant' | 'label' | 'helperText' | 'error' | 'className'>;
-        return <input type="text" className={`${baseClasses} ${errorClasses} ${className}`} {...inputProps} />;
+        const { onFocus, ...remainingInput } = inputProps;
+        return (
+            <input
+                type="text"
+                className={`${baseClasses} ${errorClasses} ${className}`}
+                onFocus={(e) => { scrollToCenter(e.currentTarget); onFocus?.(e); }}
+                {...remainingInput}
+            />
+        );
     };
 
     return (

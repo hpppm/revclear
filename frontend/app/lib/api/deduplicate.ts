@@ -11,13 +11,13 @@
  */
 const TTL_MS = 500;
 
-const pending = new Map<string, Promise<any>>();
-const resolved = new Map<string, { promise: Promise<any>; expiresAt: number }>();
+const pending = new Map<string, Promise<unknown>>();
+const resolved = new Map<string, { promise: Promise<unknown>; expiresAt: number }>();
 
 export function deduplicateGet<T>(key: string, fn: () => Promise<T>): Promise<T> {
   // 1. In-flight deduplication
   const inFlight = pending.get(key);
-  if (inFlight) return inFlight;
+  if (inFlight) return inFlight as Promise<T>;
 
   // 2. Short-TTL cache for recently-resolved promises
   const cached = resolved.get(key);

@@ -199,7 +199,7 @@ describe("Change 2a: Signature verification rejects bad tokens before claims are
 describe("Change 2b: DB lookup failure blocks the request (no silent next())", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("calls next() with req.user unset when findUserByCognitoId returns null (new-user flow)", async () => {
+  it("calls next() with req.user unset when findUserByCognitoId returns null (new-user first-login flow)", async () => {
     mockVerify.mockResolvedValue(VALID_PAYLOAD);
     mockFindUser.mockResolvedValue(null);
 
@@ -212,8 +212,8 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
     // New-user flow: no DB record yet, but the request is not blocked.
     // GET /api/me will create the record; requireOrganization gates all other routes.
     expect(next).toHaveBeenCalled();
+    expect((req as any).user).toBeUndefined();
     expect(res.status).not.toHaveBeenCalled();
-    expect(req.user).toBeUndefined();
   });
 
   it("returns 503 when findUserByCognitoId throws (database error)", async () => {
