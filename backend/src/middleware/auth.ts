@@ -156,19 +156,21 @@ export const authMiddleware = async (
       cognitoRole,
     } as any;
 
-    // Resolve DB user — both lookup errors and missing records block the request.
-    // A valid Cognito token for a user with no DB record is rejected: they may
-    // have been deleted or may never have completed registration.
+    // Resolve DB user — DB errors block the request (fail-closed on outage).
+    // A missing DB record is allowed: GET /api/me creates the record on first
+    // login, so new users must be able to reach that route with req.user unset.
+    // Routes that require a fully-provisioned user (all routes except /me)
+    // should check req.user themselves or use requireOrganization.
     try {
       const dbUser = await findUserByCognitoId(payload.sub);
-      if (!dbUser) {
-        logger.warn({ sub: payload.sub }, "Auth: Cognito user has no DB record");
-        return res.status(401).json({ error: "Authentication required" });
+      if (dbUser) {
+        req.user = {
+          ...dbUser,
+          role: cognitoRole,
+        } as any;
+      } else {
+        logger.debug({ sub: payload.sub }, "Auth: no DB record yet — new user flow");
       }
-      req.user = {
-        ...dbUser,
-        role: cognitoRole,
-      } as any;
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
       return res.status(503).json({ error: "Authentication service temporarily unavailable" });

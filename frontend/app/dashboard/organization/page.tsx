@@ -124,6 +124,7 @@ export default function OrganizationProfilePage() {
                 if (key && !errs[key]) errs[key] = err.message;
             });
             setFieldErrors(errs);
+            setError("Please fix the highlighted fields below before saving.");
             return;
         }
 
@@ -225,12 +226,14 @@ export default function OrganizationProfilePage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Clinic Name"
+                                        error={fieldErrors.name}
                                     />
                                      <Input
                                         label="Phone"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 555-5555"
+                                        error={fieldErrors.phone}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -251,16 +254,20 @@ export default function OrganizationProfilePage() {
                                             label="City"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                            error={fieldErrors.city}
                                         />
                                         <Input
                                             label="State"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                                            placeholder="PA"
+                                            error={fieldErrors.state}
                                         />
                                         <Input
                                             label="Postal Code"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                                            error={fieldErrors.postal_code}
                                         />
                                     </div>
                                 </div>
@@ -282,12 +289,14 @@ export default function OrganizationProfilePage() {
                                         value={formData.billing_npi}
                                         onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
                                         placeholder="10-digit NPI"
+                                        error={fieldErrors.billing_npi}
                                     />
                                     <Input
                                         label="Billing Tax ID"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
                                         placeholder="Tax ID"
+                                        error={fieldErrors.billing_tax_id}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -308,16 +317,20 @@ export default function OrganizationProfilePage() {
                                             label="Billing City"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
+                                            error={fieldErrors.billing_city}
                                         />
                                         <Input
                                             label="Billing State"
                                             value={formData.billing_state}
                                             onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
+                                            placeholder="KS"
+                                            error={fieldErrors.billing_state}
                                         />
                                         <Input
                                             label="Billing Postal Code"
                                             value={formData.billing_postal_code}
                                             onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
+                                            error={fieldErrors.billing_postal_code}
                                         />
                                     </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -326,12 +339,14 @@ export default function OrganizationProfilePage() {
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
                                             placeholder="(555) 555-5555"
+                                            error={fieldErrors.billing_phone}
                                         />
                                         <Input
                                             label="Default Place of Service"
                                             value={formData.default_place_of_service}
                                             onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
                                             placeholder="11"
+                                            error={fieldErrors.default_place_of_service}
                                         />
                                     </div>
                                 </div>
@@ -390,8 +405,9 @@ export default function OrganizationProfilePage() {
                                             />
                                         </div>
                                         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                            <p className="text-sm text-blue-900 font-medium">
-                                                🔒 SFTP Credentials
+                                            <p className="text-sm text-blue-900 font-medium flex items-center gap-1.5">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                SFTP Credentials
                                             </p>
                                             <p className="text-sm text-blue-700 mt-1">
                                                 SFTP passwords and private keys are managed securely on the server. Contact your administrator to update credentials.
@@ -498,7 +514,10 @@ export default function OrganizationProfilePage() {
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Credentials</label>
-                                        <p className="text-slate-700 text-sm">🔒 Credentials managed securely on server</p>
+                                        <p className="text-slate-700 text-sm flex items-center gap-1.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            Credentials managed securely on server
+                                        </p>
                                     </div>
                                 </div>
                             </div>
