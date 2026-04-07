@@ -359,7 +359,7 @@ export default function EncounterPage() {
           phone: p.phone,
           email: p.email,
           insuranceType: p.insurance_provider,
-          insuranceId: p.insurance_policy_number || p.insurance_member_id,
+          insuranceId: p.insurance_member_id || p.insurance_policy_number,
           insurance_member_id: p.insurance_member_id,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
