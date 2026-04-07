@@ -7,9 +7,10 @@
  *   Tokens are accepted from httpOnly cookies only.
  *   An Authorization: Bearer header is no longer a valid token transport.
  *
- * Change 2 — DB lookup failure blocks the request (auth.ts)
- *   If findUserByCognitoId returns null or throws, the request is rejected
- *   instead of silently calling next() with req.user undefined.
+ * Change 2 — DB lookup behaviour (auth.ts)
+ *   If findUserByCognitoId throws, the request is rejected with 503 (fail-closed).
+ *   If it returns null (new user — no DB record yet), next() is called with
+ *   req.user unset so GET /api/me can create the record on first login.
  *
  * Change 3 — Cross-tab cookie collision detection (AuthContext.tsx)
  *   sessionStorage.userId is set on login and compared on every checkAuth()
@@ -202,14 +203,14 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
     mockVerify.mockResolvedValue(VALID_PAYLOAD);
     mockFindUser.mockResolvedValue(null);
 
-    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } });
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } }) as any;
     const res = makeRes();
     const next = jest.fn();
 
     await authMiddleware(req, res, next);
 
-    // null DB record is intentional: new users reach GET /api/me which provisions them.
-    // The middleware must not block here — req.user will simply be unset.
+    // New-user flow: no DB record yet, but the request is not blocked.
+    // GET /api/me will create the record; requireOrganization gates all other routes.
     expect(next).toHaveBeenCalled();
     expect((req as any).user).toBeUndefined();
     expect(res.status).not.toHaveBeenCalled();
