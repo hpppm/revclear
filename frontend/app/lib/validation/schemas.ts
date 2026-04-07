@@ -72,23 +72,23 @@ export const UserSchema = z.object({
 // Distinct from the response schemas above which guard against unexpected data
 // flowing back from the backend.
 
+// Use .refine() instead of .optional().or(z.literal("")) to avoid Zod v4
+// invalid_union errors that collapse to the generic "Invalid input" message.
+// These schemas accept empty string or undefined, and validate non-empty values.
 const phoneSchema = z
   .string()
-  .regex(/^\+?[\d\s\-(). ]{7,15}$/, "Please enter a valid phone number")
-  .optional()
-  .or(z.literal(""));
+  .refine((v) => !v || /^\+?[\d\s\-(). ]{7,15}$/.test(v), "Please enter a valid phone number")
+  .optional();
 
 const zipSchema = z
   .string()
-  .regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)")
-  .optional()
-  .or(z.literal(""));
+  .refine((v) => !v || /^\d{5}(-\d{4})?$/.test(v), "Please enter a valid ZIP code (e.g. 16501)")
+  .optional();
 
 const npiSchema = z
   .string()
-  .regex(/^\d{10}$/, "NPI must be exactly 10 digits")
-  .optional()
-  .or(z.literal(""));
+  .refine((v) => !v || /^\d{10}$/.test(v), "NPI must be exactly 10 digits")
+  .optional();
 
 const dobPastSchema = z
   .string()
@@ -200,38 +200,43 @@ export const ProfileFormSchema = z.object({
     .or(z.literal("")),
 });
 
+const optStr = (max: number) => z.string().max(max).optional();
+const stateSchema = z
+  .string()
+  .refine((v) => !v || /^[A-Za-z]{2}$/.test(v), "State must be a 2-letter abbreviation (e.g. PA)")
+  .optional();
+
 export const OrganizationFormSchema = z.object({
-  name: z.string().max(200).optional().or(z.literal("")),
+  name: optStr(200),
   npi: npiSchema,
-  tax_id: z.string().max(20).optional().or(z.literal("")),
-  address_line1: z.string().max(200).optional().or(z.literal("")),
-  address_line2: z.string().max(200).optional().or(z.literal("")),
-  city: z.string().max(100).optional().or(z.literal("")),
-  state: z.string().max(2).optional().or(z.literal("")),
+  tax_id: optStr(20),
+  address_line1: optStr(200),
+  address_line2: optStr(200),
+  city: optStr(100),
+  state: stateSchema,
   postal_code: zipSchema,
   phone: phoneSchema,
-  billing_name: z.string().max(200).optional().or(z.literal("")),
+  billing_name: optStr(200),
   billing_npi: npiSchema,
-  billing_tax_id: z.string().max(20).optional().or(z.literal("")),
-  billing_address_line1: z.string().max(200).optional().or(z.literal("")),
-  billing_address_line2: z.string().max(200).optional().or(z.literal("")),
-  billing_city: z.string().max(100).optional().or(z.literal("")),
-  billing_state: z.string().max(2).optional().or(z.literal("")),
+  billing_tax_id: optStr(20),
+  billing_address_line1: optStr(200),
+  billing_address_line2: optStr(200),
+  billing_city: optStr(100),
+  billing_state: stateSchema,
   billing_postal_code: zipSchema,
   billing_phone: phoneSchema,
-  default_place_of_service: z.string().max(10).optional().or(z.literal("")),
-  edi_sender_id: z.string().max(50).optional().or(z.literal("")),
-  edi_receiver_id: z.string().max(50).optional().or(z.literal("")),
-  edi_sftp_host: z.string().max(200).optional().or(z.literal("")),
-  edi_sftp_username: z.string().max(100).optional().or(z.literal("")),
+  default_place_of_service: optStr(10),
+  edi_sender_id: optStr(50),
+  edi_receiver_id: optStr(50),
+  edi_sftp_host: optStr(200),
+  edi_sftp_username: optStr(100),
   edi_sftp_port: z
     .string()
     .refine(
-      (v: string) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535),
+      (v) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535),
       "Port must be a number between 1 and 65535"
     )
-    .optional()
-    .or(z.literal("")),
+    .optional(),
 });
 
 export const EncounterDetailsFormSchema = z.object({
