@@ -7,6 +7,7 @@ import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { SubscriberWritePayload } from "@/app/lib/api/patients";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -54,7 +55,7 @@ export default function EncounterPage() {
     encounterType?: string;
     chiefComplaint?: string;
     relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
+    subscriber?: (Partial<SubscriberWritePayload> & { id?: string }) | null;
     patientName?: string;
   }>({
     patientId: "",
@@ -264,7 +265,8 @@ export default function EncounterPage() {
       const res = await apiClient.patients.getSubscriber(patientId);
       const subscriber = res.data?.data || null;
       if (subscriber) {
-        setMetadata((prev) => ({ ...prev, subscriber, relationship: "other" }));
+        const normalised = { ...subscriber, dob: subscriber.dob?.split("T")[0] || subscriber.dob };
+        setMetadata((prev) => ({ ...prev, subscriber: normalised, relationship: "other" }));
       } else {
         setMetadata((prev) => ({ ...prev, subscriber: null, relationship: "self" }));
       }
@@ -289,13 +291,25 @@ export default function EncounterPage() {
         setSubscriberError("Subscriber name is required when relationship is not self");
         throw new Error("Missing subscriber name");
       }
-      const subPayload = {
-        ...metadata.subscriber,
+      const sub = metadata.subscriber;
+      const subPayload: SubscriberWritePayload = {
+        full_name: sub?.full_name ?? "",
+        dob: sub?.dob?.split("T")[0] ?? "",
+        phone: sub?.phone ?? "",
+        member_id: sub?.member_id ?? "",
+        gender: sub?.gender || undefined,
+        address_street: sub?.address_street || undefined,
+        address_city: sub?.address_city || undefined,
+        address_state: sub?.address_state || undefined,
+        address_zip: sub?.address_zip || undefined,
+        group_number: sub?.group_number || undefined,
         relationship: metadata.relationship || "other",
       };
       const res = await apiClient.patients.upsertSubscriber(metadata.patientId, subPayload);
       const saved = res.data?.data || res.data;
-      setMetadata((prev) => ({ ...prev, subscriber: saved }));
+      // Normalise DOB back to YYYY-MM-DD so next save doesn't send ISO timestamp
+      const normalisedSaved = { ...saved, dob: saved?.dob?.split("T")[0] || saved?.dob };
+      setMetadata((prev) => ({ ...prev, subscriber: normalisedSaved }));
       await apiClient.patients.update(metadata.patientId, {
         insurance_relationship: metadata.relationship || "other",
         subscriber_id: saved?.id,
@@ -345,6 +359,7 @@ export default function EncounterPage() {
           email: p.email,
           insuranceType: p.insurance_provider,
           insuranceId: p.insurance_member_id || p.insurance_policy_number,
+          insurance_member_id: p.insurance_member_id,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
           insurance_payer_name: p.insurance_payer_name,
@@ -494,17 +509,17 @@ export default function EncounterPage() {
 
   const handleComplete = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
   const handleExit = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
@@ -570,12 +585,22 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
+          patientLocked={!!searchPatientId}
         />
       ),
-      canGoNext:
-        !!metadata.patientId &&
-        !!metadata.date &&
-        (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
+      canGoNext: (() => {
+        if (!metadata.patientId || !metadata.date) return false;
+        const p = patients.find((pt) => pt.id === metadata.patientId);
+        if (!p) return false;
+        if (p.insuranceType !== "SELF_PAY") {
+          if (!p.insuranceType || !p.insuranceId) return false;
+        }
+        if (metadata.relationship !== "self") {
+          const sub = metadata.subscriber;
+          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id) return false;
+        }
+        return true;
+      })(),
       onNext: async () => {
         const validation = EncounterDetailsFormSchema.safeParse({
           patientId: metadata.patientId,
@@ -593,6 +618,19 @@ export default function EncounterPage() {
           throw new Error(first ? first.message : "Please fix encounter details");
         }
         setEncounterFieldErrors({});
+
+        // Validate required subscriber fields
+        if (metadata.relationship !== "self") {
+          const subErrs: Record<string, string> = {};
+          if (!metadata.subscriber?.full_name) subErrs.subscriber_full_name = "Subscriber name is required";
+          if (!metadata.subscriber?.dob) subErrs.subscriber_dob = "Date of birth is required";
+          if (!metadata.subscriber?.phone) subErrs.subscriber_phone = "Phone number is required";
+          if (!metadata.subscriber?.member_id) subErrs.subscriber_member_id = "Member ID is required";
+          if (Object.keys(subErrs).length > 0) {
+            setEncounterFieldErrors(subErrs);
+            throw new Error("Please fill in all required subscriber fields.");
+          }
+        }
 
         // Step 1: Create or update encounter
         await persistSubscriber();

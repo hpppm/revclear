@@ -35,7 +35,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [requiresOrganization, setRequiresOrganization] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   // Clear all sensitive data from browser storage
   const clearSensitiveData = useCallback(() => {
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(true);
       setRequiresOrganization(needsOrg);
 
-      if (needsOrg && pathname !== "/dashboard") {
+      if (needsOrg && pathnameRef.current !== "/dashboard") {
         router.push("/dashboard");
       }
     } catch (err: unknown) {
@@ -132,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear state - httpOnly cookie will be cleared by backend on logout
       clearSensitiveData();
     }
-  }, [pathname, router, clearSensitiveData]);
+  }, [router, clearSensitiveData]);
 
   useEffect(() => {
     void (async () => {

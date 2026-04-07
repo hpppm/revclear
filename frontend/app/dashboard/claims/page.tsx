@@ -31,6 +31,29 @@ function statusBadgeVariant(status: string): "success" | "warning" | "error" | "
     return "neutral";
 }
 
+function statusLabel(status: string): string {
+    switch (status?.toLowerCase()) {
+        case "approved": return "Approved";
+        case "paid": return "Paid";
+        case "pending": return "Pending";
+        case "submitted": return "Submitted";
+        case "draft": return "Draft";
+        case "rejected": return "Rejected";
+        case "denied": return "Denied";
+        default: return status
+            ? status.charAt(0).toUpperCase() + status.slice(1)
+            : "Pending";
+    }
+}
+
+function claimTypeLabel(type: string | null): string {
+    switch (type?.toLowerCase()) {
+        case "professional": return "Professional";
+        case "institutional": return "Institutional";
+        default: return "—";
+    }
+}
+
 function formatDate(dateStr: string | null) {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -72,8 +95,18 @@ export default function ClaimsPage() {
             />
 
             {loading ? (
-                <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center text-slate-500">
-                    Loading claims...
+                <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                        <div className="h-4 w-40 rounded bg-slate-200 animate-pulse" />
+                    </div>
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex gap-6 px-6 py-4 border-b border-slate-100">
+                            <div className="h-4 w-20 rounded bg-slate-100 animate-pulse" />
+                            <div className="h-4 w-24 rounded bg-slate-100 animate-pulse" />
+                            <div className="h-4 w-28 rounded bg-slate-100 animate-pulse" />
+                            <div className="h-4 w-16 rounded bg-slate-100 animate-pulse ml-auto" />
+                        </div>
+                    ))}
                 </div>
             ) : error ? (
                 <div className="rounded-2xl bg-red-50 border border-red-100 p-6 text-red-700">
@@ -89,10 +122,10 @@ export default function ClaimsPage() {
                     <p className="text-sm font-medium text-slate-700">No claims yet</p>
                     <p className="text-xs text-slate-400 mt-1">Claims are generated automatically from completed encounters.</p>
                     <Link
-                        href="/dashboard/encounters/create"
+                        href="/dashboard/patients"
                         className="brand-button-primary mt-6 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
                     >
-                        Start an encounter
+                        Go to Patients
                     </Link>
                 </div>
             ) : (
@@ -133,7 +166,7 @@ export default function ClaimsPage() {
                                     <tr key={claim.id} className="hover:bg-slate-50 transition">
                                         <td className="px-6 py-4">
                                             <Link
-                                                href={`/dashboard/encounters/${claim.encounter_id}`}
+                                                href={`/dashboard/claims/${claim.id}`}
                                                 className="font-mono text-xs text-[var(--brand-600)] hover:text-[var(--brand-700)] hover:underline"
                                             >
                                                 {claim.id.slice(0, 8).toUpperCase()}
@@ -149,14 +182,14 @@ export default function ClaimsPage() {
                                             {claim.payer_name || claim.insurance_provider || "—"}
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 capitalize">
-                                            {claim.claim_type || "—"}
+                                            {claimTypeLabel(claim.claim_type)}
                                         </td>
                                         <td className="px-6 py-4 font-medium text-slate-900">
                                             {formatCurrency(claim.total_amount)}
                                         </td>
                                         <td className="px-6 py-4">
                                             <Badge variant={statusBadgeVariant(claim.status)} size="sm">
-                                                {claim.status || "unknown"}
+                                                {statusLabel(claim.status)}
                                             </Badge>
                                             {claim.rejection_reason && (
                                                 <p className="text-xs text-red-500 mt-1 max-w-[180px] truncate" title={claim.rejection_reason}>
