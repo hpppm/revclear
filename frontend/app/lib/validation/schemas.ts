@@ -128,39 +128,59 @@ export const ForgotPasswordConfirmSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
-export const CreatePatientFormSchema = z.object({
+// Shared required patient fields used by both create and edit
+const patientRequiredFields = {
   full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
-  dob: dobPastSchema,
-  gender: z.enum(["M", "F", "U", "O"]),
-  phone: phoneSchema,
-  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
-  address_street: z.string().max(200).optional().or(z.literal("")),
-  address_city: z.string().max(100).optional().or(z.literal("")),
-  address_state: z.string().max(2).optional().or(z.literal("")),
-  address_zip: zipSchema,
-  insurance_provider: z.string().max(100).optional().or(z.literal("")),
+  dob: z
+    .string()
+    .min(1, "Date of birth is required")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+    .refine((d: string) => new Date(d) < new Date(), "Date of birth cannot be in the future"),
+  gender: z.enum(["M", "F", "U", "O"], { error: "Gender is required" }),
+  phone: z
+    .string()
+    .min(1, "Phone number is required")
+    .regex(/^\+?[\d\s\-(). ]{7,15}$/, "Please enter a valid phone number"),
+  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  address_street: z.string().min(1, "Street address is required").max(200),
+  address_city: z.string().min(1, "City is required").max(100),
+  address_state: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/, "State must be a 2-letter abbreviation (e.g. PA)"),
+  address_zip: z
+    .string()
+    .min(1, "ZIP code is required")
+    .regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)"),
+  insurance_provider: z.string().min(1, "Insurance provider is required").max(100),
   insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
   insurance_member_id: z.string().max(50).optional().or(z.literal("")),
   insurance_group_number: z.string().max(50).optional().or(z.literal("")),
   insurance_payer_id: z.string().max(50).optional().or(z.literal("")),
   insurance_payer_name: z.string().max(100).optional().or(z.literal("")),
-});
+};
 
-export const EditPatientFormSchema = z.object({
-  full_name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
-  dob: dobPastSchema,
-  gender: z.enum(["M", "F", "U", "O"]).optional(),
-  phone: phoneSchema,
-  email: z.string().email("Please enter a valid email address").optional().or(z.literal("")),
-  address_street: z.string().max(200).optional().or(z.literal("")),
-  address_city: z.string().max(100).optional().or(z.literal("")),
-  address_state: z.string().max(2).optional().or(z.literal("")),
-  address_zip: zipSchema,
-  insurance_provider: z.string().max(100).optional().or(z.literal("")),
-  insurance_policy_number: z.string().max(50).optional().or(z.literal("")),
-  insurance_member_id: z.string().max(50).optional().or(z.literal("")),
-  insurance_group_number: z.string().max(50).optional().or(z.literal("")),
-});
+// When insurance_provider is not SELF_PAY, policy number and member ID are required
+function enforceInsuranceFields(
+  data: { insurance_provider?: string; insurance_policy_number?: string; insurance_member_id?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (data.insurance_provider && data.insurance_provider !== "SELF_PAY") {
+    if (!data.insurance_policy_number) {
+      ctx.addIssue({ code: "custom", path: ["insurance_policy_number"], message: "Policy number is required" });
+    }
+    if (!data.insurance_member_id) {
+      ctx.addIssue({ code: "custom", path: ["insurance_member_id"], message: "Member ID is required" });
+    }
+  }
+}
+
+export const CreatePatientFormSchema = z
+  .object(patientRequiredFields)
+  .superRefine(enforceInsuranceFields);
+
+export const EditPatientFormSchema = z
+  .object(patientRequiredFields)
+  .superRefine(enforceInsuranceFields);
 
 export const ProfileFormSchema = z.object({
   phone: phoneSchema,
