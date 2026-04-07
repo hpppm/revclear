@@ -104,7 +104,7 @@ export const CreatePatientSchema = PatientSchema.extend({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
     .transform((val) => val ? val.split('T')[0] : val),
-  gender: z.enum(["M", "F", "U", "O"], { error: "Gender is required" }),
+  gender: z.enum(["M", "F", "U", "O"], { errorMap: () => ({ message: "Gender is required" }) }),
   phone: z.string().min(1, "Phone number is required"),
   email: z.string().email("Invalid email address"),
   address_street: z.string().min(1, "Street address is required"),
