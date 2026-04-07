@@ -40,6 +40,7 @@ export default function PatientProfilePage() {
     const [encounters, setEncounters] = useState<Encounter[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
@@ -205,12 +206,12 @@ export default function PatientProfilePage() {
 
     const handleDelete = async (id: string) => {
         setDeletingId(id);
+        setConfirmDeleteId(null);
         try {
             await apiClient.encounters.delete(id);
             setEncounters((prev) => prev.filter((e) => e.id !== id));
         } catch (err) {
             logger.error("Failed to delete encounter", err);
-            // Optionally set a temporary error state for deleting
         } finally {
             setDeletingId(null);
         }
@@ -241,6 +242,25 @@ export default function PatientProfilePage() {
 
     return (
         <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
+
+            {/* Delete confirmation modal */}
+            {confirmDeleteId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+                        <h3 className="text-base font-semibold text-slate-900 mb-2">Delete encounter?</h3>
+                        <p className="text-sm text-slate-500 mb-6">This cannot be undone. The encounter and all associated data will be permanently deleted.</p>
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={() => setConfirmDeleteId(null)} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                                Cancel
+                            </button>
+                            <button onClick={() => handleDelete(confirmDeleteId)} disabled={!!deletingId} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition">
+                                {deletingId ? "Deleting..." : "Delete"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-6xl mx-auto space-y-8">
                 {/* Patient Information Card */}
                 <Card>
@@ -259,7 +279,7 @@ export default function PatientProfilePage() {
                                 {!editMode ? (
                                     <button
                                         onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                                        className="brand-button-primary px-4 py-2 rounded-lg font-medium text-sm text-white"
                                     >
                                         Edit Profile
                                     </button>
@@ -268,7 +288,7 @@ export default function PatientProfilePage() {
                                         <button
                                             onClick={handleSave}
                                             disabled={saving}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm disabled:opacity-50"
+                                            className="brand-button-primary px-4 py-2 rounded-lg font-medium text-sm text-white disabled:opacity-50"
                                         >
                                             {saving ? "Saving..." : "Save"}
                                         </button>
@@ -523,33 +543,29 @@ export default function PatientProfilePage() {
                                                                 : "bg-gray-100 text-gray-800"
                                                         }`}
                                                 >
-                                                    {encounter.status === "ready"
-                                                        ? "Ready"
-                                                        : encounter.status === "completed"
-                                                            ? "Completed"
-                                                            : encounter.status?.replace("_", " ") || "Draft"}
+                                                    {encounter.status === "ready" ? "Ready" : encounter.status === "completed" ? "Completed" : encounter.status === "in_progress" ? "In Progress" : encounter.status === "ready_for_review" ? "Ready for Review" : encounter.status === "archived" ? "Archived" : encounter.status === "scheduled" ? "Scheduled" : "Draft"}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 {encounter.status === "ready" || encounter.status === "completed" ? (
                                                     <Link
                                                         href={`/dashboard/encounters/${encounter.id}`}
-                                                        className="text-blue-600 hover:text-blue-900 font-semibold"
+                                                        className="text-(--brand-600) hover:text-(--brand-700) font-semibold"
                                                     >
                                                         View
                                                     </Link>
                                                 ) : (
                                                     <Link
                                                         href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                        className="text-green-600 hover:text-green-900 font-semibold"
+                                                        className="text-(--brand-600) hover:text-(--brand-700) font-semibold"
                                                     >
-                                                        Continue →
+                                                        Continue
                                                     </Link>
                                                 )}
                                                 <button
                                                     type="button"
                                                     aria-label="Delete encounter"
-                                                    onClick={() => handleDelete(encounter.id)}
+                                                    onClick={() => setConfirmDeleteId(encounter.id)}
                                                     className="ml-4 text-slate-400 hover:text-red-600 disabled:opacity-50"
                                                 >
                                                     <svg

@@ -42,8 +42,6 @@ export default function TranscriptionStep({
     onTranscribe,
     allowedAudioTypes,
 }: TranscriptionStepProps) {
-    const demoTranscript = `Chief Complaint: Patient presents with chronic low back pain that has worsened over the past 2 weeks.\n\nHistory of Present Illness:\n- 45-year-old male with 6-month history of intermittent low back pain, now constant.\n- Pain is 6/10, sharp with movement, dull ache at rest; radiates intermittently to left posterior thigh, no below-knee radiation.\n- Worse with prolonged sitting, bending, lifting; improved with rest and ibuprofen 400 mg PRN.\n- No red flags: denies bowel/bladder changes, saddle anesthesia, significant weight loss, fever, or trauma.\n- Work: desk-based; notes poor ergonomics, minimal stretching.\n\nPast Medical History:\n- Hypertension, controlled with lisinopril 10 mg daily.\n- No prior spine surgery.\n\nMedications:\n- Lisinopril 10 mg daily.\n- Ibuprofen 400 mg PRN (takes 2–3x/week).\n\nAllergies: NKDA.\n\nSocial History:\n- Office worker, sedentary; exercises 1–2x/week (walking).\n- Non-smoker; occasional alcohol.\n\nReview of Systems:\n- Negative for weight loss, fever, night sweats.\n- Negative for incontinence, numbness, tingling in feet.\n\nPhysical Exam:\n- Vitals: BP 128/78, HR 72, afebrile.\n- General: no acute distress.\n- Back: mild left paraspinal tenderness at L4-L5; no midline step-off.\n- ROM: flexion limited by pain; extension mild discomfort.\n- Neuro: Strength 5/5 in BLE; sensation intact; reflexes 2+ patellar/Achilles; negative straight leg raise bilaterally.\n- Gait: normal.\n\nAssessment:\n- Mechanical low back pain with probable myofascial component; no radicular deficits or red flags.\n\nPlan:\n- Meds: Continue ibuprofen PRN with food; add short course of scheduled NSAID if needed; consider muscle relaxant at night if spasms persist.\n- PT: Core strengthening, McGill exercises, hip mobility, hamstring stretching; posture and ergonomic education; avoid prolonged sitting.\n- Activity: Relative rest; avoid heavy lifting/twisting for 1–2 weeks; walking encouraged.\n- Work: Recommend ergonomic assessment and sit-stand desk if available; hourly micro-breaks and stretching.\n- Imaging: Not indicated now; consider MRI if no improvement after 6–8 weeks or if red flags emerge.\n- Follow-up: 4–6 weeks or sooner if worsening, new neuro deficits, or red flags.\n`;
-
     const transcriptText = (() => {
         if (!transcript) return null;
         if (typeof transcript === "string") return transcript;
@@ -187,15 +185,6 @@ export default function TranscriptionStep({
                         <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
                             <p className="text-xs font-medium text-slate-700">Transcript (editable)</p>
             <div className="flex flex-wrap gap-2 mb-2">
-                <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onTranscriptDraftChange(demoTranscript)}
-                    className="border-dashed"
-                >
-                    Demo transcript
-                </Button>
                 {transcriptText && (
                     <Button
                         type="button"
@@ -207,7 +196,7 @@ export default function TranscriptionStep({
                     </Button>
                 )}
                 <span className="text-xs text-slate-500">
-                    Using: {transcriptDraft.trim() === demoTranscript.trim() ? "Demo transcript" : "Original / edited transcript"}
+                    {transcriptText && transcriptDraft.trim() !== transcriptText.trim() ? "Edited transcript" : "Original transcript"}
                 </span>
             </div>
                             <textarea

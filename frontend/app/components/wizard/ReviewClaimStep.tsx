@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { useAuth } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
@@ -34,6 +35,7 @@ export default function ReviewClaimStep({
     const serviceZipRef = useRef<HTMLDivElement>(null);
     const renderingNameRef = useRef<HTMLDivElement>(null);
     const renderingNpiRef = useRef<HTMLDivElement>(null);
+    const { user: authUser } = useAuth();
     const [claim, setClaim] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -301,7 +303,9 @@ export default function ReviewClaimStep({
                 preview.patient_id ? apiClient.patients.getSubscriber(preview.patient_id) : Promise.resolve(null),
             ]);
 
-            const profile: any = meResp.status === "fulfilled" ? (meResp.value.data?.data || meResp.value.data || meResp.value) : null;
+            const meData: any = meResp.status === "fulfilled" ? meResp.value.data : null;
+            // /me returns { success, user: {...}, organization: {...} }
+            const profile: any = meData?.user ?? null;
             const patient: any =
                 patientResp.status === "fulfilled" && patientResp.value
                     ? (patientResp.value.data?.data || patientResp.value.data || patientResp.value)
@@ -330,9 +334,9 @@ export default function ReviewClaimStep({
                 next.service_date_end = next.service_date_start;
             }
 
-            // Billing provider defaults from organization (profile.organization)
+            // Billing provider defaults from organization
             next.billing_provider = { ...(next.billing_provider || {}) };
-            const org = profile?.organization || {};
+            const org = meData?.organization || {};
 
             if (!next.billing_provider.name && org.billing_name) next.billing_provider.name = org.billing_name;
             if (!next.billing_provider.npi && org.billing_npi) next.billing_provider.npi = org.billing_npi;
@@ -364,11 +368,17 @@ export default function ReviewClaimStep({
                 };
             }
 
-            // Rendering provider defaults from clinician profile (user)
-            next.rendering_provider = { ...(next.rendering_provider || {}) };
-            if (!next.rendering_provider.name && profile?.full_name) next.rendering_provider.name = profile.full_name;
-            if (!next.rendering_provider.npi && profile?.npi) next.rendering_provider.npi = profile.npi;
-            if (!next.rendering_provider.taxonomy_code && profile?.taxonomy_code) next.rendering_provider.taxonomy_code = profile.taxonomy_code;
+            // Rendering provider always comes from the logged-in clinician — use authUser
+            // first (from JWT/DB via AuthContext), then fall back to /me profile
+            const clinicianName = authUser?.full_name || authUser?.name || profile?.full_name;
+            const clinicianNpi = profile?.npi;
+            const clinicianTaxonomy = profile?.taxonomy_code;
+            next.rendering_provider = {
+                ...(next.rendering_provider || {}),
+                ...(clinicianName ? { name: clinicianName } : {}),
+                ...(clinicianNpi ? { npi: clinicianNpi } : {}),
+                ...(clinicianTaxonomy ? { taxonomy_code: clinicianTaxonomy } : {}),
+            };
 
             // Service facility defaults: Prioritize General Information (org.name, etc.)
             next.service_facility = { ...(next.service_facility || {}) };
@@ -420,19 +430,30 @@ export default function ReviewClaimStep({
                 };
             }
 
+            // Payer info from patient insurance record
+            if (patient) {
+                if (!next.payer_name) next.payer_name = patient.insurance_payer_name || patient.insurance_provider || null;
+                if (!next.payer_id) next.payer_id = patient.insurance_payer_id || null;
+                if (!next.insurance_provider) next.insurance_provider = patient.insurance_provider || null;
+                // Always pull member_id and group_number from patient — regardless of relationship
+                if (!next.subscriber) next.subscriber = {};
+                if (!next.subscriber.member_id) next.subscriber.member_id = patient.insurance_member_id || null;
+                if (!next.subscriber.group_number) next.subscriber.group_number = patient.insurance_group_number || null;
+            }
+
             // Subscriber defaults from patient/subscriber records
             if (!next.subscriber_relationship && patient?.insurance_relationship) {
                 next.subscriber_relationship = patient.insurance_relationship;
             }
 
             // If relationship is self, ensure patient details are used if subscriber record is missing/empty
-            if (next.subscriber_relationship === 'self' && patient) {
+            if ((next.subscriber_relationship === 'self' || !next.subscriber_relationship) && patient) {
                 if (!next.subscriber) next.subscriber = {};
-                if (!next.subscriber.full_name) next.subscriber.full_name = patient.name;
+                if (!next.subscriber.full_name) next.subscriber.full_name = patient.name || patient.full_name;
                 if (!next.subscriber.dob) next.subscriber.dob = patient.dob;
                 if (!next.subscriber.gender) next.subscriber.gender = patient.gender;
-                if (!next.subscriber.member_id) next.subscriber.member_id = patient.insurance_member_id || patient.insuranceId;
-                if (!next.subscriber.group_number) next.subscriber.group_number = patient.insurance_group_number;
+                if (!next.subscriber.member_id) next.subscriber.member_id = patient.insurance_member_id || null;
+                if (!next.subscriber.group_number) next.subscriber.group_number = patient.insurance_group_number || null;
                 if (!next.subscriber.address_street) next.subscriber.address_street = patient.address_street;
                 if (!next.subscriber.address_city) next.subscriber.address_city = patient.address_city;
                 if (!next.subscriber.address_state) next.subscriber.address_state = patient.address_state;
@@ -522,7 +543,10 @@ export default function ReviewClaimStep({
                 </div>
                 <div className="space-y-3">
                     <Input label="Encounter ID" value={claim.encounter_id || encounterId || ""} disabled className="bg-slate-50" />
-                    <Input label="Patient ID" value={claim.patient_id || ""} disabled className="bg-slate-50" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Patient ID" value={claim.patient_id || ""} disabled className="bg-slate-50" />
+                        <Input label="Patient Name" value={claim.patient_name || ""} disabled className="bg-slate-50" />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <Input
                             label="Date of Service Start"
@@ -578,6 +602,23 @@ export default function ReviewClaimStep({
                             label="Payer ID"
                             value={claim.payer_id || ""}
                             onChange={(e) => handleUpdateClaim("payer_id", e.target.value)}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Input
+                            label="Policy Number"
+                            value={claim.insurance_policy_number || ""}
+                            onChange={(e) => handleUpdateClaim("insurance_policy_number", e.target.value)}
+                        />
+                        <Input
+                            label="Member ID"
+                            value={claim.subscriber?.member_id || ""}
+                            onChange={(e) => handleUpdateNested("subscriber", "member_id", e.target.value)}
+                        />
+                        <Input
+                            label="Group Number"
+                            value={claim.subscriber?.group_number || ""}
+                            onChange={(e) => handleUpdateNested("subscriber", "group_number", e.target.value)}
                         />
                     </div>
                 </div>
