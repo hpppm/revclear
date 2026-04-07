@@ -95,7 +95,7 @@ export default function AddPatientPage() {
       router.push("/dashboard/patients");
     } catch (error) {
       logger.error("Failed to create patient", error);
-      const backendErrors: any[] = error?.response?.data?.errors || [];
+      const backendErrors: any[] = (error as any)?.response?.data?.errors || [];
       if (backendErrors.length > 0) {
         const errs: Record<string, string> = {};
         backendErrors.forEach((e: any) => {
@@ -104,7 +104,7 @@ export default function AddPatientPage() {
         });
         setFieldErrors(errs);
       } else {
-        setError(error?.response?.data?.error || "Failed to create patient");
+        setError((error as any)?.response?.data?.error || "Failed to create patient");
       }
     } finally {
       setSaving(false);
