@@ -574,9 +574,12 @@ export default function PatientProfilePage() {
                         <h2 className="text-xl font-semibold text-slate-900">Encounters History</h2>
                         <Link
                             href={`/dashboard/encounters/create?patientId=${patientId}`}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                            className="brand-button-primary inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm"
                         >
-                            + Start New Encounter
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Encounter
                         </Link>
                     </div>
 
