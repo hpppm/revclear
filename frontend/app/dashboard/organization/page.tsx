@@ -10,7 +10,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
-import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
+import { OrganizationFormSchema, stripEmptyStrings } from "@/app/lib/validation/schemas";
 
 export default function OrganizationProfilePage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -116,7 +116,7 @@ export default function OrganizationProfilePage() {
         setError(null);
         setFieldErrors({});
 
-        const validation = OrganizationFormSchema.safeParse(formData);
+        const validation = OrganizationFormSchema.safeParse(stripEmptyStrings(formData));
         if (!validation.success) {
             const errs: Record<string, string> = {};
             validation.error.issues.forEach((err) => {

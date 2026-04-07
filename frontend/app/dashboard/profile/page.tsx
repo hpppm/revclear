@@ -8,7 +8,7 @@ import DashboardHeader from "@/app/components/ui/DashboardHeader";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
-import { ProfileFormSchema } from "@/app/lib/validation/schemas";
+import { ProfileFormSchema, stripEmptyStrings } from "@/app/lib/validation/schemas";
 
 export default function ProfilePage() {
     const { user, checkAuth } = useAuth();
@@ -41,7 +41,7 @@ export default function ProfilePage() {
         setError(null);
         setFieldErrors({});
 
-        const validation = ProfileFormSchema.safeParse(formData);
+        const validation = ProfileFormSchema.safeParse(stripEmptyStrings(formData));
         if (!validation.success) {
             const errs: Record<string, string> = {};
             validation.error.issues.forEach((err) => {

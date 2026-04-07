@@ -765,6 +765,7 @@ export default function EncounterPage() {
             }
           } catch (err) {
             logger.error("Failed to save claim", err);
+            throw err;
           }
         }
 
