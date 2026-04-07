@@ -362,12 +362,12 @@ export default function EncounterSummaryPage() {
                             <h2 className="text-xl font-semibold text-slate-900">Claim</h2>
                             {claim && (
                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${encounter.status === "ready"
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-emerald-100 text-emerald-800"
                                     : encounter.status === "completed"
                                         ? "bg-blue-100 text-blue-800"
-                                        : "bg-gray-100 text-gray-800"
+                                        : "bg-slate-100 text-slate-700"
                                     }`}>
-                                    {encounter.status === "ready" ? "Ready to Submit" : encounter.status?.replace("_", " ")}
+                                    {encounter.status === "ready" ? "Ready to Submit" : encounter.status === "completed" ? "Completed" : encounter.status === "in_progress" ? "In Progress" : encounter.status === "ready_for_review" ? "Ready for Review" : encounter.status === "archived" ? "Archived" : encounter.status === "scheduled" ? "Scheduled" : "Draft"}
                                 </span>
                             )}
                         </div>
@@ -429,7 +429,10 @@ export default function EncounterSummaryPage() {
 
                 {encounter.status === "completed" && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                        <p className="text-blue-800 font-medium">✓ This encounter has been submitted to the clearinghouse</p>
+                        <p className="text-blue-800 font-medium flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            This encounter has been submitted to the clearinghouse
+                        </p>
                     </div>
                 )}
             </div>

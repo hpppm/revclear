@@ -5,6 +5,21 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Sidebar from "@/app/components/ui/Sidebar";
 
+// Global scroll-to-center on focus for any input/select/textarea in the dashboard.
+// This covers raw HTML elements that don't go through the Input component.
+function useFormAutoScroll() {
+    useEffect(() => {
+        const handler = (e: FocusEvent) => {
+            const el = e.target as HTMLElement;
+            if (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA") {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        };
+        document.addEventListener("focusin", handler);
+        return () => document.removeEventListener("focusin", handler);
+    }, []);
+}
+
 export default function DashboardLayout({
     children,
 }: {
@@ -13,6 +28,7 @@ export default function DashboardLayout({
     const { user, isLoading } = useAuth();
     const router = useRouter();
     const [collapsed, setCollapsed] = useState(false);
+    useFormAutoScroll();
 
     useEffect(() => {
         if (!isLoading && !user) {

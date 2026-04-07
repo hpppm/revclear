@@ -134,6 +134,7 @@ export interface Encounter {
   created_at?: string;
   updated_at?: string;
   patient_name?: string; // Joined from patients table
+  encounter_type?: string;
   // Billing fields
   place_of_service?: string;
 }

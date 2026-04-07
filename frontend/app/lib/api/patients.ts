@@ -1,5 +1,6 @@
 import { z } from "zod";
 import api from "./axios";
+import { deduplicateGet } from "./deduplicate";
 
 // SECURITY: Explicit schemas strip any injected internal fields
 // (organization_id, clinician_id, role) that callers must not control.
@@ -10,8 +11,8 @@ const UUID = z.string().uuid("Invalid patient ID format");
 // Fields callers are allowed to write — internal server fields are omitted.
 const PatientWriteSchema = z.object({
   full_name: z.string().min(1).optional(),
-  dob: z.string().optional(),
-  gender: z.string().optional(),
+  dob: z.string().optional().nullable(),
+  gender: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
   // Insurance fields — insurance_provider and insurance_policy_number are the
@@ -34,14 +35,17 @@ const PatientWriteSchema = z.object({
 });
 
 const SubscriberWriteSchema = z.object({
-  subscriber_full_name: z.string().optional().nullable(),
-  subscriber_dob: z.string().optional().nullable(),
-  subscriber_gender: z.string().optional().nullable(),
-  subscriber_relationship: z.string().optional().nullable(),
-  subscriber_address_street: z.string().optional().nullable(),
-  subscriber_address_city: z.string().optional().nullable(),
-  subscriber_address_state: z.string().optional().nullable(),
-  subscriber_address_zip: z.string().optional().nullable(),
+  full_name: z.string().min(1, "Subscriber name is required").max(100),
+  dob: z.string().min(1, "Date of birth is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  member_id: z.string().min(1, "Member ID is required").max(50),
+  gender: z.string().optional(),
+  address_street: z.string().optional(),
+  address_city: z.string().optional(),
+  address_state: z.string().optional(),
+  address_zip: z.string().optional(),
+  group_number: z.string().optional(),
+  relationship: z.enum(["self", "spouse", "child", "other"]).optional(),
 });
 
 export type PatientWritePayload = z.infer<typeof PatientWriteSchema>;
@@ -51,9 +55,10 @@ const safeId = (id: string) => encodeURIComponent(UUID.parse(id));
 
 export const patientsApi = {
   getAll: (params?: { limit?: number; offset?: number }) =>
-    api.get("/patients", { params }),
+    deduplicateGet("patients.getAll", () => api.get("/patients", { params })),
 
-  getById: (id: string) => api.get(`/patients/${safeId(id)}`),
+  getById: (id: string) =>
+    deduplicateGet(`patients.getById.${id}`, () => api.get(`/patients/${safeId(id)}`)),
 
   create: (data: PatientWritePayload) =>
     api.post("/patients", PatientWriteSchema.parse(data)),
@@ -63,7 +68,8 @@ export const patientsApi = {
 
   delete: (id: string) => api.delete(`/patients/${safeId(id)}`),
 
-  getSubscriber: (id: string) => api.get(`/patients/${safeId(id)}/subscriber`),
+  getSubscriber: (id: string) =>
+    deduplicateGet(`patients.getSubscriber.${id}`, () => api.get(`/patients/${safeId(id)}/subscriber`)),
 
   upsertSubscriber: (id: string, data: SubscriberWritePayload) =>
     api.put(`/patients/${safeId(id)}/subscriber`, SubscriberWriteSchema.parse(data)),
