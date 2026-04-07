@@ -715,10 +715,11 @@ export default function EncounterPage() {
           encounterId={encounterId}
           soap={soap}
           savedCodes={savedCodes}
+          selectedCodes={selectedCodes}
           onSelectionChange={handleCodesSelected}
         />
       ),
-      canGoNext: true, // Codes are optional
+      canGoNext: selectedCodes.some((c) => c.type === "ICD-10") && selectedCodes.some((c) => c.type === "CPT"),
       onNext: async () => {
         await handleSaveCodes();
       },

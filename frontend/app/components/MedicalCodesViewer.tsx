@@ -76,6 +76,7 @@ export default function MedicalCodesViewer({
       setIcdCandidates(normalized.filter((c) => c.type === "ICD-10"));
       setCptCandidates(normalized.filter((c) => c.type === "CPT"));
       setSelectedCodes(normalized);
+      onCodesSelected?.(normalized);
       setHasGenerated(true);
     }
   }, [savedCodes]);
