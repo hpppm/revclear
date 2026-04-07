@@ -124,6 +124,7 @@ export default function OrganizationProfilePage() {
                 if (key && !errs[key]) errs[key] = err.message;
             });
             setFieldErrors(errs);
+            setError("Please fix the highlighted fields below before saving.");
             return;
         }
 
@@ -225,12 +226,14 @@ export default function OrganizationProfilePage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Clinic Name"
+                                        error={fieldErrors.name}
                                     />
                                      <Input
                                         label="Phone"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 555-5555"
+                                        error={fieldErrors.phone}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -251,16 +254,20 @@ export default function OrganizationProfilePage() {
                                             label="City"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                            error={fieldErrors.city}
                                         />
                                         <Input
                                             label="State"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                                            placeholder="PA"
+                                            error={fieldErrors.state}
                                         />
                                         <Input
                                             label="Postal Code"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                                            error={fieldErrors.postal_code}
                                         />
                                     </div>
                                 </div>
@@ -282,12 +289,14 @@ export default function OrganizationProfilePage() {
                                         value={formData.billing_npi}
                                         onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
                                         placeholder="10-digit NPI"
+                                        error={fieldErrors.billing_npi}
                                     />
                                     <Input
                                         label="Billing Tax ID"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
                                         placeholder="Tax ID"
+                                        error={fieldErrors.billing_tax_id}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -308,16 +317,20 @@ export default function OrganizationProfilePage() {
                                             label="Billing City"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
+                                            error={fieldErrors.billing_city}
                                         />
                                         <Input
                                             label="Billing State"
                                             value={formData.billing_state}
                                             onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
+                                            placeholder="KS"
+                                            error={fieldErrors.billing_state}
                                         />
                                         <Input
                                             label="Billing Postal Code"
                                             value={formData.billing_postal_code}
                                             onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
+                                            error={fieldErrors.billing_postal_code}
                                         />
                                     </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -326,12 +339,14 @@ export default function OrganizationProfilePage() {
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
                                             placeholder="(555) 555-5555"
+                                            error={fieldErrors.billing_phone}
                                         />
                                         <Input
                                             label="Default Place of Service"
                                             value={formData.default_place_of_service}
                                             onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
                                             placeholder="11"
+                                            error={fieldErrors.default_place_of_service}
                                         />
                                     </div>
                                 </div>
