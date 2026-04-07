@@ -92,10 +92,10 @@ export default function AddPatientPage() {
       );
 
       await apiClient.patients.create(dataToSubmit);
-      router.push("/dashboard");
-    } catch (error: any) {
+      router.push("/dashboard/patients");
+    } catch (error) {
       logger.error("Failed to create patient", error);
-      const backendErrors: any[] = error?.response?.data?.errors || [];
+      const backendErrors: any[] = (error as any)?.response?.data?.errors || [];
       if (backendErrors.length > 0) {
         const errs: Record<string, string> = {};
         backendErrors.forEach((e: any) => {
@@ -104,7 +104,7 @@ export default function AddPatientPage() {
         });
         setFieldErrors(errs);
       } else {
-        setError(error?.response?.data?.error || "Failed to create patient");
+        setError((error as any)?.response?.data?.error || "Failed to create patient");
       }
     } finally {
       setSaving(false);
@@ -116,8 +116,8 @@ export default function AddPatientPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <BackButton href="/dashboard">
-            Back to Dashboard
+          <BackButton href="/dashboard/patients">
+            Back to Patients
           </BackButton>
           <h1 className="text-3xl font-bold text-slate-900">Add New Patient</h1>
           <p className="text-slate-600 mt-2">
