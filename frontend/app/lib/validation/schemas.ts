@@ -93,7 +93,8 @@ const npiSchema = z
 const dobPastSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
-  .refine((d: string) => !d || new Date(d) < new Date(), "Date of birth cannot be in the future")
+  .refine((d: string) => !d || new Date(d) >= new Date("1900-01-01"), "Date of birth cannot be before 1900-01-01")
+  .refine((d: string) => !d || new Date(d) <= new Date(), "Date of birth cannot be in the future")
   .optional()
   .or(z.literal(""));
 
