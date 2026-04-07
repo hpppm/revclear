@@ -214,7 +214,7 @@ export const ProfileFormSchema = z.object({
 const optStr = (max: number) => z.string().max(max).optional();
 const stateSchema = z
   .string()
-  .refine((v) => !v || /^[A-Za-z]{2}$/.test(v), "State must be a 2-letter abbreviation (e.g. PA)")
+  .regex(/^[A-Za-z]{2}$/, "State must be a 2-letter abbreviation (e.g. PA)")
   .optional();
 
 export const OrganizationFormSchema = z.object({
@@ -238,9 +238,8 @@ export const OrganizationFormSchema = z.object({
   billing_phone: phoneSchema,
   default_place_of_service: z
     .string()
-    .refine((v) => !v || /^\d{2}$/.test(v), "Place of service must be a 2-digit numeric code (e.g. 11)")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^\d{2}$/, "Place of service must be a 2-digit numeric code (e.g. 11)")
+    .optional(),
   edi_sender_id: optStr(50),
   edi_receiver_id: optStr(50),
   edi_sftp_host: optStr(200),
@@ -248,7 +247,7 @@ export const OrganizationFormSchema = z.object({
   edi_sftp_port: z
     .string()
     .refine(
-      (v) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535),
+      (v) => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535,
       "Port must be a number between 1 and 65535"
     )
     .optional(),
