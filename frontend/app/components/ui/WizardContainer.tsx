@@ -38,6 +38,7 @@ export default function WizardContainer({
     const [stepError, setStepError] = useState<string | null>(null);
     // Track whether the current step change came from user navigation (not external sync)
     const userNavigatedRef = useRef(false);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         // Sync step from parent (URL restore) without triggering onStepChange
@@ -46,6 +47,9 @@ export default function WizardContainer({
     }, [initialStep]);
 
     useEffect(() => {
+        // Scroll to top of content and window on step change
+        contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
         // Only notify parent when the user actually clicked Next/Back
         if (userNavigatedRef.current && onStepChange) {
             onStepChange(currentStep);
@@ -70,6 +74,12 @@ export default function WizardContainer({
             }
         } catch (err: any) {
             logger.error("Error in step transition");
+            // On the last step the component handles its own field-level scroll;
+            // only scroll to top for earlier steps where there is no field-level scroll.
+            if (currentStep < steps.length - 1) {
+                contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
             setStepError(err?.message || "Please fix the errors above before continuing.");
         } finally {
             setIsTransitioning(false);
@@ -118,7 +128,7 @@ export default function WizardContainer({
                         currentStep={currentStep}
                     />
 
-                    <div className="flex-1 overflow-auto">
+                    <div ref={contentRef} className="flex-1 overflow-auto">
                         <div className="animate-fadeIn">{currentStepData.component}</div>
                     </div>
 
