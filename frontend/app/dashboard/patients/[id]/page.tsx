@@ -111,21 +111,22 @@ export default function PatientProfilePage() {
     const handleSave = async () => {
         if (!editedPatient) return;
 
-        const ne = (v: string | null | undefined) => v ?? "";
         const validation = EditPatientFormSchema.safeParse({
             full_name: editedPatient.name,
-            dob: ne(editedPatient.dob),
-            gender: editedPatient.gender ?? undefined,
-            phone: ne(editedPatient.phone),
-            email: ne(editedPatient.email),
-            address_street: ne(editedPatient.address_street),
-            address_city: ne(editedPatient.address_city),
-            address_state: ne(editedPatient.address_state),
-            address_zip: ne(editedPatient.address_zip),
-            insurance_provider: ne(editedPatient.insuranceType),
-            insurance_policy_number: ne(editedPatient.insuranceId),
-            insurance_member_id: ne(editedPatient.insurance_member_id),
-            insurance_group_number: ne(editedPatient.insurance_group_number),
+            dob: editedPatient.dob,
+            gender: editedPatient.gender,
+            phone: editedPatient.phone,
+            email: editedPatient.email,
+            address_street: editedPatient.address_street,
+            address_city: editedPatient.address_city,
+            address_state: editedPatient.address_state,
+            address_zip: editedPatient.address_zip,
+            insurance_provider: editedPatient.insuranceType,
+            // null → undefined: Zod's .optional() accepts undefined but not null;
+            // DB returns null for unset columns which would cause an invalid_union error
+            insurance_policy_number: editedPatient.insuranceId ?? undefined,
+            insurance_member_id: editedPatient.insurance_member_id ?? undefined,
+            insurance_group_number: editedPatient.insurance_group_number ?? undefined,
         });
         if (!validation.success) {
             const errs: Record<string, string> = {};
