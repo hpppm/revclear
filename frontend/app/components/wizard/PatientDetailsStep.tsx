@@ -305,7 +305,7 @@ export default function PatientDetailsStep({
                   error={subscriberFieldErrors.address_state}
                 />
                 <Input
-                  label="ZIP"
+                  label="ZIP *"
                   value={metadata.subscriber?.address_zip || ""}
                   onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("address_zip", e.target.value)}

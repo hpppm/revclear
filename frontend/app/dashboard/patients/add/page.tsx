@@ -90,7 +90,7 @@ export default function AddPatientPage() {
     setSaving(true);
 
     try {
-      // Strip empty strings so optional backend fields receive undefined not ""
+      // Strip empty strings so optional backend fields receive undefined, not ""
       const dataToSubmit = Object.fromEntries(
         Object.entries(base).filter(([, v]) => v !== "")
       );

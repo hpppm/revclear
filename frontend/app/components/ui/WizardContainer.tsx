@@ -44,6 +44,7 @@ export default function WizardContainer({
         // Sync step from parent (URL restore) without triggering onStepChange
         userNavigatedRef.current = false;
         setCurrentStep(initialStep);
+        setStepError(null);
     }, [initialStep]);
 
     useEffect(() => {
@@ -152,7 +153,7 @@ export default function WizardContainer({
                             Step {currentStep + 1} of {steps.length}
                         </div>
                         <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Submit for Review" : "Continue"}
+                            {isLastStep ? "Submit" : "Continue"}
                             {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                         </Button>
                     </div>
