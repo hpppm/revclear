@@ -1,44 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState, useCallback } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
-import { Encounter, Organization, Patient } from "@/app/lib/types";
+import { Organization, Patient } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
+import Button from "@/app/components/ui/Button";
 
 type ApiOrganizationPayload = {
-    data?: unknown;
+    data?: any;
     organization?: Organization;
 };
 
-const extractOrganization = (payload: ApiOrganizationPayload | unknown): Organization | null => {
-    if (!payload || typeof payload !== "object") return null;
-    // Support shapes: { data: { organization } }, { data }, or direct object
-    const typed = payload as { data?: unknown; organization?: Organization };
-    if (typed.data && typeof typed.data === "object") {
-        const data = typed.data as { organization?: Organization; data?: Organization };
-        if (data.organization) return data.organization;
-        if (data.data) return data.data;
-    }
-    if (typed.organization) return typed.organization;
+const extractOrganization = (payload: ApiOrganizationPayload | any): Organization | null => {
+    if (!payload) return null;
+    if (payload.data?.organization) return payload.data.organization as Organization;
+    if (payload.data?.data) return payload.data.data as Organization;
+    if (payload.data) return payload.data as Organization;
+    if (payload.organization) return payload.organization as Organization;
     return payload as Organization;
 };
 
-type RawPatient = {
-    id: string;
-    full_name?: string;
-    name?: string;
-    age?: number;
-    dob?: string;
-    phone?: string;
-    insurance_provider?: string;
-    insurance_policy_number?: string;
-    diagnosis?: string;
-};
-
-const mapPatient = (p: RawPatient): Patient => ({
+const mapPatient = (p: any): Patient => ({
     id: p.id,
     name: p.full_name || p.name,
     age: p.age || 0,
@@ -49,25 +33,29 @@ const mapPatient = (p: RawPatient): Patient => ({
     diagnosis: p.diagnosis,
 });
 
+
 export default function DashboardHome() {
-    const router = useRouter();
-    const { user, isLoading: authLoading, requiresOrganization } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [orgLoading, setOrgLoading] = useState(true);
     const [orgError, setOrgError] = useState<string | null>(null);
 
     const [patients, setPatients] = useState<Patient[]>([]);
-    const [patientsLoading, setPatientsLoading] = useState(false);
-    const [patientsError, setPatientsError] = useState<string | null>(null);
-
     const [encountersCount, setEncountersCount] = useState<number>(0);
-    const [encounters, setEncounters] = useState<Encounter[]>([]);
-    const [encountersLoading, setEncountersLoading] = useState(false);
+    const [claimsPending, setClaimsPending] = useState<number>(0);
+    const [claimsApproved, setClaimsApproved] = useState<number>(0);
 
     const [orgName, setOrgName] = useState("");
     const [inviteCode, setInviteCode] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const [isJoining, setIsJoining] = useState(false);
+    const [notifOpen, setNotifOpen] = useState(false);
+
+    // Prevent duplicate org fetches when auth context emits multiple values
+    const orgFetchInProgressRef = useRef(false);
+    // Prevent re-fetching patients/encounters/claims when org reference changes
+    // but the underlying data has already been loaded for this session
+    const dataFetchedRef = useRef(false);
 
     useEffect(() => {
         if (!authLoading && user) {
@@ -76,37 +64,25 @@ export default function DashboardHome() {
     }, [authLoading, user]);
 
     useEffect(() => {
-        if (orgLoading || authLoading) return;
-        if (!organization && requiresOrganization) {
-            router.push("/dashboard/organization");
-        }
-    }, [orgLoading, authLoading, organization, requiresOrganization, router]);
-
-    const refreshDashboard = useCallback(async () => {
         if (organization) {
-            await Promise.all([loadPatients(), loadEncounters()]);
+            if (!dataFetchedRef.current) {
+                dataFetchedRef.current = true;
+                loadPatients();
+                loadEncounters();
+                loadClaims();
+            }
+        } else {
+            dataFetchedRef.current = false;
+            setPatients([]);
+            setEncountersCount(0);
+            setClaimsPending(0);
+            setClaimsApproved(0);
         }
     }, [organization]);
 
-    useEffect(() => {
-        if (organization) {
-            void refreshDashboard();
-        } else {
-            setPatients([]);
-            setPatientsLoading(false);
-            setPatientsError(null);
-        }
-    }, [organization, refreshDashboard]);
-
-    useEffect(() => {
-        if (!organization) return;
-        const interval = setInterval(() => {
-            void refreshDashboard();
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [organization, refreshDashboard]);
-
     const loadOrganization = async () => {
+        if (orgFetchInProgressRef.current) return;
+        orgFetchInProgressRef.current = true;
         setOrgLoading(true);
         setOrgError(null);
         try {
@@ -117,29 +93,24 @@ export default function DashboardHome() {
             } else {
                 setOrganization(org);
             }
-        } catch (error: unknown) {
-            // 404/empty means no organization yet; treat gracefully
-            const status = typeof error === "object" && error !== null && "response" in error
-                ? (error as { response?: { status?: number } }).response?.status
-                : undefined;
-            if (status === 404) {
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
                 setOrganization(null);
             } else {
-                const message = typeof error === "object" && error !== null && "response" in error
-                    ? ((error as { response?: { data?: { message?: string; error?: string } } }).response?.data?.message
-                        || (error as { response?: { data?: { message?: string; error?: string } } }).response?.data?.error)
-                    : undefined;
-                setOrgError(message || "Unable to load organization.");
+                setOrgError(
+                    error?.response?.data?.message ||
+                    error?.response?.data?.error ||
+                    "Unable to load organization."
+                );
                 setOrganization(null);
             }
         } finally {
+            orgFetchInProgressRef.current = false;
             setOrgLoading(false);
         }
     };
 
     const loadPatients = async () => {
-        setPatientsLoading(true);
-        setPatientsError(null);
         try {
             const response = await apiClient.patients.getAll();
             const rawPatients = response.data?.data || [];
@@ -147,55 +118,48 @@ export default function DashboardHome() {
             setPatients(mapped);
         } catch (error) {
             logger.error("Failed to fetch patients", error);
-            setPatientsError("Failed to load patients. Please try again.");
-        } finally {
-            setPatientsLoading(false);
         }
     };
 
     const loadEncounters = async () => {
-        setEncountersLoading(true);
         try {
             const response = await apiClient.encounters.getAll();
-            const list = response.data?.data || [];
-            setEncounters(Array.isArray(list) ? list : []);
-            setEncountersCount(Array.isArray(list) ? list.length : 0);
+            const all: any[] = response.data?.data || [];
+            setEncountersCount(all.length);
         } catch (error) {
             logger.error("Failed to fetch encounters", error);
-            setEncounters([]);
-            setEncountersCount(0);
-        } finally {
-            setEncountersLoading(false);
+        }
+    };
+
+    const loadClaims = async () => {
+        try {
+            const response = await apiClient.claims.getAll();
+            const all: any[] = response.data?.data || [];
+            setClaimsPending(all.filter((c) => ["pending", "submitted", "draft"].includes(c.status?.toLowerCase())).length);
+            setClaimsApproved(all.filter((c) => ["approved", "paid"].includes(c.status?.toLowerCase())).length);
+        } catch (error) {
+            logger.error("Failed to fetch claims", error);
         }
     };
 
     const handleCreate = async (e: FormEvent) => {
         e.preventDefault();
-        if (!orgName.trim()) {
-            setOrgError("Please enter a clinic name.");
-            return;
-        }
+        if (!orgName.trim()) { setOrgError("Please enter a clinic name."); return; }
         setIsCreating(true);
         setOrgError(null);
         try {
             const response = await apiClient.organizations.create({ name: orgName.trim() });
-            const org = extractOrganization(response);
-            setOrganization(org);
+            setOrganization(extractOrganization(response));
             setOrgName("");
-        } catch (error: unknown) {
+        } catch (error: any) {
             logger.error("Failed to create organization", error);
             let message = "Could not create organization.";
-            const responseData = typeof error === "object" && error !== null && "response" in error
-                ? (error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }>; message?: string; error?: string } } }).response?.data
-                : undefined;
-            if (responseData?.errors && Array.isArray(responseData.errors)) {
-                message = responseData.errors
-                    .map((err) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (responseData?.message) {
-                message = responseData.message;
-            } else if (responseData?.error) {
-                message = responseData.error;
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                message = error.response.data.errors.map((err: any) => `${err.path.join(".")}: ${err.message}`).join(", ");
+            } else if (error?.response?.data?.message) {
+                message = error.response.data.message;
+            } else if (error?.response?.data?.error) {
+                message = error.response.data.error;
             }
             setOrgError(message);
         } finally {
@@ -205,31 +169,22 @@ export default function DashboardHome() {
 
     const handleJoin = async (e: FormEvent) => {
         e.preventDefault();
-        if (!inviteCode.trim()) {
-            setOrgError("Enter the invitation code sent by the clinic.");
-            return;
-        }
+        if (!inviteCode.trim()) { setOrgError("Enter the invitation code sent by the clinic."); return; }
         setIsJoining(true);
         setOrgError(null);
         try {
             const response = await apiClient.organizations.joinWithCode(inviteCode.trim());
-            const org = extractOrganization(response);
-            setOrganization(org);
+            setOrganization(extractOrganization(response));
             setInviteCode("");
-        } catch (error: unknown) {
+        } catch (error: any) {
             logger.error("Failed to join organization", error);
             let message = "Could not join organization.";
-            const responseData = typeof error === "object" && error !== null && "response" in error
-                ? (error as { response?: { data?: { errors?: Array<{ path: string[]; message: string }>; message?: string; error?: string } } }).response?.data
-                : undefined;
-            if (responseData?.errors && Array.isArray(responseData.errors)) {
-                message = responseData.errors
-                    .map((err) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (responseData?.message) {
-                message = responseData.message;
-            } else if (responseData?.error) {
-                message = responseData.error;
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                message = error.response.data.errors.map((err: any) => `${err.path.join(".")}: ${err.message}`).join(", ");
+            } else if (error?.response?.data?.message) {
+                message = error.response.data.message;
+            } else if (error?.response?.data?.error) {
+                message = error.response.data.error;
             }
             setOrgError(message);
         } finally {
@@ -237,427 +192,312 @@ export default function DashboardHome() {
         }
     };
 
-    const orgInitials = useMemo(() => {
-        if (!organization?.name) return "RC";
-        const parts = organization.name.split(" ").slice(0, 2);
-        return parts.map((p) => p.charAt(0).toUpperCase()).join("");
-    }, [organization]);
+    const greeting = (() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good morning";
+        if (hour < 17) return "Good afternoon";
+        return "Good evening";
+    })();
 
-    const formattedAddress = useMemo(() => {
-        if (!organization) return null;
-        // Prefer billing address if available
-        const line1 = organization.billing_address_line1 || organization.address_line1;
-        const line2 = organization.billing_address_line2 || organization.address_line2;
-        const city = organization.billing_city || organization.city;
-        const state = organization.billing_state || organization.state;
-        const zip = organization.billing_postal_code || organization.postal_code;
-
-        const segments = [
-            line1,
-            line2,
-            [city, state].filter(Boolean).join(", "),
-            zip,
-        ].filter(Boolean);
-        return segments.join(" · ");
-    }, [organization]);
-
-    const practitionerLabel = useMemo(() => {
-        const type = user?.practitionerType || "";
-        if (type.toLowerCase().includes("speech")) return "Speech Therapy";
-        if (type.toLowerCase().includes("mental")) return "Mental Health";
-        if (type.toLowerCase().includes("physical") || type.toLowerCase().includes("physio")) return "Physiotherapy";
-        return type || "Clinical";
-    }, [user?.practitionerType]);
-
-    const activeEncounters = useMemo(
-        () =>
-            encounters.filter((e) => e.status !== "completed" && e.status !== "archived"),
-        [encounters]
-    );
-    const readyForReview = useMemo(
-        () => encounters.filter((e) => e.status === "ready_for_review" || e.status === "ready"),
-        [encounters]
-    );
-    const readyClaims = useMemo(
-        () => encounters.filter((e) => e.status === "ready"),
-        [encounters]
-    );
-    const patientNameById = useMemo(() => {
-        const map = new Map<string, string>();
-        patients.forEach((p) => {
-            if (p.id && p.name) {
-                map.set(p.id, p.name);
-            }
-        });
-        return map;
-    }, [patients]);
-
-    const workQueue = useMemo(
-        () =>
-            encounters
-                .filter((e) => e.status !== "completed" && e.status !== "archived")
-                .slice(0, 6),
-        [encounters]
-    );
-
-    const getEncounterLink = (encounter: Encounter) => {
-        if (encounter.status === "completed" || encounter.status === "archived") {
-            return `/dashboard/encounters/${encounter.id}`;
-        }
-        let step = 0;
-        switch (encounter.status) {
-            case "draft":
-            case "scheduled":
-                step = 0;
-                break;
-            case "in_progress":
-                step = 1;
-                break;
-            case "ready_for_review":
-                step = 2;
-                break;
-            case "ready":
-                step = 4;
-                break;
-            default:
-                step = 0;
-        }
-        return `/dashboard/encounters/create?id=${encounter.id}&step=${step}`;
-    };
+    const firstName = user?.email
+        ? user.email.split("@")[0].split(".")[0]
+        : null;
+    const greetingName = firstName
+        ? firstName.charAt(0).toUpperCase() + firstName.slice(1)
+        : null;
 
     return (
-        <div className="space-y-10">
-            <div className="flex flex-col gap-3">
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
-                    {practitionerLabel} dashboard
-                </p>
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="min-h-screen bg-slate-100">
+            <div className="max-w-6xl mx-auto px-6 py-10">
+
+                {/* Page header */}
+                <div className="sticky top-0 z-10 bg-slate-100 pb-4 mb-4 flex items-start justify-between">
                     <div>
-                        <h1 className="text-3xl font-semibold text-slate-900">
-                            {organization ? "Clinic command center" : "Welcome to RevClear"}
-                        </h1>
-                        <p className="text-slate-600 max-w-2xl">
+                        <p className="text-sm uppercase tracking-[0.12em] text-slate-500">
+                            {organization ? organization.name : "Clinic workspace"}
+                        </p>
+                        <h1 className="text-3xl font-semibold text-slate-900 mt-1">
                             {organization
-                                ? "Track in-progress documentation, review queued work, and keep claims moving."
-                                : "Create a clinic or join with an invitation code to unlock patient management and billing workflows."}
+                                ? (greetingName ? `${greeting}, ${greetingName}` : "Dashboard")
+                                : "Welcome to RevClear"}
+                        </h1>
+                        <p className="text-slate-500 mt-1 text-sm">
+                            {organization
+                                ? `Today · ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`
+                                : "Create a clinic or join with an invitation code to get started."}
                         </p>
                     </div>
                     {organization && (
-                        <div className="flex flex-wrap gap-2">
-                            <Link
-                                href="/dashboard/encounters/create"
-                                className="rounded-2xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600"
-                            >
-                                New encounter
-                            </Link>
-                            <Link
-                                href="/dashboard/patients/add"
-                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                                Add patient
-                            </Link>
-                            <button
-                                type="button"
-                                onClick={() => void refreshDashboard()}
-                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                                Refresh
-                            </button>
+                        <div className="flex items-center gap-2">
+                            {/* Notification bell */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setNotifOpen((o) => !o)}
+                                    className="relative flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:border-slate-300 shadow-sm transition cursor-pointer"
+                                    aria-label="Notifications"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    {(claimsPending > 0) && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                            {claimsPending > 9 ? "9+" : claimsPending}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {notifOpen && (
+                                    <>
+                                        {/* Backdrop */}
+                                        <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
+                                        {/* Dropdown */}
+                                        <div className="absolute right-0 mt-2 w-72 rounded-xl bg-white border border-slate-200 shadow-lg z-20 overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-slate-100">
+                                                <p className="text-sm font-semibold text-slate-900">Notifications</p>
+                                            </div>
+                                            <ul className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                                                {claimsPending > 0 && (
+                                                    <li>
+                                                        <Link
+                                                            href="/dashboard/claims"
+                                                            onClick={() => setNotifOpen(false)}
+                                                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                                                        >
+                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            </span>
+                                                            <div>
+                                                                <p className="text-sm font-medium text-slate-900">{claimsPending} claim{claimsPending > 1 ? "s" : ""} pending</p>
+                                                                <p className="text-xs text-slate-500 mt-0.5">Review and submit to proceed with billing.</p>
+                                                            </div>
+                                                        </Link>
+                                                    </li>
+                                                )}
+                                                {encountersCount === 0 && (
+                                                    <li>
+                                                        <Link
+                                                            href="/dashboard/patients"
+                                                            onClick={() => setNotifOpen(false)}
+                                                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                                                        >
+                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                            </span>
+                                                            <div>
+                                                                <p className="text-sm font-medium text-slate-900">No encounters yet</p>
+                                                                <p className="text-xs text-slate-500 mt-0.5">Start your first encounter to generate billing codes.</p>
+                                                            </div>
+                                                        </Link>
+                                                    </li>
+                                                )}
+                                                {patients.length === 0 && (
+                                                    <li>
+                                                        <Link
+                                                            href="/dashboard/patients/add"
+                                                            onClick={() => setNotifOpen(false)}
+                                                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                                                        >
+                                                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                                </svg>
+                                                            </span>
+                                                            <div>
+                                                                <p className="text-sm font-medium text-slate-900">No patients registered</p>
+                                                                <p className="text-xs text-slate-500 mt-0.5">Add your first patient to get started.</p>
+                                                            </div>
+                                                        </Link>
+                                                    </li>
+                                                )}
+                                                {claimsPending === 0 && encountersCount > 0 && patients.length > 0 && (
+                                                    <li className="px-4 py-6 text-center text-sm text-slate-400">
+                                                        All caught up — no pending tasks.
+                                                    </li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
                         </div>
                     )}
-                </div>
-            </div>
+                    </div>
 
+                {/* Org loading skeleton */}
                 {orgLoading ? (
-                    <div className="rounded-md bg-white border border-slate-300 p-4 animate-pulse">
+                    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 animate-pulse">
                         <div className="h-6 w-48 bg-slate-200 rounded mb-4"></div>
                         <div className="h-4 w-64 bg-slate-200 rounded mb-2"></div>
                         <div className="h-4 w-52 bg-slate-200 rounded"></div>
                     </div>
                 ) : organization ? (
-                    <div className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-                        <div className="flex flex-col gap-6">
-                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-14 w-14 rounded-2xl bg-teal-700 text-white flex items-center justify-center text-sm font-semibold">
-                                        {orgInitials}
-                                    </div>
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Active organization</p>
-                                        <h2 className="text-lg font-semibold leading-tight text-slate-900">
-                                            {organization.billing_name || organization.name}
-                                        </h2>
-                                        {formattedAddress && (
-                                            <p className="text-slate-600 mt-1">{formattedAddress}</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Link
-                                        href="/dashboard/organization"
-                                        className="rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50 transition"
-                                        aria-label="Organization settings"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <>
+                        {/* Stat cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            {/* Patients — info blue */}
+                            <div className="rounded-2xl bg-blue-100 border border-blue-200 shadow-sm px-5 py-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-medium uppercase tracking-widest text-blue-500">Patients</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-900 text-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                    </Link>
+                                    </span>
                                 </div>
+                                <p className="text-3xl font-bold text-blue-900">{patients.length}</p>
                             </div>
-
-                            <div className="grid gap-4 md:grid-cols-4">
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Total patients</p>
-                                    <p className="mt-3 text-2xl font-semibold text-slate-900">{patients.length || 0}</p>
+                            {/* Encounters — pink */}
+                            <div className="rounded-2xl border shadow-sm px-5 py-4" style={{ backgroundColor: "#ffe6ee", borderColor: "#ffb3cc" }}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "#99003d" }}>Encounters</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: "#cc0052" }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </span>
                                 </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Active encounters</p>
-                                    <p className="mt-3 text-2xl font-semibold text-slate-900">{activeEncounters.length}</p>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Ready for review</p>
-                                    <p className="mt-3 text-2xl font-semibold text-slate-900">{readyForReview.length}</p>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-                                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Claims ready</p>
-                                    <p className="mt-3 text-2xl font-semibold text-slate-900">{readyClaims.length}</p>
-                                </div>
+                                <p className="text-3xl font-bold" style={{ color: "#99003d" }}>{encountersCount}</p>
                             </div>
-
-                            <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-                                <div className="rounded-2xl border border-slate-200 bg-white/90 p-5">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Work queue</p>
-                                            <h3 className="mt-2 text-lg font-semibold text-slate-900">In-progress notes</h3>
-                                            <p className="text-sm text-slate-500">Encounters that need review or completion.</p>
-                                        </div>
-                                        <Link
-                                            href="/dashboard/encounters/create"
-                                            className="rounded-2xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100"
-                                        >
-                                            Start new
-                                        </Link>
-                                    </div>
-                                    <div className="mt-4 space-y-3">
-                                        {encountersLoading ? (
-                                            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-500">
-                                                Loading work queue...
-                                            </div>
-                                        ) : workQueue.length === 0 ? (
-                                            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-500">
-                                                No active work yet.
-                                            </div>
-                                        ) : (
-                                            workQueue.map((encounter) => (
-                                                <Link
-                                                    key={encounter.id}
-                                                    href={getEncounterLink(encounter)}
-                                                    className="block"
-                                                >
-                                                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 transition hover:border-slate-300">
-                                                        <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                                                            <div>
-                                                                <p className="text-sm font-semibold text-slate-900">
-                                                                {encounter.patient_name || patientNameById.get(encounter.patient_id) || "Unnamed patient"}
-                                                                </p>
-                                                                <p className="text-xs text-slate-500">
-                                                                    Status · {encounter.status.replace("_", " ")}
-                                                                </p>
-                                                            </div>
-                                                            <span className="text-xs font-semibold text-teal-700">
-                                                                Open
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </Link>
-                                            ))
-                                        )}
-                                    </div>
+                            {/* Claims Pending — warning yellow */}
+                            <div className="rounded-2xl bg-yellow-50 border border-yellow-200 shadow-sm px-5 py-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-medium uppercase tracking-widest text-yellow-600">Claims Pending</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-100 text-yellow-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                    </span>
                                 </div>
-
-                                <div className="rounded-2xl border border-slate-200 bg-white/90 p-5">
-                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Today</p>
-                                    <h3 className="mt-2 text-lg font-semibold text-slate-900">Documentation progress</h3>
-                                    <div className="mt-4 space-y-3 text-sm text-slate-600">
-                                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                                            <span>Encounters created</span>
-                                            <span className="font-semibold text-slate-900">{encountersCount}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                                            <span>Ready for review</span>
-                                            <span className="font-semibold text-slate-900">{readyForReview.length}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                                            <span>Claims ready</span>
-                                            <span className="font-semibold text-slate-900">{readyClaims.length}</span>
-                                        </div>
-                                    </div>
+                                <p className="text-3xl font-bold text-yellow-700">{claimsPending}</p>
+                            </div>
+                            {/* Claims Approved — success green */}
+                            <div className="rounded-2xl bg-green-100 border border-green-200 shadow-sm px-5 py-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-medium uppercase tracking-widest text-green-600">Claims Approved</p>
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-800 text-white">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </span>
                                 </div>
+                                <p className="text-3xl font-bold text-green-900">{claimsApproved}</p>
                             </div>
                         </div>
-                    </div>
+
+                        {/* Recent patients */}
+                        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                                <h2 className="text-sm font-semibold text-slate-900">Recent Patients</h2>
+                                <Link
+                                    href="/dashboard/patients"
+                                    className="brand-button-primary rounded-lg px-4 py-2 text-xs font-semibold transition"
+                                >
+                                    View All Patients
+                                </Link>
+                            </div>
+                            {patients.length === 0 ? (
+                                <div className="px-6 py-10 text-center text-sm text-slate-400">
+                                    No patients yet. Add your first patient to get started.
+                                </div>
+                            ) : (
+                                <ul className="divide-y divide-slate-100">
+                                    {patients.slice(0, 5).map((p) => {
+                                        const dob = p.dob ? new Date(p.dob).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                                        const initials = p.name
+                                            ? p.name.split(" ").slice(0, 2).map((n: string) => n.charAt(0).toUpperCase()).join("")
+                                            : "?";
+                                        return (
+                                            <li key={p.id}>
+                                                <Link
+                                                    href={`/dashboard/patients/${p.id}`}
+                                                    className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition group"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="brand-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                                                            {initials}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-900 group-hover:text-[var(--brand-600)] transition-colors">{p.name}</p>
+                                                            <p className="text-xs text-slate-500 mt-0.5">DOB: {dob}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs text-slate-400">{p.insuranceType || "Self-Pay"}</span>
+                                                </Link>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    </>
                 ) : (
-                    <div className="rounded-md bg-white border border-slate-300 p-4">
+                    /* No org — setup flow */
+                    <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-8">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                             <div className="lg:col-span-2 space-y-4">
                                 <div>
                                     <p className="text-sm text-slate-500">Welcome to RevClear</p>
-                                    <h2 className="text-2xl font-semibold text-slate-900">
-                                        Set up your clinic workspace
-                                    </h2>
+                                    <h2 className="text-2xl font-semibold text-slate-900">Set up your clinic workspace</h2>
                                     <p className="text-slate-600 mt-1">
                                         Create a new clinic or join with an invitation code from an existing organization.
                                         You can start adding patients as soon as you have a home clinic.
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-3">
-                                    <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1">
-                                        HIPAA-friendly defaults
-                                    </span>
-                                    <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1">
-                                        Multi-clinician ready
-                                    </span>
+                                    <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1">HIPAA-friendly defaults</span>
+                                    <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1">Multi-clinician ready</span>
                                 </div>
                                 {orgError && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-                                        {orgError}
-                                    </div>
+                                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{orgError}</div>
                                 )}
                             </div>
                             <div className="space-y-4">
-                                <form onSubmit={handleCreate} className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                                <form onSubmit={handleCreate} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                     <p className="text-sm font-semibold text-slate-900">Create an organization</p>
-                                    <p className="text-sm text-slate-600 mb-3">
-                                        Pick a name so your team recognizes it.
-                                    </p>
+                                    <p className="text-sm text-slate-600 mb-3">Pick a name so your team recognizes it.</p>
                                     <input
                                         value={orgName}
                                         onChange={(e) => setOrgName(e.target.value)}
                                         placeholder="Clinic name"
                                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
-                                    <button
+                                    <Button
                                         type="submit"
-                                        className="mt-3 w-full rounded-lg bg-slate-900 text-white text-sm font-semibold py-2.5 hover:bg-slate-800 transition disabled:opacity-50"
-                                        disabled={isCreating}
+                                        variant="primary"
+                                        loading={isCreating}
+                                        className="mt-3 w-full rounded-lg"
                                     >
-                                        {isCreating ? "Creating..." : "Create organization"}
-                                    </button>
+                                        Create organization
+                                    </Button>
                                 </form>
-                                <form onSubmit={handleJoin} className="rounded-md border border-slate-200 bg-white p-4">
+                                <form onSubmit={handleJoin} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <p className="text-sm font-semibold text-slate-900">Join with invite</p>
-                                    <p className="text-sm text-slate-600 mb-3">
-                                        Enter the code shared by your clinic.
-                                    </p>
+                                    <p className="text-sm text-slate-600 mb-3">Enter the code shared by your clinic.</p>
                                     <input
                                         value={inviteCode}
                                         onChange={(e) => setInviteCode(e.target.value)}
                                         placeholder="Invitation code"
                                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                     />
-                                    <button
+                                    <Button
                                         type="submit"
-                                        className="mt-3 w-full rounded-lg border border-slate-900 text-slate-900 text-sm font-semibold py-2.5 hover:bg-slate-900 hover:text-white transition disabled:opacity-50"
-                                        disabled={isJoining}
+                                        variant="secondary"
+                                        loading={isJoining}
+                                        className="mt-3 w-full rounded-lg"
                                     >
-                                        {isJoining ? "Joining..." : "Join organization"}
-                                    </button>
+                                        Join organization
+                                    </Button>
                                 </form>
                             </div>
                         </div>
                     </div>
                 )}
-
-                {organization && (
-                    <section className="space-y-4">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                            <div>
-                                <p className="text-sm text-slate-500">Patients</p>
-                                <h3 className="text-xl font-semibold text-slate-900">
-                                    Registered patients in {organization.name}
-                                </h3>
-                                <p className="text-slate-600">
-                                    Quick access to charts and encounters for your clinic.
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Link
-                                    href="/dashboard/patients"
-                                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                                >
-                                    View all
-                                </Link>
-                                <Link
-                                    href="/dashboard/patients/add"
-                                    className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                                >
-                                    Add patient
-                                </Link>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                            {patientsLoading ? (
-                                    <div className="p-4 text-slate-600 text-center bg-white rounded-2xl border border-slate-200">Loading patients...</div>
-                                ) : patientsError ? (
-                                    <div className="p-4 text-red-700 bg-red-50 border border-red-100 rounded-2xl">
-                                        {patientsError}
-                                    </div>
-                                ) : patients.length === 0 ? (
-                                    <div className="p-4 text-slate-600 text-center bg-white rounded-2xl border border-slate-200">
-                                        No patients yet. Add your first patient to get started.
-                                    </div>
-                                ) : (
-                                patients.slice(0, 6).map((p) => {
-                                    const dob = p.dob ? new Date(p.dob).toLocaleDateString() : "—";
-                                    return (
-                                        <Link
-                                            key={p.id}
-                                            href={`/dashboard/patients/${p.id}`}
-                                            className="block group"
-                                        >
-                                            <div className="bg-white rounded-2xl border border-slate-200 p-4 transition hover:border-slate-300 cursor-pointer">
-                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                                    <div className="md:col-span-1">
-                                                        <p className="text-lg font-semibold text-slate-900 group-hover:text-slate-700 transition-colors">
-                                                            {p.name}
-                                                        </p>
-                                                        <p className="text-sm text-slate-500 mt-1">
-                                                            DOB: {dob}
-                                                        </p>
-                                                    </div>
-                                                    <div className="md:col-span-1">
-                                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Phone</p>
-                                                        <p className="text-sm text-slate-700 font-medium mt-0.5">{p.phone || "—"}</p>
-                                                    </div>
-                                                    <div className="md:col-span-1">
-                                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Insurance</p>
-                                                        {p.insuranceType === "SELF_PAY" || !p.insuranceType ? (
-                                                            <span className="inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-md text-xs font-semibold text-amber-700">
-                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
-                                                                Self-Pay
-                                                            </span>
-                                                        ) : (
-                                                            <p className="text-sm text-slate-700 font-medium mt-0.5">{p.insuranceType}</p>
-                                                        )}
-                                                    </div>
-                                                    <div className="md:col-span-1">
-                                                        <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">Member ID</p>
-                                                        <p className="text-sm text-slate-700 font-medium mt-0.5">{p.insuranceId || "—"}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </section>
-                )}
+            </div>
         </div>
     );
 }

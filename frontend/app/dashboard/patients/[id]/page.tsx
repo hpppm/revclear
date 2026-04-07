@@ -1,38 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Patient, Encounter } from "@/app/lib/types";
+import { EditPatientFormSchema } from "@/app/lib/validation/schemas";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import logger from "@/app/lib/logger";
 
-type RawPatient = {
-    id: string;
-    full_name?: string;
-    name?: string;
-    age?: number;
-    dob?: string;
-    gender?: string;
-    phone?: string;
-    email?: string;
-    insurance_provider?: string;
-    insurance_policy_number?: string;
-    insurance_member_id?: string;
-    insurance_group_number?: string;
-    insurance_payer_id?: string;
-    insurance_payer_name?: string;
-    insurance_relationship?: "self" | "spouse" | "child" | "other";
-    plan_name?: string;
-    address_street?: string;
-    address_city?: string;
-    address_state?: string;
-    address_zip?: string;
-};
-
-const mapPatientResponse = (data: RawPatient): Patient => ({
+const mapPatientResponse = (data: any): Patient => ({
     id: data.id,
     name: data.full_name || data.name,
     age: data.age || 0,
@@ -61,12 +39,50 @@ export default function PatientProfilePage() {
     const [patient, setPatient] = useState<Patient | null>(null);
     const [encounters, setEncounters] = useState<Encounter[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-    const fetchData = useCallback(async () => {
+    // Track the last patientId fetched to prevent double-fetch.
+    // React 18 Strict Mode remounts with restored refs, so this ref remains set
+    // on the second mount and blocks the duplicate request. On real navigation
+    // to a different patient, patientId !== fetchedPatientIdRef.current so the
+    // fetch runs correctly.
+    const fetchedPatientIdRef = useRef<string | null>(null);
+    const saveErrorRef = useRef<HTMLDivElement>(null);
+    const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const fieldErrorsRef = useRef<Record<string, string>>({});
+    const [scrollTrigger, setScrollTrigger] = useState(0);
+
+    useEffect(() => { fieldErrorsRef.current = fieldErrors; }, [fieldErrors]);
+
+    useEffect(() => {
+        if (scrollTrigger === 0) return;
+        const order = ["dob", "phone", "email", "insurance_provider", "insurance_policy_number", "insurance_member_id"];
+        const errs = fieldErrorsRef.current;
+        const firstKey = order.find((k) => errs[k]);
+        setTimeout(() => {
+            if (firstKey && fieldRefs.current[firstKey]) {
+                fieldRefs.current[firstKey]!.scrollIntoView({ behavior: "smooth", block: "center" });
+            } else if (saveErrorRef.current) {
+                saveErrorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }, 50);
+    }, [scrollTrigger]);
+
+    useEffect(() => {
+        if (patientId && fetchedPatientIdRef.current !== patientId) {
+            fetchedPatientIdRef.current = patientId;
+            fetchData();
+        }
+    }, [patientId]);
+
+    const fetchData = async () => {
         setLoading(true);
         try {
             // Fetch Patient
@@ -76,29 +92,54 @@ export default function PatientProfilePage() {
             setPatient(mappedPatient);
             setEditedPatient(mappedPatient);
 
-            // Fetch Encounters
-            const encountersResponse = await apiClient.encounters.getAll();
-            let encountersData = encountersResponse.data?.data || [];
-            // Filter by patientId (ideally backend should handle this filter)
-            encountersData = encountersData.filter((e: Encounter) => e.patient_id === patientId);
+            // Fetch Encounters - backend filters by patient_id for security
+            const encountersResponse = await apiClient.encounters.getAllByPatient(patientId);
+            const encountersData = encountersResponse.data?.data || [];
             setEncounters(encountersData);
 
-        } catch (error) {
-            logger.error("Failed to load patient profile", error);
+        } catch (err) {
+            logger.error("Failed to load patient profile", err);
             setError("Failed to load patient details.");
         } finally {
             setLoading(false);
         }
-    }, [patientId]);
-
-    useEffect(() => {
-        if (patientId) {
-            void fetchData();
-        }
-    }, [patientId, fetchData]);
+    };
 
     const handleSave = async () => {
         if (!editedPatient) return;
+
+        const validation = EditPatientFormSchema.safeParse({
+            full_name: editedPatient.name,
+            dob: editedPatient.dob,
+            gender: editedPatient.gender,
+            phone: editedPatient.phone,
+            email: editedPatient.email,
+            address_street: editedPatient.address_street,
+            address_city: editedPatient.address_city,
+            address_state: editedPatient.address_state,
+            address_zip: editedPatient.address_zip,
+            insurance_provider: editedPatient.insuranceType,
+            // null → undefined: Zod's .optional() accepts undefined but not null;
+            // DB returns null for unset columns which would cause an invalid_union error
+            insurance_policy_number: editedPatient.insuranceId ?? undefined,
+            insurance_member_id: editedPatient.insurance_member_id ?? undefined,
+            insurance_group_number: editedPatient.insurance_group_number ?? undefined,
+        });
+        if (!validation.success) {
+            const errs: Record<string, string> = {};
+            validation.error.issues.forEach((err) => {
+                const key = String(err.path[0]);
+                if (key && !errs[key]) errs[key] = err.message;
+            });
+            setFieldErrors(errs);
+            const first = validation.error.issues[0];
+            setSaveError(first ? first.message : "Please fix validation errors");
+            setScrollTrigger((n) => n + 1);
+            return;
+        }
+        setFieldErrors({});
+        setSaveError(null);
+
         setSaving(true);
         try {
             await apiClient.patients.update(patientId, {
@@ -120,7 +161,7 @@ export default function PatientProfilePage() {
             setEditMode(false);
         } catch (err) {
             logger.error("Failed to update patient", err);
-            alert("Failed to update patient");
+            setSaveError("Failed to update patient");
         } finally {
             setSaving(false);
         }
@@ -128,6 +169,7 @@ export default function PatientProfilePage() {
 
     const handleCancel = () => {
         setEditedPatient(patient);
+        setFieldErrors({});
         setEditMode(false);
     };
 
@@ -165,18 +207,21 @@ export default function PatientProfilePage() {
     };
 
     const handleDelete = async (id: string) => {
+        setDeletingId(id);
+        setConfirmDeleteId(null);
         try {
             await apiClient.encounters.delete(id);
             setEncounters((prev) => prev.filter((e) => e.id !== id));
-        } catch (error) {
-            logger.error("Failed to delete encounter", error);
-            // Optionally set a temporary error state for deleting
+        } catch (err) {
+            logger.error("Failed to delete encounter", err);
+        } finally {
+            setDeletingId(null);
         }
     };
 
     if (loading) {
         return (
-            <div className="space-y-4">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-slate-500">Loading patient profile...</div>
             </div>
         );
@@ -184,7 +229,7 @@ export default function PatientProfilePage() {
 
     if (error || !patient) {
         return (
-            <div className="space-y-4">
+            <div className="min-h-screen bg-slate-50 p-8">
                 <div className="max-w-6xl mx-auto">
                     <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
                         {error || "Patient not found."}
@@ -198,19 +243,33 @@ export default function PatientProfilePage() {
     }
 
     return (
-        <div className="space-y-4">
-            <div className="max-w-6xl mx-auto space-y-8">
-                {/* Header / Back */}
-                <div>
-                    <BackButton href="/dashboard">Back to Dashboard</BackButton>
-                </div>
+        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
 
+            {/* Delete confirmation modal */}
+            {confirmDeleteId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+                        <h3 className="text-base font-semibold text-slate-900 mb-2">Delete encounter?</h3>
+                        <p className="text-sm text-slate-500 mb-6">This cannot be undone. The encounter and all associated data will be permanently deleted.</p>
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={() => setConfirmDeleteId(null)} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                                Cancel
+                            </button>
+                            <button onClick={() => handleDelete(confirmDeleteId)} disabled={!!deletingId} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition">
+                                {deletingId ? "Deleting..." : "Delete"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="max-w-6xl mx-auto space-y-8">
                 {/* Patient Information Card */}
                 <Card>
                     <div className="px-6 py-6">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
                             <div className="flex items-center gap-4">
-                                <div className="h-16 w-16 rounded-full bg-slate-900 flex items-center justify-center text-white text-2xl font-semibold">
+                                <div className="h-16 w-16 rounded-full brand-accent-icon flex items-center justify-center text-2xl font-bold">
                                     {(patient.name || "U").charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -222,8 +281,11 @@ export default function PatientProfilePage() {
                                 {!editMode ? (
                                     <button
                                         onClick={() => setEditMode(true)}
-                                        className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm"
+                                        className="brand-button-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm text-white"
                                     >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
                                         Edit Profile
                                     </button>
                                 ) : (
@@ -231,7 +293,7 @@ export default function PatientProfilePage() {
                                         <button
                                             onClick={handleSave}
                                             disabled={saving}
-                                            className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium text-sm disabled:opacity-50"
+                                            className="brand-button-primary px-4 py-2 rounded-lg font-medium text-sm text-white disabled:opacity-50"
                                         >
                                             {saving ? "Saving..." : "Save"}
                                         </button>
@@ -242,21 +304,29 @@ export default function PatientProfilePage() {
                                         >
                                             Cancel
                                         </button>
+                                        {saveError && (
+                                            <div ref={saveErrorRef}>
+                                                <p className="text-sm text-red-600 mt-1">{saveError}</p>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.dob = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Date of Birth</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="date"
-                                        value={editedPatient.dob || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                    />
+                                    <>
+                                        <input
+                                            type="date"
+                                            value={editedPatient.dob || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 ${fieldErrors.dob ? "border-red-500" : "border-slate-300"}`}
+                                        />
+                                        {fieldErrors.dob && <p className="mt-1 text-sm text-red-500">Required</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.dob ? new Date(patient.dob).toLocaleDateString() : "—"}</p>
                                 )}
@@ -264,83 +334,101 @@ export default function PatientProfilePage() {
                             <div>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Gender</p>
                                 {editMode && editedPatient ? (
-                                    <select
-                                        value={editedPatient.gender || "U"}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                    >
-                                        <option value="M">Male</option>
-                                        <option value="F">Female</option>
-                                        <option value="O">Other</option>
-                                        <option value="U">Unknown</option>
-                                    </select>
+                                    <>
+                                        <select
+                                            value={editedPatient.gender || "U"}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, gender: e.target.value as any })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
+                                        >
+                                            <option value="M">Male</option>
+                                            <option value="F">Female</option>
+                                            <option value="O">Other</option>
+                                            <option value="U">Unknown</option>
+                                        </select>
+                                        {fieldErrors.gender && <p className="mt-1 text-sm text-red-500">{fieldErrors.gender}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">
                                         {patient.gender === "M" ? "Male" : patient.gender === "F" ? "Female" : patient.gender === "O" ? "Other" : patient.gender === "U" ? "Unknown" : "—"}
                                     </p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.phone = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Phone</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="tel"
-                                        value={editedPatient.phone || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="tel"
+                                            value={editedPatient.phone || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.phone ? "border-red-500" : "border-slate-300"}`}
+                                        />
+                                        {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">Required</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.phone || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.email = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Email</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="email"
-                                        value={editedPatient.email || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="email"
+                                            value={editedPatient.email || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, email: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.email && <p className="mt-1 text-sm text-red-500">{fieldErrors.email}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.email || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.insurance_provider = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Insurance Provider</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insuranceType || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editedPatient.insuranceType || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_provider ? "border-red-500" : "border-slate-300"}`}
+                                        />
+                                        {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">Required</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insuranceType || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.insurance_policy_number = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Policy Number</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insuranceId || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editedPatient.insuranceId || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
+                                            className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_policy_number ? "border-red-500" : "border-slate-300"}`}
+                                        />
+                                        {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">Required</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insuranceId || "—"}</p>
                                 )}
                             </div>
-                            <div>
+                            <div ref={(el) => { fieldRefs.current.insurance_member_id = el; }}>
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Member ID</p>
                                 {editMode && editedPatient ? (
-                                    <input
-                                        type="text"
-                                        value={editedPatient.insurance_member_id || ""}
-                                        onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
-                                        className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
-                                    />
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editedPatient.insurance_member_id || ""}
+                                            onChange={(e) => setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value })}
+                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                        />
+                                        {fieldErrors.insurance_member_id && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_member_id}</p>}
+                                    </>
                                 ) : (
                                     <p className="text-slate-900 font-medium">{patient.insurance_member_id || "—"}</p>
                                 )}
@@ -349,34 +437,46 @@ export default function PatientProfilePage() {
                                 <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">Address</p>
                                 {editMode && editedPatient ? (
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Street"
-                                            value={editedPatient.address_street || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="City"
-                                            value={editedPatient.address_city || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="State"
-                                            value={editedPatient.address_state || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="ZIP"
-                                            value={editedPatient.address_zip || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
-                                            className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1"
-                                        />
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="Street"
+                                                value={editedPatient.address_street || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_street: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_street && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_street}</p>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="City"
+                                                value={editedPatient.address_city || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_city: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_city && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_city}</p>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="State"
+                                                value={editedPatient.address_state || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_state: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_state && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_state}</p>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="ZIP"
+                                                value={editedPatient.address_zip || ""}
+                                                onChange={(e) => setEditedPatient({ ...editedPatient, address_zip: e.target.value })}
+                                                className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            />
+                                            {fieldErrors.address_zip && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_zip}</p>}
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-slate-900 font-medium">
@@ -399,7 +499,7 @@ export default function PatientProfilePage() {
                         <h2 className="text-xl font-semibold text-slate-900">Encounters History</h2>
                         <Link
                             href={`/dashboard/encounters/create?patientId=${patientId}`}
-                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+                            className="brand-button-primary rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm"
                         >
                             + Start New Encounter
                         </Link>
@@ -410,23 +510,23 @@ export default function PatientProfilePage() {
                             <p className="text-slate-500">No encounters recorded for this patient.</p>
                             <Link
                                 href={`/dashboard/encounters/create?patientId=${patientId}`}
-                                className="text-slate-900 hover:text-slate-700 font-medium mt-2 inline-block"
+                                className="text-(--brand-600) hover:text-(--brand-700) font-medium mt-2 inline-block"
                             >
                                 Start the first encounter
                             </Link>
                         </div>
                     ) : (
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="min-w-full divide-y divide-slate-200">
+                            <table className="w-full table-fixed divide-y divide-slate-200">
                                 <thead className="bg-slate-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        <th className="w-1/3 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                             Date
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        <th className="w-1/3 px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                             Status
                                         </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                        <th className="w-1/3 px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
@@ -442,54 +542,52 @@ export default function PatientProfilePage() {
                                                     className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${encounter.status === "completed"
                                                         ? "bg-green-100 text-green-800"
                                                         : encounter.status === "ready"
-                                                            ? "bg-blue-100 text-blue-800"
+                                                            ? "bg-teal-100 text-teal-800"
                                                             : encounter.status === "in_progress"
-                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                : "bg-gray-100 text-gray-800"
+                                                                ? "bg-amber-100 text-amber-800"
+                                                                : "bg-slate-100 text-slate-700"
                                                         }`}
                                                 >
-                                                    {encounter.status === "ready"
-                                                        ? "Ready"
-                                                        : encounter.status === "completed"
-                                                            ? "Completed"
-                                                            : encounter.status?.replace("_", " ") || "Draft"}
+                                                    {encounter.status === "ready" ? "Ready" : encounter.status === "completed" ? "Completed" : encounter.status === "in_progress" ? "In Progress" : encounter.status === "ready_for_review" ? "Ready for Review" : encounter.status === "archived" ? "Archived" : encounter.status === "scheduled" ? "Scheduled" : "Draft"}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                {encounter.status === "ready" || encounter.status === "completed" ? (
-                                                    <Link
-                                                        href={`/dashboard/encounters/${encounter.id}`}
-                                                        className="text-slate-900 hover:text-slate-700 font-semibold"
+                                                <div className="inline-flex items-center justify-end gap-3">
+                                                    {encounter.status === "ready" || encounter.status === "completed" ? (
+                                                        <Link
+                                                            href={`/dashboard/encounters/${encounter.id}`}
+                                                            className="text-(--brand-600) hover:text-(--brand-700) font-semibold"
+                                                        >
+                                                            View
+                                                        </Link>
+                                                    ) : (
+                                                        <Link
+                                                            href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
+                                                            className="text-(--brand-600) hover:text-(--brand-700) font-semibold"
+                                                        >
+                                                            Continue
+                                                        </Link>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Delete encounter"
+                                                        onClick={() => setConfirmDeleteId(encounter.id)}
+                                                        className="inline-flex items-center text-slate-400 hover:text-red-600 disabled:opacity-50"
                                                     >
-                                                        View
-                                                    </Link>
-                                                ) : (
-                                                    <Link
-                                                        href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                        className="text-slate-900 hover:text-slate-700 font-semibold"
-                                                    >
-                                                        Continue →
-                                                    </Link>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    aria-label="Delete encounter"
-                                                    onClick={() => handleDelete(encounter.id)}
-                                                    className="ml-4 text-slate-400 hover:text-red-600 disabled:opacity-50"
-                                                >
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-5 w-5"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </button>
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5"
+                                                            viewBox="0 0 20 20"
+                                                            fill="currentColor"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
