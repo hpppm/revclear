@@ -152,15 +152,18 @@ export default function OrganizationProfilePage() {
             // await checkAuth(); 
         } catch (error: any) {
             logger.error("Failed to save organization", error);
-            let message = "Could not save organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
+            const backendErrors: any[] = error?.response?.data?.errors || [];
+            if (backendErrors.length > 0) {
+                const errs: Record<string, string> = {};
+                backendErrors.forEach((e: any) => {
+                    const key = String(e.path?.[0] || "");
+                    if (key && !errs[key]) errs[key] = e.message;
+                });
+                setFieldErrors(errs);
+                setError("Please fix the highlighted fields below before saving.");
+            } else {
+                setError(error?.response?.data?.message || error?.response?.data?.error || "Could not save organization.");
             }
-            setError(message);
         } finally {
             setSaving(false);
         }
@@ -341,13 +344,34 @@ export default function OrganizationProfilePage() {
                                             placeholder="(555) 555-5555"
                                             error={fieldErrors.billing_phone}
                                         />
-                                        <Input
-                                            label="Default Place of Service"
-                                            value={formData.default_place_of_service}
-                                            onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
-                                            placeholder="11"
-                                            error={fieldErrors.default_place_of_service}
-                                        />
+                                        <label className="space-y-1 block">
+                                            <span className="text-sm font-medium text-slate-700">Default Place of Service</span>
+                                            <select
+                                                value={formData.default_place_of_service}
+                                                onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                            >
+                                                <option value="">— Select —</option>
+                                                <option value="02">02 — Telehealth (other location)</option>
+                                                <option value="10">10 — Telehealth (patient's home)</option>
+                                                <option value="11">11 — Office</option>
+                                                <option value="12">12 — Home</option>
+                                                <option value="13">13 — Assisted Living Facility</option>
+                                                <option value="21">21 — Inpatient Hospital</option>
+                                                <option value="22">22 — Outpatient Hospital</option>
+                                                <option value="23">23 — Emergency Room</option>
+                                                <option value="24">24 — Ambulatory Surgical Center</option>
+                                                <option value="31">31 — Skilled Nursing Facility</option>
+                                                <option value="32">32 — Nursing Facility</option>
+                                                <option value="49">49 — Independent Clinic</option>
+                                                <option value="65">65 — End-Stage Renal Disease Facility</option>
+                                                <option value="72">72 — Rural Health Clinic</option>
+                                                <option value="81">81 — Independent Laboratory</option>
+                                            </select>
+                                            {fieldErrors.default_place_of_service && (
+                                                <p className="mt-1 text-sm text-red-500">{fieldErrors.default_place_of_service}</p>
+                                            )}
+                                        </label>
                                     </div>
                                 </div>
                             </div>

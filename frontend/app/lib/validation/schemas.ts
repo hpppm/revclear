@@ -236,7 +236,11 @@ export const OrganizationFormSchema = z.object({
   billing_state: stateSchema,
   billing_postal_code: zipSchema,
   billing_phone: phoneSchema,
-  default_place_of_service: optStr(10),
+  default_place_of_service: z
+    .string()
+    .refine((v) => !v || /^\d{2}$/.test(v), "Place of service must be a 2-digit numeric code (e.g. 11)")
+    .optional()
+    .or(z.literal("")),
   edi_sender_id: optStr(50),
   edi_receiver_id: optStr(50),
   edi_sftp_host: optStr(200),
