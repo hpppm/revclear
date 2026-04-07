@@ -50,7 +50,6 @@ revclear/
 ├── frontend/                   # Next.js 16 App Router (Turbopack)
 │   └── app/
 │       ├── (pages)/            # Auth pages: landing, login, signup, forgot-password
-│       ├── onboarding/         # Organization onboarding flow
 │       ├── dashboard/          # Patients, encounters, claims, organization, profile
 │       ├── components/         # UI primitives + encounter wizard
 │       ├── context/            # AuthContext (httpOnly cookie JWT)
@@ -150,6 +149,8 @@ All routes under `/api`. Protected routes require a valid Cognito JWT in an http
 | POST | `/` | Create patient |
 | PUT | `/:id` | Update patient |
 | DELETE | `/:id` | Delete patient |
+| GET | `/:id/subscriber` | Get insurance subscriber |
+| PUT | `/:id/subscriber` | Update insurance subscriber |
 
 ### Encounters (`/api/encounters`)
 
@@ -174,9 +175,14 @@ All routes under `/api`. Protected routes require a valid Cognito JWT in an http
 | POST | `/` | Create claim |
 | PUT | `/:id` | Update claim |
 | DELETE | `/:id` | Delete claim |
-| GET | `/:id/subscriber` | Get subscriber info |
-| PUT | `/:id/subscriber` | Update subscriber info |
 | GET | `/encounter/:encounterId/preview` | Preview claim for encounter |
+
+### Profile (`/api/me`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Get current user profile |
+| PATCH | `/` | Update current user profile |
 
 ### Other
 
@@ -189,6 +195,7 @@ All routes under `/api`. Protected routes require a valid Cognito JWT in an http
 | `GET /api/codes/search` | Search ICD-10 / CPT codes |
 | `GET /api/security/stats` | Security monitoring stats (admin only) |
 | `GET /api/health` | Health check |
+| `GET /api/health/ai` | AI provider connectivity check (auth required) |
 
 ---
 
@@ -266,6 +273,10 @@ ALLOWED_ORIGINS=                       # comma-separated (dev defaults to localh
 
 # Whisper microservice
 WHISPER_SERVER_URL=http://localhost:5000
+
+# External AI endpoints (production — leave unset to use local Ollama)
+AI_SERVER_API_KEY=                     # shared key for SOAP + codes external endpoints
+AI_TRANSCRIBE_URL=                     # optional: external transcription endpoint
 ```
 
 Frontend: `NEXT_PUBLIC_API_URL` — defaults to `http://localhost:3005/api`
@@ -380,6 +391,7 @@ nginx 1.27 (reverse proxy, TLS termination)
 - TLS via Let's Encrypt — cert paths injected via `NGINX_CERT_FULLCHAIN` / `NGINX_CERT_PRIVKEY` env vars
 - All secrets injected at container runtime via environment — no secrets baked into images
 - `trust proxy 1` enabled in production for correct client IP behind nginx
+- External `shared-ai` Docker network connects backend to the AI inference stack (Whisper + SOAP + codes services)
 
 ---
 
