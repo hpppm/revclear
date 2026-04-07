@@ -1,15 +1,20 @@
 import { Router, json } from "express";
 import multer from "multer";
-import { spawn } from "child_process";
 import path from "path";
-import { z } from "zod";
 import { Readable } from "stream";
+import { z } from "zod";
+import { IdParamSchema } from "../../types/zod";
+import FormData from "form-data";
+import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
-import { uploadFile, getFile } from "../../config/awsS3";
-import { createAudioRecord, createAiResult } from "../../db/queries";
+import { getFile, uploadFile } from "../../config/awsS3";
+import { createAudioRecord, createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { query } from "../../config/db";
+import { AI_FLOW_NAMES } from "../../constants/aiFlows";
+import { getUserOrganization } from "../../utils/organization";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -22,31 +27,28 @@ const upload = multer({
     files: 1, // Only allow 1 file per request
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('audio/')) {
+    if (file.mimetype.startsWith("audio/")) {
       cb(null, true);
     } else {
-      cb(new Error('Only audio files are allowed'));
+      cb(new Error("Only audio files are allowed"));
     }
   },
 });
 
-// Define the path to your Python Whisper transcription script
-const WHISPER_SCRIPT_PATH = path.join(process.cwd(), 'src', 'python', 'whisper.py');
-
-// Define the path to your Python executable (using venv) - cross-platform
-const isWindows = process.platform === 'win32';
-const PYTHON_EXECUTABLE_PATH = isWindows
-  ? path.join(process.cwd(), 'venv', 'Scripts', 'python.exe')
-  : path.join(process.cwd(), 'venv', 'bin', 'python3');
-  
-// Zod schema for S3 fallback request
-const S3FallbackSchema = z.object({
-  s3Key: z.string().min(1, "s3Key cannot be empty"),
-  encounterId: z.string().uuid("Invalid encounter ID"),
-});
+// AI server URL from environment (prefer AI_TRANSCRIBE_URL, support TRANSCRIBE_URL).
+const AI_TRANSCRIBE_URL =
+  process.env.AI_TRANSCRIBE_URL ||
+  process.env.TRANSCRIBE_API_URL ||
+  process.env.TRANSCRIBE_URL;
+const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
 const TranscriptUpdateSchema = z.object({
   text: z.string().min(1, "Transcript text is required"),
+});
+
+const S3FallbackSchema = z.object({
+  encounterId: z.string().min(1, "Encounter ID is required"),
+  s3Key: z.string().min(1, "s3Key is required"),
 });
 
 const requireUser = async (req: any, res: any) => {
@@ -58,20 +60,50 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
-const ensureEncounterOwnership = async (encounterId: string, clinicianId: string) => {
+const getRequestOrganizationId = async (userId: string) => {
+  const organization = await getUserOrganization(userId);
+  return organization?.id;
+};
+
+// SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
+// access within the same organization. Using OR would allow any clinician in the
+// org to access another clinician's PHI data.
+const ensureEncounterOwnership = async (
+  encounterId: string,
+  clinicianId: string,
+  organizationId?: string,
+) => {
   const result = await query(
-    `SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2`,
-    [encounterId, clinicianId]
+    `SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2 AND organization_id = $3`,
+    [encounterId, clinicianId, organizationId || null],
   );
   return result.rows.length > 0;
 };
 
+const getLatestEncounterAudioKey = async (encounterId: string) => {
+  const result = await query(
+    `SELECT file_url
+     FROM audio_records
+     WHERE encounter_id = $1
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [encounterId],
+  );
+
+  return result.rows[0]?.file_url as string | undefined;
+};
+
+const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+};
+
 /**
  * @route POST /api/transcribe
- * @description Accepts an audio file for transcription or an S3 key to transcribe an existing file.
- * Handles two scenarios:
- * 1. Direct audio file upload (multipart/form-data with "audio" field).
- * 2. S3 fallback (application/json with "s3Key" and "encounterId").
+ * @description Accepts an audio file for transcription
  */
 router.post(
   "/",
@@ -82,41 +114,46 @@ router.post(
     try {
       const user = await requireUser(req, res);
       if (!user) return;
+      const organizationId = await getRequestOrganizationId(user.id);
 
-      let audioStream: Readable;
-      let s3Key: string;
-      const encounterId = req.body.encounterId; // Assuming encounterId is passed for both paths
-
-      if (!encounterId) {
-        return sendError(res, 400, "Encounter ID is required.");
+      const parsedId = IdParamSchema.safeParse({ id: req.body.encounterId });
+      if (!parsedId.success) {
+        return sendError(res, 400, "Valid encounter ID is required.");
       }
+      const encounterId = parsedId.data.id;
 
       // Ensure the encounter belongs to the authenticated clinician
-      const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+      const ownsEncounter = await ensureEncounterOwnership(
+        encounterId,
+        user.id,
+        organizationId,
+      );
       if (!ownsEncounter) {
         return sendError(res, 404, "Encounter not found");
       }
 
+      let s3Key = "";
+      let audioBuffer: Buffer;
+      let audioFilename = "audio.webm";
+      let audioContentType = "application/octet-stream";
+
       if (req.file) {
-        // --- Path 1: Direct Audio Upload ---
         if (!req.file.mimetype.startsWith("audio/")) {
           return sendError(res, 400, "Provided file is not an audio file.");
         }
 
-        // Generate a unique S3 key
+        // Generate a unique S3 key scoped to the organization.
+        // Path: audio/{orgId}/encounter_{encounterId}_{timestamp}{ext}
+        // This enforces tenant isolation at the storage layer — each org's
+        // audio lives under its own prefix, matching the IAM policy condition
+        // on the Cognito Identity Pool role.
         const originalExtension = path.extname(req.file.originalname);
-        s3Key = `audio/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
+        const orgPrefix = organizationId ?? "unscoped";
+        s3Key = `audio/${orgPrefix}/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
 
         // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
-        console.log(`Backend: Uploaded audio to S3 with key: ${s3Key}`);
-
-        // Update encounter with audio_key
-        await query(
-          `UPDATE encounters SET audio_key = $1 WHERE id = $2`,
-          [s3Key, encounterId]
-        );
-        console.log(`Backend: Updated encounter ${encounterId} with audio_key: ${s3Key}`);
+        logger.info({ encounterId, s3Key }, "transcribe: audio uploaded to S3");
 
         // Create a record in audio_records table
         await createAudioRecord({
@@ -126,7 +163,7 @@ router.post(
         });
 
         // Check if upload_only is requested
-        if (req.query.upload_only === 'true') {
+        if (req.query.upload_only === "true") {
           return res.json({
             success: true,
             message: "Audio uploaded successfully.",
@@ -134,82 +171,131 @@ router.post(
           });
         }
 
-        // Get a readable stream from the buffer to pass to Whisper
-        audioStream = Readable.from(req.file.buffer);
-
+        audioBuffer = req.file.buffer;
+        audioFilename = req.file.originalname || audioFilename;
+        audioContentType = req.file.mimetype || audioContentType;
       } else {
-        // --- Path 2: S3 Fallback ---
-        const validation = S3FallbackSchema.safeParse(req.body);
-        if (!validation.success) {
+        const parsed = S3FallbackSchema.safeParse(req.body);
+        if (!parsed.success) {
           return sendError(
             res,
             400,
-            "Invalid request body for S3 fallback.",
-            validation.error.issues
+            "Audio file is required, or provide valid s3Key + encounterId",
+            parsed.error.issues,
           );
         }
 
-        s3Key = validation.data.s3Key;
+        s3Key = parsed.data.s3Key;
 
-        // Get file stream from S3
-        const s3File = await getFile(s3Key);
-        if (!s3File.Body) {
-          throw new Error("Failed to retrieve file from S3.");
+        // SECURITY: Verify the provided s3Key matches the audio_key stored on
+        // latest uploaded audio record for the encounter. This prevents an
+        // authenticated user from supplying an arbitrary S3 path belonging to
+        // another user's encounter.
+        const storedAudioKey = await getLatestEncounterAudioKey(encounterId);
+        if (!storedAudioKey || storedAudioKey !== s3Key) {
+          return sendError(res, 403, "S3 key does not match encounter audio");
         }
-        audioStream = s3File.Body as Readable;
+
+        const s3Object = await getFile(s3Key);
+        if (!s3Object.Body) {
+          throw new Error(`S3 object has no body for key: ${s3Key}`);
+        }
+
+        audioBuffer = await streamToBuffer(s3Object.Body as Readable);
+        audioFilename = path.basename(s3Key) || audioFilename;
+        audioContentType = s3Object.ContentType || audioContentType;
+        logger.info(
+          { encounterId, s3Key },
+          "transcribe: loaded audio from S3 for transcription",
+        );
       }
 
-      // --- Universal Transcription Process ---
-      const pythonProcess = spawn(PYTHON_EXECUTABLE_PATH, [WHISPER_SCRIPT_PATH]);
+      if (!AI_TRANSCRIBE_URL) {
+        logger.error(
+          "transcribe: missing AI_TRANSCRIBE_URL/TRANSCRIBE_API_URL/TRANSCRIBE_URL configuration",
+        );
+        return sendError(
+          res,
+          500,
+          "AI transcription URL is not configured (AI_TRANSCRIBE_URL, TRANSCRIBE_API_URL, or TRANSCRIBE_URL)",
+        );
+      }
 
-      // Pipe the audio stream to the Python script's stdin
-      audioStream.pipe(pythonProcess.stdin);
+      if (AI_SERVER_API_KEY) {
+        logger.debug("transcribe: using AI_SERVER_API_KEY for authentication");
+      } else {
+        logger.debug("transcribe: no AI_SERVER_API_KEY set, proceeding without auth header");
+      }
 
-      let pythonOutput = '';
-      let pythonError = '';
+      // --- Call AI Server for Transcription ---
+      logger.debug(
+        { encounterId, url: AI_TRANSCRIBE_URL },
+        "transcribe: sending to AI server",
+      );
 
-      pythonProcess.stdout.on('data', (data) => {
-        pythonOutput += data.toString();
+      const formData = new FormData();
+      formData.append("audio", audioBuffer, {
+        filename: audioFilename,
+        contentType: audioContentType,
       });
 
-      pythonProcess.stderr.on('data', (data) => {
-        pythonError += data.toString();
+      const response = await fetch(AI_TRANSCRIBE_URL, {
+        method: "POST",
+        body: formData as any,
+        headers: {
+          ...formData.getHeaders(),
+          ...(AI_SERVER_API_KEY ? { "X-API-Key": AI_SERVER_API_KEY } : {}),
+        },
       });
 
-      await new Promise<void>((resolve, reject) => {
-        pythonProcess.on('close', (code) => {
-          if (code !== 0) {
-            const fullError = `Python script exited with code ${code}. Stderr: ${pythonError}.`;
-            console.error(`Backend: Python script error - ${fullError}`);
-            return reject(new Error(`Whisper transcription failed: ${pythonError || 'Unknown Python error.'}`));
-          }
-          resolve();
-        });
-        pythonProcess.on('error', (err) => {
-          console.error('Backend: Failed to start Python child process:', err);
-          reject(new Error(`Failed to start Whisper service: ${err.message}.`));
-        });
-      });
+      logger.debug({ status: response.status }, "transcribe: AI server response");
 
-      const transcript = JSON.parse(pythonOutput);
-      console.log(`Backend: Transcription successful for S3 key: ${s3Key}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error(
+          { status: response.status, error: errorText },
+          "transcribe: AI server error",
+        );
+        throw new Error(
+          `AI transcription failed (${response.status}): ${errorText}`,
+        );
+      }
+
+      const aiResponse = (await response.json()) as { transcript: string };
+      logger.debug(
+        { hasTranscript: !!aiResponse.transcript },
+        "transcribe: parsed AI response",
+      );
+
+      const transcript = {
+        text: aiResponse.transcript,
+        model_version: "whisper-base",
+      };
+
+      logger.info(
+        { encounterId, s3Key },
+        "transcribe: transcription successful",
+      );
 
       // Persist transcript to ai_results table
       const aiResult = await createAiResult({
         encounter_id: encounterId,
-        flow_name: "whisper_transcript",
+        flow_name: AI_FLOW_NAMES.transcript,
         input_json: { s3Key },
         output_json: transcript,
-        model_version: transcript?.model_version || "whisper",
-        confidence_score: transcript?.confidence_score,
+        model_version: transcript.model_version,
+        confidence_score: undefined,
       });
 
       // Update encounter with transcript_result_id
       await query(
         `UPDATE encounters SET transcript_result_id = $1 WHERE id = $2`,
-        [aiResult.id, encounterId]
+        [aiResult.id, encounterId],
       );
-      console.log(`Backend: Updated encounter ${encounterId} with transcript_result_id: ${aiResult.id}`);
+      logger.debug(
+        { encounterId, aiResultId: aiResult.id },
+        "transcribe: encounter updated with transcript_result_id",
+      );
 
       res.json({
         success: true,
@@ -217,9 +303,8 @@ router.post(
         s3Key: s3Key,
         transcript: transcript,
       });
-
     } catch (error: any) {
-      console.error("Backend: Transcription processing error:", error);
+      logger.error({ err: error }, "transcribe: processing error");
       sendError(res, 500, "Failed to process audio file");
     }
   }
@@ -233,6 +318,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+    const organizationId = await getRequestOrganizationId(user.id);
 
     const { encounterId } = req.params;
 
@@ -240,22 +326,20 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
       return sendError(res, 400, "Encounter ID is required.");
     }
 
-    const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+    const ownsEncounter = await ensureEncounterOwnership(
+      encounterId,
+      user.id,
+      organizationId,
+    );
     if (!ownsEncounter) {
       return sendError(res, 404, "Encounter not found");
     }
 
-    // Get the encounter to find the audio_key
-    const result = await query(
-      `SELECT audio_key FROM encounters WHERE id = $1`,
-      [encounterId]
-    );
+    const audioKey = await getLatestEncounterAudioKey(encounterId);
 
-    if (result.rows.length === 0 || !result.rows[0].audio_key) {
+    if (!audioKey) {
       return sendError(res, 404, "Audio file not found for this encounter.");
     }
-
-    const audioKey = result.rows[0].audio_key;
 
     // Generate presigned URL
     const { getDownloadUrl } = await import("../../config/awsS3");
@@ -263,7 +347,7 @@ router.get("/audio/:encounterId", authMiddleware, async (req, res) => {
 
     res.json({ audioUrl });
   } catch (error: any) {
-    console.error("Backend: Error getting audio URL:", error);
+    logger.error({ err: error }, "transcribe: error getting audio URL");
     sendError(res, 500, "Failed to get audio URL");
   }
 });
@@ -276,6 +360,7 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+    const organizationId = await getRequestOrganizationId(user.id);
 
     const { encounterId } = req.params;
 
@@ -283,26 +368,24 @@ router.get("/:encounterId", authMiddleware, async (req, res) => {
       return sendError(res, 400, "Encounter ID is required.");
     }
 
-    const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+    const ownsEncounter = await ensureEncounterOwnership(
+      encounterId,
+      user.id,
+      organizationId,
+    );
     if (!ownsEncounter) {
       return sendError(res, 404, "Encounter not found");
     }
 
-    // Query ai_results for the transcript
-    const result = await query(
-      `SELECT output_json FROM ai_results 
-       WHERE encounter_id = $1 AND flow_name = 'whisper_transcript' 
-       ORDER BY created_at DESC LIMIT 1`,
-      [encounterId]
-    );
+    const result = await getLatestAiResult(encounterId, AI_FLOW_NAMES.transcript);
 
-    if (result.rows.length === 0) {
+    if (!result) {
       return sendError(res, 404, "Transcript not found for this encounter.");
     }
 
-    res.json(result.rows[0].output_json);
+    res.json(result.output_json);
   } catch (error: any) {
-    console.error("Backend: Error retrieving transcript:", error);
+    logger.error({ err: error }, "transcribe: error retrieving transcript");
     sendError(res, 500, "Failed to retrieve transcript");
   }
 });
@@ -315,6 +398,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
+    const organizationId = await getRequestOrganizationId(user.id);
 
     const { encounterId } = req.params;
     if (!encounterId) {
@@ -323,10 +407,19 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
 
     const parsedBody = TranscriptUpdateSchema.safeParse(req.body);
     if (!parsedBody.success) {
-      return sendError(res, 400, "Invalid transcript payload", parsedBody.error.issues);
+      return sendError(
+        res,
+        400,
+        "Invalid transcript payload",
+        parsedBody.error.issues,
+      );
     }
 
-    const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+    const ownsEncounter = await ensureEncounterOwnership(
+      encounterId,
+      user.id,
+      organizationId,
+    );
     if (!ownsEncounter) {
       return sendError(res, 404, "Encounter not found");
     }
@@ -334,7 +427,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
     // Persist edited transcript as a new ai_results row
     const aiResult = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "whisper_transcript",
+      flow_name: AI_FLOW_NAMES.transcript,
       input_json: { source: "manual_edit" },
       output_json: { text: parsedBody.data.text },
       model_version: "manual_edit",
@@ -344,7 +437,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
     // Update encounter pointer to latest transcript
     await query(
       `UPDATE encounters SET transcript_result_id = $1 WHERE id = $2`,
-      [aiResult.id, encounterId]
+      [aiResult.id, encounterId],
     );
 
     return res.json({
@@ -353,7 +446,7 @@ router.put("/:encounterId", authMiddleware, json(), async (req, res) => {
       aiResultId: aiResult.id,
     });
   } catch (error: any) {
-    console.error("Backend: Error saving transcript:", error);
+    logger.error({ err: error }, "transcribe: error saving transcript");
     sendError(res, 500, "Failed to save transcript");
   }
 });

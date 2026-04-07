@@ -1,15 +1,43 @@
 import { Router, Response } from "express";
 import { z } from "zod";
-import { authMiddleware } from "../../middleware/auth";
-import { query } from "../../config/db";
+import { authMiddleware, requireRole } from "../../middleware/auth";
+import { getClient, query } from "../../config/db";
 import {
   assignUserToOrganization,
   getUserOrganization,
 } from "../../utils/organization";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { JoinOrganizationSchema, OrganizationSchema } from "../../types/zod";
+import { generateInviteToken, hashInviteToken } from "../../utils/crypto";
+import logger from "../../utils/logger";
 
 const router = Router();
+
+// Invite token expiry: 7 days
+const INVITE_TOKEN_EXPIRY_DAYS = 7;
+
+// SECURITY: Explicit column list for organization queries - excludes SFTP credentials at SQL level
+// This prevents sensitive data from ever leaving the database, even in memory
+const ORG_SAFE_COLUMNS = `
+    id, name, npi, tax_id, address_line1, address_line2, city, state, postal_code, phone, timezone,
+    billing_name, billing_npi, billing_tax_id, billing_address_line1, billing_address_line2,
+    billing_city, billing_state, billing_postal_code, billing_phone,
+    default_place_of_service, edi_sender_id, edi_receiver_id, edi_sftp_host, edi_sftp_username, edi_sftp_port,
+    fee_schedule, payer_enrollments, billing_defaults, created_at, updated_at
+`
+  .replace(/\s+/g, " ")
+  .trim();
+
+// SECURITY: Strip sensitive fields from organization responses (defense-in-depth)
+const SENSITIVE_ORG_FIELDS = [
+  "edi_sftp_password",
+  "edi_sftp_private_key",
+] as const;
+function stripSensitiveOrgFields(org: any): any {
+  if (!org) return org;
+  const { edi_sftp_password, edi_sftp_private_key, ...safeOrg } = org;
+  return safeOrg;
+}
 
 const sendValidationError = (res: Response, error: z.ZodError) =>
   res.status(400).json({ success: false, errors: error.errors });
@@ -39,10 +67,15 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
-    res.json({ success: true, organization });
+    res.json({
+      success: true,
+      organization: stripSensitiveOrgFields(organization),
+    });
   } catch (error) {
-    console.error("[GET /api/organizations/me] Error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch organization" });
+    logger.error({ err: error }, 'GET organizations/me: error');
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch organization" });
   }
 });
 
@@ -61,9 +94,10 @@ router.post("/", authMiddleware, async (req, res) => {
     // Prevent creating multiple orgs if already a member
     const existingOrg = await getUserOrganization(user.id);
     if (existingOrg) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User already belongs to an organization" });
+      return res.status(400).json({
+        success: false,
+        message: "User already belongs to an organization",
+      });
     }
 
     const columns = ["name"];
@@ -95,25 +129,28 @@ router.post("/", authMiddleware, async (req, res) => {
     const insertOrg = await query(
       `INSERT INTO organizations (${columns.join(", ")})
        VALUES (${placeholders.join(", ")})
-       RETURNING *`,
-      values
+       RETURNING ${ORG_SAFE_COLUMNS}`,
+      values,
     );
     const organization = insertOrg.rows[0];
 
     // Assign user to organization as admin (enforces one org per user via users.organization_id)
     await assignUserToOrganization(user.id, organization.id, true);
 
-    res.status(201).json({ success: true, organization });
+    res.status(201).json({
+      success: true,
+      organization: stripSensitiveOrgFields(organization),
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
     }
-    console.error("[POST /api/organizations] Error:", error);
+    logger.error({ err: error }, 'POST organizations: error');
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
-// POST /api/organizations/join - join an organization via invitation code (currently uses organization id)
+// POST /api/organizations/join - join an organization via cryptographic invitation token
 router.post("/join", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
@@ -125,15 +162,52 @@ router.post("/join", authMiddleware, async (req, res) => {
     }
     const { invitationCode } = parsed.data;
 
-    // Using organization id as invitation code for now
-    const orgResult = await query("SELECT * FROM organizations WHERE id = $1", [
-      invitationCode,
-    ]);
+    // Hash the provided token to look up in database
+    const tokenHash = hashInviteToken(invitationCode);
+
+    // Look up the invite token (hashed for security)
+    const inviteResult = await query(
+      `SELECT organization_id, expires_at, used_at 
+       FROM organization_invites 
+       WHERE token_hash = $1`,
+      [tokenHash],
+    );
+
+    const invite = inviteResult.rows[0];
+    if (!invite) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid invitation code",
+      });
+    }
+
+    // Check if already used
+    if (invite.used_at) {
+      return res.status(400).json({
+        success: false,
+        message: "This invitation code has already been used",
+      });
+    }
+
+    // Check if expired
+    if (new Date(invite.expires_at) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "This invitation code has expired",
+      });
+    }
+
+    // Get organization details
+    const orgResult = await query(
+      "SELECT id, name, npi, city, state FROM organizations WHERE id = $1",
+      [invite.organization_id],
+    );
     const organization = orgResult.rows[0];
     if (!organization) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Organization not found for this code" });
+      return res.status(404).json({
+        success: false,
+        message: "Organization not found",
+      });
     }
 
     // Check if user already has an organization
@@ -146,21 +220,102 @@ router.post("/join", authMiddleware, async (req, res) => {
       });
     }
 
-    await assignUserToOrganization(user.id, organization.id, false);
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
 
-    res.json({ success: true, organization });
+      // Consume the invite atomically so concurrent requests cannot redeem the
+      // same code more than once.
+      const consumeResult = await client.query(
+        `UPDATE organization_invites
+         SET used_at = NOW(), used_by = $1
+         WHERE token_hash = $2
+           AND used_at IS NULL
+           AND expires_at > NOW()
+         RETURNING organization_id`,
+        [user.id, tokenHash],
+      );
+
+      if (consumeResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          success: false,
+          message: "This invitation code has already been used or expired",
+        });
+      }
+
+      await client.query(
+        `UPDATE users
+         SET organization_id = $1, is_org_admin = $2
+         WHERE id = $3`,
+        [organization.id, false, user.id],
+      );
+
+      await client.query("COMMIT");
+    } catch (txError) {
+      await client.query("ROLLBACK");
+      throw txError;
+    } finally {
+      client.release();
+    }
+
+    res.json({
+      success: true,
+      organization: stripSensitiveOrgFields(organization),
+    });
   } catch (error: any) {
     if (error?.code === "23505") {
       // Unique violation on membership
-      return res.status(200).json({ success: true, message: "Already a member" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Already a member" });
     }
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
     }
-    console.error("[POST /api/organizations/join] Error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    logger.error({ err: error }, 'POST organizations/join: error');
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+// POST /api/organizations/invite - generate a new invitation token (admin only)
+router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) => {
+  try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
+    const organization = await getUserOrganization(user.id);
+    if (!organization) {
+      return res.status(400).json({
+        success: false,
+        message: "User must belong to an organization to create invites",
+      });
+    }
+
+    // Generate cryptographic token
+    const rawToken = generateInviteToken();
+    const tokenHash = hashInviteToken(rawToken);
+
+    // Calculate expiry
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + INVITE_TOKEN_EXPIRY_DAYS);
+
+    // Store hashed token (never store raw token)
+    await query(
+      `INSERT INTO organization_invites (organization_id, token_hash, created_by, expires_at)
+       VALUES ($1, $2, $3, $4)`,
+      [organization.id, tokenHash, user.id, expiresAt],
+    );
+
+    res.status(201).json({
+      success: true,
+      invitationCode: rawToken, // Return raw token to user (only time it's visible)
+      expiresAt: expiresAt.toISOString(),
+      message: `Invitation code valid for ${INVITE_TOKEN_EXPIRY_DAYS} days. Share this code securely.`,
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'POST organizations/invite: error');
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
@@ -176,7 +331,8 @@ router.patch("/me", authMiddleware, async (req, res) => {
     if (!organization) {
       return res.status(404).json({
         success: false,
-        message: "User is not assigned to an organization. Create or join one first.",
+        message:
+          "User is not assigned to an organization. Create or join one first.",
       });
     }
 
@@ -238,20 +394,18 @@ router.patch("/me", authMiddleware, async (req, res) => {
     const updateResult = await query(
       `UPDATE organizations SET ${sets.join(", ")} WHERE id = $${
         values.length
-      } RETURNING *`,
-      values
+      } RETURNING ${ORG_SAFE_COLUMNS}`,
+      values,
     );
     const updated = updateResult.rows[0];
 
-    res.json({ success: true, organization: updated });
+    res.json({ success: true, organization: stripSensitiveOrgFields(updated) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
     }
-    console.error("[PATCH /api/organizations/me] Error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    logger.error({ err: error }, 'PATCH organizations/me: error');
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 

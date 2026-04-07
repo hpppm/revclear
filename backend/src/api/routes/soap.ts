@@ -2,11 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
 import { IdParamSchema } from "../../types/zod";
-import { createAiResult, getLatestAiResult } from "../../db/queries";
+import { createAiResult, getLatestAiResult, getLatestAiResultByFlowNames } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
-import { speechToSoap } from "../../../genkit";
+import { speechToSoap } from "../../services/ai/speechToSoap";
 import { query } from "../../config/db";
 import { getAuthenticatedUser } from "../../utils/auth";
+import { getUserOrganization } from "../../utils/organization";
+import { AI_FLOW_NAMES, SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -42,19 +45,33 @@ const requireUser = async (req: any, res: any) => {
   return user;
 };
 
-const ensureEncounterOwnership = async (encounterId: string, clinicianId: string) => {
+const getRequestOrganizationId = async (userId: string) => {
+  const organization = await getUserOrganization(userId);
+  return organization?.id;
+};
+
+// SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
+// access within the same organization. Using OR would allow any clinician in the
+// org to access another clinician's PHI data.
+const ensureEncounterOwnership = async (encounterId: string, clinicianId: string, organizationId?: string) => {
   const result = await query(
-    "SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2",
-    [encounterId, clinicianId]
+    "SELECT id FROM encounters WHERE id = $1 AND clinician_id = $2 AND organization_id = $3",
+    [encounterId, clinicianId, organizationId || null]
   );
   return result.rows.length > 0;
 };
 
 // New endpoint specifically for testing with mock transcript
 // MUST come before POST /:id/soap to avoid route conflict
+// SECURITY: Mock endpoint must not be accessible in production — it bypasses
+// real transcript validation and creates synthetic PHI records.
 router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(404).send();
+  }
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -62,25 +79,23 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
 
   try {
-    console.log(`[POST /api/encounters/:id/soap/mock] Forcing mock transcript usage`);
+    logger.debug({ encounterId }, "soap/mock: forcing mock transcript");
 
-    // Force empty transcript to trigger mock
     const soapResult = await speechToSoap({
       encounter_id: encounterId,
-      transcript: "", // Empty string forces mock usage
     });
 
     // SECURITY: Do not log SOAP results - they contain PHI (clinical diagnoses, treatment plans)
 
     const saved = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { transcript_id: "mock", source: "mock_endpoint" },
       output_json: soapResult,
       model_version: soapResult.model_version,
@@ -104,7 +119,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[POST /api/encounters/:id/soap/mock] error", error);
+    logger.error({ encounterId, err: error }, 'POST soap/mock: error');
     return sendError(res, 500, "Failed to generate SOAP note");
   }
 });
@@ -112,6 +127,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
 router.get("/:id/soap", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -119,13 +135,13 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
 
   try {
-    const latest = await getLatestAiResult(encounterId, "soap_gemini");
+    const latest = await getLatestAiResultByFlowNames(encounterId, SOAP_READ_FLOW_NAMES);
     if (!latest) {
       return sendError(res, 404, "No SOAP note found for encounter");
     }
@@ -140,7 +156,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[GET /api/encounters/:id/soap] error", error);
+    logger.error({ encounterId, err: error }, 'GET soap: error');
     return sendError(res, 500, "Failed to fetch SOAP note");
   }
 });
@@ -148,6 +164,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
 router.post("/:id/soap", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsed = IdParamSchema.safeParse(req.params);
   if (!parsed.success) {
@@ -155,21 +172,21 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
   }
   const encounterId = parsed.data.id;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
 
   try {
     // Try to get transcript from database
-    const transcript = await getLatestAiResult(encounterId, "whisper_transcript");
+    const transcript = await getLatestAiResult(encounterId, AI_FLOW_NAMES.transcript);
 
     let transcriptText = "";
     if (transcript) {
       transcriptText = parseTranscriptText(transcript.output_json) || "";
-      console.log(`[POST /api/encounters/:id/soap] Found transcript in DB, length: ${transcriptText.length}`);
+      logger.debug({ encounterId, length: transcriptText.length }, 'soap: transcript found in DB');
     } else {
-      console.log(`[POST /api/encounters/:id/soap] No transcript in DB, will use mock transcript`);
+      logger.debug({ encounterId }, 'soap: no transcript in DB, using mock');
     }
 
     // Call speechToSoap - it will use mock transcript if transcriptText is empty
@@ -182,7 +199,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
 
     const saved = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { transcript_id: transcript?.id || "mock" },
       output_json: soapResult,
       model_version: soapResult.model_version,
@@ -205,7 +222,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[POST /api/encounters/:id/soap] error", error);
+    logger.error({ encounterId, err: error }, 'POST soap: error');
     return sendError(res, 500, "Failed to generate SOAP note");
   }
 });
@@ -213,6 +230,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
 router.put("/:id/soap", authMiddleware, async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
 
   const parsedParams = IdParamSchema.safeParse(req.params);
   if (!parsedParams.success) {
@@ -226,7 +244,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
   const encounterId = parsedParams.data.id;
   const { soap, model_version, confidence_score } = parsedBody.data;
 
-  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id);
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
   if (!ownsEncounter) {
     return sendError(res, 404, "Encounter not found");
   }
@@ -234,7 +252,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
   try {
     const saved = await createAiResult({
       encounter_id: encounterId,
-      flow_name: "soap_gemini",
+      flow_name: AI_FLOW_NAMES.soapNote,
       input_json: { source: "manual_edit" },
       output_json: { soap },
       model_version: model_version ?? "manual_edit",
@@ -257,7 +275,7 @@ router.put("/:id/soap", authMiddleware, async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error("[PUT /api/encounters/:id/soap] error", error);
+    logger.error({ encounterId, err: error }, 'PUT soap: error');
     return sendError(res, 500, "Failed to save SOAP note");
   }
 });

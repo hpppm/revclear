@@ -1,0 +1,514 @@
+{
+  "mental_health": [
+  {
+    "code": "90791",
+    "short_description": "Psychiatric diagnostic evaluation",
+    "clinical": { "type": "evaluation", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90792",
+    "short_description": "Psychiatric diagnostic evaluation with medical services",
+    "clinical": { "type": "evaluation_medical", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90832",
+    "short_description": "Psychotherapy, 30 minutes with patient",
+    "clinical": { "type": "psychotherapy", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 30 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90834",
+    "short_description": "Psychotherapy, 45 minutes with patient",
+    "clinical": { "type": "psychotherapy", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 45 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90837",
+    "short_description": "Psychotherapy, 60 minutes with patient",
+    "clinical": { "type": "psychotherapy", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 60 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90833",
+    "short_description": "Psychotherapy, 30 minutes, add-on with evaluation and management service",
+    "clinical": { "type": "psychotherapy_addon", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 30 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90836",
+    "short_description": "Psychotherapy, 45 minutes, add-on with evaluation and management service",
+    "clinical": { "type": "psychotherapy_addon", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 45 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90838",
+    "short_description": "Psychotherapy, 60 minutes, add-on with evaluation and management service",
+    "clinical": { "type": "psychotherapy_addon", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 60 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90839",
+    "short_description": "Psychotherapy for crisis, first 60 minutes",
+    "clinical": { "type": "crisis_psychotherapy", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 60 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90840",
+    "short_description": "Psychotherapy for crisis, each additional 30 minutes",
+    "clinical": { "type": "crisis_psychotherapy_addon", "complexity": null },
+    "billing": { "is_timed": true, "unit_minutes": 30 },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90845",
+    "short_description": "Psychoanalysis",
+    "clinical": { "type": "psychoanalysis", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90846",
+    "short_description": "Family psychotherapy without patient present",
+    "clinical": { "type": "family_therapy", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90847",
+    "short_description": "Family psychotherapy with patient present",
+    "clinical": { "type": "family_therapy", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90849",
+    "short_description": "Multiple-family group psychotherapy",
+    "clinical": { "type": "group_family_therapy", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  },
+  {
+    "code": "90853",
+    "short_description": "Group psychotherapy",
+    "clinical": { "type": "group_therapy", "complexity": null },
+    "billing": { "is_timed": false, "unit_minutes": null },
+    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
+  }
+
+  ],
+  "physical_therapy": [
+    {
+      "code": "97161",
+      "short_description": "Physical therapy evaluation",
+      "clinical": {
+        "type": "evaluation",
+        "complexity": "low"
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97162",
+      "short_description": "Physical therapy evaluation",
+      "clinical": {
+        "type": "evaluation",
+        "complexity": "moderate"
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97163",
+      "short_description": "Physical therapy evaluation",
+      "clinical": {
+        "type": "evaluation",
+        "complexity": "high"
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97164",
+      "short_description": "Physical therapy re-evaluation",
+      "clinical": {
+        "type": "evaluation",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97110",
+      "short_description": "Therapeutic exercises",
+      "clinical": {
+        "type": "therapeutic_procedure",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97116",
+      "short_description": "Gait training",
+      "clinical": {
+        "type": "therapeutic_procedure",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97124",
+      "short_description": "Massage therapy",
+      "clinical": {
+        "type": "therapeutic_procedure",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97139",
+      "short_description": "Unlisted therapeutic procedure",
+      "clinical": {
+        "type": "therapeutic_procedure",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97140",
+      "short_description": "Manual therapy techniques",
+      "clinical": {
+        "type": "therapeutic_procedure",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97150",
+      "short_description": "Group therapeutic procedures",
+      "clinical": {
+        "type": "group_therapy",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97530",
+      "short_description": "Therapeutic activities",
+      "clinical": {
+        "type": "functional_training",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97533",
+      "short_description": "Sensory integrative techniques",
+      "clinical": {
+        "type": "functional_training",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97535",
+      "short_description": "Self-care/home management training",
+      "clinical": {
+        "type": "functional_training",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97537",
+      "short_description": "Community integration training",
+      "clinical": {
+        "type": "functional_training",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97542",
+      "short_description": "Wheelchair management",
+      "clinical": {
+        "type": "functional_training",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": true,
+        "unit_minutes": 15
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    },
+    {
+      "code": "97545",
+      "short_description": "Work hardening/conditioning, initial 2 hours",
+      "clinical": {
+        "type": "work_training",
+        "complexity": null
+      },
+      "billing": {
+        "is_timed": false,
+        "unit_minutes": null
+      },
+      "metadata": {
+        "confidence": "high",
+        "source": "manual_cpt_book"
+      }
+    }
+  ],
+  "speech_therapy": [
+  {
+    "code": "92521",
+    "short_description": "Evaluation of speech fluency",
+    "clinical": {
+      "type": "evaluation",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92522",
+    "short_description": "Evaluation of speech sound production",
+    "clinical": {
+      "type": "evaluation",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92523",
+    "short_description": "Evaluation of speech sound production with evaluation of language comprehension and expression",
+    "clinical": {
+      "type": "evaluation",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92524",
+    "short_description": "Behavioral and qualitative analysis of voice and resonance",
+    "clinical": {
+      "type": "evaluation",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92526",
+    "short_description": "Treatment of swallowing dysfunction",
+    "clinical": {
+      "type": "treatment",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92507",
+    "short_description": "Treatment of speech, language, voice, communication",
+    "clinical": {
+      "type": "treatment",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92597",
+    "short_description": "Evaluation for use and/or fitting of voice prosthetic device",
+    "clinical": {
+      "type": "device_evaluation",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92607",
+    "short_description": "Evaluation for prescription of speech-generating device",
+    "clinical": {
+      "type": "device_evaluation",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  },
+  {
+    "code": "92609",
+    "short_description": "Therapeutic services for use of speech-generating device",
+    "clinical": {
+      "type": "device_treatment",
+      "complexity": null
+    },
+    "billing": {
+      "is_timed": false,
+      "unit_minutes": null
+    },
+    "metadata": {
+      "confidence": "high",
+      "source": "manual_cpt_book"
+    }
+  }
+]
+}

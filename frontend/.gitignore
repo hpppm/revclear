@@ -13,6 +13,11 @@
 # testing
 /coverage
 
+# Playwright
+/playwright/.auth
+/playwright-report
+/test-results
+
 # next.js
 /.next/
 /out/
@@ -56,6 +61,11 @@ next-env.d.ts
 # OS files
 Thumbs.db
 desktop.ini
+
+# Standalone dev/debug files
+review.html
+test-security.js
+test-*.js
 
 # IDE files
 .idea/

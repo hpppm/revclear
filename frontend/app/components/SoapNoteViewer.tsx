@@ -93,6 +93,8 @@ export default function SoapNoteViewer({ soap, isEditing = false, onEditChange }
 
               {isEditing ? (
                 <textarea
+                  id={`soap-${key}`}
+                  name={`soap-${key}`}
                   value={content}
                   onChange={(e) => onEditChange?.(key, e.target.value)}
                   className={`w-full min-h-[80px] rounded-lg border ${c.border} p-2.5 text-sm text-slate-800 outline-none focus:ring-1 ${c.focus}`}

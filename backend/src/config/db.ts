@@ -1,5 +1,6 @@
 import { Pool, PoolConfig, QueryResult, QueryResultRow } from "pg";
 import { appConfig } from "./appConfig";
+import logger from "../utils/logger";
 
 const userColumns = [
   "id",
@@ -7,6 +8,7 @@ const userColumns = [
   "email",
   "full_name",
   "role",
+  "organization_id",
   "phone",
   "practitioner_type",
   "license_id",
@@ -29,18 +31,28 @@ const poolConfig: PoolConfig = {
   connectionTimeoutMillis: appConfig.db.connectionTimeoutMillis,
 };
 
-// Force SSL (Heroku-style)
-poolConfig.ssl = { rejectUnauthorized: false };
+// SSL configuration: always enabled (dev connects to remote AWS RDS).
+// Production: strict cert verification with optional CA bundle.
+// Development/test: SSL enabled but cert verification relaxed for AWS RDS
+//   dev instances that use AWS-managed certs not in the default trust store.
+//   nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
+if (process.env.NODE_ENV === 'production') {
+  poolConfig.ssl = {
+    rejectUnauthorized: true,
+    ...(process.env.DB_SSL_CA ? { ca: process.env.DB_SSL_CA } : {}),
+  };
+} else {
+  poolConfig.ssl = { rejectUnauthorized: false }; // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
+}
 
-// SECURITY: Only log DB connection info in development (no credentials)
 if (process.env.NODE_ENV === "development") {
-  console.log("DB Config: connected to", poolConfig.database);
+  logger.debug({ database: poolConfig.database }, 'DB pool initialized');
 }
 
 const pool = new Pool(poolConfig);
 
 pool.on("error", (err: Error) => {
-  console.error("Unexpected PostgreSQL pool error", err);
+  logger.error({ err }, 'Unexpected PostgreSQL pool error');
 });
 
 export const query = <T extends QueryResultRow = QueryResultRow>(

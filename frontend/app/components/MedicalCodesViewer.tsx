@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import logger from "@/app/lib/logger";
 import { MedicalCode, SoapNote } from "@/app/lib/types";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
@@ -15,37 +16,39 @@ type MedicalCodesViewerProps = {
   onCodesSelected?: (codes: MedicalCode[]) => void;
 };
 
+// Raw shape returned by the codes API before normalization
+type RawCode = {
+  id?: string;
+  code: string;
+  description: string;
+  category?: string;
+  confidence?: number;
+  confidence_score?: number;
+  is_ai_suggested?: boolean;
+  source?: string;
+};
+
 export default function MedicalCodesViewer({
-  soap,
+  soap: _,
   encounterId,
   savedCodes = [],
   onCodesSelected,
 }: MedicalCodesViewerProps) {
-  void soap;
-
-  type RawCode = Partial<MedicalCode> & {
-    confidence_score?: number;
-    is_ai_suggested?: boolean;
-  };
-
-  const ensureType = useCallback(
-    (codes: RawCode[], type: "ICD-10" | "CPT") =>
-      (codes || []).map((c) => ({
-        id: c.id || `${type}-${c.code}`,
-        type,
-        code: c.code,
-        description: c.description,
-        category: c.category || "Unspecified",
-        confidence:
-          typeof c.confidence === "number"
-            ? Math.round(c.confidence * 100)
-            : typeof c.confidence_score === "number"
-            ? Math.round(c.confidence_score * 100)
-            : undefined,
-        source: c.is_ai_suggested ? "AI" : c.source,
-      })),
-    []
-  );
+  const ensureType = (codes: RawCode[], type: "ICD-10" | "CPT") =>
+    (codes || []).map((c) => ({
+      id: c.id || `${type}-${c.code}`,
+      type,
+      code: c.code,
+      description: c.description,
+      category: c.category || "Unspecified",
+      confidence:
+        typeof c.confidence === "number"
+          ? Math.round(c.confidence * 100)
+          : typeof c.confidence_score === "number"
+          ? Math.round(c.confidence_score * 100)
+          : undefined,
+      source: c.is_ai_suggested ? "AI" : c.source,
+    }));
 
   const normalizedSaved = [
     ...ensureType(savedCodes.filter((c) => c.type === "ICD-10"), "ICD-10"),
@@ -73,9 +76,10 @@ export default function MedicalCodesViewer({
       setIcdCandidates(normalized.filter((c) => c.type === "ICD-10"));
       setCptCandidates(normalized.filter((c) => c.type === "CPT"));
       setSelectedCodes(normalized);
+      onCodesSelected?.(normalized);
       setHasGenerated(true);
     }
-  }, [ensureType, savedCodes]);
+  }, [savedCodes]);
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,8 +111,8 @@ export default function MedicalCodesViewer({
       setIcdCandidates(ensureType(icdMatches, "ICD-10"));
       setCptCandidates(ensureType(cptMatches, "CPT"));
       setHasGenerated(true);
-    } catch (error) {
-      console.error("Code generation failed", error);
+    } catch {
+      logger.error("Code generation failed");
       setHasGenerated(true);
     } finally {
       setLoading(false);
@@ -121,21 +125,20 @@ export default function MedicalCodesViewer({
     setSearching(true);
     try {
       const response = await apiClient.codes.search(searchQuery, searchType);
-      const rawResults = (response.data.data || []) as RawCode[];
+      const rawResults = response.data.data || [];
 
       // Inject type based on searchType since mock data doesn't have it
-      const resultsWithType = rawResults.map((r) => ({
+      type CodeResult = Omit<MedicalCode, 'type'> & { type?: string };
+      const resultsWithType: MedicalCode[] = rawResults.map((r: CodeResult) => ({
         ...r,
-        type: searchType === "icd" ? "ICD-10" : "CPT"
+        id: r.id || `${searchType === "icd" ? "ICD-10" : "CPT"}-${r.code}`,
+        type: (searchType === "icd" ? "ICD-10" : "CPT") as "ICD-10" | "CPT",
+        category: r.category || "Unspecified",
       }));
 
-      setSearchResults(resultsWithType.map((r) => ({
-        ...r,
-        id: r.id || `${r.type}-${r.code}`,
-        category: r.category || "Unspecified",
-      })));
-    } catch (err) {
-      console.error("Search failed", err);
+      setSearchResults(resultsWithType);
+    } catch {
+      logger.error("Search failed");
       setSearchResults([]);
     } finally {
       setSearching(false);
@@ -254,7 +257,7 @@ export default function MedicalCodesViewer({
             No matches found
           </h3>
           <p className="text-sm text-amber-700">
-            The AI could not find matching codes. Try manually searching for codes below.
+            The AI couldn&apos;t find matching codes. Try manually searching for codes below.
           </p>
         </div>
       )}
@@ -312,6 +315,8 @@ export default function MedicalCodesViewer({
         <h4 className="text-sm font-semibold text-slate-700 mb-3">Manual Code Search</h4>
         <div className="flex gap-2">
           <select
+            id="code-search-type"
+            name="code-search-type"
             value={searchType}
             onChange={(e) => setSearchType(e.target.value as "icd" | "cpt")}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm"

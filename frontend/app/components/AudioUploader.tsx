@@ -88,6 +88,8 @@ export default function AudioUploader({
 
       <label className="block cursor-pointer">
         <input
+          id="audio-file-upload"
+          name="audio-file-upload"
           type="file"
           accept={accept.join(",")}
           className="hidden"

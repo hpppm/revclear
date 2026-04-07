@@ -5,25 +5,18 @@ import AudioUploader from "../AudioUploader";
 import Button from "../ui/Button";
 import logger from "@/app/lib/logger";
 
-type TranscriptPayload =
-    | string
-    | {
-          text?: string;
-          summary?: string;
-      }
-    | Record<string, unknown>
-    | null;
-
 interface TranscriptionStepProps {
     audioFile: File | null;
     audioUrl: string | null;
     s3Key: string | null;
-    transcript: TranscriptPayload;
+    transcript: any;
+    transcribeError: string | null;
     transcriptDraft: string;
     onTranscriptDraftChange: (value: string) => void;
     onSaveTranscript: () => void;
     savingTranscript: boolean;
     uploading: boolean;
+    uploadError: string | null;
     transcribing: boolean;
     onAudioSelected: (file: File) => void;
     onClearAudio: () => void;
@@ -36,31 +29,32 @@ export default function TranscriptionStep({
     audioUrl,
     s3Key,
     transcript,
+    transcribeError,
     transcriptDraft,
     onTranscriptDraftChange,
     onSaveTranscript,
     savingTranscript,
     uploading,
+    uploadError,
     transcribing,
     onAudioSelected,
     onClearAudio,
     onTranscribe,
     allowedAudioTypes,
 }: TranscriptionStepProps) {
-    const demoTranscript = `Chief Complaint: Patient presents with chronic low back pain that has worsened over the past 2 weeks.\n\nHistory of Present Illness:\n- 45-year-old male with 6-month history of intermittent low back pain, now constant.\n- Pain is 6/10, sharp with movement, dull ache at rest; radiates intermittently to left posterior thigh, no below-knee radiation.\n- Worse with prolonged sitting, bending, lifting; improved with rest and ibuprofen 400 mg PRN.\n- No red flags: denies bowel/bladder changes, saddle anesthesia, significant weight loss, fever, or trauma.\n- Work: desk-based; notes poor ergonomics, minimal stretching.\n\nPast Medical History:\n- Hypertension, controlled with lisinopril 10 mg daily.\n- No prior spine surgery.\n\nMedications:\n- Lisinopril 10 mg daily.\n- Ibuprofen 400 mg PRN (takes 2–3x/week).\n\nAllergies: NKDA.\n\nSocial History:\n- Office worker, sedentary; exercises 1–2x/week (walking).\n- Non-smoker; occasional alcohol.\n\nReview of Systems:\n- Negative for weight loss, fever, night sweats.\n- Negative for incontinence, numbness, tingling in feet.\n\nPhysical Exam:\n- Vitals: BP 128/78, HR 72, afebrile.\n- General: no acute distress.\n- Back: mild left paraspinal tenderness at L4-L5; no midline step-off.\n- ROM: flexion limited by pain; extension mild discomfort.\n- Neuro: Strength 5/5 in BLE; sensation intact; reflexes 2+ patellar/Achilles; negative straight leg raise bilaterally.\n- Gait: normal.\n\nAssessment:\n- Mechanical low back pain with probable myofascial component; no radicular deficits or red flags.\n\nPlan:\n- Meds: Continue ibuprofen PRN with food; add short course of scheduled NSAID if needed; consider muscle relaxant at night if spasms persist.\n- PT: Core strengthening, McGill exercises, hip mobility, hamstring stretching; posture and ergonomic education; avoid prolonged sitting.\n- Activity: Relative rest; avoid heavy lifting/twisting for 1–2 weeks; walking encouraged.\n- Work: Recommend ergonomic assessment and sit-stand desk if available; hourly micro-breaks and stretching.\n- Imaging: Not indicated now; consider MRI if no improvement after 6–8 weeks or if red flags emerge.\n- Follow-up: 4–6 weeks or sooner if worsening, new neuro deficits, or red flags.\n`;
-
     const transcriptText = (() => {
         if (!transcript) return null;
         if (typeof transcript === "string") return transcript;
 
         // Handle explicit empty text result from Whisper
-        if (typeof transcript === "object" && transcript && "text" in transcript && transcript.text === "") {
+        if (transcript.encrypted !== undefined) return null;
+        if (transcript.text === "") {
             return "No speech detected in the audio file.";
         }
 
         return (
-            (typeof transcript === "object" && transcript && "text" in transcript ? transcript.text : undefined) ||
-            (typeof transcript === "object" && transcript && "summary" in transcript ? transcript.summary : undefined) ||
+            transcript.text ||
+            transcript.summary ||
             JSON.stringify(transcript, null, 2)
         );
     })();
@@ -138,6 +132,12 @@ export default function TranscriptionStep({
                 </div>
             )}
 
+            {uploadError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <strong>Upload failed:</strong> {uploadError}
+                </div>
+            )}
+
             {(audioFile || s3Key) && (
                 <div className="border-t border-slate-200 pt-6">
                     <div className="flex items-center justify-between mb-4">
@@ -148,15 +148,25 @@ export default function TranscriptionStep({
                             </p>
                         </div>
                         {!transcript && (
-                            <Button
-                                onClick={onTranscribe}
-                                loading={transcribing}
-                                disabled={transcribing || uploading}
-                            >
-                                {transcribing ? "Transcribing..." : "Transcribe Audio"}
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={onTranscribe}
+                                    loading={transcribing}
+                                    disabled={transcribing || uploading || !s3Key}
+                                >
+                                    {transcribing ? "Transcribing..." : "Transcribe Audio"}
+                                </Button>
+                            </div>
                         )}
                     </div>
+                    {!s3Key && !uploading && !transcript && (
+                        <p className="mb-4 text-sm text-amber-700">
+                            Audio must finish uploading before transcription can start.
+                        </p>
+                    )}
+                    {transcribeError && (
+                        <p className="mb-4 text-sm text-red-600">{transcribeError}</p>
+                    )}
 
                     {transcribing && (
                         <div className="text-center py-8">
@@ -165,31 +175,33 @@ export default function TranscriptionStep({
                         </div>
                     )}
 
+                    {transcribeError && !transcribing && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <strong>Transcription failed:</strong> {transcribeError}
+                        </div>
+                    )}
+
                     {transcriptText && !transcribing && (
                         <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
                             <p className="text-xs font-medium text-slate-700">Transcript (editable)</p>
             <div className="flex flex-wrap gap-2 mb-2">
-                <button
-                    type="button"
-                    onClick={() => onTranscriptDraftChange(demoTranscript)}
-                    className="inline-flex items-center gap-2 rounded-md border border-dashed border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
-                >
-                    Demo transcript
-                </button>
                 {transcriptText && (
-                    <button
+                    <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => onTranscriptDraftChange(transcriptText)}
-                        className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-400"
                     >
                         Use original transcription
-                    </button>
+                    </Button>
                 )}
                 <span className="text-xs text-slate-500">
-                    Using: {transcriptDraft.trim() === demoTranscript.trim() ? "Demo transcript" : "Original / edited transcript"}
+                    {transcriptText && transcriptDraft.trim() !== transcriptText.trim() ? "Edited transcript" : "Original transcript"}
                 </span>
             </div>
                             <textarea
+                                id="transcript-draft"
+                                name="transcript-draft"
                                 value={transcriptDraft}
                                 onChange={(e) => onTranscriptDraftChange(e.target.value)}
                                 rows={10}
@@ -209,7 +221,7 @@ export default function TranscriptionStep({
 
                     {!transcript && !transcribing && (
                         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Click &quot;Transcribe Audio&quot; to generate a transcript.
+                            Click "Transcribe Audio" to generate a transcript.
                         </div>
                     )}
                 </div>

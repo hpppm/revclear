@@ -11,6 +11,7 @@ import {
   GlobalSignOutCommand,
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
+  AdminUpdateUserAttributesCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -200,6 +201,25 @@ export async function adminConfirmSignUp(email: string) {
 }
 
 /**
+ * Admin mark email as verified.
+ * Crucial for auto-confirmed users to be able to receive forgot-password emails.
+ */
+export async function adminMarkEmailVerified(email: string) {
+  const command = new AdminUpdateUserAttributesCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+    UserAttributes: [
+      {
+        Name: 'email_verified',
+        Value: 'true',
+      },
+    ],
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
  * Describe the configured user pool client to verify connectivity and permissions.
  */
 export async function checkCognitoConnectivity() {
@@ -211,3 +231,16 @@ export async function checkCognitoConnectivity() {
 }
 
 export { cognitoClient, userPoolId, clientId };
+
+/**
+ * Admin add user to a Cognito group.
+ */
+export async function adminAddUserToGroup(email: string, groupName: string) {
+  const { AdminAddUserToGroupCommand } = await import('@aws-sdk/client-cognito-identity-provider');
+  const command = new AdminAddUserToGroupCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+    GroupName: groupName,
+  });
+  return cognitoClient.send(command);
+}

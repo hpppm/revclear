@@ -46,7 +46,7 @@ revclear/
 | Document | Description |
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | AI assistant guidance |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| [COLLABORATOR_CONTRIBUTIONS.md](https://github.com/hpppm/revclear/blob/main/COLLABORATOR_CONTRIBUTIONS.md) | Detailed contributor vertical ownership and responsibilities |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [docs/](docs/) | Full documentation hub |
 | [Backend Docs](backend/docs/) | API & database documentation |
@@ -79,9 +79,10 @@ We apply part of the required controls from:
 ### 📦 **File Storage**
 - Encrypted transcripts and audio files in **Amazon S3**
 
-### 🤖 **External AI Processing**
-- **Genkit AI runs outside our environment**  
-- local python whisper
+### 🤖 **AI Processing**
+- Local Whisper transcription (Python)
+- Local Ollama inference by default (`http://localhost:11434`)
+- Optional external AI endpoints via backend env configuration
 - Restricted with encrypted data handling and vendor controls
 
 ### 🔍 **Audit Logging**

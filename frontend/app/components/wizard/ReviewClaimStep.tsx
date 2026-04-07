@@ -1,116 +1,129 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
-import { Claim, ClaimLineItem, Organization, Patient, User } from "@/app/lib/types";
+import { useAuth } from "@/app/context/AuthContext";
+import logger from "@/app/lib/logger";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import Input from "../ui/Input";
 
-type Address = {
-    street?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-};
-
-type Subscriber = {
-    relationship?: string;
-    full_name?: string;
-    dob?: string;
-    gender?: string;
-    member_id?: string;
-    group_number?: string;
-    address?: Address;
-    address_street?: string;
-    address_city?: string;
-    address_state?: string;
-    address_zip?: string;
-};
-
-type Provider = {
-    name?: string;
-    npi?: string;
-    organization_npi?: string;
-    tax_id?: string;
-    phone?: string;
-    taxonomy_code?: string;
-    place_of_service?: string;
-    address?: Address;
-    street?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    address_street?: string;
-    address_city?: string;
-    address_state?: string;
-    address_zip?: string;
-};
-
-type ClaimDraft = Claim &
-    Record<string, unknown> & {
-        line_items?: ClaimLineItem[];
-        rendering_provider?: Provider;
-        billing_provider?: Provider;
-        service_facility?: Provider;
-        subscriber?: Subscriber;
-        subscriber_relationship?: string;
-        patient_id?: string;
-        date_of_service?: string;
-        service_date_start?: string;
-        service_date_end?: string;
-        procedure_codes?: string[];
-        total_amount?: number;
-    };
-
 interface ReviewClaimStepProps {
     encounterId: string | null;
-    onClaimChange?: (claim: ClaimDraft) => void;
+    onClaimChange?: (claim: any) => void;
     onValidationChange?: (isValid: boolean) => void;
+    submitAttempt?: number;
 }
 
 export default function ReviewClaimStep({
     encounterId,
     onClaimChange,
     onValidationChange,
+    submitAttempt,
 }: ReviewClaimStepProps) {
-    const [claim, setClaim] = useState<ClaimDraft | null>(null);
+    const billingNameRef = useRef<HTMLDivElement>(null);
+    const billingNpiRef = useRef<HTMLDivElement>(null);
+    const billingTaxIdRef = useRef<HTMLDivElement>(null);
+    const billingStreetRef = useRef<HTMLDivElement>(null);
+    const billingCityRef = useRef<HTMLDivElement>(null);
+    const billingStateRef = useRef<HTMLDivElement>(null);
+    const billingZipRef = useRef<HTMLDivElement>(null);
+    const serviceFacilityNameRef = useRef<HTMLDivElement>(null);
+    const serviceFacilityNpiRef = useRef<HTMLDivElement>(null);
+    const serviceStreetRef = useRef<HTMLDivElement>(null);
+    const serviceCityRef = useRef<HTMLDivElement>(null);
+    const serviceStateRef = useRef<HTMLDivElement>(null);
+    const serviceZipRef = useRef<HTMLDivElement>(null);
+    const renderingNameRef = useRef<HTMLDivElement>(null);
+    const renderingNpiRef = useRef<HTMLDivElement>(null);
+    const { user: authUser } = useAuth();
+    const [claim, setClaim] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const validationErrorsRef = useRef<string[]>([]);
+    const [_prefilling, setPrefilling] = useState(false);
 
-    const handleUpdateClaim = (field: string, value: unknown) => {
-        setClaim((prev) => {
-            const base = prev || ({} as ClaimDraft);
-            return { ...base, [field]: value } as ClaimDraft;
+    useEffect(() => {
+        validationErrorsRef.current = validationErrors;
+    }, [validationErrors]);
+
+    useEffect(() => {
+        if (encounterId) {
+            fetchClaimPreview();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [encounterId]);
+
+    useEffect(() => {
+        if (!submitAttempt || submitAttempt === 0) return;
+        const errs = validationErrorsRef.current;
+        if (errs.length === 0) return;
+        // Ordered top-to-bottom on page
+        const checks: [boolean, React.RefObject<HTMLDivElement | null>][] = [
+            [errs.some((e) => e.includes("Billing provider name")), billingNameRef],
+            [errs.some((e) => e.includes("Billing provider NPI")), billingNpiRef],
+            [errs.some((e) => e.includes("Billing provider Tax ID")), billingTaxIdRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingStreetRef.current?.querySelector("input")?.value, billingStreetRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingCityRef.current?.querySelector("input")?.value, billingCityRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingStateRef.current?.querySelector("input")?.value, billingStateRef],
+            [errs.some((e) => e.includes("Billing provider address")) && !billingZipRef.current?.querySelector("input")?.value, billingZipRef],
+            [errs.some((e) => e.includes("Service facility name")), serviceFacilityNameRef],
+            [errs.some((e) => e.includes("Service facility NPI")), serviceFacilityNpiRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceStreetRef.current?.querySelector("input")?.value, serviceStreetRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceCityRef.current?.querySelector("input")?.value, serviceCityRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceStateRef.current?.querySelector("input")?.value, serviceStateRef],
+            [errs.some((e) => e.includes("Service facility address")) && !serviceZipRef.current?.querySelector("input")?.value, serviceZipRef],
+            [errs.some((e) => e.includes("Rendering provider name")), renderingNameRef],
+            [errs.some((e) => e.includes("Rendering provider NPI")), renderingNpiRef],
+        ];
+        const first = checks.find(([cond]) => cond);
+        if (first) first[1].current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, [submitAttempt]);
+
+
+    const fetchClaimPreview = async () => {
+        if (!encounterId) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await apiClient.encounters.previewClaim(encounterId);
+            const preview = res.data.data;
+            setClaim(preview);
+            onClaimChange?.(preview);
+            updateValidation(preview);
+            await hydrateWithDefaults(preview);
+        } catch {
+            logger.error("Failed to build claim preview");
+            setError("Failed to build claim preview. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateClaim = (field: string, value: any) => {
+        setClaim((prev: any) => {
+            return { ...prev, [field]: value };
         });
     };
 
-    const handleUpdateNested = (parent: string, field: string, value: unknown) => {
-        setClaim((prev) => {
-            const base = prev || ({} as ClaimDraft);
-            const nested = typeof base[parent] === "object" && base[parent] !== null
-                ? (base[parent] as Record<string, unknown>)
-                : {};
+    const handleUpdateNested = (parent: string, field: string, value: any) => {
+        setClaim((prev: any) => {
             return {
-                ...base,
-                [parent]: { ...nested, [field]: value },
+                ...prev,
+                [parent]: { ...(prev?.[parent] || {}), [field]: value }
             };
         });
     };
 
-    const handleUpdateLineItem = (index: number, field: keyof ClaimLineItem, value: unknown) => {
-        setClaim((prev) => {
-            const base = prev || ({} as ClaimDraft);
-            const newLineItems = [...(base.line_items || [])];
-            newLineItems[index] = { ...newLineItems[index], [field]: value } as ClaimLineItem;
+    const handleUpdateLineItem = (index: number, field: string, value: any) => {
+        setClaim((prev: any) => {
+            const newLineItems = [...(prev.line_items || [])];
+            newLineItems[index] = { ...newLineItems[index], [field]: value };
 
             // Recalculate total
-            const newTotal = newLineItems.reduce(
-                (sum, item) => sum + Number(item.charge_amount || 0),
-                0
-            );
+            const newTotal = newLineItems.reduce((sum: number, item: any) => sum + Number(item.charge_amount || 0), 0);
 
-            return { ...base, line_items: newLineItems, total_amount: newTotal };
+            return { ...prev, line_items: newLineItems, total_amount: newTotal };
         });
     };
 
@@ -120,7 +133,8 @@ export default function ReviewClaimStep({
             onClaimChange?.(claim);
             updateValidation(claim);
         }
-    }, [claim, onClaimChange, updateValidation]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [claim]);
 
     const parsePointerList = (value: string) =>
         value
@@ -142,18 +156,22 @@ export default function ReviewClaimStep({
         handleUpdateLineItem(index, "modifiers", mods);
     };
 
-    const requiredAddressMissing = useCallback((addressObj: unknown) => {
+    const isValidNpiFormat = (v: string) => /^\d{10}$/.test((v || "").trim());
+    const isValidTaxIdFormat = (v: string) => /^\d{2}-?\d{7}$/.test((v || "").replace(/\s/g, ""));
+    const nameHasLetters = (v: string) => /[A-Za-z]/.test((v || "").trim()) && (v || "").trim().length >= 2;
+
+    const requiredAddressMissing = (addressObj: any) => {
         if (!addressObj) return true;
         // If backend sends a combined address string and it is non-empty, treat it as present.
         if (typeof addressObj === "string") {
             return addressObj.trim().length === 0;
         }
         if (typeof addressObj !== "object") return true;
-        const { street, city, state, zip } = addressObj as Address;
+        const { street, city, state, zip } = addressObj as any;
         return !street || !city || !state || !zip;
-    }, []);
+    };
 
-    const updateValidation = useCallback((current: ClaimDraft | null) => {
+    const updateValidation = (current: any) => {
         const errs: string[] = [];
         if (!current) {
             setValidationErrors(errs);
@@ -162,11 +180,48 @@ export default function ReviewClaimStep({
         }
 
         const hasCpt = (current.procedure_codes?.length || 0) > 0
-            || (current.line_items || []).some((li) => li.procedure_code);
+            || (current.line_items || []).some((li: any) => li.procedure_code);
         if (!hasCpt) errs.push("At least one CPT/procedure code is required.");
+
+        const isValidZip = (v: string) => /^\d{5}(-\d{4})?$/.test((v || "").trim());
+        const isValidState = (v: string) => /^[A-Za-z]{2}$/.test((v || "").trim());
+
+        const nameError = (val: string, label: string) => {
+            if (!val) return `${label} is required.`;
+            if (!nameHasLetters(val)) return `${label} must contain letters (e.g. "Clinic Name").`;
+            return null;
+        };
+
+        const billingNameErr = nameError(current.billing_provider?.name, "Billing provider name");
+        if (billingNameErr) errs.push(billingNameErr);
+
+        if (!current.billing_provider?.npi) {
+            errs.push("Billing provider NPI is required.");
+        } else if (!isValidNpiFormat(current.billing_provider.npi)) {
+            errs.push("Billing provider NPI must be exactly 10 digits.");
+        }
+        if (!current.billing_provider?.tax_id) {
+            errs.push("Billing provider Tax ID is required.");
+        } else if (!isValidTaxIdFormat(current.billing_provider.tax_id)) {
+            errs.push("Billing provider Tax ID must be in format XX-XXXXXXX.");
+        }
+
+        const renderingNameErr = nameError(current.rendering_provider?.name, "Rendering provider name");
+        if (renderingNameErr) errs.push(renderingNameErr);
 
         if (!current.rendering_provider?.npi) {
             errs.push("Rendering provider NPI is required.");
+        } else if (!isValidNpiFormat(current.rendering_provider.npi)) {
+            errs.push("Rendering provider NPI must be exactly 10 digits.");
+        }
+
+        const facilityNameErr = nameError(current.service_facility?.name, "Service facility name");
+        if (facilityNameErr) errs.push(facilityNameErr);
+
+        if (!current.service_facility?.npi) {
+            errs.push("Service facility NPI is required.");
+        } else if (!isValidNpiFormat(current.service_facility.npi)) {
+            errs.push("Service facility NPI must be exactly 10 digits.");
         }
 
         const rel = current.subscriber_relationship || current.subscriber?.relationship;
@@ -190,11 +245,29 @@ export default function ReviewClaimStep({
             }
         }
 
-        if (requiredAddressMissing(current.billing_provider?.address || current.billing_provider)) {
+        const billingAddr = {
+            street: current.billing_provider?.street || current.billing_provider?.address?.street,
+            city: current.billing_provider?.city || current.billing_provider?.address?.city,
+            state: current.billing_provider?.state || current.billing_provider?.address?.state,
+            zip: current.billing_provider?.zip || current.billing_provider?.address?.zip,
+        };
+        if (requiredAddressMissing(billingAddr)) {
             errs.push("Billing provider address (street, city, state, ZIP) is required.");
+        } else {
+            if (billingAddr.zip && !isValidZip(billingAddr.zip)) errs.push("Billing provider ZIP must be 5 digits.");
+            if (billingAddr.state && !isValidState(billingAddr.state)) errs.push("Billing provider state must be 2 letters.");
         }
-        if (requiredAddressMissing(current.service_facility?.address || current.service_facility)) {
+        const serviceAddr = {
+            street: current.service_facility?.street || current.service_facility?.address?.street,
+            city: current.service_facility?.city || current.service_facility?.address?.city,
+            state: current.service_facility?.state || current.service_facility?.address?.state,
+            zip: current.service_facility?.zip || current.service_facility?.address?.zip,
+        };
+        if (requiredAddressMissing(serviceAddr)) {
             errs.push("Service facility address (street, city, state, ZIP) is required.");
+        } else {
+            if (serviceAddr.zip && !isValidZip(serviceAddr.zip)) errs.push("Service facility ZIP must be 5 digits.");
+            if (serviceAddr.state && !isValidState(serviceAddr.state)) errs.push("Service facility state must be 2 letters.");
         }
 
         const hasServiceDate = current.service_date_start || current.service_date_end || current.date_of_service;
@@ -203,18 +276,26 @@ export default function ReviewClaimStep({
         }
 
         const icdPointersMissing = (current.line_items || []).some(
-            (li) => (li.procedure_code || hasCpt) && (!li.diagnosis_pointers || li.diagnosis_pointers.length === 0)
+            (li: any) => (li.procedure_code || hasCpt) && (!li.diagnosis_pointers || li.diagnosis_pointers.length === 0)
         );
         if (icdPointersMissing) {
             errs.push("ICD diagnosis pointers are required on each service line with a CPT code.");
         }
 
+        const hasNegativeCharge = (current.line_items || []).some(
+            (li: any) => li.procedure_code && Number(li.charge_amount) <= 0
+        );
+        if (hasNegativeCharge) {
+            errs.push("Charge amount must be greater than 0 on each service line.");
+        }
+
         setValidationErrors(errs);
         onValidationChange?.(errs.length === 0);
-    }, [onValidationChange, requiredAddressMissing]);
+    };
 
-    const hydrateWithDefaults = useCallback(async (preview: ClaimDraft | null) => {
+    const hydrateWithDefaults = async (preview: any) => {
         if (!preview) return;
+        setPrefilling(true);
         try {
             const [meResp, patientResp, subscriberResp] = await Promise.allSettled([
                 apiClient.me.getProfile(),
@@ -222,17 +303,19 @@ export default function ReviewClaimStep({
                 preview.patient_id ? apiClient.patients.getSubscriber(preview.patient_id) : Promise.resolve(null),
             ]);
 
-            const profile = meResp.status === "fulfilled"
-                ? ((meResp.value.data?.data || meResp.value.data || meResp.value) as (User & { organization?: Organization }) | null)
-                : null;
-            const patient = patientResp.status === "fulfilled" && patientResp.value
-                ? ((patientResp.value.data?.data || patientResp.value.data || patientResp.value) as Patient | null)
-                : null;
-            const subscriber = subscriberResp.status === "fulfilled" && subscriberResp.value
-                ? ((subscriberResp.value.data?.data || subscriberResp.value.data || subscriberResp.value) as Subscriber | null)
-                : null;
+            const meData: any = meResp.status === "fulfilled" ? meResp.value.data : null;
+            // /me returns { success, user: {...}, organization: {...} }
+            const profile: any = meData?.user ?? null;
+            const patient: any =
+                patientResp.status === "fulfilled" && patientResp.value
+                    ? (patientResp.value.data?.data || patientResp.value.data || patientResp.value)
+                    : null;
+            const subscriber: any =
+                subscriberResp.status === "fulfilled" && subscriberResp.value
+                    ? (subscriberResp.value.data?.data || subscriberResp.value.data || subscriberResp.value)
+                    : null;
 
-            const mergeIfMissing = (target: Record<string, unknown>, source: Record<string, unknown> | null, keys: string[]) => {
+            const mergeIfMissing = (target: any, source: any, keys: string[]) => {
                 if (!source) return;
                 keys.forEach((key) => {
                     if (target[key] === undefined || target[key] === null || target[key] === "") {
@@ -241,7 +324,7 @@ export default function ReviewClaimStep({
                 });
             };
 
-            const next: ClaimDraft = { ...preview };
+            const next = { ...preview };
 
             // Default DOS to encounter date if missing
             if (!next.service_date_start && next.date_of_service) {
@@ -251,9 +334,9 @@ export default function ReviewClaimStep({
                 next.service_date_end = next.service_date_start;
             }
 
-            // Billing provider defaults from organization (profile.organization)
+            // Billing provider defaults from organization
             next.billing_provider = { ...(next.billing_provider || {}) };
-            const org = profile?.organization || ({} as Organization);
+            const org = meData?.organization || {};
 
             if (!next.billing_provider.name && org.billing_name) next.billing_provider.name = org.billing_name;
             if (!next.billing_provider.npi && org.billing_npi) next.billing_provider.npi = org.billing_npi;
@@ -285,11 +368,17 @@ export default function ReviewClaimStep({
                 };
             }
 
-            // Rendering provider defaults from clinician profile (user)
-            next.rendering_provider = { ...(next.rendering_provider || {}) };
-            if (!next.rendering_provider.name && profile?.full_name) next.rendering_provider.name = profile.full_name;
-            if (!next.rendering_provider.npi && profile?.npi) next.rendering_provider.npi = profile.npi;
-            if (!next.rendering_provider.taxonomy_code && profile?.taxonomy_code) next.rendering_provider.taxonomy_code = profile.taxonomy_code;
+            // Rendering provider always comes from the logged-in clinician — use authUser
+            // first (from JWT/DB via AuthContext), then fall back to /me profile
+            const clinicianName = authUser?.full_name || authUser?.name || profile?.full_name;
+            const clinicianNpi = profile?.npi;
+            const clinicianTaxonomy = profile?.taxonomy_code;
+            next.rendering_provider = {
+                ...(next.rendering_provider || {}),
+                ...(clinicianName ? { name: clinicianName } : {}),
+                ...(clinicianNpi ? { npi: clinicianNpi } : {}),
+                ...(clinicianTaxonomy ? { taxonomy_code: clinicianTaxonomy } : {}),
+            };
 
             // Service facility defaults: Prioritize General Information (org.name, etc.)
             next.service_facility = { ...(next.service_facility || {}) };
@@ -341,29 +430,37 @@ export default function ReviewClaimStep({
                 };
             }
 
+            // Payer info from patient insurance record
+            if (patient) {
+                if (!next.payer_name) next.payer_name = patient.insurance_payer_name || patient.insurance_provider || null;
+                if (!next.payer_id) next.payer_id = patient.insurance_payer_id || null;
+                if (!next.insurance_provider) next.insurance_provider = patient.insurance_provider || null;
+                // Always pull member_id and group_number from patient — regardless of relationship
+                if (!next.subscriber) next.subscriber = {};
+                if (!next.subscriber.member_id) next.subscriber.member_id = patient.insurance_member_id || null;
+                if (!next.subscriber.group_number) next.subscriber.group_number = patient.insurance_group_number || null;
+            }
+
             // Subscriber defaults from patient/subscriber records
             if (!next.subscriber_relationship && patient?.insurance_relationship) {
                 next.subscriber_relationship = patient.insurance_relationship;
             }
 
             // If relationship is self, ensure patient details are used if subscriber record is missing/empty
-            if (next.subscriber_relationship === 'self' && patient) {
+            if ((next.subscriber_relationship === 'self' || !next.subscriber_relationship) && patient) {
                 if (!next.subscriber) next.subscriber = {};
-                if (!next.subscriber.full_name) next.subscriber.full_name = patient.name;
+                if (!next.subscriber.full_name) next.subscriber.full_name = patient.name || patient.full_name;
                 if (!next.subscriber.dob) next.subscriber.dob = patient.dob;
                 if (!next.subscriber.gender) next.subscriber.gender = patient.gender;
-                if (!next.subscriber.member_id) next.subscriber.member_id = patient.insurance_member_id || patient.insuranceId;
-                if (!next.subscriber.group_number) next.subscriber.group_number = patient.insurance_group_number;
+                if (!next.subscriber.member_id) next.subscriber.member_id = patient.insurance_member_id || null;
+                if (!next.subscriber.group_number) next.subscriber.group_number = patient.insurance_group_number || null;
                 if (!next.subscriber.address_street) next.subscriber.address_street = patient.address_street;
                 if (!next.subscriber.address_city) next.subscriber.address_city = patient.address_city;
                 if (!next.subscriber.address_state) next.subscriber.address_state = patient.address_state;
                 if (!next.subscriber.address_zip) next.subscriber.address_zip = patient.address_zip;
             } else if (subscriber) {
                 next.subscriber = { ...(next.subscriber || {}) };
-                mergeIfMissing(
-                    next.subscriber as Record<string, unknown>,
-                    subscriber as Record<string, unknown>,
-                    [
+                mergeIfMissing(next.subscriber, subscriber, [
                     "full_name",
                     "dob",
                     "gender",
@@ -373,42 +470,18 @@ export default function ReviewClaimStep({
                     "address_city",
                     "address_state",
                     "address_zip",
-                    ]
-                );
+                ]);
             }
 
             setClaim(next);
             onClaimChange?.(next);
             updateValidation(next);
-        } catch (error) {
-            console.warn("Prefill failed", error);
-        }
-    }, [onClaimChange, updateValidation]);
-
-    const fetchClaimPreview = useCallback(async () => {
-        if (!encounterId) return;
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await apiClient.encounters.previewClaim(encounterId);
-            const preview = res.data.data as ClaimDraft;
-            setClaim(preview);
-            onClaimChange?.(preview);
-            updateValidation(preview);
-            await hydrateWithDefaults(preview);
-        } catch (error) {
-            console.error("Failed to build claim preview", error);
-            setError("Failed to build claim preview. Please try again.");
+        } catch {
+            logger.warn("Prefill failed");
         } finally {
-            setLoading(false);
+            setPrefilling(false);
         }
-    }, [encounterId, hydrateWithDefaults, onClaimChange, updateValidation]);
-
-    useEffect(() => {
-        if (encounterId) {
-            void fetchClaimPreview();
-        }
-    }, [encounterId, fetchClaimPreview]);
+    };
 
     if (!encounterId) {
         return (
@@ -450,11 +523,9 @@ export default function ReviewClaimStep({
         <div className="space-y-8 max-w-4xl mx-auto">
             <div className="space-y-2 text-center">
                 <h2 className="text-3xl font-semibold text-slate-900">Review Claim</h2>
-                <p className="text-slate-600 text-sm">Stacked, step-by-step review. Fix any blockers below.</p>
-                <p className="text-xs text-slate-500">Changes save when you complete the encounter.</p>
             </div>
 
-            {validationErrors.length > 0 && (
+            {!!submitAttempt && submitAttempt > 0 && validationErrors.length > 0 && (
                 <Card className="border border-red-200 bg-red-50 p-4">
                     <h4 className="text-sm font-semibold text-red-800 mb-2">Fix before submitting</h4>
                     <ul className="list-disc pl-5 space-y-1 text-sm text-red-700">
@@ -472,7 +543,10 @@ export default function ReviewClaimStep({
                 </div>
                 <div className="space-y-3">
                     <Input label="Encounter ID" value={claim.encounter_id || encounterId || ""} disabled className="bg-slate-50" />
-                    <Input label="Patient ID" value={claim.patient_id || ""} disabled className="bg-slate-50" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Patient ID" value={claim.patient_id || ""} disabled className="bg-slate-50" />
+                        <Input label="Patient Name" value={claim.patient_name || ""} disabled className="bg-slate-50" />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <Input
                             label="Date of Service Start"
@@ -491,6 +565,8 @@ export default function ReviewClaimStep({
                         <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1">Claim Type</label>
                             <select
+                                id="claim-type"
+                                name="claim-type"
                                 value={claim.claim_type || "professional"}
                                 onChange={(e) => handleUpdateClaim("claim_type", e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -504,6 +580,8 @@ export default function ReviewClaimStep({
                                 Submission Type (Claim Frequency)
                             </label>
                             <select
+                                id="submission-type"
+                                name="submission-type"
                                 value={claim.submission_type || "initial"}
                                 onChange={(e) => handleUpdateClaim("submission_type", e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -524,6 +602,23 @@ export default function ReviewClaimStep({
                             label="Payer ID"
                             value={claim.payer_id || ""}
                             onChange={(e) => handleUpdateClaim("payer_id", e.target.value)}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Input
+                            label="Policy Number"
+                            value={claim.insurance_policy_number || ""}
+                            onChange={(e) => handleUpdateClaim("insurance_policy_number", e.target.value)}
+                        />
+                        <Input
+                            label="Member ID"
+                            value={claim.subscriber?.member_id || ""}
+                            onChange={(e) => handleUpdateNested("subscriber", "member_id", e.target.value)}
+                        />
+                        <Input
+                            label="Group Number"
+                            value={claim.subscriber?.group_number || ""}
+                            onChange={(e) => handleUpdateNested("subscriber", "group_number", e.target.value)}
                         />
                     </div>
                 </div>
@@ -611,17 +706,23 @@ export default function ReviewClaimStep({
                     <p className="text-sm text-slate-600">Solo or organization billing details.</p>
                 </div>
                 <div className="space-y-3">
-                    <Input
-                        label="Billing Provider Name"
-                        value={claim.billing_provider?.name || ""}
-                        onChange={(e) => handleUpdateNested("billing_provider", "name", e.target.value)}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div ref={billingNameRef}>
                         <Input
-                            label="NPI (Type 1)"
-                            value={claim.billing_provider?.npi || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "npi", e.target.value)}
+                            label="Billing Provider Name *"
+                            value={claim.billing_provider?.name || ""}
+                            onChange={(e) => handleUpdateNested("billing_provider", "name", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 ? (!claim.billing_provider?.name ? "Required" : !nameHasLetters(claim.billing_provider.name) ? "Must contain letters (e.g. \"Clinic Name\")" : undefined) : undefined}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div ref={billingNpiRef}>
+                            <Input
+                                label="NPI (Type 1) *"
+                                value={claim.billing_provider?.npi || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "npi", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && (!claim.billing_provider?.npi || !/^\d{10}$/.test(claim.billing_provider.npi)) ? (!claim.billing_provider?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
+                            />
+                        </div>
                         <Input
                             label="Organization NPI (Type 2, optional)"
                             value={claim.billing_provider?.organization_npi || claim.billing_provider?.clinic_npi || ""}
@@ -629,11 +730,14 @@ export default function ReviewClaimStep({
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input
-                            label="Tax ID"
-                            value={claim.billing_provider?.tax_id || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "tax_id", e.target.value)}
-                        />
+                        <div ref={billingTaxIdRef}>
+                            <Input
+                                label="Tax ID *"
+                                value={claim.billing_provider?.tax_id || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "tax_id", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 ? (!claim.billing_provider?.tax_id ? "Required" : !isValidTaxIdFormat(claim.billing_provider.tax_id) ? "Must be in format XX-XXXXXXX" : undefined) : undefined}
+                            />
+                        </div>
                         <Input
                             label="Phone (optional)"
                             value={claim.billing_provider?.phone || ""}
@@ -645,27 +749,39 @@ export default function ReviewClaimStep({
                         value={claim.billing_provider?.taxonomy_code || ""}
                         onChange={(e) => handleUpdateNested("billing_provider", "taxonomy_code", e.target.value)}
                     />
-                    <Input
-                        label="Address Street"
-                        value={claim.billing_provider?.street || claim.billing_provider?.address?.street || ""}
-                        onChange={(e) => handleUpdateNested("billing_provider", "street", e.target.value)}
-                    />
+                    <div ref={billingStreetRef}>
+                        <Input
+                            label="Address Street *"
+                            value={claim.billing_provider?.street || claim.billing_provider?.address?.street || ""}
+                            onChange={(e) => handleUpdateNested("billing_provider", "street", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.street && !claim.billing_provider?.address?.street ? "Required" : undefined}
+                        />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <Input
-                            label="City"
-                            value={claim.billing_provider?.city || claim.billing_provider?.address?.city || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "city", e.target.value)}
-                        />
-                        <Input
-                            label="State"
-                            value={claim.billing_provider?.state || claim.billing_provider?.address?.state || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "state", e.target.value)}
-                        />
-                        <Input
-                            label="ZIP"
-                            value={claim.billing_provider?.zip || claim.billing_provider?.address?.zip || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "zip", e.target.value)}
-                        />
+                        <div ref={billingCityRef}>
+                            <Input
+                                label="City *"
+                                value={claim.billing_provider?.city || claim.billing_provider?.address?.city || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "city", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.city && !claim.billing_provider?.address?.city ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={billingStateRef}>
+                            <Input
+                                label="State *"
+                                value={claim.billing_provider?.state || claim.billing_provider?.address?.state || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "state", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.state && !claim.billing_provider?.address?.state ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={billingZipRef}>
+                            <Input
+                                label="ZIP *"
+                                value={claim.billing_provider?.zip || claim.billing_provider?.address?.zip || ""}
+                                onChange={(e) => handleUpdateNested("billing_provider", "zip", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.billing_provider?.zip && !claim.billing_provider?.address?.zip ? "Required" : undefined}
+                            />
+                        </div>
                     </div>
                 </div>
             </Card>
@@ -676,17 +792,23 @@ export default function ReviewClaimStep({
                     <p className="text-sm text-slate-600">Where the service occurred.</p>
                 </div>
                 <div className="space-y-3">
-                    <Input
-                        label="Facility Name"
-                        value={claim.service_facility?.name || ""}
-                        onChange={(e) => handleUpdateNested("service_facility", "name", e.target.value)}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div ref={serviceFacilityNameRef}>
                         <Input
-                            label="Facility NPI"
-                            value={claim.service_facility?.npi || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "npi", e.target.value)}
+                            label="Facility Name *"
+                            value={claim.service_facility?.name || ""}
+                            onChange={(e) => handleUpdateNested("service_facility", "name", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 ? (!claim.service_facility?.name ? "Required" : !nameHasLetters(claim.service_facility.name) ? "Must contain letters (e.g. \"City Clinic\")" : undefined) : undefined}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div ref={serviceFacilityNpiRef}>
+                            <Input
+                                label="Facility NPI *"
+                                value={claim.service_facility?.npi || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "npi", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && (!claim.service_facility?.npi || !/^\d{10}$/.test(claim.service_facility.npi)) ? (!claim.service_facility?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
+                            />
+                        </div>
                         <Input
                             label="Place of Service (POS)"
                             value={claim.service_facility?.place_of_service || "11"}
@@ -698,27 +820,39 @@ export default function ReviewClaimStep({
                         value={claim.service_facility?.phone || ""}
                         onChange={(e) => handleUpdateNested("service_facility", "phone", e.target.value)}
                     />
-                    <Input
-                        label="Address Street"
-                        value={claim.service_facility?.street || claim.service_facility?.address?.street || ""}
-                        onChange={(e) => handleUpdateNested("service_facility", "street", e.target.value)}
-                    />
+                    <div ref={serviceStreetRef}>
+                        <Input
+                            label="Address Street *"
+                            value={claim.service_facility?.street || claim.service_facility?.address?.street || ""}
+                            onChange={(e) => handleUpdateNested("service_facility", "street", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.street && !claim.service_facility?.address?.street ? "Required" : undefined}
+                        />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <Input
-                            label="City"
-                            value={claim.service_facility?.city || claim.service_facility?.address?.city || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "city", e.target.value)}
-                        />
-                        <Input
-                            label="State"
-                            value={claim.service_facility?.state || claim.service_facility?.address?.state || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "state", e.target.value)}
-                        />
-                        <Input
-                            label="ZIP"
-                            value={claim.service_facility?.zip || claim.service_facility?.address?.zip || ""}
-                            onChange={(e) => handleUpdateNested("service_facility", "zip", e.target.value)}
-                        />
+                        <div ref={serviceCityRef}>
+                            <Input
+                                label="City *"
+                                value={claim.service_facility?.city || claim.service_facility?.address?.city || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "city", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.city && !claim.service_facility?.address?.city ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={serviceStateRef}>
+                            <Input
+                                label="State *"
+                                value={claim.service_facility?.state || claim.service_facility?.address?.state || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "state", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.state && !claim.service_facility?.address?.state ? "Required" : undefined}
+                            />
+                        </div>
+                        <div ref={serviceZipRef}>
+                            <Input
+                                label="ZIP *"
+                                value={claim.service_facility?.zip || claim.service_facility?.address?.zip || ""}
+                                onChange={(e) => handleUpdateNested("service_facility", "zip", e.target.value)}
+                                error={submitAttempt && submitAttempt > 0 && !claim.service_facility?.zip && !claim.service_facility?.address?.zip ? "Required" : undefined}
+                            />
+                        </div>
                     </div>
                 </div>
             </Card>
@@ -729,17 +863,22 @@ export default function ReviewClaimStep({
                     <p className="text-sm text-slate-600">Who performed the service (required).</p>
                 </div>
                 <div className="space-y-3">
-                    <Input
-                        label="Rendering Provider Name"
-                        value={claim.rendering_provider?.name || claim.billing_provider?.name || ""}
-                        onChange={(e) => handleUpdateNested("rendering_provider", "name", e.target.value)}
-                    />
-                    <Input
-                        label="Rendering Provider NPI"
-                        value={claim.rendering_provider?.npi || ""}
-                        onChange={(e) => handleUpdateNested("rendering_provider", "npi", e.target.value)}
-                        helperText="Required"
-                    />
+                    <div ref={renderingNameRef}>
+                        <Input
+                            label="Rendering Provider Name *"
+                            value={claim.rendering_provider?.name || ""}
+                            onChange={(e) => handleUpdateNested("rendering_provider", "name", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 ? (!claim.rendering_provider?.name ? "Required" : !nameHasLetters(claim.rendering_provider.name) ? "Must contain letters (e.g. \"Dr. Smith\")" : undefined) : undefined}
+                        />
+                    </div>
+                    <div ref={renderingNpiRef}>
+                        <Input
+                            label="Rendering Provider NPI *"
+                            value={claim.rendering_provider?.npi || ""}
+                            onChange={(e) => handleUpdateNested("rendering_provider", "npi", e.target.value)}
+                            error={submitAttempt && submitAttempt > 0 && !claim.rendering_provider?.npi ? "Required" : undefined}
+                        />
+                    </div>
                     <Input
                         label="Taxonomy Code"
                         value={claim.rendering_provider?.taxonomy_code || ""}
@@ -809,7 +948,7 @@ export default function ReviewClaimStep({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                            {claim.line_items?.map((item, index: number) => (
+                            {claim.line_items?.map((item: any, index: number) => (
                                 <tr key={index} className="bg-white">
                                     <td className="px-4 py-3 text-slate-500">{item.line_number}</td>
                                     <td className="px-4 py-3">

@@ -1,14 +1,94 @@
+import { z } from "zod";
 import api from "./axios";
 
-type AuthPayload = Record<string, unknown>;
+// SECURITY: Explicit payload types prevent callers from injecting internal
+// fields (role, organization_id, is_admin) into auth requests. All write
+// payloads are stripped to only the fields the backend expects.
+
+// SECURITY: Client-side cooldown on Cognito SMS/email endpoints.
+// Prevents rapid form re-submission from exhausting Cognito SMS quotas and
+// triggering account lockouts. Backend rate-limiting is the authoritative
+// guard; this is a defence-in-depth measure for the UI layer.
+const COOLDOWN_MS = 3000;
+const lastCallTimestamps: Record<string, number> = {};
+
+function enforceCooldown(key: string): void {
+  const now = Date.now();
+  const last = lastCallTimestamps[key] ?? 0;
+  if (now - last < COOLDOWN_MS) {
+    throw new Error("Please wait a moment before trying again.");
+  }
+  lastCallTimestamps[key] = now;
+}
+
+const SignupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  // attributes is passed through to Cognito UserAttributes
+  attributes: z.object({
+    name: z.string().min(1),
+    phone: z.string().optional(),
+    state: z.string().optional(),
+    taxonomyCode: z.string().optional(),
+    npi: z.string().optional(),
+  }).optional(),
+  practitionerType: z.string().optional(),
+  licenseId: z.string().optional(),
+});
+
+const ConfirmSignupSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(1),
+});
+
+const SigninSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+const ConfirmForgotPasswordSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+export type SignupPayload = z.infer<typeof SignupSchema>;
+// full_name is sent via attributes.name — not a top-level field on signup
+export type ConfirmSignupPayload = z.infer<typeof ConfirmSignupSchema>;
+export type SigninPayload = z.infer<typeof SigninSchema>;
+export type ConfirmForgotPasswordPayload = z.infer<typeof ConfirmForgotPasswordSchema>;
 
 export const authApi = {
-    signup: (data: AuthPayload) => api.post("/auth/signup", data),
-    confirmSignup: (data: AuthPayload) => api.post("/auth/confirm-signup", data),
-    signin: (data: AuthPayload) => api.post("/auth/signin", data),
-    signout: () => api.post("/auth/signout"),
-    refreshToken: (refreshToken: string) => api.post("/auth/refresh-token", { refreshToken }),
-    forgotPassword: (email: string) => api.post("/auth/forgot-password", { email }),
-    confirmForgotPassword: (data: AuthPayload) => api.post("/auth/confirm-forgot-password", data),
-    me: () => api.get("/auth/me"),
+  // Cooldown applied — each signup triggers Cognito user creation + email/SMS.
+  signup: (data: SignupPayload) => {
+    enforceCooldown("signup");
+    return api.post("/auth/signup", SignupSchema.parse(data));
+  },
+
+  confirmSignup: (data: ConfirmSignupPayload) =>
+    api.post("/auth/confirm-signup", ConfirmSignupSchema.parse(data)),
+
+  signin: (data: SigninPayload) =>
+    api.post("/auth/signin", SigninSchema.parse(data)),
+
+  signout: () => api.post("/auth/signout"),
+
+  // SECURITY: Refresh token is sent automatically via httpOnly cookie
+  // (withCredentials: true on the axios instance). No token in body.
+  refreshToken: () => api.post("/auth/refresh-token"),
+
+  // Cooldown applied — forgotPassword triggers a Cognito SMS/email send.
+  forgotPassword: (email: string) => {
+    enforceCooldown("forgotPassword");
+    return api.post("/auth/forgot-password", { email: z.string().email().parse(email) });
+  },
+
+  // Cooldown applied — confirmForgotPassword triggers a Cognito code verification
+  // and may send follow-up SMS if the code is wrong (account lockout risk).
+  confirmForgotPassword: (data: ConfirmForgotPasswordPayload) => {
+    enforceCooldown("confirmForgotPassword");
+    return api.post("/auth/confirm-forgot-password", ConfirmForgotPasswordSchema.parse(data));
+  },
+
+  me: () => api.get("/auth/me"),
 };

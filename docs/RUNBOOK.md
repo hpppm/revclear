@@ -37,8 +37,8 @@ This runbook provides operational procedures for deploying, monitoring, and main
       │           │           │              │
       ▼           ▼           ▼              ▼
 ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────────┐
-│ AWS RDS  │ │ AWS S3  │ │ Cognito  │ │ Genkit/Gemini│
-│PostgreSQL│ │ Storage │ │  Auth    │ │   AI Flow    │
+│ AWS RDS  │ │ AWS S3  │ │ Cognito  │ │ Ollama / API │
+│PostgreSQL│ │ Storage │ │  Auth    │ │  AI Provider │
 └──────────┘ └─────────┘ └──────────┘ └──────────────┘
 ```
 
@@ -48,7 +48,7 @@ This runbook provides operational procedures for deploying, monitoring, and main
 |-------------|---------|-----|
 | **Development** | Local development | `http://localhost:3000` |
 | **Staging** | Pre-production testing | TBD |
-| **Production** | Live environment | TBD |
+| **Production** | Live environment | `https://revclear.gannon.edu` |
 
 ---
 
@@ -66,6 +66,91 @@ This runbook provides operational procedures for deploying, monitoring, and main
 
 ### Backend Deployment
 
+#### Reverse Proxy Requirements
+
+Production assumes the backend is deployed behind a reverse proxy under the
+same public origin as the frontend (`https://revclear.gannon.edu`).
+
+A reference Nginx site configuration is included at
+`deploy/nginx/revclear.conf`. In the production Docker stack, Nginx runs as
+its own container and proxies to the `frontend` and `backend` services over the
+internal Docker network.
+
+The reverse proxy must:
+
+- Terminate TLS on `443`
+- Route browser API traffic from `/api/*` to the backend container
+- Preserve the original `Host` header
+- Forward `X-Forwarded-Proto: https`
+- Forward `X-Forwarded-For`
+- Keep backend container port internal; do not expose it publicly
+
+For Nginx specifically:
+
+- Proxy `/api/` to the backend service on internal port `3005`
+- Proxy `/` to the frontend service on internal port `3000`
+- Keep TLS termination at Nginx
+- Preserve `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`
+- Allow uploads up to at least `50M` for transcription audio
+- Mount the TLS certificate and private key into the Nginx container
+
+Internal service traffic should stay private:
+
+- Frontend/browser -> `https://revclear.gannon.edu`
+- Reverse proxy -> frontend container
+- Reverse proxy -> backend container for `/api/*`
+- Backend -> AI server over internal Docker network
+- AI server -> Qdrant over internal Docker network
+
+#### Separate AI Stack
+
+If the medical AI service is deployed from a separate repository, use a shared
+external Docker network instead of combining both repos into one Compose file.
+
+Recommended pattern:
+
+- Keep the RevClear app stack in `docker-compose.prod.yml`
+- Keep the medical AI stack in its own Compose project
+- Create one shared external network, for example `revclear-shared`
+- Attach the RevClear `backend` service to that shared network
+- Attach the AI inference service (`medical-ai` or `medical-ai-cpu`) to that same shared network
+- Keep `qdrant` private to the AI stack unless another service explicitly needs it
+
+Create the shared network once on the server:
+
+```bash
+docker network create revclear-shared
+```
+
+RevClear production stack:
+
+- `docker-compose.prod.yml` already attaches `backend` to `${SHARED_DOCKER_NETWORK:-revclear-shared}`
+
+Medical AI stack:
+
+- Attach the inference service to the same external network
+- Example service URLs from the RevClear backend:
+  - `SOAP_API_URL=http://medical-ai-cpu:8000/api/process`
+  - `CODES_API_URL=http://medical-ai-cpu:8000/api/suggest-codes`
+  - `AI_TRANSCRIBE_URL=http://medical-ai-cpu:8000/api/transcribe`
+
+If the GPU profile is used instead, replace `medical-ai-cpu` with `medical-ai`.
+
+#### Cookie / Session Requirements
+
+The backend issues httpOnly auth cookies with:
+
+- `Secure=true` in production
+- `SameSite=Strict` in production
+- `Path=/`
+
+This requires same-origin frontend/backend routing in production. Do not deploy
+the frontend and backend on separate public origins unless cookie strategy and
+CORS are intentionally redesigned.
+
+If secure cookies are not being set or auth appears broken in production, first
+verify the reverse proxy is forwarding `X-Forwarded-Proto=https`.
+
 #### Manual Deployment
 
 ```bash
@@ -82,10 +167,7 @@ npm ci  # Use ci for production (uses lock file)
 # 4. Build TypeScript
 npm run build
 
-# 5. Build Genkit flows
-npm run build:genkit
-
-# 6. Restart service
+# 5. Restart service
 pm2 restart revclear-backend
 # OR
 systemctl restart revclear-backend
@@ -94,16 +176,34 @@ systemctl restart revclear-backend
 #### Docker Deployment
 
 ```bash
-# 1. Build images
-docker-compose build
+# 1. Export production env vars or use an env file managed by the server
+set -a
+source /opt/revclear/revclear.env
+set +a
 
-# 2. Deploy with zero downtime
-docker-compose up -d --no-deps --build backend
+# 1a. Ensure the shared external network exists
+docker network create revclear-shared || true
 
-# 3. Verify deployment
-docker-compose ps
-docker-compose logs -f backend
+# 2. Build production images
+docker compose -f docker-compose.prod.yml build
+
+# 3. Start or update the stack
+docker compose -f docker-compose.prod.yml up -d
+
+# 4. Verify deployment
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f nginx
+docker compose -f docker-compose.prod.yml logs -f backend
 ```
+
+Production compose expectations:
+
+- Use `docker-compose.prod.yml`, not the root `docker-compose.yml` dev stack
+- Do not bind-mount source code into containers
+- Publish only Nginx on `80/443`
+- Do not publish the frontend or backend ports publicly
+- Inject secrets and environment variables from the server environment or a server-managed env file
+- Route public traffic through the reverse proxy only
 
 #### AWS Deployment (Lambda/ECS)
 
@@ -160,10 +260,10 @@ curl -H "Authorization: Bearer <token>" \
 # 4. Critical endpoint test
 curl https://your-backend-url/api/patients?limit=1
 
-# 5. Genkit AI flow test
-curl -X POST https://your-backend-url/api/soap \
+# 5. AI SOAP flow test
+curl -X POST https://your-backend-url/api/encounters/<encounter-id>/soap \
   -H "Content-Type: application/json" \
-  -d '{"transcript": "test"}'
+  -b "<auth-cookie>"
 ```
 
 ---
@@ -264,7 +364,7 @@ aws logs tail /aws/lambda/revclear-api --follow
 | `AUTHENTICATION_BYPASS_ATTEMPT` | CRITICAL | Security review |
 | `RATE_LIMIT_EXCEEDED` | WARNING | Review traffic patterns |
 | `S3_UPLOAD_FAILED` | WARNING | Check S3 permissions |
-| `GENKIT_API_ERROR` | WARNING | Check Gemini API status |
+| `AI_PROVIDER_ERROR` | WARNING | Check Ollama/API provider status |
 
 ---
 
@@ -356,31 +456,27 @@ echo $JWT_SECRET  # Should be set
 # 4. Clear user sessions if needed
 ```
 
-### Issue 4: Genkit/Gemini API Errors
+### Issue 4: AI Provider Errors
 
 **Symptoms:**
 - SOAP note generation fails
-- Logs show "Genkit API error"
+- Logs show provider request errors
 
 **Diagnosis:**
 ```bash
-# Check API key
-echo $GOOGLE_GENAI_API_KEY
+# Check Ollama endpoint
+echo $OLLAMA_BASE_URL
 
-# Test API directly
-curl -H "Authorization: Bearer $GOOGLE_GENAI_API_KEY" \
-  https://generativelanguage.googleapis.com/v1/models
+# Test provider directly
+curl $OLLAMA_BASE_URL/api/tags
 ```
 
 **Fix:**
 ```bash
-# 1. Verify API key is valid and not expired
-# 2. Check API quota/rate limits
-# 3. Verify Genkit environment setting
-echo $GENKIT_ENV  # Should be 'dev' or 'prod'
-
-# 4. Restart Genkit service
-docker-compose restart genkit
+# 1. Verify OLLAMA_BASE_URL and model env values
+# 2. Ensure model is installed (ollama pull <model>)
+# 3. Restart Ollama service if needed
+# 4. Check /api/health/ai for detailed provider status
 ```
 
 ### Issue 5: High Memory Usage

@@ -1,161 +1,114 @@
-# CLAUDE.md
+# RevClear — Claude Rules
 
-say hey lalo when I call you
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+say hey lalo at the start of every response
+say thank you at the end of every response
 
-## Project Overview
+## Project
 
-RevClear is an AI-assisted medical claims and speech transcription platform for healthcare billing workflows. It processes clinical encounter audio, generates SOAP notes via AI, and produces medical billing codes (ICD-10/CPT).
+AI-assisted medical claims and speech transcription platform. Processes clinical audio → SOAP notes → ICD-10/CPT codes → billing claims.
 
-## Architecture
+**Stack:** Express + TypeScript (port 3005) | Next.js 16 App Router (port 3000) | PostgreSQL (AWS RDS) | AWS Cognito
 
-```
-revclear/
-├── backend/           # Express + TypeScript API (port 3005)
-│   ├── src/           # Main application code
-│   │   ├── api/routes/  # REST API endpoints
-│   │   ├── config/      # AWS, database, app configuration
-│   │   ├── middleware/  # Auth, audit, security, error handling
-│   │   ├── services/    # Business logic (patient, encounter, claim)
-│   │   └── db/          # Database queries
-│   └── genkit/        # Genkit AI flows (Gemini integration)
-│       ├── flows/       # speechToSoap, soapToCodes
-│       └── tools/       # Mock transcript, medical code loaders
-├── frontend/          # Next.js 16 App Router (port 3000)
-│   └── app/
-│       ├── (pages)/     # Auth pages (login, signup, landing)
-│       ├── dashboard/   # Main app views
-│       ├── components/  # UI and wizard components
-│       ├── context/     # AuthContext for JWT management
-│       └── lib/api/     # API client modules matching backend routes
-└── docs/              # Operational runbook
-```
+**Structure:**
+- `backend/src/api/routes/` — REST endpoints
+- `backend/src/middleware/` — auth, audit, security
+- `backend/src/services/` — business logic
+- `backend/src/db/` — all SQL queries
+- `frontend/app/dashboard/` — main app views
+- `frontend/app/lib/api/` — API client modules
 
-### Key Data Flow
+**Data flow:** Audio → S3 → Whisper → `speechToSoap` → `soapToCodes` → claim → EDI
 
-1. **Audio Upload** → S3 storage → Whisper transcription
-2. **Transcript** → `speechToSoap` Genkit flow → SOAP note
-3. **SOAP Note** → `soapToCodes` Genkit flow → ICD-10/CPT codes
-4. **Medical Codes** → Claim generation → EDI submission
-
-### Database (PostgreSQL via AWS RDS)
-
-Core tables: `users`, `organizations`, `patients`, `encounters`, `claims`, `medical_codes`, `ai_results`, `audio_records`, `audit_log`
-
-- Users belong to one organization
-- Encounters link patients to clinicians with AI result references
-- Claims support CMS-1500 (professional) and UB-04 (institutional) formats
-- All PHI tables have audit triggers
-
-Schema: `backend/docs/db/revclear_schema_current.sql`
-
-### Authentication
-
-- AWS Cognito for user identity (JWT access tokens)
-- Backend verifies tokens via `aws-jwt-verify`
-- Frontend stores token in localStorage, uses `AuthContext` for state
-
-## Build and Development Commands
-
-### Backend
-
+## Commands
 ```bash
-cd backend
-npm install
-npm run dev              # Start dev server (nodemon + ts-node)
-npm run build            # Compile TypeScript
-npm run build:genkit     # Compile Genkit flows
-npm test                 # Run Jest tests
+cd backend && npm run dev       # port 3005
+cd backend && npm test
+cd backend && npm run build
+cd frontend && npm run dev      # port 3000
+cd frontend && npm run lint
 ```
 
-Backend defaults to port 3005 (override with `PORT` env var).
+## Security Rules (Non-Negotiable)
 
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev              # Start Next.js dev server
-npm run build            # Production build
-npm run lint             # ESLint
+**Every authenticated route:**
+```typescript
+authMiddleware, requireOrganization                            // standard
+authMiddleware, requireRole(['admin']), requireOrganization    // admin only
 ```
 
-### Docker (Full Stack)
-
-```bash
-docker-compose up        # Backend on 4000, Genkit UI on 4001, Frontend on 3000
+**Every PHI query:**
+```sql
+WHERE id = $1 AND organization_id = $2 AND clinician_id = $3
 ```
+Both IDs from `req.organization!.id` and `req.user!.id` only — never req.body/query.
 
-## Environment Variables
+**SQL:** Parameterized only (`$1`, `$2`). Explicit column lists. No `SELECT *` or `RETURNING *`. All queries in `backend/src/db/queries.ts`.
 
-Copy `.env.example` to `.env` in the backend directory. Required:
+**PHI encryption:** `encryptPHIText` / `encryptPHIJson` from `backend/src/utils/crypto.ts`. Never log PHI. Key from `PHI_ENCRYPTION_KEY` env var only.
 
-- `AWS_REGION`, `AWS_ACCOUNT_ID`
-- `AWS_S3_BUCKET` - audio/transcript storage
-- `AWS_COGNITO_USER_POOL_ID`, `AWS_COGNITO_CLIENT_ID` - auth
-- `DATABASE_URL` or individual `DB_*` params - PostgreSQL
-- `GOOGLE_GENAI_API_KEY` or `GEMINI_API_KEY` - Genkit AI
-- `PHI_ENCRYPTION_KEY` - 32-byte hex for PHI encryption
+**JWT:** httpOnly cookies only — never localStorage. `withCredentials: true` on frontend axios globally.
 
-Frontend: `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3005/api`)
+**Errors to client:** Generic only. Call `next(error)` — never `res.status(500).json({ error: err.message })`.
 
-## API Routes
+**Validation:** Zod on every input, backend and frontend. `Schema.safeParse()` → 400 on failure.
+- Backend schemas: `backend/src/types/zod.ts`
+- Frontend schemas: `frontend/app/lib/validation/schemas.ts`
 
-All backend routes under `/api`:
-
-- `/auth` - Cognito signup/login
-- `/me` - Current user profile
-- `/patients` - CRUD for patient records
-- `/encounters` - Encounter management
-- `/encounters/:id/soap` - SOAP note generation
-- `/encounters/:id/codes` - Medical code matching
-- `/claims` - Claim lifecycle
-- `/transcribe` - Audio upload (Multer, registered before body parsers)
-- `/health` - Health checks
-- `/organizations` - Organization management
-- `/users` - User management (admin)
-- `/security` - Security monitoring
-- `/dev/*` - Dev-only routes (development environment)
-
-Swagger docs available at `/docs` in development mode.
-
-## Genkit AI Flows
-
-Located in `backend/genkit/`:
-
-- `speechToSoap` - Converts transcript to SOAP note using Gemini
-- `soapToCodes` - Matches SOAP content to ICD-10/CPT codes from loaded code sets
-
-Default model: `gemini-2.5-flash`
-
-Run Genkit Dev UI: `genkit start` (exposed on port 4001 in Docker)
-
-## Security Considerations
-
-- HIPAA compliance: PHI encrypted at rest (AES-256 via KMS)
-- Rate limiting on all API routes (see `server.ts`)
-- Security monitoring middleware tracks suspicious patterns
-- Audit logging via PostgreSQL triggers
-- CORS restricted to allowed origins
-- Helmet for security headers
-
-## Testing
-
-Backend tests use Jest with ts-jest:
-
-```bash
-cd backend
-npm test                           # All tests
-npx jest tests/specific.test.ts   # Single test file
+## API Response Shape
+```typescript
+{ success: true, data: payload }                                        // single
+{ success: true, data: [...], pagination: { limit, offset, total } }   // list
+{ success: false, errors: zodErrors }                                   // validation
+{ error: "safe message" }                                               // auth/system
 ```
+Pagination: `Math.min(Math.max(limit, 1), 100)`, default 50.
 
-Test setup in `backend/tests/setupEnv.ts`.
+## Authentication
 
-## Code Patterns
+Cognito JWT → `aws-jwt-verify` in `middleware/auth.ts`. Token read from `req.cookies.accessToken` first. Cookie: `httpOnly`, `secure` (prod), `sameSite: strict` (prod) / `lax` (dev).
 
-- **API routes**: Express routers with Zod validation schemas
-- **Database**: Raw SQL via `pg` with parameterized queries
-- **Frontend API**: Axios client modules in `frontend/app/lib/api/`
-- **State**: React Context for auth, component-local state elsewhere
-- **Styling**: Tailwind CSS 4
-  say thank you when at the end of your response 
+| Cognito Group | Role |
+|---|---|
+| Admin | admin |
+| Users / none | clinician |
+
+## Known Security Gaps (Pre-Production Blockers)
+
+- RLS disabled (`SET row_security = off`) — PHI isolation is application-level only
+- Missing `WHERE organization_id` = cross-tenant PHI exposure
+- No migration framework — `migrate:019` has no rollback
+
+## Context7 (Mandatory)
+
+Before writing code using any external library:
+1. Call `mcp__plugin_context7_context7__resolve-library-id`
+2. Call `mcp__plugin_context7_context7__query-docs`
+Never rely on training data for library APIs.
+
+## Commit Convention
+
+`<type>(<scope>): <description>`
+
+Types: `fix`, `feat`, `refactor`, `chore`, `ci`, `docs`, `test`, `perf`
+Scopes: `gh-NNN` for issues, route name for backend, `ui`/`layout` for frontend
+
+## Handoff Documents
+
+For any complex multi-file change or GitHub-issue feature, create `handoffs/GH-<NNN>/` with:
+`handoff.md`, `analysis.md`, `implementation.md`, `ship-report.md`, `STATUS.md`
+
+## Learned Patterns
+
+Source: `revclear/.claude/instincts/` — 200 commits of enforced patterns.
+Do not deviate without explicit instruction.
+
+1. **PHI encryption** — use crypto.ts helpers, never log PHI, never mutate records
+2. **Dual scoping** — always filter by both `organization_id` AND `clinician_id`
+3. **Route middleware chain** — `authMiddleware, requireOrganization` always first
+4. **JWT cookies** — httpOnly only, never localStorage
+5. **SQL parameterization** — `$1`/`$2` only, explicit columns, no SELECT *
+6. **Zod dual validation** — backend + frontend, safeParse, strip unknown fields
+7. **Generic errors** — no internal details to client, next(error) pattern
+8. **Response envelope** — always one of the four shapes above
+9. **Commit convention** — conventional commits, gh-NNN scope for issues
+10. **Handoff docs** — required for all complex/multi-file changes

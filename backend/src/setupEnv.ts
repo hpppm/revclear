@@ -1,21 +1,34 @@
 import dotenv from "dotenv";
+import fs from "fs";
 import path from "path";
 
-const envPath = path.resolve(__dirname, "../.env");
-console.log("📁 Loading .env from:", envPath);
+const envFile = process.env.ENV_FILE;
+const isProduction = process.env.NODE_ENV === "production";
 
-dotenv.config({ path: envPath });
+const candidateEnvPaths = [
+  envFile,
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(__dirname, "../.env"),
+  path.resolve(__dirname, "../../.env"),
+].filter((value): value is string => Boolean(value));
 
-// Debug: Log what was loaded
-console.log("🔍 Environment variables loaded:");
-console.log("  - AWS_USER_POOL_ID:", process.env.AWS_USER_POOL_ID ? "✅ Set" : "❌ Missing");
-console.log("  - AWS_CLIENT_ID:", process.env.AWS_CLIENT_ID ? "✅ Set" : "❌ Missing");
-console.log("  - API_ANALYTICS_KEY:", process.env.API_ANALYTICS_KEY ? "✅ Set" : "❌ Missing");
+const loadEnvFile = () => {
+  if (isProduction && !envFile) {
+    return;
+  }
+
+  const envPath = candidateEnvPaths.find((candidate) => fs.existsSync(candidate));
+  if (envPath) {
+    dotenv.config({ path: envPath, quiet: true });
+  }
+};
+
+loadEnvFile();
 
 if (!process.env.AWS_USER_POOL_ID || !process.env.AWS_CLIENT_ID) {
-  console.warn("⚠️  dotenv: missing Cognito values, please check RevClear/backend/.env");
+  process.stderr.write("warn: missing Cognito env vars (AWS_USER_POOL_ID, AWS_CLIENT_ID)\n");
 }
 
 if (!process.env.API_ANALYTICS_KEY) {
-  console.warn("⚠️  dotenv: missing API_ANALYTICS_KEY, analytics will not work");
+  process.stderr.write("warn: missing API_ANALYTICS_KEY, analytics disabled\n");
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "./ui/Button";
 import Badge from "./ui/Badge";
 
@@ -18,15 +18,15 @@ export default function AudioRecorder({ onRecorded }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const emitOnStopRef = useRef(true);
 
-  const stopTimer = useCallback(() => {
+  const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     setSeconds(0);
-  }, []);
+  };
 
-  const stopRecorder = useCallback((silent = false) => {
+  const stopRecorder = (silent = false) => {
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
 
@@ -39,13 +39,14 @@ export default function AudioRecorder({ onRecorded }: Props) {
     if (!silent) {
       setStatus("idle");
     }
-  }, [stopTimer]);
+  };
 
   useEffect(() => {
     return () => {
       stopRecorder(true);
     };
-  }, [stopRecorder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startRecording = async () => {
     setError(null);
@@ -86,8 +87,7 @@ export default function AudioRecorder({ onRecorded }: Props) {
       setStatus("recording");
       stopTimer();
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch (error) {
-      console.error(error);
+    } catch {
       setError("Microphone permission denied or unavailable.");
     }
   };

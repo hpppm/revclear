@@ -1,15 +1,10 @@
 import { Router } from "express";
 import { QueryResultRow } from "pg";
 import { authMiddleware } from "../../middleware/auth";
-import {
-  findUserByCognitoId,
-  findUserByEmail,
-  updateUserCognitoId,
-  createUser,
-  query,
-} from "../../config/db";
+import { findUserByCognitoId, createUser, query } from "../../config/db";
 import { UpdateUserSchema } from "../../types/zod";
 import { getUserOrganization } from "../../utils/organization";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -17,11 +12,13 @@ const router = Router();
  * @route GET /api/me
  * @description Get the current user's profile. Creates the user if none exists.
  * @access Private
+ *
+ * SECURITY: User lookup is ONLY by cognito_id (JWT sub claim).
+ * Email-based fallback was removed to prevent account takeover attacks
+ * where a user with a valid token could claim another user's account.
  */
 router.get("/", authMiddleware, async (req, res) => {
   const cognitoId = req.auth?.sub;
-  const emailFromToken = req.auth?.email as string | undefined;
-  const nameFromToken = req.auth?.name as string | undefined;
 
   // Stop early if Cognito ID is missing
   if (!cognitoId) {
@@ -31,54 +28,42 @@ router.get("/", authMiddleware, async (req, res) => {
     });
   }
 
-  // Fallback email so DB functions always get a real string
-  const safeEmail: string =
-    emailFromToken || `${cognitoId}@placeholder.local`;
+  // Access tokens do not carry email/name claims (those are ID token claims).
+  // Use a deterministic placeholder for new user creation; the user can
+  // update their profile via PATCH /api/me afterwards.
+  const safeEmail: string = `${cognitoId}@placeholder.local`;
 
   try {
-    // 1. Check if middleware already resolved the user
+    // 1. Check if middleware already resolved the user by cognito_id
     let user: QueryResultRow | null | undefined = req.user;
 
     if (user) {
-      console.log(`[GET /api/me] User resolved by middleware:`, user.id);
+      logger.debug({ userId: user.id }, 'GET /api/me: user resolved');
+      // Include role from Cognito groups in response
+      const cognitoRole = req.auth?.cognitoRole || user.role;
       const organization = await getUserOrganization(user.id);
       if (!organization) {
         return res.json({
           success: true,
           requiresOrganization: true,
           message: "User must create or join an organization.",
-          user,
+          user: { ...user, role: cognitoRole },
           organization: null,
         });
       }
-      return res.json({ success: true, user, organization });
+      return res.json({
+        success: true,
+        user: { ...user, role: cognitoRole },
+        organization,
+      });
     }
 
-    // 2. If not found by middleware, try lookup by email (legacy/migration case)
-    console.log(`[GET /api/me] User not found by middleware (Cognito ID mismatch?). Trying email...`);
-    user = await findUserByEmail(safeEmail);
+    // 2. No user found by cognito_id - create new user
+    // SECURITY: We do NOT fall back to email lookup to prevent account takeover
+    logger.info({ cognitoId }, 'GET /api/me: creating new user');
 
-    if (user) {
-      console.log(`[GET /api/me] Found user by email, updating Cognito ID...`);
-      // Update the Cognito ID to match the current token
-      user = await updateUserCognitoId(safeEmail, cognitoId);
-      const organization = await getUserOrganization(user.id);
-      if (!organization) {
-        return res.json({
-          success: true,
-          requiresOrganization: true,
-          message: "User must create or join an organization.",
-          user,
-          organization: null,
-        });
-      }
-      return res.json({ success: true, user, organization });
-    }
-
-    // 3. Create new user
-    console.log(`[GET /api/me] Creating new user...`);
-
-    const fullName = nameFromToken || safeEmail;
+    const fullName = safeEmail;
+    const cognitoRole = req.auth?.cognitoRole || "clinician";
 
     const newUser = await createUser(cognitoId, safeEmail, fullName);
     const organization = await getUserOrganization(newUser.id);
@@ -86,13 +71,14 @@ router.get("/", authMiddleware, async (req, res) => {
     return res.status(201).json({
       success: true,
       requiresOrganization: !organization,
-      message: organization ? undefined : "User created. Please create or join an organization.",
-      user: newUser,
+      message: organization
+        ? undefined
+        : "User created. Please create or join an organization.",
+      user: { ...newUser, role: cognitoRole },
       organization,
     });
-
   } catch (err: any) {
-    console.error(`[GET /api/me] Error:`, err.message);
+    logger.error({ err: err.message }, 'GET /api/me: error');
     return res.status(500).json({
       error: "Server Error",
       message: "Failed to fetch user profile",
@@ -155,7 +141,7 @@ router.patch("/", authMiddleware, async (req, res) => {
   try {
     const result = await query(
       `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at`,
-      values
+      values,
     );
 
     const updatedUser = result.rows[0];
@@ -168,9 +154,8 @@ router.patch("/", authMiddleware, async (req, res) => {
 
     const organization = await getUserOrganization(updatedUser.id);
     return res.json({ ...updatedUser, organization });
-
   } catch (err: any) {
-    console.error(`[PATCH /api/me] Error:`, err.message);
+    logger.error({ err: err.message }, 'PATCH /api/me: error');
     return res.status(500).json({
       error: "Server Error",
       message: "Failed to update user profile",

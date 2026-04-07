@@ -1,25 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
-import { Claim, Encounter, SoapNote } from "@/app/lib/types";
 
 export default function EncounterSummaryPage() {
     const params = useParams();
     const router = useRouter();
     const encounterId = params?.id as string;
 
-    const [encounter, setEncounter] = useState<Encounter | null>(null);
-    const [claim, setClaim] = useState<Claim | null>(null);
+    const [encounter, setEncounter] = useState<any>(null);
+    const [claim, setClaim] = useState<any>(null);
     const [transcript, setTranscript] = useState<string>("");
-    const [soap, setSoap] = useState<SoapNote | null>(null);
+    const [soap, setSoap] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [transcribing, setTranscribing] = useState(false);
+    const [transcribeError, setTranscribeError] = useState("");
     const [showAnimation, setShowAnimation] = useState(false);
 
     // Collapsible state
@@ -27,24 +28,30 @@ export default function EncounterSummaryPage() {
     const [soapExpanded, setSoapExpanded] = useState(false);
     const [claimExpanded, setClaimExpanded] = useState(false);
 
-    const fetchEncounterData = useCallback(async () => {
-        if (!encounterId) return;
+    useEffect(() => {
+        if (encounterId) {
+            fetchEncounterData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [encounterId]);
+
+    const fetchEncounterData = async () => {
         setLoading(true);
         try {
             // Fetch encounter
             const encounterRes = await apiClient.encounters.getById(encounterId);
-            const encounterData = (encounterRes.data?.data || encounterRes.data) as Encounter;
+            const encounterData = encounterRes.data?.data || encounterRes.data;
             logger.log("Encounter loaded");
             setEncounter(encounterData);
 
             // Fetch claim
             try {
                 const claimRes = await apiClient.encounters.previewClaim(encounterId);
-                const claimData = (claimRes.data?.data || claimRes.data) as Claim;
+                const claimData = claimRes.data?.data || claimRes.data;
                 logger.log("Claim loaded");
                 setClaim(claimData);
-            } catch (error) {
-                logger.log("No claim found", error);
+            } catch {
+                logger.log("No claim found");
             }
 
             // Fetch transcript if available
@@ -54,8 +61,8 @@ export default function EncounterSummaryPage() {
                     const transcriptData = transcriptRes.data?.text || transcriptRes.data?.data?.text || "";
                     logger.log("Transcript loaded");
                     setTranscript(transcriptData);
-                } catch (error) {
-                    logger.log("Failed to load transcript", error);
+                } catch {
+                    logger.log("Failed to load transcript");
                 }
             }
 
@@ -63,36 +70,72 @@ export default function EncounterSummaryPage() {
             if (encounterData.soap_result_id) {
                 try {
                     const soapRes = await apiClient.soap.getForEncounter(encounterId);
-                    const soapData = (soapRes.data?.data || soapRes.data) as { soap?: SoapNote } | SoapNote;
+                    const soapData = soapRes.data?.data || soapRes.data;
                     logger.log("SOAP loaded");
-                    setSoap("soap" in soapData ? soapData.soap ?? null : soapData);
-                } catch (error) {
-                    logger.log("Failed to load SOAP", error);
+                    setSoap(soapData?.soap || soapData);
+                } catch {
+                    logger.log("Failed to load SOAP");
                 }
             }
-        } catch (error) {
-            logger.error("Failed to load encounter data", error);
+        } catch {
+            logger.error("Failed to load encounter data");
         } finally {
             setLoading(false);
         }
-    }, [encounterId]);
+    };
 
-    useEffect(() => {
-        void fetchEncounterData();
-    }, [fetchEncounterData]);
+    const extractTranscriptText = (value: any) => {
+        if (!value) return "";
+        if (typeof value === "string") return value;
+        if (typeof value.text === "string") return value.text;
+        if (typeof value.transcript === "string") return value.transcript;
+        return "";
+    };
+
+    const handleTranscribe = async () => {
+        if (!encounterId || !encounter?.audio_key) {
+            setTranscribeError("No uploaded audio is available for this encounter.");
+            return;
+        }
+
+        setTranscribing(true);
+        setTranscribeError("");
+
+        try {
+            const res = await apiClient.transcribe.transcribeS3({
+                s3Key: encounter.audio_key,
+                encounterId,
+            });
+
+            const transcriptPayload =
+                res.data?.transcript || res.data?.data?.transcript || res.data;
+            const nextTranscript = extractTranscriptText(transcriptPayload);
+
+            setTranscript(nextTranscript);
+            setEncounter((current: any) =>
+                current
+                    ? {
+                        ...current,
+                        transcript_result_id:
+                            current.transcript_result_id || "generated",
+                    }
+                    : current,
+            );
+            setTranscriptExpanded(true);
+        } catch (err) {
+            logger.error("Failed to transcribe encounter audio");
+            const e = err as { response?: { data?: { message?: string } } };
+            setTranscribeError(
+                e?.response?.data?.message || "Failed to transcribe this encounter audio.",
+            );
+        } finally {
+            setTranscribing(false);
+        }
+    };
 
     const handleSubmit = async () => {
-        if (!encounter) return;
         setSubmitting(true);
         try {
-            // If a claim exists, mark it as submitted
-            if (claim?.id) {
-                await apiClient.claims.update(claim.id, {
-                    status: "submitted",
-                    submission_date: new Date().toISOString(),
-                });
-            }
-
             // Update encounter status to completed
             await apiClient.encounters.update(encounterId, { status: "completed" });
 
@@ -103,8 +146,8 @@ export default function EncounterSummaryPage() {
             setTimeout(() => {
                 router.push(`/dashboard/patients/${encounter.patient_id}`);
             }, 3000);
-        } catch (error) {
-            logger.error("Failed to submit claim", error);
+        } catch (err) {
+            logger.error("Failed to submit claim");
             setSubmitting(false);
         }
     };
@@ -175,7 +218,7 @@ export default function EncounterSummaryPage() {
 
     if (loading) {
         return (
-            <div className="space-y-4">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-slate-500">Loading encounter summary...</div>
             </div>
         );
@@ -183,7 +226,7 @@ export default function EncounterSummaryPage() {
 
     if (!encounter) {
         return (
-            <div className="space-y-4">
+            <div className="min-h-screen bg-slate-50 p-8">
                 <div className="max-w-4xl mx-auto">
                     <p className="text-red-600">Encounter not found</p>
                     <BackButton href="/dashboard">Back to Dashboard</BackButton>
@@ -193,7 +236,7 @@ export default function EncounterSummaryPage() {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
             <div className="max-w-4xl mx-auto space-y-6">
                 <BackButton href={`/dashboard/patients/${encounter.patient_id}`}>
                     Back to Patient
@@ -229,8 +272,25 @@ export default function EncounterSummaryPage() {
                     </button>
                     {transcriptExpanded && (
                         <div className="px-6 pb-6 border-t border-slate-200">
+                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <Button
+                                    onClick={handleTranscribe}
+                                    loading={transcribing}
+                                    disabled={transcribing || !encounter.audio_key}
+                                >
+                                    {transcript ? "Retranscribe Audio" : "Transcribe Audio"}
+                                </Button>
+                                {!encounter.audio_key && (
+                                    <p className="text-sm text-slate-500">
+                                        No audio file is attached to this encounter yet.
+                                    </p>
+                                )}
+                            </div>
+                            {transcribeError && (
+                                <p className="mt-3 text-sm text-red-600">{transcribeError}</p>
+                            )}
                             <p className="text-slate-700 whitespace-pre-wrap mt-4">
-                                {transcript || "No transcription available for this encounter. The audio may not have been transcribed yet."}
+                                {transcript || "No transcription available for this encounter. Use the button above to transcribe the attached audio."}
                             </p>
                         </div>
                     )}
@@ -302,12 +362,12 @@ export default function EncounterSummaryPage() {
                             <h2 className="text-xl font-semibold text-slate-900">Claim</h2>
                             {claim && (
                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${encounter.status === "ready"
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-emerald-100 text-emerald-800"
                                     : encounter.status === "completed"
                                         ? "bg-blue-100 text-blue-800"
-                                        : "bg-gray-100 text-gray-800"
+                                        : "bg-slate-100 text-slate-700"
                                     }`}>
-                                    {encounter.status === "ready" ? "Ready to Submit" : encounter.status?.replace("_", " ")}
+                                    {encounter.status === "ready" ? "Ready to Submit" : encounter.status === "completed" ? "Completed" : encounter.status === "in_progress" ? "In Progress" : encounter.status === "ready_for_review" ? "Ready for Review" : encounter.status === "archived" ? "Archived" : encounter.status === "scheduled" ? "Scheduled" : "Draft"}
                                 </span>
                             )}
                         </div>
@@ -369,7 +429,10 @@ export default function EncounterSummaryPage() {
 
                 {encounter.status === "completed" && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                        <p className="text-blue-800 font-medium">✓ This encounter has been submitted to the clearinghouse</p>
+                        <p className="text-blue-800 font-medium flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            This encounter has been submitted to the clearinghouse
+                        </p>
                     </div>
                 )}
             </div>
