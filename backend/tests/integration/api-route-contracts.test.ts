@@ -252,17 +252,27 @@ describe("route contract integration", () => {
         clinician_id: "clin-123",
       });
 
+      const validPatientBody = {
+        full_name: "John Doe",
+        dob: "1980-01-01",
+        gender: "M",
+        phone: "5550001234",
+        email: "john.doe@example.com",
+        address_street: "123 Main St",
+        address_city: "Springfield",
+        address_state: "IL",
+        address_zip: "62701",
+        insurance_provider: "SELF_PAY",
+      };
+
       const result = await invokeRoute(patientRoutes, "post", "/", {
         headers: authHeaders,
-        body: {
-          full_name: "John Doe",
-          dob: "1980-01-01",
-        },
+        body: validPatientBody,
       });
 
       expect(result.status).toBe(201);
       expect(patientService.create).toHaveBeenCalledWith(
-        { full_name: "John Doe", dob: "1980-01-01" },
+        expect.objectContaining({ full_name: "John Doe", dob: "1980-01-01", gender: "M" }),
         "org-789",
         "clin-123",
       );

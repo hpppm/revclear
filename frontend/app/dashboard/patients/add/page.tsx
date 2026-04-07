@@ -43,21 +43,37 @@ export default function AddPatientPage() {
     setError(null);
     setFieldErrors({});
 
+    // Apply self-pay override before validation so the schema sees "SELF_PAY"
+    // as the insurance_provider (satisfying the required check) and skips the
+    // conditional policy/member fields.
+    const base = isSelfPay
+      ? {
+        ...formData,
+        insurance_provider: "SELF_PAY",
+        insurance_policy_number: "",
+        insurance_member_id: "",
+        insurance_group_number: "",
+        insurance_payer_id: "",
+        insurance_payer_name: "",
+      }
+      : formData;
+
     // Collect all validation errors at once so every red field shows simultaneously
     const allErrors: Record<string, string> = {};
 
-    // Required field checks
-    if (!formData.full_name.trim()) allErrors.full_name = "Full name is required";
-    if (!formData.dob) allErrors.dob = "Date of birth is required";
-    if (!formData.phone.trim()) allErrors.phone = "Phone number is required";
+    // Required field checks (fast path before Zod for clearer messages)
+    if (!base.full_name.trim()) allErrors.full_name = "Full name is required";
+    if (!base.dob) allErrors.dob = "Date of birth is required";
+    if (!base.phone.trim()) allErrors.phone = "Phone number is required";
     if (!isSelfPay) {
-      if (!formData.insurance_provider.trim()) allErrors.insurance_provider = "Insurance provider is required";
-      if (!formData.insurance_policy_number.trim()) allErrors.insurance_policy_number = "Policy number is required";
-      if (!formData.insurance_member_id.trim()) allErrors.insurance_member_id = "Member ID is required";
+      if (!base.insurance_provider.trim()) allErrors.insurance_provider = "Insurance provider is required";
+      if (!base.insurance_policy_number.trim()) allErrors.insurance_policy_number = "Policy number is required";
+      if (!base.insurance_member_id.trim()) allErrors.insurance_member_id = "Member ID is required";
     }
 
-    // Zod format validation — runs alongside required checks so format errors also show
-    const validation = CreatePatientFormSchema.safeParse(formData);
+    // Zod format validation — runs against base (with self-pay override applied)
+    // so self-pay patients are never blocked by insurance field validation.
+    const validation = CreatePatientFormSchema.safeParse(base);
     if (!validation.success) {
       validation.error.issues.forEach((err) => {
         const key = String(err.path[0]);
@@ -74,18 +90,6 @@ export default function AddPatientPage() {
     setSaving(true);
 
     try {
-      const base = isSelfPay
-        ? {
-          ...formData,
-          insurance_provider: "SELF_PAY",
-          insurance_policy_number: "",
-          insurance_member_id: "",
-          insurance_group_number: "",
-          insurance_payer_id: "",
-          insurance_payer_name: "",
-        }
-        : formData;
-
       // Strip empty strings so optional backend fields receive undefined not ""
       const dataToSubmit = Object.fromEntries(
         Object.entries(base).filter(([, v]) => v !== "")
@@ -146,6 +150,7 @@ export default function AddPatientPage() {
                   type="date"
                   value={formData.dob}
                   onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  required
                   error={fieldErrors.dob}
                 />
                 <Input
@@ -153,6 +158,7 @@ export default function AddPatientPage() {
                   variant="select"
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  required
                   options={[
                     { value: "M", label: "Male" },
                     { value: "F", label: "Female" },
@@ -167,6 +173,7 @@ export default function AddPatientPage() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="(555) 123-4567"
+                  required
                   error={fieldErrors.phone}
                 />
                 <Input
@@ -175,6 +182,7 @@ export default function AddPatientPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="john.doe@example.com"
+                  required
                   error={fieldErrors.email}
                 />
               </div>
@@ -189,6 +197,7 @@ export default function AddPatientPage() {
                   value={formData.address_street}
                   onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
                   placeholder="123 Main St"
+                  required
                   error={fieldErrors.address_street}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -197,6 +206,7 @@ export default function AddPatientPage() {
                     value={formData.address_city}
                     onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
                     placeholder="Erie"
+                    required
                     error={fieldErrors.address_city}
                   />
                   <Input
@@ -204,6 +214,7 @@ export default function AddPatientPage() {
                     value={formData.address_state}
                     onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
                     placeholder="PA"
+                    required
                     error={fieldErrors.address_state}
                   />
                   <Input
@@ -211,6 +222,7 @@ export default function AddPatientPage() {
                     value={formData.address_zip}
                     onChange={(e) => setFormData({ ...formData, address_zip: e.target.value })}
                     placeholder="16501"
+                    required
                     error={fieldErrors.address_zip}
                   />
                 </div>
@@ -270,6 +282,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_provider}
                     onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
                     placeholder="Blue Cross Blue Shield"
+                    required
                     error={fieldErrors.insurance_provider}
                   />
                   <Input
@@ -277,6 +290,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_policy_number}
                     onChange={(e) => setFormData({ ...formData, insurance_policy_number: e.target.value })}
                     placeholder="ABC123456789"
+                    required
                     error={fieldErrors.insurance_policy_number}
                   />
                   <Input
@@ -285,6 +299,7 @@ export default function AddPatientPage() {
                     onChange={(e) => setFormData({ ...formData, insurance_member_id: e.target.value })}
                     placeholder="Member/Subscriber ID"
                     helperText="Insurance member or subscriber ID"
+                    required
                     error={fieldErrors.insurance_member_id}
                   />
                   <Input
@@ -321,7 +336,7 @@ export default function AddPatientPage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/dashboard/patients")}
                 disabled={saving}
               >
                 Cancel
