@@ -390,8 +390,9 @@ export default function OrganizationProfilePage() {
                                             />
                                         </div>
                                         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                            <p className="text-sm text-blue-900 font-medium">
-                                                🔒 SFTP Credentials
+                                            <p className="text-sm text-blue-900 font-medium flex items-center gap-1.5">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                SFTP Credentials
                                             </p>
                                             <p className="text-sm text-blue-700 mt-1">
                                                 SFTP passwords and private keys are managed securely on the server. Contact your administrator to update credentials.
@@ -498,7 +499,10 @@ export default function OrganizationProfilePage() {
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Credentials</label>
-                                        <p className="text-slate-700 text-sm">🔒 Credentials managed securely on server</p>
+                                        <p className="text-slate-700 text-sm flex items-center gap-1.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            Credentials managed securely on server
+                                        </p>
                                     </div>
                                 </div>
                             </div>

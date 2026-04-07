@@ -25,6 +25,15 @@ const navItems = [
         ),
     },
     {
+        label: "Encounters",
+        href: "/dashboard/encounters",
+        icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+        ),
+    },
+    {
         label: "Claims",
         href: "/dashboard/claims",
         icon: (
@@ -100,6 +109,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     <Link
                         key={item.href}
                         href={item.href}
+                        replace
+                        aria-current={isActive(item.href) ? "page" : undefined}
                         title={collapsed ? item.label : undefined}
                         className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
                             collapsed ? "justify-center" : ""
@@ -119,6 +130,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <div className="border-t border-white/10 p-2 space-y-1">
                 <Link
                     href="/dashboard/profile"
+                    replace
+                    aria-current={pathname === "/dashboard/profile" ? "page" : undefined}
                     title={collapsed ? "Profile" : undefined}
                     className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
                         collapsed ? "justify-center" : ""

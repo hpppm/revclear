@@ -129,18 +129,21 @@ export default function WizardContainer({
                     <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
                         {isFirstStep && onExit ? (
                             <Button variant="ghost" onClick={onExit}>
-                                ← Exit Encounter
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                Exit
                             </Button>
                         ) : (
                             <Button variant="ghost" onClick={handleBack} disabled={!canGoBack}>
-                                ← Back
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                Back
                             </Button>
                         )}
                         <div className="text-sm text-slate-500">
                             Step {currentStep + 1} of {steps.length}
                         </div>
                         <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Ready for Submission" : "Continue →"}
+                            {isLastStep ? "Submit for Review" : "Continue"}
+                            {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                         </Button>
                     </div>
                 </Card>

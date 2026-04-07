@@ -358,7 +358,8 @@ export default function EncounterPage() {
           phone: p.phone,
           email: p.email,
           insuranceType: p.insurance_provider,
-          insuranceId: p.insurance_policy_number,
+          insuranceId: p.insurance_policy_number || p.insurance_member_id,
+          insurance_member_id: p.insurance_member_id,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
           insurance_payer_name: p.insurance_payer_name,
@@ -508,17 +509,17 @@ export default function EncounterPage() {
 
   const handleComplete = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
   const handleExit = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
@@ -584,6 +585,7 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
+          patientLocked={!!searchPatientId}
         />
       ),
       canGoNext: (() => {
