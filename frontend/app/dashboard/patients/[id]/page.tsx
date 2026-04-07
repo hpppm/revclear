@@ -119,9 +119,11 @@ export default function PatientProfilePage() {
             address_state: editedPatient.address_state,
             address_zip: editedPatient.address_zip,
             insurance_provider: editedPatient.insuranceType,
-            insurance_policy_number: editedPatient.insuranceId,
-            insurance_member_id: editedPatient.insurance_member_id,
-            insurance_group_number: editedPatient.insurance_group_number,
+            // null → undefined: Zod's .optional() accepts undefined but not null;
+            // DB returns null for unset columns which would cause an invalid_union error
+            insurance_policy_number: editedPatient.insuranceId ?? undefined,
+            insurance_member_id: editedPatient.insurance_member_id ?? undefined,
+            insurance_group_number: editedPatient.insurance_group_number ?? undefined,
         });
         if (!validation.success) {
             const errs: Record<string, string> = {};
