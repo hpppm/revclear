@@ -184,23 +184,12 @@ export default function PatientProfilePage() {
         setEditMode(false);
     };
 
-    const handleFieldSave = async (field: 'name' | 'insurance_provider', value: string) => {
+    const handleFieldSave = async (value: string) => {
         setFieldSaving(true);
         try {
-            const payload = field === 'name'
-                ? { full_name: value }
-                : { insurance_provider: value || null };
-            await apiClient.patients.update(patientId, payload);
-            setPatient((prev) => prev ? {
-                ...prev,
-                name: field === 'name' ? value : prev.name,
-                insuranceType: field === 'insurance_provider' ? value : prev.insuranceType,
-            } : prev);
-            setEditedPatient((prev) => prev ? {
-                ...prev,
-                name: field === 'name' ? value : prev.name,
-                insuranceType: field === 'insurance_provider' ? value : prev.insuranceType,
-            } : prev);
+            await apiClient.patients.update(patientId, { full_name: value });
+            setPatient((prev) => prev ? { ...prev, name: value } : prev);
+            setEditedPatient((prev) => prev ? { ...prev, name: value } : prev);
             setEditingField(null);
         } catch (err) {
             logger.error('Failed to save field', err);
@@ -321,7 +310,7 @@ export default function PatientProfilePage() {
                                                     autoFocus
                                                 />
                                                 <button
-                                                    onClick={() => handleFieldSave('name', editingValue)}
+                                                    onClick={() => handleFieldSave(editingValue)}
                                                     disabled={fieldSaving}
                                                     className="text-green-600 hover:text-green-700 disabled:opacity-50"
                                                     title="Save name"
@@ -405,7 +394,7 @@ export default function PatientProfilePage() {
                                             value={editedPatient.dob || ""}
                                             min="1900-01-01"
                                             max={new Date().toISOString().split('T')[0]}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, dob: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, dob: e.target.value }); clearFieldError('dob'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 ${fieldErrors.dob ? "border-red-500" : "border-slate-300"}`}
                                         />
                                         {fieldErrors.dob && <p className="mt-1 text-sm text-red-500">Required</p>}
@@ -443,7 +432,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="tel"
                                             value={editedPatient.phone || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, phone: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, phone: e.target.value }); clearFieldError('phone'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.phone ? "border-red-500" : "border-slate-300"}`}
                                         />
                                         {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">Required</p>}
@@ -475,7 +464,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="text"
                                             value={editedPatient.insuranceType || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceType: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, insuranceType: e.target.value }); clearFieldError('insurance_provider'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_provider ? "border-red-500" : "border-slate-300"}`}
                                         />
                                         {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">Required</p>}
@@ -491,7 +480,7 @@ export default function PatientProfilePage() {
                                         <input
                                             type="text"
                                             value={editedPatient.insuranceId || ""}
-                                            onChange={(e) => setEditedPatient({ ...editedPatient, insuranceId: e.target.value })}
+                                            onChange={(e) => { setEditedPatient({ ...editedPatient, insuranceId: e.target.value }); clearFieldError('insurance_policy_number'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_policy_number ? "border-red-500" : "border-slate-300"}`}
                                         />
                                         {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">Required</p>}
