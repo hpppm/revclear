@@ -323,7 +323,7 @@ export class PatientService {
       );
     }
 
-    return subscriber;
+    return decryptSubscriberRow(subscriber);
   }
 
   static async getSubscriber(

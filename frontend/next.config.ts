@@ -1,12 +1,13 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 // SECURITY: ignoreBuildErrors was removed — TypeScript errors must be fixed
 // before deployment. Silencing them masks type-unsafe API payloads and
 // allows unvalidated data to reach production.
 const nextConfig: NextConfig = {
   turbopack: {
-    root: path.resolve(__dirname),
+    // Pin the workspace root to the frontend directory so Turbopack doesn't
+    // walk up to the repo root and confuse itself with the backend lockfile.
+    root: __dirname,
   },
   async headers() {
     return [

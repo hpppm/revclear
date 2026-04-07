@@ -7,6 +7,7 @@ import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { SubscriberWritePayload } from "@/app/lib/api/patients";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
@@ -54,7 +55,7 @@ export default function EncounterPage() {
     encounterType?: string;
     chiefComplaint?: string;
     relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
+    subscriber?: (Partial<SubscriberWritePayload> & { id?: string }) | null;
     patientName?: string;
   }>({
     patientId: "",
@@ -93,6 +94,7 @@ export default function EncounterPage() {
   const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
+  const [claimSubmitAttempt, setClaimSubmitAttempt] = useState(0);
   const loadedEncounterIdRef = useRef<string | null>(null);
 
   const searchEncounterId =
@@ -286,14 +288,25 @@ export default function EncounterPage() {
         setMetadata((prev) => ({ ...prev, subscriber: null }));
         return;
       }
-      // Validation already done via patientStepRef.validate() in onNext
-      const subPayload = {
-        ...metadata.subscriber,
+      const sub = metadata.subscriber;
+      const subPayload: SubscriberWritePayload = {
+        full_name: sub?.full_name ?? "",
+        dob: sub?.dob?.split("T")[0] ?? "",
+        phone: sub?.phone ?? "",
+        member_id: sub?.member_id ?? "",
+        gender: sub?.gender || undefined,
+        address_street: sub?.address_street || undefined,
+        address_city: sub?.address_city || undefined,
+        address_state: sub?.address_state || undefined,
+        address_zip: sub?.address_zip || undefined,
+        group_number: sub?.group_number || undefined,
         relationship: metadata.relationship || "other",
       };
       const res = await apiClient.patients.upsertSubscriber(metadata.patientId, subPayload);
       const saved = res.data?.data || res.data;
-      setMetadata((prev) => ({ ...prev, subscriber: saved }));
+      // Normalise DOB back to YYYY-MM-DD so next save doesn't send ISO timestamp
+      const normalisedSaved = { ...saved, dob: saved?.dob?.split("T")[0] || saved?.dob };
+      setMetadata((prev) => ({ ...prev, subscriber: normalisedSaved }));
       await apiClient.patients.update(metadata.patientId, {
         insurance_relationship: metadata.relationship || "other",
         subscriber_id: saved?.id,
@@ -342,7 +355,8 @@ export default function EncounterPage() {
           phone: p.phone,
           email: p.email,
           insuranceType: p.insurance_provider,
-          insuranceId: p.insurance_policy_number,
+          insuranceId: p.insurance_member_id || p.insurance_policy_number,
+          insurance_member_id: p.insurance_member_id,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
           insurance_payer_name: p.insurance_payer_name,
@@ -492,17 +506,17 @@ export default function EncounterPage() {
 
   const handleComplete = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
   const handleExit = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
@@ -568,17 +582,16 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
+          lockedPatientId={searchPatientId}
         />
       ),
       canGoNext: (() => {
         if (!metadata.patientId || !metadata.date) return false;
         const p = patients.find((pt) => pt.id === metadata.patientId);
         if (!p) return false;
-        // Insurance required unless self-pay
         if (p.insuranceType !== "SELF_PAY") {
           if (!p.insuranceType || !p.insuranceId) return false;
         }
-        // All subscriber fields required when relationship is not self
         if (metadata.relationship !== "self") {
           const sub = metadata.subscriber;
           if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id) return false;
@@ -615,7 +628,7 @@ export default function EncounterPage() {
           }
         }
 
-        // Validate subscriber fields directly from metadata
+        // Validate required subscriber fields
         if (metadata.relationship !== "self") {
           const subErrs: Record<string, string> = {};
           if (!metadata.subscriber?.full_name) subErrs.subscriber_full_name = "Subscriber name is required";
@@ -714,10 +727,11 @@ export default function EncounterPage() {
           encounterId={encounterId}
           soap={soap}
           savedCodes={savedCodes}
+          selectedCodes={selectedCodes}
           onSelectionChange={handleCodesSelected}
         />
       ),
-      canGoNext: true, // Codes are optional
+      canGoNext: selectedCodes.some((c) => c.type === "ICD-10") && selectedCodes.some((c) => c.type === "CPT"),
       onNext: async () => {
         await handleSaveCodes();
       },
@@ -730,11 +744,13 @@ export default function EncounterPage() {
           encounterId={encounterId}
           onClaimChange={handleClaimChange}
           onValidationChange={setClaimValid}
+          submitAttempt={claimSubmitAttempt}
         />
       ),
-      canGoNext: claimValid,
+      canGoNext: true,
       onNext: async () => {
         if (!claimValid) {
+          setClaimSubmitAttempt((n) => n + 1);
           throw new Error("Claim is missing required fields.");
         }
         // Step 5: Create or update claim, then finalize encounter status
