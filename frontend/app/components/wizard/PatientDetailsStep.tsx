@@ -278,28 +278,28 @@ export default function PatientDetailsStep({
                 />
               </div>
               <Input
-                label="Subscriber Address"
+                label="Subscriber Address *"
                 value={metadata.subscriber?.address_street || ""}
                 onChange={(e) => handleSubscriberChange("address_street", e.target.value)}
                 onBlur={(e) => handleSubscriberBlur("address_street", e.target.value)}
                 placeholder="123 Main St"
-                error={subscriberFieldErrors.address_street}
+                error={subscriberFieldErrors.address_street || encounterFieldErrors?.subscriber_address_street}
               />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
-                  label="City"
+                  label="City *"
                   value={metadata.subscriber?.address_city || ""}
                   onChange={(e) => handleSubscriberChange("address_city", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("address_city", e.target.value)}
-                  error={subscriberFieldErrors.address_city}
+                  error={subscriberFieldErrors.address_city || encounterFieldErrors?.subscriber_address_city}
                 />
                 <Input
-                  label="State"
+                  label="State *"
                   variant="select"
                   value={metadata.subscriber?.address_state || ""}
                   onChange={(e) => { handleSubscriberChange("address_state", e.target.value); handleSubscriberBlur("address_state", e.target.value); }}
                   options={US_STATES}
-                  error={subscriberFieldErrors.address_state}
+                  error={subscriberFieldErrors.address_state || encounterFieldErrors?.subscriber_address_state}
                 />
                 <Input
                   label="ZIP"

@@ -11,6 +11,36 @@ import { CreatePatientFormSchema } from "@/app/lib/validation/schemas";
 
 import BackButton from "@/app/components/ui/BackButton";
 
+const US_STATES = [
+  { value: "", label: "Select state" },
+  { value: "AL", label: "AL — Alabama" }, { value: "AK", label: "AK — Alaska" },
+  { value: "AZ", label: "AZ — Arizona" }, { value: "AR", label: "AR — Arkansas" },
+  { value: "CA", label: "CA — California" }, { value: "CO", label: "CO — Colorado" },
+  { value: "CT", label: "CT — Connecticut" }, { value: "DE", label: "DE — Delaware" },
+  { value: "FL", label: "FL — Florida" }, { value: "GA", label: "GA — Georgia" },
+  { value: "HI", label: "HI — Hawaii" }, { value: "ID", label: "ID — Idaho" },
+  { value: "IL", label: "IL — Illinois" }, { value: "IN", label: "IN — Indiana" },
+  { value: "IA", label: "IA — Iowa" }, { value: "KS", label: "KS — Kansas" },
+  { value: "KY", label: "KY — Kentucky" }, { value: "LA", label: "LA — Louisiana" },
+  { value: "ME", label: "ME — Maine" }, { value: "MD", label: "MD — Maryland" },
+  { value: "MA", label: "MA — Massachusetts" }, { value: "MI", label: "MI — Michigan" },
+  { value: "MN", label: "MN — Minnesota" }, { value: "MS", label: "MS — Mississippi" },
+  { value: "MO", label: "MO — Missouri" }, { value: "MT", label: "MT — Montana" },
+  { value: "NE", label: "NE — Nebraska" }, { value: "NV", label: "NV — Nevada" },
+  { value: "NH", label: "NH — New Hampshire" }, { value: "NJ", label: "NJ — New Jersey" },
+  { value: "NM", label: "NM — New Mexico" }, { value: "NY", label: "NY — New York" },
+  { value: "NC", label: "NC — North Carolina" }, { value: "ND", label: "ND — North Dakota" },
+  { value: "OH", label: "OH — Ohio" }, { value: "OK", label: "OK — Oklahoma" },
+  { value: "OR", label: "OR — Oregon" }, { value: "PA", label: "PA — Pennsylvania" },
+  { value: "RI", label: "RI — Rhode Island" }, { value: "SC", label: "SC — South Carolina" },
+  { value: "SD", label: "SD — South Dakota" }, { value: "TN", label: "TN — Tennessee" },
+  { value: "TX", label: "TX — Texas" }, { value: "UT", label: "UT — Utah" },
+  { value: "VT", label: "VT — Vermont" }, { value: "VA", label: "VA — Virginia" },
+  { value: "WA", label: "WA — Washington" }, { value: "WV", label: "WV — West Virginia" },
+  { value: "WI", label: "WI — Wisconsin" }, { value: "WY", label: "WY — Wyoming" },
+  { value: "DC", label: "DC — Washington D.C." },
+];
+
 export default function AddPatientPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -37,6 +67,42 @@ export default function AddPatientPage() {
     insurance_payer_id: "",
     insurance_payer_name: "",
   });
+
+  const validateField = (field: string, value: string): string | null => {
+    const fieldSchema = CreatePatientFormSchema.shape[field as keyof typeof CreatePatientFormSchema.shape];
+    if (!fieldSchema) return null;
+    const result = fieldSchema.safeParse(value);
+    return result.success ? null : (result.error.issues[0]?.message || "Invalid value");
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // If there's already an error on this field, re-validate live so it clears the moment it's correct
+    if (fieldErrors[field]) {
+      const err = validateField(field, value);
+      setFieldErrors((prev) => {
+        if (err) return { ...prev, [field]: err };
+        const { [field]: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
+  const handleBlur = (field: string, value: string, el?: HTMLElement) => {
+    if (!value.trim()) return; // Don't show errors on empty untouched fields — submit handles that
+    const err = validateField(field, value);
+    setFieldErrors((prev) => {
+      if (err) return { ...prev, [field]: err };
+      const { [field]: _, ...rest } = prev;
+      return rest;
+    });
+    if (err && el) {
+      setTimeout(() => {
+        const target = el.closest("label") ?? el;
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +150,14 @@ export default function AddPatientPage() {
 
     if (Object.keys(allErrors).length > 0) {
       setFieldErrors(allErrors);
+      // Scroll to the first error field
+      setTimeout(() => {
+        const first = document.querySelector("[data-field-error]") as HTMLElement | null;
+        if (first) {
+          const target = first.closest("label") ?? first;
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 50);
       return;
     }
 
@@ -137,27 +211,29 @@ export default function AddPatientPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Input
-                    label="Full Name"
+                    label="Full Name *"
                     value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    onChange={(e) => handleChange("full_name", e.target.value)}
+                    onBlur={(e) => handleBlur("full_name", e.target.value, e.target as HTMLElement)}
                     placeholder="John Doe"
                     required
                     error={fieldErrors.full_name}
                   />
                 </div>
                 <Input
-                  label="Date of Birth"
+                  label="Date of Birth *"
                   type="date"
                   value={formData.dob}
-                  onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  onChange={(e) => handleChange("dob", e.target.value)}
+                  onBlur={(e) => handleBlur("dob", e.target.value, e.target as HTMLElement)}
                   required
                   error={fieldErrors.dob}
                 />
                 <Input
-                  label="Gender"
+                  label="Gender *"
                   variant="select"
                   value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  onChange={(e) => handleChange("gender", e.target.value)}
                   required
                   options={[
                     { value: "M", label: "Male" },
@@ -168,10 +244,11 @@ export default function AddPatientPage() {
                   error={fieldErrors.gender}
                 />
                 <Input
-                  label="Phone"
+                  label="Phone *"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                  onBlur={(e) => handleBlur("phone", e.target.value, e.target as HTMLElement)}
                   placeholder="(555) 123-4567"
                   required
                   error={fieldErrors.phone}
@@ -180,9 +257,9 @@ export default function AddPatientPage() {
                   label="Email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  onBlur={(e) => handleBlur("email", e.target.value, e.target as HTMLElement)}
                   placeholder="john.doe@example.com"
-                  required
                   error={fieldErrors.email}
                 />
               </div>
@@ -193,34 +270,38 @@ export default function AddPatientPage() {
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Address</h2>
               <div className="space-y-4">
                 <Input
-                  label="Street Address"
+                  label="Street Address *"
                   value={formData.address_street}
-                  onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
+                  onChange={(e) => handleChange("address_street", e.target.value)}
+                  onBlur={(e) => handleBlur("address_street", e.target.value, e.target as HTMLElement)}
                   placeholder="123 Main St"
                   required
                   error={fieldErrors.address_street}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
-                    label="City"
+                    label="City *"
                     value={formData.address_city}
-                    onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
+                    onChange={(e) => handleChange("address_city", e.target.value)}
+                    onBlur={(e) => handleBlur("address_city", e.target.value, e.target as HTMLElement)}
                     placeholder="Erie"
                     required
                     error={fieldErrors.address_city}
                   />
                   <Input
-                    label="State"
+                    label="State *"
+                    variant="select"
                     value={formData.address_state}
-                    onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
-                    placeholder="PA"
+                    onChange={(e) => { handleChange("address_state", e.target.value); handleBlur("address_state", e.target.value); }}
+                    options={US_STATES}
                     required
                     error={fieldErrors.address_state}
                   />
                   <Input
                     label="ZIP Code"
                     value={formData.address_zip}
-                    onChange={(e) => setFormData({ ...formData, address_zip: e.target.value })}
+                    onChange={(e) => handleChange("address_zip", e.target.value)}
+                    onBlur={(e) => handleBlur("address_zip", e.target.value, e.target as HTMLElement)}
                     placeholder="16501"
                     required
                     error={fieldErrors.address_zip}
@@ -280,7 +361,8 @@ export default function AddPatientPage() {
                   <Input
                     label="Insurance Provider *"
                     value={formData.insurance_provider}
-                    onChange={(e) => setFormData({ ...formData, insurance_provider: e.target.value })}
+                    onChange={(e) => handleChange("insurance_provider", e.target.value)}
+                    onBlur={(e) => handleBlur("insurance_provider", e.target.value, e.target as HTMLElement)}
                     placeholder="Blue Cross Blue Shield"
                     required
                     error={fieldErrors.insurance_provider}
@@ -288,31 +370,34 @@ export default function AddPatientPage() {
                   <Input
                     label="Policy Number *"
                     value={formData.insurance_policy_number}
-                    onChange={(e) => setFormData({ ...formData, insurance_policy_number: e.target.value })}
+                    onChange={(e) => handleChange("insurance_policy_number", e.target.value)}
+                    onBlur={(e) => handleBlur("insurance_policy_number", e.target.value, e.target as HTMLElement)}
                     placeholder="ABC123456789"
+                    helperText="6–15 characters"
                     required
                     error={fieldErrors.insurance_policy_number}
                   />
                   <Input
                     label="Member ID *"
                     value={formData.insurance_member_id}
-                    onChange={(e) => setFormData({ ...formData, insurance_member_id: e.target.value })}
+                    onChange={(e) => handleChange("insurance_member_id", e.target.value)}
+                    onBlur={(e) => handleBlur("insurance_member_id", e.target.value, e.target as HTMLElement)}
                     placeholder="Member/Subscriber ID"
-                    helperText="Insurance member or subscriber ID"
+                    helperText="8–11 characters"
                     required
                     error={fieldErrors.insurance_member_id}
                   />
                   <Input
                     label="Group Number"
                     value={formData.insurance_group_number}
-                    onChange={(e) => setFormData({ ...formData, insurance_group_number: e.target.value })}
+                    onChange={(e) => handleChange("insurance_group_number", e.target.value)}
                     placeholder="Group number"
                     error={fieldErrors.insurance_group_number}
                   />
                   <Input
                     label="Payer ID"
                     value={formData.insurance_payer_id}
-                    onChange={(e) => setFormData({ ...formData, insurance_payer_id: e.target.value })}
+                    onChange={(e) => handleChange("insurance_payer_id", e.target.value)}
                     placeholder="Clearinghouse payer ID"
                     helperText="For electronic claim submission"
                     error={fieldErrors.insurance_payer_id}
@@ -320,7 +405,7 @@ export default function AddPatientPage() {
                   <Input
                     label="Payer Name"
                     value={formData.insurance_payer_name}
-                    onChange={(e) => setFormData({ ...formData, insurance_payer_name: e.target.value })}
+                    onChange={(e) => handleChange("insurance_payer_name", e.target.value)}
                     placeholder="Insurance payer name"
                     error={fieldErrors.insurance_payer_name}
                   />

@@ -598,7 +598,7 @@ export default function EncounterPage() {
         }
         if (metadata.relationship !== "self") {
           const sub = metadata.subscriber;
-          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id) return false;
+          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id || !sub?.address_street || !sub?.address_city || !sub?.address_state) return false;
         }
         return true;
       })(),
@@ -626,6 +626,9 @@ export default function EncounterPage() {
           if (!metadata.subscriber?.full_name) subErrs.subscriber_full_name = "Subscriber name is required";
           if (!metadata.subscriber?.dob) subErrs.subscriber_dob = "Date of birth is required";
           if (!metadata.subscriber?.phone) subErrs.subscriber_phone = "Phone number is required";
+          if (!metadata.subscriber?.address_street) subErrs.subscriber_address_street = "Street address is required";
+          if (!metadata.subscriber?.address_city) subErrs.subscriber_address_city = "City is required";
+          if (!metadata.subscriber?.address_state) subErrs.subscriber_address_state = "State is required";
           if (!metadata.subscriber?.member_id) subErrs.subscriber_member_id = "Member ID is required";
           if (Object.keys(subErrs).length > 0) {
             setEncounterFieldErrors(subErrs);
