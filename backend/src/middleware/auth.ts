@@ -173,6 +173,11 @@ export const authMiddleware = async (
  */
 export const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    // SECURITY: Must have an authenticated user with DB record
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
     const userRole = getEffectiveOrganizationRole(req.user);
 
     if (!userRole) {
