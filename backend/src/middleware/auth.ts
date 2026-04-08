@@ -184,7 +184,16 @@ export const requireRole = (allowedRoles: string[]) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const userRole = getEffectiveOrganizationRole(user);
+    let userRole: string | undefined;
+    try {
+      userRole = getEffectiveOrganizationRole(user);
+    } catch (err: any) {
+      logger.error(
+        { err: err?.message, userId: user.id },
+        "requireRole: failed to get effective organization role"
+      );
+      return res.status(401).json({ error: "Authentication required" });
+    }
 
     if (!userRole) {
       return res.status(401).json({ error: "Authentication required" });
