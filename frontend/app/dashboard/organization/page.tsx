@@ -682,9 +682,9 @@ export default function OrganizationProfilePage() {
                         ) : members.length === 0 ? (
                             <div className="py-8 text-center text-sm text-slate-500">No members found.</div>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto overflow-y-auto max-h-[400px] pr-2">
                                 <table className="w-full text-sm">
-                                    <thead>
+                                    <thead className="sticky top-0 bg-white z-10 shadow-sm">
                                         <tr className="border-b border-slate-100 text-left text-xs font-medium uppercase tracking-widest text-slate-400">
                                             <th className="py-3 pr-4">Member</th>
                                             <th className="py-3 pr-4">Role</th>
@@ -811,8 +811,8 @@ export default function OrganizationProfilePage() {
                             ) : invites.length === 0 ? (
                                 <div className="py-8 text-center text-sm text-slate-500">No invites created yet.</div>
                             ) : (
-                                <div className="space-y-4">
-                                    {invites.slice(0, 6).map((invite) => (
+                                <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2">
+                                    {invites.map((invite) => (
                                         <div key={invite.id} className="rounded-xl border border-slate-200 p-4">
                                             <div className="flex items-start justify-between gap-4">
                                                 <div>
