@@ -1,7 +1,7 @@
 /**
  * Auth Middleware Hardening Tests
  *
- * Verifies three security changes made in this PR:
+ * Verifies security changes to auth middleware and related code:
  *
  * Change 1 — Bearer header fallback removed (auth.ts)
  *   Tokens are accepted from httpOnly cookies only.
@@ -15,6 +15,10 @@
  * Change 3 — Cross-tab cookie collision detection (AuthContext.tsx)
  *   sessionStorage.userId is set on login and compared on every checkAuth()
  *   call. A mismatch (cookie overwritten by another tab) redirects to /login.
+ *
+ * Change 5 — MFA enforcement (auth.ts)
+ *   Tokens whose amr claim does not include "mfa" are rejected with 401.
+ *   This blocks tokens issued before TOTP MFA was enabled on the user pool.
  */
 
 // ---------------------------------------------------------------------------
@@ -56,6 +60,9 @@ const { authMiddleware } = require("../../src/middleware/auth");
 // Helpers
 // ---------------------------------------------------------------------------
 
+// VALID_PAYLOAD represents a fully-authenticated Cognito access token that has
+// passed TOTP MFA verification. The amr claim is set by Cognito when
+// SOFTWARE_TOKEN_MFA is satisfied; tokens without it are now rejected.
 const VALID_PAYLOAD = {
   sub: "cognito-sub-123",
   iss: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test",
@@ -64,6 +71,7 @@ const VALID_PAYLOAD = {
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   "cognito:groups": ["Users"],
+  amr: ["mfa"],
 };
 
 const DB_USER = {
@@ -265,6 +273,73 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 
     expect(next).toHaveBeenCalled();
     expect(req.user.role).toBe("admin");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Change 5 — MFA enforcement: tokens without amr = ["mfa"] are rejected
+// ---------------------------------------------------------------------------
+
+describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns 401 when amr claim is absent (pre-MFA token)", async () => {
+    const { amr: _omitted, ...payloadWithoutAmr } = VALID_PAYLOAD;
+    mockVerify.mockResolvedValue(payloadWithoutAmr);
+
+    const req = makeReq({ cookies: { accessToken: "pre-mfa.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+    // DB must NOT be queried — reject before touching the database
+    expect(mockFindUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when amr claim is an empty array", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: [] });
+
+    const req = makeReq({ cookies: { accessToken: "no-mfa.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when amr contains only 'pwd' (password-only login, MFA skipped)", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: ["pwd"] });
+
+    const req = makeReq({ cookies: { accessToken: "pwd-only.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("passes through when amr includes 'mfa' (TOTP satisfied)", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD); // amr: ["mfa"]
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "mfa-valid.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 
