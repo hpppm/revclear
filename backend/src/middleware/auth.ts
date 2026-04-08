@@ -139,6 +139,16 @@ export const authMiddleware = async (
       });
     }
 
+    // SECURITY: Enforce MFA — reject tokens issued without TOTP verification.
+    // Cognito includes amr: ["mfa"] in access tokens when SOFTWARE_TOKEN_MFA
+    // was satisfied. Tokens issued before MFA was enforced, or via flows that
+    // bypassed the challenge, will be missing this claim.
+    const amr = (payload as any).amr as string[] | undefined;
+    if (!Array.isArray(amr) || !amr.includes("mfa")) {
+      logger.warn({ sub: payload.sub }, "Auth: MFA not satisfied");
+      return res.status(401).json({ error: "MFA verification required" });
+    }
+
     // Extract Cognito groups from JWT and map to application role
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
