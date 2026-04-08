@@ -178,7 +178,13 @@ export const requireRole = (allowedRoles: string[]) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const userRole = getEffectiveOrganizationRole(req.user);
+    // Type-safe user extraction with property validation
+    const user = req.user as any;
+    if (!user || typeof user !== 'object') {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const userRole = getEffectiveOrganizationRole(user);
 
     if (!userRole) {
       return res.status(401).json({ error: "Authentication required" });
