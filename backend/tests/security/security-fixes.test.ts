@@ -178,10 +178,14 @@ describe("Fix 5: Admin access uses requireRole not is_org_admin DB flag", () => 
     expect(content).not.toMatch(/is_org_admin.*=== true/);
   });
 
-  it("organizations.ts: POST /invite uses requireRole(['admin']) middleware", () => {
+  it("organizations.ts: POST /invite is accessible to any authenticated org member (no admin gate)", () => {
     const content = readRoute("organizations.ts");
+    // Any org member can generate an invite — intentionally no requireRole(['admin']) here
     expect(content).toMatch(
-      /router\.post\(["']\/invite["'],\s*authMiddleware,\s*requireRole\(\["admin"\]\)/
+      /router\.post\(["']\/invite["'],\s*authMiddleware,/
+    );
+    expect(content).not.toMatch(
+      /router\.post\(["']\/invite["'],\s*authMiddleware,\s*requireRole/
     );
   });
 

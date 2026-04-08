@@ -4,8 +4,7 @@ import cognitoRoutes from "./dev/cognito";
 import statusRoutes from "./dev/status";
 import aiRoutes from "./dev/ai";
 import dbRoutes from "./dev/db";
-import { authMiddleware } from "../../middleware/auth";
-import { getAuthenticatedUser } from "../../utils/auth";
+import { authMiddleware, requireRole } from "../../middleware/auth";
 
 // Imports needed for the new /config route
 import { userPoolId, clientId } from "../../config/awsCognito";
@@ -37,23 +36,8 @@ function buildDashboardConfig() {
 // --- Route Registration ---
 
 // SECURITY: /config route restricted to admin users only (exposes AWS infrastructure details)
-router.get("/config", authMiddleware, async (req, res) => {
-  try {
-    const user = await getAuthenticatedUser(req);
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Admin access required for dev config",
-      });
-    }
-    res.json({ success: true, config: buildDashboardConfig() });
-  } catch (error: any) {
-    // Don't leak error details
-    res.status(500).json({
-      success: false,
-      error: "Dashboard config is unavailable.",
-    });
-  }
+router.get("/config", authMiddleware, requireRole(["admin"]), (_req, res) => {
+  res.json({ success: true, config: buildDashboardConfig() });
 });
 
 // All routes mounted here will be under /api/dev

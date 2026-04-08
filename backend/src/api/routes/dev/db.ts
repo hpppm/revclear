@@ -44,7 +44,7 @@ const adminOnly = async (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-router.get("/health", async (_req, res) => {
+router.get("/health", adminOnly, async (_req, res) => {
   try {
     const result = await query<{ ok: number }>("SELECT 1 as ok");
     const row = result.rows[0];
