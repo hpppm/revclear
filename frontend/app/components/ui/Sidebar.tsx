@@ -65,6 +65,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         canReadPatients,
         canManageClaims,
         canManageOrganization,
+        canManageEncounters,
     } = useAuthorization();
 
     const isActive = (href: string) => {
@@ -113,6 +114,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 {navItems.map((item) => (
                     ((item.href === "/dashboard/patients" && !canReadPatients) ||
                     (item.href === "/dashboard/claims" && !canManageClaims) ||
+                    (item.href === "/dashboard/encounters" && !canManageEncounters) ||
                     (item.href === "/dashboard/organization" && !canManageOrganization)) ? null : (
                     <Link
                         key={item.href}
