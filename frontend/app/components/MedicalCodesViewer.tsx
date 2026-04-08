@@ -30,7 +30,7 @@ type RawCode = {
 };
 
 export default function MedicalCodesViewer({
-  soap: _,
+  soap: _soap,
   encounterId,
   savedCodes = [],
   onCodesSelected,
@@ -81,7 +81,7 @@ export default function MedicalCodesViewer({
       onCodesSelected?.(normalized);
       setHasGenerated(true);
     }
-  }, [savedCodes]);
+  }, [savedCodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
