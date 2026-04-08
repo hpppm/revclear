@@ -31,22 +31,26 @@ export default function MFASetup({ onSuccess }: Props) {
   const [showSecret, setShowSecret] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Guard against React 18 Strict Mode double-invocation: useEffect fires
+  // mount→unmount→remount in development. Without this ref, the second call
+  // hits AssociateSoftwareToken with an already-advanced Cognito session and
+  // gets NotAuthorizedException — corrupting the mfaSession cookie.
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
-    let cancelled = false;
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     apiClient.auth.totpSetup()
       .then((res) => {
-        if (cancelled) return;
         setSecretCode(res.data.secretCode as string);
         setUsername(res.data.username as string);
         setState("ready");
       })
       .catch(() => {
-        if (!cancelled) {
-          setErrorMsg("Failed to load QR code. Please sign in again.");
-          setState("error");
-        }
+        setErrorMsg("Failed to load QR code. Please sign in again.");
+        setState("error");
       });
-    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
