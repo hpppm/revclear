@@ -15,13 +15,14 @@ jest.mock("../../src/config/db", () => ({
 }));
 
 import { requireRole } from "../../src/middleware/auth";
+import { canRoleAccess, requireCapability } from "../../src/middleware/authorization";
 
 // --- requireRole middleware unit tests ---
 
 describe("requireRole middleware", () => {
-  const makeReq = (role?: string) => ({
-    user: role ? { role } : undefined,
-    auth: role ? { cognitoRole: role } : undefined,
+  const makeReq = (role?: string, organizationId = "org-1") => ({
+    user: role ? { role, organization_id: organizationId } : undefined,
+    auth: undefined,
   });
 
   const makeRes = () => {
@@ -58,7 +59,7 @@ describe("requireRole middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when no user/auth is present", () => {
+  it("returns 401 when no user is present", () => {
     const middleware = requireRole(["admin"]);
     const req = { user: undefined, auth: undefined } as any;
     const res = makeRes();
@@ -70,15 +71,85 @@ describe("requireRole middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("falls back to cognitoRole when req.user is absent", () => {
+  it("returns 401 when user has no organization-scoped role", () => {
     const middleware = requireRole(["admin"]);
-    const req = { user: undefined, auth: { cognitoRole: "admin" } } as any;
+    const req = { user: { role: "admin", organization_id: null }, auth: undefined } as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe("requireCapability middleware", () => {
+  const makeReq = (role?: string, organizationId = "org-1") => ({
+    user: role ? { role, organization_id: organizationId } : undefined,
+    auth: undefined,
+  });
+
+  const makeRes = () => {
+    const res: any = {};
+    res.status = jest.fn().mockReturnValue(res);
+    res.json = jest.fn().mockReturnValue(res);
+    return res;
+  };
+
+  it("allows receptionist to write patients", () => {
+    expect(canRoleAccess("receptionist" as any, "write_patients")).toBe(true);
+  });
+
+  it("denies nurse from writing patients", () => {
+    expect(canRoleAccess("nurse" as any, "write_patients")).toBe(false);
+  });
+
+  it("allows nurse to manage encounters", () => {
+    expect(canRoleAccess("nurse" as any, "manage_encounters")).toBe(true);
+  });
+
+  it("denies billing staff from managing encounters", () => {
+    expect(canRoleAccess("billing_staff" as any, "manage_encounters")).toBe(false);
+  });
+
+  it("allows billing staff to manage claims", () => {
+    expect(canRoleAccess("billing_staff" as any, "manage_claims")).toBe(true);
+  });
+
+  it("denies receptionist from clinical AI", () => {
+    const middleware = requireCapability("use_clinical_ai");
+    const req = makeReq("receptionist") as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("allows clinician through capability middleware", () => {
+    const middleware = requireCapability("manage_organization");
+    const req = makeReq("clinician") as any;
     const res = makeRes();
     const next = jest.fn();
 
     middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
+  });
+
+  it("requires organization membership for capability checks", () => {
+    const middleware = requireCapability("use_clinical_ai");
+    const req = makeReq("clinician", null as any) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    middleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
   });
 });
 

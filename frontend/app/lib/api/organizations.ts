@@ -1,5 +1,6 @@
 import { z } from "zod";
 import api from "./axios";
+import { ORGANIZATION_MEMBER_ROLES } from "../auth/roles";
 import { OrganizationResponseSchema } from "../validation/schemas";
 
 // SECURITY: All org responses are validated against OrganizationResponseSchema
@@ -36,7 +37,58 @@ const OrgCreateSchema = z.object({
   edi_sftp_port: z.number().int().optional().nullable(),
 });
 
-const OrgUpdateSchema = OrgCreateSchema.partial();
+const OrgUpdateSchema = OrgCreateSchema.extend({
+  timezone: z.string().optional().nullable(),
+  billing_name: z.string().optional().nullable(),
+  billing_npi: z.string().optional().nullable(),
+  billing_tax_id: z.string().optional().nullable(),
+  billing_address_line1: z.string().optional().nullable(),
+  billing_address_line2: z.string().optional().nullable(),
+  billing_city: z.string().optional().nullable(),
+  billing_state: z.string().optional().nullable(),
+  billing_postal_code: z.string().optional().nullable(),
+  billing_phone: z.string().optional().nullable(),
+  default_place_of_service: z.string().optional().nullable(),
+  edi_sender_id: z.string().optional().nullable(),
+  edi_receiver_id: z.string().optional().nullable(),
+  edi_sftp_host: z.string().optional().nullable(),
+  edi_sftp_username: z.string().optional().nullable(),
+  edi_sftp_port: z.number().int().optional().nullable(),
+  fee_schedule: z.unknown().optional(),
+  payer_enrollments: z.unknown().optional(),
+  billing_defaults: z.unknown().optional(),
+}).partial();
+
+const OrgInviteSchema = z.object({
+  role: z.enum(ORGANIZATION_MEMBER_ROLES),
+});
+const OrganizationMemberSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  full_name: z.string(),
+  role: z.enum([
+    "admin",
+    "clinician",
+    "nurse",
+    "billing_staff",
+    "receptionist",
+  ]),
+  created_at: z.string().optional(),
+});
+const OrganizationInviteActorSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  full_name: z.string(),
+});
+const OrganizationInviteSchema = z.object({
+  id: z.string().uuid(),
+  role: z.enum(ORGANIZATION_MEMBER_ROLES),
+  created_at: z.string(),
+  expires_at: z.string(),
+  used_at: z.string().nullable().optional(),
+  created_by: OrganizationInviteActorSchema,
+  used_by: OrganizationInviteActorSchema.nullable().optional(),
+});
 
 // SECURITY: Invite code must be a non-empty alphanumeric token.
 // Validates format before dispatching to prevent malformed values from
@@ -75,6 +127,20 @@ export const organizationsApi = {
     return response;
   },
 
+  getMembers: async () => {
+    const response = await api.get("/organizations/members");
+    const payload = (response.data as { members?: unknown })?.members ?? [];
+    z.array(OrganizationMemberSchema).parse(payload);
+    return response;
+  },
+
+  getInvites: async () => {
+    const response = await api.get("/organizations/invites");
+    const payload = (response.data as { invites?: unknown })?.invites ?? [];
+    z.array(OrganizationInviteSchema).parse(payload);
+    return response;
+  },
+
   create: (payload: z.infer<typeof OrgCreateSchema>) =>
     api.post("/organizations", OrgCreateSchema.parse(payload)),
 
@@ -83,6 +149,9 @@ export const organizationsApi = {
     const safeCode = InviteCodeSchema.parse(invitationCode);
     return api.post("/organizations/join", { invitationCode: safeCode });
   },
+
+  createInvite: (payload: z.infer<typeof OrgInviteSchema>) =>
+    api.post("/organizations/invite", OrgInviteSchema.parse(payload)),
 
   updateCurrent: (payload: z.infer<typeof OrgUpdateSchema>) =>
     api.patch("/organizations/me", OrgUpdateSchema.parse(payload)),

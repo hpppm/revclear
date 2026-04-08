@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { useAuthorization } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
 import DashboardHeader from "@/app/components/ui/DashboardHeader";
 import Badge from "@/app/components/ui/Badge";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 type Claim = {
     id: string;
@@ -65,11 +67,16 @@ function formatCurrency(amount: number | null) {
 }
 
 export default function ClaimsPage() {
+    const { canManageClaims, canManageEncounters } = useAuthorization();
     const [claims, setClaims] = useState<Claim[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!canManageClaims) {
+            setLoading(false);
+            return;
+        }
         const loadClaims = async () => {
             setLoading(true);
             setError(null);
@@ -85,7 +92,15 @@ export default function ClaimsPage() {
             }
         };
         loadClaims();
-    }, []);
+    }, [canManageClaims]);
+
+    if (!canManageClaims) {
+        return (
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <UnauthorizedState message="Your role does not have access to claims workflows." />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto px-6 py-8">
@@ -121,12 +136,22 @@ export default function ClaimsPage() {
                     </div>
                     <p className="text-sm font-medium text-slate-700">No claims yet</p>
                     <p className="text-xs text-slate-400 mt-1">Claims are generated automatically from completed encounters.</p>
-                    <Link
-                        href="/dashboard/patients"
-                        className="brand-button-primary mt-6 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
-                    >
-                        Go to Patients
-                    </Link>
+                    <div className="flex justify-center gap-4 mt-6">
+                        <Link
+                            href="/dashboard/patients"
+                            className="bg-white border text-slate-700 hover:bg-slate-50 mt-0 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
+                        >
+                            Go to Patients
+                        </Link>
+                        {canManageEncounters && (
+                            <Link
+                                href="/dashboard/encounters/create"
+                                className="brand-button-primary mt-0 rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition"
+                            >
+                                Start an encounter
+                            </Link>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
