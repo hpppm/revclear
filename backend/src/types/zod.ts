@@ -76,25 +76,26 @@ export const PatientSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
     .transform((val) => val ? val.split('T')[0] : val)
     .optional()
+    .nullable()
     .openapi({ example: "1980-01-01" }),
-  gender: z.enum(["M", "F", "U", "O"]).optional().openapi({ example: "F" }),
-  phone: z.string().optional(),
-  email: z.string().email("Invalid email address").optional(),
+  gender: z.enum(["M", "F", "U", "O"]).optional().nullable().openapi({ example: "F" }),
+  phone: z.string().optional().nullable(),
+  email: z.string().email("Invalid email address").optional().nullable(),
   // Address fields
-  address_street: z.string().optional(),
-  address_city: z.string().optional(),
-  address_state: z.string().optional(),
-  address_zip: z.string().optional(),
+  address_street: z.string().optional().nullable(),
+  address_city: z.string().optional().nullable(),
+  address_state: z.string().optional().nullable(),
+  address_zip: z.string().optional().nullable(),
   // Insurance fields
-  insurance_provider: z.string().optional(),
-  insurance_policy_number: z.string().optional(),
-  insurance_member_id: z.string().optional(),
-  insurance_group_number: z.string().optional(),
-  insurance_payer_id: z.string().optional(),
-  insurance_payer_name: z.string().optional(),
-  insurance_relationship: z.enum(["self", "spouse", "child", "other"]).optional(),
-  subscriber_id: z.string().uuid().optional(),
-  plan_name: z.string().optional(),
+  insurance_provider: z.string().optional().nullable(),
+  insurance_policy_number: z.string().optional().nullable(),
+  insurance_member_id: z.string().optional().nullable(),
+  insurance_group_number: z.string().optional().nullable(),
+  insurance_payer_id: z.string().optional().nullable(),
+  insurance_payer_name: z.string().optional().nullable(),
+  insurance_relationship: z.enum(["self", "spouse", "child", "other"]).optional().nullable(),
+  subscriber_id: z.string().uuid().optional().nullable(),
+  plan_name: z.string().optional().nullable(),
 }).openapi("Patient");
 
 registry.register("Patient", PatientSchema);
@@ -103,7 +104,9 @@ export const CreatePatientSchema = PatientSchema.extend({
   dob: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
-    .transform((val) => val ? val.split('T')[0] : val),
+    .transform((val) => val ? val.split('T')[0] : val)
+    .refine((d) => new Date(d) >= new Date("1900-01-01"), "Date of birth cannot be before 1900-01-01")
+    .refine((d) => new Date(d) < new Date(), "Date of birth cannot be in the future"),
   gender: z.enum(["M", "F", "U", "O"], { errorMap: () => ({ message: "Gender is required" }) }),
   phone: z.string().min(1, "Phone number is required"),
   email: z.string().email("Invalid email address"),
