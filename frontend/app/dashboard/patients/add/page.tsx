@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 import Card from "@/app/components/ui/Card";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
+import { useAuthorization } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import { CreatePatientFormSchema } from "@/app/lib/validation/schemas";
@@ -43,6 +45,7 @@ const US_STATES = [
 
 export default function AddPatientPage() {
   const router = useRouter();
+  const { canWritePatients } = useAuthorization();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -188,6 +191,14 @@ export default function AddPatientPage() {
       setSaving(false);
     }
   };
+
+  if (!canWritePatients) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <UnauthorizedState message="Your role does not have access to add new patients." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">

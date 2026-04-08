@@ -31,7 +31,15 @@ const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 // SECURITY: Ollama must only be reachable via localhost to prevent SSRF and
 // unintended external exposure of the inference server.
 const OLLAMA_ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
-const LOCAL_HTTP_ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
+
+const isPrivateOrInternalHostname = (hostname: string): boolean => {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) return true;
+  if (!hostname.includes(".")) return true;
+  return false;
+};
 
 // SECURITY: Allowlist of approved external SOAP API hostnames.
 // Any URL not matching this list is rejected to block SSRF attacks.
@@ -62,14 +70,14 @@ const validateExternalSoapUrl = (url: string): void => {
   const isLocalDevelopmentHttp =
     process.env.NODE_ENV !== "production" &&
     parsed.protocol === "http:" &&
-    LOCAL_HTTP_ALLOWED_HOSTS.includes(parsed.hostname);
+    isPrivateOrInternalHostname(parsed.hostname);
 
   // SECURITY: External AI endpoints must use HTTPS to prevent credential and
   // PHI exposure over unencrypted connections. Local development is allowed
   // to use http://localhost or http://127.0.0.1 only.
   if (parsed.protocol !== "https:" && !isLocalDevelopmentHttp) {
     throw new Error(
-      `SOAP_API_URL must use HTTPS unless it is local development on localhost/127.0.0.1. Received: "${parsed.protocol}//${parsed.hostname}"`,
+      `SOAP_API_URL must use HTTPS unless it is a non-production internal endpoint. Received: "${parsed.protocol}//${parsed.hostname}"`,
     );
   }
   // SECURITY: Block any host not in the approved allowlist (SSRF prevention).

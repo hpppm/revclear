@@ -10,6 +10,15 @@ import React, {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
+import type { AppRole } from "@/app/lib/auth/roles";
+import {
+  canManageClaims,
+  canManageEncounters,
+  canReadPatients,
+  canUseClinicalAI,
+  canWritePatients,
+  isOrganizationManager,
+} from "@/app/lib/auth/roles";
 import { User } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
 
@@ -218,7 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: fetchedUser.email as string,
       name: (fetchedUser.full_name ?? fetchedUser.name ?? "") as string,
       full_name: fetchedUser.full_name as string | undefined,
-      role: fetchedUser.role as string | undefined,
+      role: fetchedUser.role as AppRole | undefined,
       phone: fetchedUser.phone as string | undefined,
       cognito_id: fetchedUser.cognito_id as string | undefined,
       practitionerType: fetchedUser.practitionerType as string | undefined,
@@ -301,11 +310,23 @@ export function useAuth() {
 // UI-only authorization checks (backend enforces actual authorization)
 export function useAuthorization() {
   const { user } = useAuth();
+  const role = user?.role;
+  const isAdmin = role === "admin";
+  const isClinician = role === "clinician";
+  const isBillingStaff = role === "billing_staff";
+
   return {
     isAdmin: user?.role === "admin",
     isClinician: user?.role === "clinician",
+    isNurse: user?.role === "nurse",
     isBillingStaff: user?.role === "billing_staff",
-    canManageOrganization: user?.role === "admin",
-    canManageUsers: user?.role === "admin",
+    isReceptionist: user?.role === "receptionist",
+    canReadPatients: canReadPatients(user?.role),
+    canWritePatients: canWritePatients(user?.role),
+    canManageEncounters: canManageEncounters(user?.role),
+    canUseClinicalAI: canUseClinicalAI(user?.role),
+    canManageClaims: canManageClaims(user?.role),
+    canManageOrganization: isOrganizationManager(user?.role),
+    canManageUsers: isOrganizationManager(user?.role),
   };
 }
