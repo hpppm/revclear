@@ -340,6 +340,73 @@ describe("Change 5: MFA enforcement — valid Cognito tokens pass regardless of 
 });
 
 // ---------------------------------------------------------------------------
+// Change 5 — MFA enforcement: tokens without amr = ["mfa"] are rejected
+// ---------------------------------------------------------------------------
+
+describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns 401 when amr claim is absent (pre-MFA token)", async () => {
+    const { amr: _omitted, ...payloadWithoutAmr } = VALID_PAYLOAD;
+    mockVerify.mockResolvedValue(payloadWithoutAmr);
+
+    const req = makeReq({ cookies: { accessToken: "pre-mfa.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+    // DB must NOT be queried — reject before touching the database
+    expect(mockFindUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when amr claim is an empty array", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: [] });
+
+    const req = makeReq({ cookies: { accessToken: "no-mfa.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when amr contains only 'pwd' (password-only login, MFA skipped)", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: ["pwd"] });
+
+    const req = makeReq({ cookies: { accessToken: "pwd-only.token" } });
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("passes through when amr includes 'mfa' (TOTP satisfied)", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD); // amr: ["mfa"]
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "mfa-valid.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Change 4 — SignupSchema attributes whitelist blocks Cognito attribute injection
 // ---------------------------------------------------------------------------
 
