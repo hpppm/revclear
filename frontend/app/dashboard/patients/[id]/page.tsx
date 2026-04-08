@@ -145,8 +145,8 @@ export default function PatientProfilePage() {
 
         setSaving(true);
         try {
-            const nullIfEmpty = (v: string | null | undefined) =>
-                v === "" ? null : v ?? null;
+            const nullIfEmpty = (v: string | null | undefined): string | undefined =>
+                v === "" || v == null ? undefined : v;
             await apiClient.patients.update(patientId, {
                 full_name: editedPatient.name,
                 dob: nullIfEmpty(editedPatient.dob),
