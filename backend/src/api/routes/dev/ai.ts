@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { authMiddleware } from "../../../middleware/auth";
+import { getAuthenticatedUser } from "../../../utils/auth";
 import { speechToSoap } from "../../../services/ai/speechToSoap";
 import { query } from "../../../config/db";
 import { createAiResult } from "../../../db/queries";
@@ -9,7 +10,19 @@ import { encryptPHIText } from "../../../utils/crypto";
 
 const router = Router();
 
-router.post("/speech-to-soap", authMiddleware, async (req, res) => {
+const adminOnly = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+    next();
+  } catch {
+    return res.status(500).json({ success: false, error: "Authorization check failed" });
+  }
+};
+
+router.post("/speech-to-soap", authMiddleware, adminOnly, async (req, res) => {
   const { encounter_id, transcript } = req.body || {};
 
   if (!encounter_id) {
@@ -87,7 +100,7 @@ router.post("/speech-to-soap", authMiddleware, async (req, res) => {
     logger.error({ err: error }, 'dev/ai: speechToSoap error');
     res.status(500).json({
       success: false,
-      error: error?.message || "Failed to run speechToSoap flow",
+      error: "Failed to run speechToSoap flow",
     });
   }
 });

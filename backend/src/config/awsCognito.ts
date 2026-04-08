@@ -13,9 +13,6 @@ import {
   ConfirmForgotPasswordCommand,
   AdminUpdateUserAttributesCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import jwt from 'jsonwebtoken';
-import jwksClient from 'jwks-rsa';
-
 const region = process.env.AWS_REGION || 'us-east-1';
 const userPoolId = process.env.AWS_USER_POOL_ID;
 const clientId = process.env.AWS_CLIENT_ID;
@@ -25,37 +22,6 @@ if (!userPoolId || !clientId) {
 }
 
 const cognitoClient = new CognitoIdentityProviderClient({ region });
-
-// JWKS client for token verification
-const jwks = jwksClient({
-  jwksUri: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`,
-});
-
-function getKey(header: any, callback: any) {
-  jwks.getSigningKey(header.kid, (err, key) => {
-    if (err) {
-      callback(err);
-    } else {
-      const signingKey = key?.getPublicKey();
-      callback(null, signingKey);
-    }
-  });
-}
-
-/**
- * Verify Cognito JWT token
- */
-export async function verifyToken(token: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    jwt.verify(token, getKey, { algorithms: ['RS256'] }, (err, decoded) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(decoded);
-      }
-    });
-  });
-}
 
 /**
  * Sign up a new user

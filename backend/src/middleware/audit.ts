@@ -3,7 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import logger from "../utils/logger";
 
-const AUDIT_LOG_FILE = path.join(__dirname, '../../audit.log');
+const AUDIT_LOG_FILE = process.env.AUDIT_LOG_PATH || path.join(__dirname, '../../audit.log');
 const isProduction = process.env.NODE_ENV === "production";
 const enableAuditFileLogging =
   !isProduction || process.env.AUDIT_FILE_LOGGING === "true";

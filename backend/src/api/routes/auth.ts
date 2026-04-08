@@ -1,8 +1,23 @@
 import { Router } from "express";
+import { z } from "zod";
 import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 import logger from "../../utils/logger";
+
+const SignupSchema = z.object({
+  email: z.string().email().max(254),
+  password: z.string().min(8).max(256),
+  practitionerType: z.string().max(100).optional(),
+  licenseId: z.string().max(100).optional(),
+  attributes: z.record(z.string().max(100), z.string().max(500)).optional(),
+});
+
+const ConfirmForgotPasswordSchema = z.object({
+  email: z.string().email().max(254),
+  code: z.string().min(1).max(20),
+  newPassword: z.string().min(8).max(256),
+});
 
 const router = Router();
 
@@ -21,7 +36,7 @@ const COOKIE_OPTIONS = {
 };
 
 // Use the same cookie attributes on clear as on set.
-// In production behind revclear.gannon.edu, the reverse proxy must:
+// In production behind a reverse proxy, the proxy must:
 // 1) terminate TLS,
 // 2) forward X-Forwarded-Proto=https,
 // 3) preserve the original Host header,
@@ -39,7 +54,11 @@ const REFRESH_COOKIE_OPTIONS = {
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
-  const { email, password, attributes, practitionerType, licenseId } = req.body;
+  const parsed = SignupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid signup data." });
+  }
+  const { email, password, attributes, practitionerType, licenseId } = parsed.data;
 
   try {
     const result = await AuthService.signup(
@@ -223,12 +242,11 @@ router.post("/forgot-password", async (req, res) => {
 
 // Confirm forgot password route
 router.post("/confirm-forgot-password", async (req, res) => {
-  const { email, code, newPassword } = req.body;
-  if (!email || !code || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "Email, code, and new password are required." });
+  const parsed = ConfirmForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Email, code, and new password are required." });
   }
+  const { email, code, newPassword } = parsed.data;
   try {
     await AuthService.confirmForgotPassword(email, code, newPassword);
     res.status(200).json({ message: "Password has been reset successfully." });

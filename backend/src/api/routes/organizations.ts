@@ -8,7 +8,7 @@ import {
 } from "../../utils/organization";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { JoinOrganizationSchema, OrganizationSchema } from "../../types/zod";
-import { generateInviteToken, hashInviteToken } from "../../utils/crypto";
+import { generateInviteToken, hashInviteToken, encryptPHIText } from "../../utils/crypto";
 import logger from "../../utils/logger";
 
 const router = Router();
@@ -265,10 +265,10 @@ router.post("/join", authMiddleware, async (req, res) => {
     });
   } catch (error: any) {
     if (error?.code === "23505") {
-      // Unique violation on membership
+      // Unique constraint — user is already a member of this organization
       return res
-        .status(200)
-        .json({ success: true, message: "Already a member" });
+        .status(409)
+        .json({ success: false, message: "Already a member of this organization" });
     }
     if (error instanceof z.ZodError) {
       return sendValidationError(res, error);
@@ -319,8 +319,9 @@ router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) 
   }
 });
 
-// PATCH /api/organizations/me - update current organization fields (billing/config)
-router.patch("/me", authMiddleware, async (req, res) => {
+// PATCH /api/organizations/me - update org billing/config — admin only
+// Any member can read org data; only admins may update SFTP credentials and billing config
+router.patch("/me", authMiddleware, requireRole(["admin"]), async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -375,11 +376,18 @@ router.patch("/me", authMiddleware, async (req, res) => {
       "billing_defaults",
     ];
 
+    // Fields that must be encrypted at rest before storage
+    const ENCRYPTED_FIELDS = new Set(["edi_sftp_password", "edi_sftp_private_key"]);
+
     const sets: string[] = [];
     const values: any[] = [];
     updatableFields.forEach((field) => {
       if (data[field] !== undefined) {
-        values.push(data[field]);
+        const raw = data[field] as string | null | undefined;
+        const stored = ENCRYPTED_FIELDS.has(field)
+          ? encryptPHIText(raw ?? null)
+          : raw;
+        values.push(stored);
         sets.push(`${field} = $${values.length}`);
       }
     });

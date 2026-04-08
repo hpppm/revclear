@@ -42,16 +42,13 @@ function sanitizeUrl(url: string): string {
 }
 
 /**
- * Extract client IP safely
+ * Extract client IP safely.
+ * Uses req.ip which respects the trust proxy setting configured in server.ts.
+ * Never reads X-Forwarded-For directly — that is spoofable in environments
+ * where trust proxy is false (dev/test).
  */
 function getClientIP(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
-    // Take the first IP and validate it's reasonable
-    const ip = forwarded.split(',')[0].trim();
-    if (ip && ip.length < 50) return ip;
-  }
-  return req.socket.remoteAddress || 'unknown';
+  return req.ip || req.socket.remoteAddress || 'unknown';
 }
 
 /**
@@ -80,13 +77,8 @@ export function securityMonitor(req: Request, res: Response, next: NextFunction)
     return res.status(403).json({ error: 'Access temporarily blocked due to suspicious activity' });
   }
 
-  // Early threat detection on request (before processing)
+  // Sanitize URL for safe logging — do not use for security decisions
   const sanitizedUrl = sanitizeUrl(req.originalUrl);
-  if (hasSQLInjectionPattern(req.originalUrl) || hasXSSPattern(req.originalUrl)) {
-    logger.warn({ ip: ipAddress }, 'security: blocked malicious request');
-    blockIP(ipAddress);
-    return res.status(400).json({ error: 'Invalid request' });
-  }
 
   // Track request rate
   const rateExceeded = trackRequestRate(ipAddress);
@@ -131,27 +123,34 @@ function blockIP(ip: string) {
 }
 
 /**
- * Track request rate for an IP address
- * Returns true if rate limit exceeded
+ * Track request rate for an IP address.
+ * Returns true if rate limit exceeded.
+ * Expired windows are pruned to prevent unbounded memory growth.
  */
 function trackRequestRate(ip: string): boolean {
-  const now = new Date();
-  const existing = requestRates.get(ip);
+  const now = Date.now();
 
-  if (!existing || now.getTime() - existing.windowStart.getTime() > RATE_LIMIT_WINDOW) {
-    // Start new window
-    requestRates.set(ip, { count: 1, windowStart: now });
-    return false;
-  } else {
-    // Increment count in current window
-    existing.count++;
-    
-    if (existing.count > RATE_LIMIT_THRESHOLD) {
-      logger.warn({ ip }, 'security: rate limit exceeded');
-      return true;
+  // Prune expired entries periodically (every ~100 calls)
+  if (Math.random() < 0.01) {
+    for (const [key, val] of requestRates) {
+      if (now - val.windowStart.getTime() > RATE_LIMIT_WINDOW * 2) {
+        requestRates.delete(key);
+      }
     }
+  }
+
+  const existing = requestRates.get(ip);
+  if (!existing || now - existing.windowStart.getTime() > RATE_LIMIT_WINDOW) {
+    requestRates.set(ip, { count: 1, windowStart: new Date(now) });
     return false;
   }
+
+  existing.count++;
+  if (existing.count > RATE_LIMIT_THRESHOLD) {
+    logger.warn({ ip }, 'security: rate limit exceeded');
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -197,58 +196,6 @@ function trackFailedAuth(ip: string) {
       logger.error({ ip }, 'security: brute force detected');
       blockIP(ip);
     }
-  }
-}
-
-/**
- * Check for SQL injection patterns
- */
-function hasSQLInjectionPattern(url: string): boolean {
-  if (!url) return false;
-  const sqlPatterns = [
-    /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
-    /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
-    /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
-    /((\%27)|(\'))union/i,
-    /exec(\s|\+)+(s|x)p\w+/i,
-    /select\s+.*\s+from/i,
-    /insert\s+into/i,
-    /delete\s+from/i,
-    /drop\s+(table|database)/i,
-  ];
-  
-  try {
-    const decoded = decodeURIComponent(url);
-    return sqlPatterns.some(pattern => pattern.test(decoded));
-  } catch {
-    return sqlPatterns.some(pattern => pattern.test(url));
-  }
-}
-
-/**
- * Check for XSS patterns
- */
-function hasXSSPattern(url: string): boolean {
-  if (!url) return false;
-  const xssPatterns = [
-    /<script[^>]*>/gi,
-    /javascript:/gi,
-    /onerror\s*=/gi,
-    /onload\s*=/gi,
-    /onclick\s*=/gi,
-    /onmouseover\s*=/gi,
-    /<iframe/gi,
-    /<object/gi,
-    /<embed/gi,
-    /eval\s*\(/gi,
-    /document\.(cookie|write|location)/gi,
-  ];
-  
-  try {
-    const decoded = decodeURIComponent(url);
-    return xssPatterns.some(pattern => pattern.test(decoded));
-  } catch {
-    return xssPatterns.some(pattern => pattern.test(url));
   }
 }
 

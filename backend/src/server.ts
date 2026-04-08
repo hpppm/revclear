@@ -114,6 +114,18 @@ app.use(securityMonitor);
 // --------------------------------------------------
 // Rate Limiting
 // --------------------------------------------------
+// Global catch-all: any /api route not explicitly listed below gets this limit.
+// Must come BEFORE specific limiters so specific ones take precedence.
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: "Too many requests. Try again later.",
+    skip: (req) => req.path === "/health" || req.path === "/health/ai",
+  }),
+);
+
 app.use(
   "/api/auth",
   rateLimit({
@@ -234,47 +246,23 @@ app.use(
   }),
 );
 
-/**
- * 🚀 FIX #1:
- * Register /api/transcribe BEFORE express.json(), helmet, auditLogger, etc.
- * This ensures Multer sees the raw file stream.
- */
-import transcribeRoutes from "./api/routes/transcribe";
-app.use("/api/transcribe", transcribeRoutes);
-
-/**
- * Normal middleware can now follow safely.
- */
-app.use(express.json({ limit: "1mb" }));
-
+// --------------------------------------------------
+// Security Headers + Audit (MUST come before routes, including transcribe)
+// helmet and auditLogger apply to ALL routes including multipart uploads.
+// Only express.json() must come after transcribe to preserve Multer's stream.
+// --------------------------------------------------
 const helmetOptions: HelmetOptions = {
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://cdn.tailwindcss.com",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.lineicons.com",
-        "https://cdn.jsdelivr.net",
-      ],
-      styleSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.lineicons.com",
-      ],
-      imgSrc: ["'self'", "data:", "https://hpppm.github.io"],
-      fontSrc: [
-        "'self'",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.lineicons.com",
-      ],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      fontSrc: ["'self'"],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
-      frameAncestors: ["'self'"],
+      frameAncestors: ["'none'"],
     },
   },
   referrerPolicy: { policy: "no-referrer" },
@@ -288,6 +276,16 @@ morgan.token("url-no-query", (req: Request) =>
 );
 app.use(morgan(":method :url-no-query :status :res[content-length] - :response-time ms"));
 app.use(auditLogger);
+
+// --------------------------------------------------
+// Transcribe route — registered BEFORE express.json() so Multer sees raw stream.
+// Helmet and auditLogger are already applied above, so this route IS audited.
+// --------------------------------------------------
+import transcribeRoutes from "./api/routes/transcribe";
+app.use("/api/transcribe", transcribeRoutes);
+
+// express.json() comes after transcribe (Multer handles multipart; json() handles the rest)
+app.use(express.json({ limit: "1mb" }));
 
 // Security headers for API responses - prevent caching of sensitive data
 app.use("/api", (req, res, next) => {

@@ -22,14 +22,19 @@ const ENCOUNTER_SELECT_COLUMNS = `
 
 const ENCOUNTER_ENCRYPTED_TEXT_FIELDS = ["chief_complaint"] as const;
 
-export class EncounterService {
-  private static async getEncounterColumns() {
-    const result = await query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = 'encounters'`,
-    );
-    return result.rows.map((r: { column_name: string }) => r.column_name);
-  }
+// Explicit allowlist of fields a caller may update on an encounter.
+// Excludes identity/ownership columns: id, clinician_id, organization_id,
+// transcript_result_id, soap_result_id, created_at, updated_at.
+const ENCOUNTER_UPDATABLE_FIELDS = new Set([
+  "patient_id",
+  "date_of_service",
+  "status",
+  "encounter_type",
+  "chief_complaint",
+  "place_of_service",
+]);
 
+export class EncounterService {
   static async findAll(
     organizationId: string,
     clinicianId: string,
@@ -104,7 +109,14 @@ export class EncounterService {
       throw new AppError("Patient not found", 404);
     }
 
-    const availableColumns = await this.getEncounterColumns();
+    const ENCOUNTER_INSERTABLE_OPTIONAL = [
+      "transcript_result_id",
+      "soap_result_id",
+      "status",
+      "encounter_type",
+      "chief_complaint",
+    ] as const;
+
     const columns = [
       "patient_id",
       "date_of_service",
@@ -120,16 +132,9 @@ export class EncounterService {
     const placeholders = ["$1", "$2", "$3", "$4"];
     let idx = 5;
 
-    const optionalFields: Record<string, any> = {
-      transcript_result_id: data.transcript_result_id,
-      soap_result_id: data.soap_result_id,
-      status: data.status,
-      encounter_type: data.encounter_type,
-      chief_complaint: data.chief_complaint,
-    };
-
-    for (const [key, value] of Object.entries(optionalFields)) {
-      if (value !== undefined && availableColumns.includes(key)) {
+    for (const key of ENCOUNTER_INSERTABLE_OPTIONAL) {
+      const value = data[key];
+      if (value !== undefined) {
         columns.push(key);
         placeholders.push(`$${idx}`);
         values.push(
@@ -170,12 +175,8 @@ export class EncounterService {
       throw new AppError("Encounter not found", 404);
     }
 
-    const availableColumns = await this.getEncounterColumns();
     const entries = Object.entries(data).filter(
-      ([key, value]) =>
-        value !== undefined &&
-        key !== "clinician_id" &&
-        availableColumns.includes(key),
+      ([key, value]) => value !== undefined && ENCOUNTER_UPDATABLE_FIELDS.has(key),
     );
 
     if (entries.length === 0) {
