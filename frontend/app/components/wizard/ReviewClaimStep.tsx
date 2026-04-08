@@ -9,7 +9,7 @@ import Input from "../ui/Input";
 
 interface ReviewClaimStepProps {
     encounterId: string | null;
-    onClaimChange?: (claim: any) => void;
+    onClaimChange?: (claim: Record<string, unknown>) => void;
     onValidationChange?: (isValid: boolean) => void;
     submitAttempt?: number;
 }
@@ -36,12 +36,13 @@ export default function ReviewClaimStep({
     const renderingNameRef = useRef<HTMLDivElement>(null);
     const renderingNpiRef = useRef<HTMLDivElement>(null);
     const { user: authUser } = useAuth();
-    const [claim, setClaim] = useState<any>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [claim, setClaim] = useState<Record<string, any> | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const validationErrorsRef = useRef<string[]>([]);
-    const [_prefilling, setPrefilling] = useState(false);
+    const [, setPrefilling] = useState(false);
 
     useEffect(() => {
         validationErrorsRef.current = validationErrors;
@@ -100,8 +101,9 @@ export default function ReviewClaimStep({
         }
     };
 
-    const handleUpdateClaim = (field: string, value: any) => {
-        setClaim((prev: any) => {
+    const handleUpdateClaim = (field: string, value: unknown) => {
+        setClaim((prev) => {
+            if (!prev) return prev;
             return { ...prev, [field]: value };
         });
     };

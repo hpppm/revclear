@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { useAuthorization } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
 import { MedicalCode, SoapNote } from "@/app/lib/types";
 import Button from "./ui/Button";
@@ -29,11 +30,12 @@ type RawCode = {
 };
 
 export default function MedicalCodesViewer({
-  soap: _,
+  soap: _soap,
   encounterId,
   savedCodes = [],
   onCodesSelected,
 }: MedicalCodesViewerProps) {
+  const { canUseClinicalAI } = useAuthorization();
   const ensureType = (codes: RawCode[], type: "ICD-10" | "CPT") =>
     (codes || []).map((c) => ({
       id: c.id || `${type}-${c.code}`,
@@ -78,7 +80,7 @@ export default function MedicalCodesViewer({
       setSelectedCodes(normalized);
       setHasGenerated(true);
     }
-  }, [savedCodes]);
+  }, [savedCodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,7 +102,7 @@ export default function MedicalCodesViewer({
   };
 
   const generateCodes = async () => {
-    if (!encounterId) return;
+    if (!encounterId || !canUseClinicalAI) return;
 
     setLoading(true);
     try {
@@ -119,7 +121,7 @@ export default function MedicalCodesViewer({
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || !canUseClinicalAI) return;
 
     setSearching(true);
     try {

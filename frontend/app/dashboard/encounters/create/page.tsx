@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
-import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { EncounterDetailsFormSchema, SubscriberFormSchema } from "@/app/lib/validation/schemas";
 import { SubscriberWritePayload } from "@/app/lib/api/patients";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
@@ -14,6 +14,7 @@ import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
 import SoapGenerationStep from "@/app/components/wizard/SoapGenerationStep";
 import MedicalCodesStep from "@/app/components/wizard/MedicalCodesStep";
 import ReviewClaimStep from "@/app/components/wizard/ReviewClaimStep";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 const allowedAudioTypes = [
   "audio/mpeg",
@@ -39,6 +40,7 @@ const extractTranscriptText = (t: any): string => {
 
 export default function EncounterPage() {
   const { user } = useAuth();
+  const { canManageEncounters, canManageClaims, canWritePatients } = useAuthorization();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -125,8 +127,9 @@ export default function EncounterPage() {
   }, [user]);
 
   useEffect(() => {
+    if (!canManageEncounters) return;
     fetchPatients();
-  }, []);
+  }, [canManageEncounters]);
 
   // URL state management and refresh recovery
   useEffect(() => {
@@ -281,6 +284,7 @@ export default function EncounterPage() {
 
   const persistSubscriber = async () => {
     if (!metadata.patientId) return;
+    if (!canWritePatients) return;
     setSubscriberSaving(true);
     setSubscriberError(null);
     try {
@@ -323,6 +327,14 @@ export default function EncounterPage() {
       setSubscriberSaving(false);
     }
   };
+
+  if (!canManageEncounters) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <UnauthorizedState message="Your role does not have access to encounter workflows." />
+      </div>
+    );
+  }
 
   // Helper to update URL with encounter ID and step
   const updateUrl = (id: string, step: number) => {
@@ -598,7 +610,7 @@ export default function EncounterPage() {
         }
         if (metadata.relationship !== "self") {
           const sub = metadata.subscriber;
-          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id) return false;
+          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id || !sub?.address_street || !sub?.address_city || !sub?.address_state) return false;
         }
         return true;
       })(),
@@ -618,6 +630,15 @@ export default function EncounterPage() {
           const first = validation.error.issues[0];
           throw new Error(first ? first.message : "Please fix encounter details");
         }
+        
+        if (metadata.relationship !== "self") {
+          const subValidation = SubscriberFormSchema.safeParse(metadata.subscriber || {});
+          if (!subValidation.success) {
+            setSubscriberError("Please complete all required subscriber/insurance fields. Scroll down to fix errors.");
+            throw new Error("Missing required subscriber fields");
+          }
+        }
+
         setEncounterFieldErrors({});
 
         // Validate required subscriber fields
@@ -626,6 +647,9 @@ export default function EncounterPage() {
           if (!metadata.subscriber?.full_name) subErrs.subscriber_full_name = "Subscriber name is required";
           if (!metadata.subscriber?.dob) subErrs.subscriber_dob = "Date of birth is required";
           if (!metadata.subscriber?.phone) subErrs.subscriber_phone = "Phone number is required";
+          if (!metadata.subscriber?.address_street) subErrs.subscriber_address_street = "Street address is required";
+          if (!metadata.subscriber?.address_city) subErrs.subscriber_address_city = "City is required";
+          if (!metadata.subscriber?.address_state) subErrs.subscriber_address_state = "State is required";
           if (!metadata.subscriber?.member_id) subErrs.subscriber_member_id = "Member ID is required";
           if (Object.keys(subErrs).length > 0) {
             setEncounterFieldErrors(subErrs);
@@ -723,7 +747,7 @@ export default function EncounterPage() {
         await handleSaveCodes();
       },
     },
-    {
+    ...(canManageClaims ? [{
       name: "Review Claim",
       description: "Review and finalize",
       component: (
@@ -761,7 +785,7 @@ export default function EncounterPage() {
           });
         }
       },
-    },
+    }] : []),
   ];
 
   return (

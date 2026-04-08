@@ -31,6 +31,9 @@ jest.mock("../../src/config/db", () => ({
 jest.mock("../../src/utils/organization", () => ({
   getUserOrganization: jest.fn(),
   assignUserToOrganization: jest.fn(),
+  getEffectiveOrganizationRole: jest.fn((user) =>
+    user?.organization_id ? user?.role : undefined,
+  ),
 }));
 
 jest.mock("aws-jwt-verify", () => ({
@@ -133,21 +136,21 @@ describe("PHI routes: requireOrganization guards all patient/encounter/claim rou
 });
 
 describe("Admin-only routes: requireRole(['admin']) is applied", () => {
-  it("organizations.ts: POST /invite uses requireRole(['admin'])", () => {
+  it("organizations.ts: POST /invite uses requireRole(ORGANIZATION_MANAGER_ROLES)", () => {
     const content = readRoute("organizations.ts");
     // The invite route specifically must have requireRole
     expect(content).toMatch(/\/invite.*requireRole|requireRole.*\/invite/s);
     // Confirm the pattern is present in the route registration
     const inviteRouteBlock = content.slice(content.indexOf("/invite"));
-    expect(inviteRouteBlock).toMatch(/requireRole\(\["admin"\]\)/);
+    expect(inviteRouteBlock).toMatch(/requireRole\(ORGANIZATION_MANAGER_ROLES\)/);
   });
 
-  it("users.ts: all routes use requireRole(['admin'])", () => {
+  it("users.ts: all routes use requireRole(ORGANIZATION_MANAGER_ROLES)", () => {
     const content = readRoute("users.ts");
-    expect(content).toMatch(/requireRole\(\["admin"\]\)/);
+    expect(content).toMatch(/requireRole\(ORGANIZATION_MANAGER_ROLES\)/);
     // Both GET / and GET /:cognitoId must be guarded
     const routeCount = (content.match(/router\.get\(/g) || []).length;
-    const guardCount = (content.match(/requireRole\(\["admin"\]\)/g) || []).length;
+    const guardCount = (content.match(/requireRole\(ORGANIZATION_MANAGER_ROLES\)/g) || []).length;
     expect(guardCount).toBe(routeCount);
   });
 
@@ -278,7 +281,7 @@ describe("requireOrganization: happy path attaches org and calls next()", () => 
 
 describe("requireRole: blocks clinicians from admin endpoints", () => {
   const makeReq = (role?: string) => ({
-    user: role ? { id: "u1", role } : undefined,
+    user: role ? { id: "u1", role, organization_id: "org-1" } : undefined,
     auth: role ? { cognitoRole: role } : undefined,
   });
 
@@ -350,7 +353,7 @@ describe("requireRole: blocks clinicians from admin endpoints", () => {
     // requireRole must prefer req.user.role (DB-backed) over req.auth.cognitoRole.
     const middleware = requireRole(["admin"]);
     const req: any = {
-      user: { id: "u1", role: "clinician" },
+      user: { id: "u1", role: "clinician", organization_id: "org-1" },
       auth: { cognitoRole: "admin" }, // attacker-supplied cognitive mismatch
     };
     const res = makeRes();

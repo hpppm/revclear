@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 
 const navItems = [
@@ -61,6 +61,12 @@ type SidebarProps = {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const {
+        canReadPatients,
+        canManageClaims,
+        canManageOrganization,
+        canManageEncounters,
+    } = useAuthorization();
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
@@ -106,6 +112,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             {/* Nav */}
             <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
                 {navItems.map((item) => (
+                    ((item.href === "/dashboard/patients" && !canReadPatients) ||
+                    (item.href === "/dashboard/claims" && !canManageClaims) ||
+                    (item.href === "/dashboard/encounters" && !canManageEncounters) ||
+                    (item.href === "/dashboard/organization" && !canManageOrganization)) ? null : (
                     <Link
                         key={item.href}
                         href={item.href}
@@ -121,7 +131,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         {item.icon}
                         {!collapsed && item.label}
                     </Link>
-                ))}
+                )))}
             </nav>
 
             {/* Footer: profile + logout */}

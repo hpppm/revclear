@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { useAuth } from "@/app/context/AuthContext";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization, Patient } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
@@ -35,7 +35,14 @@ const mapPatient = (p: any): Patient => ({
 
 
 export default function DashboardHome() {
-    const { user, isLoading: authLoading } = useAuth();
+    const { user, isLoading: authLoading, checkAuth } = useAuth();
+    const {
+        canReadPatients,
+        canManageEncounters,
+        canManageClaims,
+        canManageOrganization,
+        canWritePatients,
+    } = useAuthorization();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [orgLoading, setOrgLoading] = useState(true);
     const [orgError, setOrgError] = useState<string | null>(null);
@@ -67,9 +74,9 @@ export default function DashboardHome() {
         if (organization) {
             if (!dataFetchedRef.current) {
                 dataFetchedRef.current = true;
-                loadPatients();
-                loadEncounters();
-                loadClaims();
+                if (canReadPatients) loadPatients();
+                if (canManageEncounters) loadEncounters();
+                if (canManageClaims) loadClaims();
             }
         } else {
             dataFetchedRef.current = false;
@@ -78,7 +85,7 @@ export default function DashboardHome() {
             setClaimsPending(0);
             setClaimsApproved(0);
         }
-    }, [organization]);
+    }, [organization, canManageClaims, canManageEncounters, canReadPatients]);
 
     const loadOrganization = async () => {
         if (orgFetchInProgressRef.current) return;
@@ -150,6 +157,7 @@ export default function DashboardHome() {
         try {
             const response = await apiClient.organizations.create({ name: orgName.trim() });
             setOrganization(extractOrganization(response));
+            await checkAuth();
             setOrgName("");
         } catch (error: any) {
             logger.error("Failed to create organization", error);
@@ -175,6 +183,7 @@ export default function DashboardHome() {
         try {
             const response = await apiClient.organizations.joinWithCode(inviteCode.trim());
             setOrganization(extractOrganization(response));
+            await checkAuth();
             setInviteCode("");
         } catch (error: any) {
             logger.error("Failed to join organization", error);
@@ -256,7 +265,7 @@ export default function DashboardHome() {
                                                 <p className="text-sm font-semibold text-slate-900">Notifications</p>
                                             </div>
                                             <ul className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                                                {claimsPending > 0 && (
+                                                {canManageClaims && claimsPending > 0 && (
                                                     <li>
                                                         <Link
                                                             href="/dashboard/claims"
@@ -275,7 +284,7 @@ export default function DashboardHome() {
                                                         </Link>
                                                     </li>
                                                 )}
-                                                {encountersCount === 0 && (
+                                                {canManageEncounters && encountersCount === 0 && (
                                                     <li>
                                                         <Link
                                                             href="/dashboard/patients"
@@ -294,7 +303,7 @@ export default function DashboardHome() {
                                                         </Link>
                                                     </li>
                                                 )}
-                                                {patients.length === 0 && (
+                                                {canWritePatients && patients.length === 0 && (
                                                     <li>
                                                         <Link
                                                             href="/dashboard/patients/add"
@@ -340,6 +349,7 @@ export default function DashboardHome() {
                         {/* Stat cards */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                             {/* Patients — info blue */}
+                            {canReadPatients && (
                             <div className="rounded-2xl bg-blue-100 border border-blue-200 shadow-sm px-5 py-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-medium uppercase tracking-widest text-blue-500">Patients</p>
@@ -351,7 +361,9 @@ export default function DashboardHome() {
                                 </div>
                                 <p className="text-3xl font-bold text-blue-900">{patients.length}</p>
                             </div>
+                            )}
                             {/* Encounters — pink */}
+                            {canManageEncounters && (
                             <div className="rounded-2xl border shadow-sm px-5 py-4" style={{ backgroundColor: "#ffe6ee", borderColor: "#ffb3cc" }}>
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "#99003d" }}>Encounters</p>
@@ -363,7 +375,9 @@ export default function DashboardHome() {
                                 </div>
                                 <p className="text-3xl font-bold" style={{ color: "#99003d" }}>{encountersCount}</p>
                             </div>
+                            )}
                             {/* Claims Pending — warning yellow */}
+                            {canManageClaims && (
                             <div className="rounded-2xl bg-yellow-50 border border-yellow-200 shadow-sm px-5 py-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-medium uppercase tracking-widest text-yellow-600">Claims Pending</p>
@@ -375,7 +389,9 @@ export default function DashboardHome() {
                                 </div>
                                 <p className="text-3xl font-bold text-yellow-700">{claimsPending}</p>
                             </div>
+                            )}
                             {/* Claims Approved — success green */}
+                            {canManageClaims && (
                             <div className="rounded-2xl bg-green-100 border border-green-200 shadow-sm px-5 py-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-medium uppercase tracking-widest text-green-600">Claims Approved</p>
@@ -387,9 +403,11 @@ export default function DashboardHome() {
                                 </div>
                                 <p className="text-3xl font-bold text-green-900">{claimsApproved}</p>
                             </div>
+                            )}
                         </div>
 
                         {/* Recent patients */}
+                        {canReadPatients && (
                         <div className="rounded-2xl bg-white border border-slate-200 shadow-sm">
                             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                                 <h2 className="text-sm font-semibold text-slate-900">Recent Patients</h2>
@@ -434,6 +452,7 @@ export default function DashboardHome() {
                                 </ul>
                             )}
                         </div>
+                        )}
                     </>
                 ) : (
                     /* No org — setup flow */

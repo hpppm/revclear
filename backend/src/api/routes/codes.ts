@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
+import { requireCapability } from "../../middleware/authorization";
 import { IdParamSchema } from "../../types/zod";
 import { sendError } from "../../utils/httpResponses";
 import { soapToCodes } from "../../services/ai/soapToCodes";
@@ -132,7 +133,7 @@ const requireOwnedEncounter = async (
  * POST /api/encounters/:id/codes/match
  * Get AI-suggested code matches from SOAP note
  */
-router.post("/:id/codes/match", authMiddleware, async (req, res) => {
+router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);
@@ -236,7 +237,7 @@ router.get("/search", authMiddleware, async (req, res) => {
  * POST /api/encounters/:id/codes
  * Save user-selected codes
  */
-router.post("/:id/codes", authMiddleware, async (req, res) => {
+router.post("/:id/codes", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);
