@@ -7,6 +7,56 @@ import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import Input from "../ui/Input";
 
+type ClaimAddress = { street?: string; city?: string; state?: string; zip?: string };
+type ClaimLineItem = {
+  procedure_code?: string;
+  description?: string;
+  charge_amount?: number | string;
+  units?: number | string;
+  line_number?: number | string;
+  diagnosis_pointers?: number[];
+  modifiers?: string[];
+  [key: string]: unknown;
+};
+type ClaimProvider = {
+  name?: string; npi?: string; tax_id?: string; phone?: string;
+  taxonomy_code?: string; organization_npi?: string; clinic_npi?: string;
+  street?: string; city?: string; state?: string; zip?: string;
+  address?: ClaimAddress;
+  place_of_service?: string;
+  [key: string]: unknown;
+};
+type ClaimSubscriber = {
+  full_name?: string; dob?: string; gender?: string; relationship?: string;
+  member_id?: string; group_number?: string;
+  address?: ClaimAddress;
+  address_street?: string; address_city?: string; address_state?: string; address_zip?: string;
+  [key: string]: unknown;
+};
+type ClaimData = {
+  procedure_codes?: string[];
+  diagnosis_codes?: string[];
+  line_items?: ClaimLineItem[];
+  total_amount?: number;
+  billing_provider?: ClaimProvider;
+  service_facility?: ClaimProvider;
+  rendering_provider?: ClaimProvider;
+  subscriber?: ClaimSubscriber;
+  subscriber_relationship?: string;
+  service_date_start?: string;
+  service_date_end?: string;
+  date_of_service?: string;
+  patient_id?: string;
+  encounter_id?: string;
+  patient_name?: string;
+  claim_type?: string;
+  submission_type?: string;
+  payer_name?: string;
+  payer_id?: string;
+  insurance_policy_number?: string;
+  [key: string]: unknown;
+};
+
 interface ReviewClaimStepProps {
     encounterId: string | null;
     onClaimChange?: (claim: Record<string, unknown>) => void;
@@ -36,8 +86,7 @@ export default function ReviewClaimStep({
     const renderingNameRef = useRef<HTMLDivElement>(null);
     const renderingNpiRef = useRef<HTMLDivElement>(null);
     const { user: authUser } = useAuth();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [claim, setClaim] = useState<Record<string, any> | null>(null);
+    const [claim, setClaim] = useState<ClaimData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -108,22 +157,25 @@ export default function ReviewClaimStep({
         });
     };
 
-    const handleUpdateNested = (parent: string, field: string, value: any) => {
-        setClaim((prev: any) => {
+    const handleUpdateNested = (parent: string, field: string, value: unknown) => {
+        setClaim((prev) => {
+            if (!prev) return prev;
+            const parentVal = prev[parent];
             return {
                 ...prev,
-                [parent]: { ...(prev?.[parent] || {}), [field]: value }
+                [parent]: { ...(typeof parentVal === "object" && parentVal !== null ? parentVal : {}), [field]: value }
             };
         });
     };
 
-    const handleUpdateLineItem = (index: number, field: string, value: any) => {
-        setClaim((prev: any) => {
+    const handleUpdateLineItem = (index: number, field: string, value: unknown) => {
+        setClaim((prev) => {
+            if (!prev) return prev;
             const newLineItems = [...(prev.line_items || [])];
             newLineItems[index] = { ...newLineItems[index], [field]: value };
 
             // Recalculate total
-            const newTotal = newLineItems.reduce((sum: number, item: any) => sum + Number(item.charge_amount || 0), 0);
+            const newTotal = newLineItems.reduce((sum: number, item: ClaimLineItem) => sum + Number(item.charge_amount || 0), 0);
 
             return { ...prev, line_items: newLineItems, total_amount: newTotal };
         });
@@ -158,22 +210,20 @@ export default function ReviewClaimStep({
         handleUpdateLineItem(index, "modifiers", mods);
     };
 
-    const isValidNpiFormat = (v: string) => /^\d{10}$/.test((v || "").trim());
-    const isValidTaxIdFormat = (v: string) => /^\d{2}-?\d{7}$/.test((v || "").replace(/\s/g, ""));
-    const nameHasLetters = (v: string) => /[A-Za-z]/.test((v || "").trim()) && (v || "").trim().length >= 2;
+    const isValidNpiFormat = (v: string | undefined) => /^\d{10}$/.test((v || "").trim());
+    const isValidTaxIdFormat = (v: string | undefined) => /^\d{2}-?\d{7}$/.test((v || "").replace(/\s/g, ""));
+    const nameHasLetters = (v: string | undefined) => /[A-Za-z]/.test((v || "").trim()) && (v || "").trim().length >= 2;
 
-    const requiredAddressMissing = (addressObj: any) => {
+    const requiredAddressMissing = (addressObj: ClaimAddress | string | null | undefined) => {
         if (!addressObj) return true;
-        // If backend sends a combined address string and it is non-empty, treat it as present.
         if (typeof addressObj === "string") {
             return addressObj.trim().length === 0;
         }
-        if (typeof addressObj !== "object") return true;
-        const { street, city, state, zip } = addressObj as any;
+        const { street, city, state, zip } = addressObj;
         return !street || !city || !state || !zip;
     };
 
-    const updateValidation = (current: any) => {
+    const updateValidation = (current: ClaimData | null) => {
         const errs: string[] = [];
         if (!current) {
             setValidationErrors(errs);
@@ -182,13 +232,13 @@ export default function ReviewClaimStep({
         }
 
         const hasCpt = (current.procedure_codes?.length || 0) > 0
-            || (current.line_items || []).some((li: any) => li.procedure_code);
+            || (current.line_items || []).some((li: ClaimLineItem) => li.procedure_code);
         if (!hasCpt) errs.push("At least one CPT/procedure code is required.");
 
-        const isValidZip = (v: string) => /^\d{5}(-\d{4})?$/.test((v || "").trim());
-        const isValidState = (v: string) => /^[A-Za-z]{2}$/.test((v || "").trim());
+        const isValidZip = (v: string | undefined) => /^\d{5}(-\d{4})?$/.test((v || "").trim());
+        const isValidState = (v: string | undefined) => /^[A-Za-z]{2}$/.test((v || "").trim());
 
-        const nameError = (val: string, label: string) => {
+        const nameError = (val: string | undefined, label: string) => {
             if (!val) return `${label} is required.`;
             if (!nameHasLetters(val)) return `${label} must contain letters (e.g. "Clinic Name").`;
             return null;
@@ -278,14 +328,14 @@ export default function ReviewClaimStep({
         }
 
         const icdPointersMissing = (current.line_items || []).some(
-            (li: any) => (li.procedure_code || hasCpt) && (!li.diagnosis_pointers || li.diagnosis_pointers.length === 0)
+            (li: ClaimLineItem) => (li.procedure_code || hasCpt) && (!li.diagnosis_pointers || li.diagnosis_pointers.length === 0)
         );
         if (icdPointersMissing) {
             errs.push("ICD diagnosis pointers are required on each service line with a CPT code.");
         }
 
         const hasNegativeCharge = (current.line_items || []).some(
-            (li: any) => li.procedure_code && Number(li.charge_amount) <= 0
+            (li: ClaimLineItem) => li.procedure_code && Number(li.charge_amount) <= 0
         );
         if (hasNegativeCharge) {
             errs.push("Charge amount must be greater than 0 on each service line.");
@@ -295,6 +345,7 @@ export default function ReviewClaimStep({
         onValidationChange?.(errs.length === 0);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hydrateWithDefaults = async (preview: any) => {
         if (!preview) return;
         setPrefilling(true);
@@ -305,18 +356,23 @@ export default function ReviewClaimStep({
                 preview.patient_id ? apiClient.patients.getSubscriber(preview.patient_id) : Promise.resolve(null),
             ]);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const meData: any = meResp.status === "fulfilled" ? meResp.value.data : null;
             // /me returns { success, user: {...}, organization: {...} }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const profile: any = meData?.user ?? null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const patient: any =
                 patientResp.status === "fulfilled" && patientResp.value
                     ? (patientResp.value.data?.data || patientResp.value.data || patientResp.value)
                     : null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const subscriber: any =
                 subscriberResp.status === "fulfilled" && subscriberResp.value
                     ? (subscriberResp.value.data?.data || subscriberResp.value.data || subscriberResp.value)
                     : null;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mergeIfMissing = (target: any, source: any, keys: string[]) => {
                 if (!source) return;
                 keys.forEach((key) => {
@@ -950,7 +1006,7 @@ export default function ReviewClaimStep({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                            {claim.line_items?.map((item: any, index: number) => (
+                            {claim.line_items?.map((item: ClaimLineItem, index: number) => (
                                 <tr key={index} className="bg-white">
                                     <td className="px-4 py-3 text-slate-500">{item.line_number}</td>
                                     <td className="px-4 py-3">
