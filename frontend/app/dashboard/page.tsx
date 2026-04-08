@@ -35,7 +35,7 @@ const mapPatient = (p: any): Patient => ({
 
 
 export default function DashboardHome() {
-    const { user, isLoading: authLoading } = useAuth();
+    const { user, isLoading: authLoading, checkAuth } = useAuth();
     const {
         canReadPatients,
         canManageEncounters,
@@ -157,6 +157,7 @@ export default function DashboardHome() {
         try {
             const response = await apiClient.organizations.create({ name: orgName.trim() });
             setOrganization(extractOrganization(response));
+            await checkAuth();
             setOrgName("");
         } catch (error: any) {
             logger.error("Failed to create organization", error);
@@ -182,6 +183,7 @@ export default function DashboardHome() {
         try {
             const response = await apiClient.organizations.joinWithCode(inviteCode.trim());
             setOrganization(extractOrganization(response));
+            await checkAuth();
             setInviteCode("");
         } catch (error: any) {
             logger.error("Failed to join organization", error);
