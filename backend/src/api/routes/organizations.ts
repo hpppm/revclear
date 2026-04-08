@@ -278,8 +278,8 @@ router.post("/join", authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/organizations/invite - generate a new invitation token (admin only)
-router.post("/invite", authMiddleware, requireRole(["admin"]), async (req, res) => {
+// POST /api/organizations/invite - generate a new invitation token (any org member)
+router.post("/invite", authMiddleware, async (req, res) => {
   try {
     const user = await requireUser(req, res);
     if (!user) return;
