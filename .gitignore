@@ -56,7 +56,9 @@ id_rsa.pub
 
 # PHI and sensitive data
 *phi*
-*patient*
+*patient*.sql
+*patient*.dump
+*patient*.csv
 *medical-records*
 encryption-key*
 master-key*

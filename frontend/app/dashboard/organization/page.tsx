@@ -10,7 +10,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization } from "@/app/lib/types";
 import logger from "@/app/lib/logger";
-import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
+import { OrganizationFormSchema, stripEmptyStrings } from "@/app/lib/validation/schemas";
 
 export default function OrganizationProfilePage() {
     const { user, isLoading: authLoading } = useAuth();
@@ -116,7 +116,7 @@ export default function OrganizationProfilePage() {
         setError(null);
         setFieldErrors({});
 
-        const validation = OrganizationFormSchema.safeParse(formData);
+        const validation = OrganizationFormSchema.safeParse(stripEmptyStrings(formData));
         if (!validation.success) {
             const errs: Record<string, string> = {};
             validation.error.issues.forEach((err) => {
@@ -124,6 +124,7 @@ export default function OrganizationProfilePage() {
                 if (key && !errs[key]) errs[key] = err.message;
             });
             setFieldErrors(errs);
+            setError("Please fix the highlighted fields below before saving.");
             return;
         }
 
@@ -151,15 +152,18 @@ export default function OrganizationProfilePage() {
             // await checkAuth(); 
         } catch (error: any) {
             logger.error("Failed to save organization", error);
-            let message = "Could not save organization.";
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                message = error.response.data.errors
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
-                    .join(", ");
-            } else if (error?.response?.data?.message) {
-                message = error.response.data.message;
+            const backendErrors: any[] = error?.response?.data?.errors || [];
+            if (backendErrors.length > 0) {
+                const errs: Record<string, string> = {};
+                backendErrors.forEach((e: any) => {
+                    const key = String(e.path?.[0] || "");
+                    if (key && !errs[key]) errs[key] = e.message;
+                });
+                setFieldErrors(errs);
+                setError("Please fix the highlighted fields below before saving.");
+            } else {
+                setError(error?.response?.data?.message || error?.response?.data?.error || "Could not save organization.");
             }
-            setError(message);
         } finally {
             setSaving(false);
         }
@@ -225,12 +229,14 @@ export default function OrganizationProfilePage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Clinic Name"
+                                        error={fieldErrors.name}
                                     />
                                      <Input
                                         label="Phone"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 555-5555"
+                                        error={fieldErrors.phone}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -251,16 +257,20 @@ export default function OrganizationProfilePage() {
                                             label="City"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                            error={fieldErrors.city}
                                         />
                                         <Input
                                             label="State"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                                            placeholder="PA"
+                                            error={fieldErrors.state}
                                         />
                                         <Input
                                             label="Postal Code"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                                            error={fieldErrors.postal_code}
                                         />
                                     </div>
                                 </div>
@@ -282,12 +292,14 @@ export default function OrganizationProfilePage() {
                                         value={formData.billing_npi}
                                         onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
                                         placeholder="10-digit NPI"
+                                        error={fieldErrors.billing_npi}
                                     />
                                     <Input
                                         label="Billing Tax ID"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
                                         placeholder="Tax ID"
+                                        error={fieldErrors.billing_tax_id}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -308,16 +320,20 @@ export default function OrganizationProfilePage() {
                                             label="Billing City"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
+                                            error={fieldErrors.billing_city}
                                         />
                                         <Input
                                             label="Billing State"
                                             value={formData.billing_state}
                                             onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
+                                            placeholder="KS"
+                                            error={fieldErrors.billing_state}
                                         />
                                         <Input
                                             label="Billing Postal Code"
                                             value={formData.billing_postal_code}
                                             onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
+                                            error={fieldErrors.billing_postal_code}
                                         />
                                     </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -326,13 +342,36 @@ export default function OrganizationProfilePage() {
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
                                             placeholder="(555) 555-5555"
+                                            error={fieldErrors.billing_phone}
                                         />
-                                        <Input
-                                            label="Default Place of Service"
-                                            value={formData.default_place_of_service}
-                                            onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
-                                            placeholder="11"
-                                        />
+                                        <label className="space-y-1 block">
+                                            <span className="text-sm font-medium text-slate-700">Default Place of Service</span>
+                                            <select
+                                                value={formData.default_place_of_service}
+                                                onChange={(e) => setFormData({ ...formData, default_place_of_service: e.target.value })}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                            >
+                                                <option value="">— Select —</option>
+                                                <option value="02">02 — Telehealth (other location)</option>
+                                                <option value="10">10 — Telehealth (patient's home)</option>
+                                                <option value="11">11 — Office</option>
+                                                <option value="12">12 — Home</option>
+                                                <option value="13">13 — Assisted Living Facility</option>
+                                                <option value="21">21 — Inpatient Hospital</option>
+                                                <option value="22">22 — Outpatient Hospital</option>
+                                                <option value="23">23 — Emergency Room</option>
+                                                <option value="24">24 — Ambulatory Surgical Center</option>
+                                                <option value="31">31 — Skilled Nursing Facility</option>
+                                                <option value="32">32 — Nursing Facility</option>
+                                                <option value="49">49 — Independent Clinic</option>
+                                                <option value="65">65 — End-Stage Renal Disease Facility</option>
+                                                <option value="72">72 — Rural Health Clinic</option>
+                                                <option value="81">81 — Independent Laboratory</option>
+                                            </select>
+                                            {fieldErrors.default_place_of_service && (
+                                                <p className="mt-1 text-sm text-red-500">{fieldErrors.default_place_of_service}</p>
+                                            )}
+                                        </label>
                                     </div>
                                 </div>
                             </div>

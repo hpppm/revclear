@@ -164,7 +164,7 @@ export default function AddPatientPage() {
     setSaving(true);
 
     try {
-      // Strip empty strings so optional backend fields receive undefined not ""
+      // Strip empty strings so optional backend fields receive undefined, not ""
       const dataToSubmit = Object.fromEntries(
         Object.entries(base).filter(([, v]) => v !== "")
       );
@@ -226,6 +226,8 @@ export default function AddPatientPage() {
                   value={formData.dob}
                   onChange={(e) => handleChange("dob", e.target.value)}
                   onBlur={(e) => handleBlur("dob", e.target.value, e.target as HTMLElement)}
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                   required
                   error={fieldErrors.dob}
                 />

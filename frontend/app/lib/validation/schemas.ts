@@ -72,30 +72,43 @@ export const UserSchema = z.object({
 // Distinct from the response schemas above which guard against unexpected data
 // flowing back from the backend.
 
+// Strip empty strings to undefined before calling safeParse so that optional
+// fields receive undefined (which .optional() allows) rather than "" (which
+// would fail format-checking refines). Call stripEmptyStrings(formData) at
+// every safeParse call site instead of passing raw form state.
+export function stripEmptyStrings<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== "")
+  ) as Partial<T>;
+}
+
 const phoneSchema = z
   .string()
   .regex(/^\+?[\d\s\-(). ]{7,15}$/, "Please enter a valid phone number")
-  .optional()
-  .or(z.literal(""));
+  .optional();
 
 const zipSchema = z
   .string()
   .regex(/^\d{5}(-\d{4})?$/, "Please enter a valid ZIP code (e.g. 16501)")
-  .optional()
-  .or(z.literal(""));
+  .optional();
 
 const npiSchema = z
   .string()
   .regex(/^\d{10}$/, "NPI must be exactly 10 digits")
-  .optional()
-  .or(z.literal(""));
+  .optional();
 
 const dobPastSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
-  .refine((d: string) => !d || new Date(d) < new Date(), "Date of birth cannot be in the future")
-  .optional()
-  .or(z.literal(""));
+  .refine(
+    (d: string) => new Date(d) >= new Date("1900-01-01"),
+    "Date of birth cannot be before 1900-01-01"
+  )
+  .refine(
+    (d: string) => new Date(d) <= new Date(),
+    "Date of birth cannot be in the future"
+  )
+  .optional();
 
 export const LoginFormSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -139,6 +152,7 @@ const patientRequiredFields = {
     .string()
     .min(1, "Date of birth is required")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+    .refine((d: string) => new Date(d) >= new Date("1900-01-01"), "Date of birth cannot be before 1900-01-01")
     .refine((d: string) => new Date(d) < new Date(), "Date of birth cannot be in the future"),
   gender: z.enum(["M", "F", "U", "O"], { error: "Gender is required" }),
   phone: z
@@ -195,53 +209,59 @@ export const EditPatientFormSchema = z
 
 export const ProfileFormSchema = z.object({
   phone: phoneSchema,
-  practitioner_type: z.string().max(100).optional().or(z.literal("")),
-  license_id: z.string().max(50).optional().or(z.literal("")),
+  practitioner_type: z.string().max(100).optional(),
+  license_id: z.string().max(50).optional(),
   license_state: z
     .string()
     .regex(/^[A-Za-z]{2}$/, "License state must be a 2-letter abbreviation (e.g. CA)")
-    .optional()
-    .or(z.literal("")),
+    .optional(),
   npi: npiSchema,
   taxonomy_code: z
     .string()
     .regex(/^[A-Za-z0-9]{10}$/, "Taxonomy code must be exactly 10 alphanumeric characters")
-    .optional()
-    .or(z.literal("")),
+    .optional(),
 });
 
+const optStr = (max: number) => z.string().max(max).optional();
+const stateSchema = z
+  .string()
+  .regex(/^[A-Za-z]{2}$/, "State must be a 2-letter abbreviation (e.g. PA)")
+  .optional();
+
 export const OrganizationFormSchema = z.object({
-  name: z.string().max(200).optional().or(z.literal("")),
+  name: optStr(200),
   npi: npiSchema,
-  tax_id: z.string().max(20).optional().or(z.literal("")),
-  address_line1: z.string().max(200).optional().or(z.literal("")),
-  address_line2: z.string().max(200).optional().or(z.literal("")),
-  city: z.string().max(100).optional().or(z.literal("")),
-  state: z.string().max(2).optional().or(z.literal("")),
+  tax_id: optStr(20),
+  address_line1: optStr(200),
+  address_line2: optStr(200),
+  city: optStr(100),
+  state: stateSchema,
   postal_code: zipSchema,
   phone: phoneSchema,
-  billing_name: z.string().max(200).optional().or(z.literal("")),
+  billing_name: optStr(200),
   billing_npi: npiSchema,
-  billing_tax_id: z.string().max(20).optional().or(z.literal("")),
-  billing_address_line1: z.string().max(200).optional().or(z.literal("")),
-  billing_address_line2: z.string().max(200).optional().or(z.literal("")),
-  billing_city: z.string().max(100).optional().or(z.literal("")),
-  billing_state: z.string().max(2).optional().or(z.literal("")),
+  billing_tax_id: optStr(20),
+  billing_address_line1: optStr(200),
+  billing_address_line2: optStr(200),
+  billing_city: optStr(100),
+  billing_state: stateSchema,
   billing_postal_code: zipSchema,
   billing_phone: phoneSchema,
-  default_place_of_service: z.string().max(10).optional().or(z.literal("")),
-  edi_sender_id: z.string().max(50).optional().or(z.literal("")),
-  edi_receiver_id: z.string().max(50).optional().or(z.literal("")),
-  edi_sftp_host: z.string().max(200).optional().or(z.literal("")),
-  edi_sftp_username: z.string().max(100).optional().or(z.literal("")),
+  default_place_of_service: z
+    .string()
+    .regex(/^\d{2}$/, "Place of service must be a 2-digit numeric code (e.g. 11)")
+    .optional(),
+  edi_sender_id: optStr(50),
+  edi_receiver_id: optStr(50),
+  edi_sftp_host: optStr(200),
+  edi_sftp_username: optStr(100),
   edi_sftp_port: z
     .string()
     .refine(
-      (v: string) => !v || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535),
+      (v) => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 65535,
       "Port must be a number between 1 and 65535"
     )
-    .optional()
-    .or(z.literal("")),
+    .optional(),
 });
 
 export const EncounterDetailsFormSchema = z.object({
@@ -251,7 +271,7 @@ export const EncounterDetailsFormSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
     .refine((d: string) => new Date(d) <= new Date(), "Date of service cannot be in the future"),
   encounterType: z.enum(["office_visit", "telehealth", "phone", "home_visit"]),
-  chiefComplaint: z.string().max(500).optional().or(z.literal("")),
+  chiefComplaint: z.string().max(500).optional(),
 });
 
 export const SubscriberFormSchema = z.object({
@@ -267,5 +287,5 @@ export const SubscriberFormSchema = z.object({
   address_state: z.string().min(1, "State is required").max(2, "State must be 2 characters"),
   address_zip: zipSchema,
   member_id: z.string().min(1, "Member ID is required").max(50),
-  group_number: z.string().max(50).optional().or(z.literal("")),
+  group_number: z.string().max(50).optional(),
 });
