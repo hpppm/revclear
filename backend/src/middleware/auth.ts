@@ -61,8 +61,10 @@ function getVerifier() {
   return verifier;
 }
 
-// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost
-if (userPoolId && clientId) {
+// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost.
+// Skip this in tests because Jest imports the module repeatedly and the async
+// hydration/retry path leaves open handles after the suite completes.
+if (userPoolId && clientId && process.env.NODE_ENV !== "test") {
   const v = getVerifier();
   if (v) {
     v.hydrate()

@@ -297,8 +297,8 @@ describe("Fix 7: organization invites are single-use under concurrent requests",
 describe("Fix 6: local HTTP AI endpoint support is limited to loopback hosts", () => {
   it("codeMatcher.ts allows localhost HTTP only in non-production", () => {
     const content = readSrc("services/ai/providers/codeMatcher.ts");
-    expect(content).toMatch(/parsed\.hostname === "localhost"/);
-    expect(content).toMatch(/parsed\.hostname === "127\.0\.0\.1"/);
+    expect(content).toMatch(/isPrivateOrInternalHostname/);
+    expect(content).toMatch(/hostname === "localhost" \|\| hostname === "127\.0\.0\.1"/);
     expect(content).toMatch(/process\.env\.NODE_ENV !== "production"/);
   });
 });
