@@ -87,7 +87,7 @@ export default function PatientDetailsStep({
     setMetadata({ ...metadata, subscriber: updated });
     // Clear error as soon as user starts correcting the field
     if (subscriberFieldErrors[field]) {
-      setSubscriberFieldErrors((prev) => { const { [field]: _, ...rest } = prev; return rest; });
+      setSubscriberFieldErrors((prev) => { const { [field]: _unused, ...rest } = prev; void _unused; return rest; });
     }
   };
 
@@ -97,7 +97,8 @@ export default function PatientDetailsStep({
     const result = fieldSchema.safeParse(value);
     setSubscriberFieldErrors((prev) => {
       if (result.success) {
-        const { [field]: _, ...rest } = prev;
+        const { [field]: _unused, ...rest } = prev;
+        void _unused;
         return rest;
       }
       return { ...prev, [field]: result.error.issues[0]?.message || "Invalid value" };

@@ -73,7 +73,7 @@ export default function WizardContainer({
             } else {
                 onComplete();
             }
-        } catch (err: any) {
+        } catch (err) {
             logger.error("Error in step transition", err);
             // On the last step the component handles its own field-level scroll;
             // only scroll to top for earlier steps where there is no field-level scroll.
@@ -81,7 +81,7 @@ export default function WizardContainer({
                 contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                 window.scrollTo({ top: 0, behavior: "smooth" });
             }
-            setStepError(err?.message || "Please fix the errors above before continuing.");
+            setStepError(err instanceof Error ? err.message : "Please fix the errors above before continuing.");
         } finally {
             setIsTransitioning(false);
         }
