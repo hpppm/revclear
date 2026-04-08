@@ -39,9 +39,12 @@ export const codesApi = {
         let response;
         try {
             response = await api.get<{ data: RawCode[] }>(`/encounters/${encounterId}/codes`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             // If no codes are saved yet, the API may return 404; treat that as "no codes"
-            if (error?.response?.status === 404) {
+            const status = typeof error === "object" && error !== null && "response" in error
+                ? (error as { response?: { status?: number } }).response?.status
+                : undefined;
+            if (status === 404) {
                 return { data: { data: [] as MedicalCode[] } };
             }
             throw error;

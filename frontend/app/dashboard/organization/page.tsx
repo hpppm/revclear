@@ -423,7 +423,7 @@ export default function OrganizationProfilePage() {
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Phone</label>
-                                        <p className="text-slate-900 font-medium">{organization.phone || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.phone}</p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Address</label>
@@ -433,7 +433,7 @@ export default function OrganizationProfilePage() {
                                                 organization.address_line2,
                                                 [organization.city, organization.state].filter(Boolean).join(", "),
                                                 organization.postal_code
-                                            ].filter(Boolean).join(" · ") || "—"}
+                                            ].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
                                 </div>
@@ -445,19 +445,19 @@ export default function OrganizationProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Name</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_name || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_name}</p>
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Phone</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_phone || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_phone}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing NPI</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_npi || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_npi}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Tax ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_tax_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_tax_id}</p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Address</label>
@@ -467,12 +467,12 @@ export default function OrganizationProfilePage() {
                                                 organization.billing_address_line2,
                                                 [organization.billing_city, organization.billing_state].filter(Boolean).join(", "),
                                                 organization.billing_postal_code
-                                            ].filter(Boolean).join(" · ") || "—"}
+                                            ].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Default POS</label>
-                                        <p className="text-slate-900 font-medium">{organization.default_place_of_service || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.default_place_of_service}</p>
                                     </div>
                                 </div>
                             </div>
@@ -483,19 +483,19 @@ export default function OrganizationProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">EDI Sender ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sender_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_sender_id}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">EDI Receiver ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_receiver_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_receiver_id}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Host</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_host || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_host}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Username</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_username || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_username}</p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Credentials</label>
