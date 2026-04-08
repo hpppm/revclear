@@ -30,7 +30,7 @@ type RawCode = {
 };
 
 export default function MedicalCodesViewer({
-  soap: _soap,
+  soap: _,
   encounterId,
   savedCodes = [],
   onCodesSelected,
@@ -78,7 +78,6 @@ export default function MedicalCodesViewer({
       setIcdCandidates(normalized.filter((c) => c.type === "ICD-10"));
       setCptCandidates(normalized.filter((c) => c.type === "CPT"));
       setSelectedCodes(normalized);
-      onCodesSelected?.(normalized);
       setHasGenerated(true);
     }
   }, [savedCodes]); // eslint-disable-line react-hooks/exhaustive-deps

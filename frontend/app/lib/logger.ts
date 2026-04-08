@@ -5,40 +5,23 @@
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-// Serialize errors so Axios errors (which have non-enumerable properties)
-// don't log as empty objects {}.
-function serializeError(err: unknown): unknown {
-  if (err instanceof Error) {
-    const axiosErr = err as any;
-    return {
-      message: err.message,
-      ...(axiosErr.response && {
-        status: axiosErr.response.status,
-        data: axiosErr.response.data,
-      }),
-      stack: err.stack,
-    };
-  }
-  return err;
-}
-
 export const logger = {
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log(...args);
     }
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     if (isDevelopment) {
-      console.error(...args.map((a) => (a instanceof Error ? serializeError(a) : a)));
+      console.error(...args);
     }
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     if (isDevelopment) {
       console.warn(...args);
     }
   },
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     if (isDevelopment) {
       console.info(...args);
     }

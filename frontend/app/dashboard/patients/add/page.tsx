@@ -167,7 +167,7 @@ export default function AddPatientPage() {
     setSaving(true);
 
     try {
-      // Strip empty strings so optional backend fields receive undefined, not ""
+      // Strip empty strings so optional backend fields receive undefined not ""
       const dataToSubmit = Object.fromEntries(
         Object.entries(base).filter(([, v]) => v !== "")
       );
@@ -427,10 +427,7 @@ export default function AddPatientPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-6 border-t border-slate-200">
-              <Button type="submit" loading={saving}>
-                Save Patient
-              </Button>
+            <div className="flex justify-between pt-6 border-t border-slate-200">
               <Button
                 type="button"
                 variant="secondary"
@@ -438,6 +435,9 @@ export default function AddPatientPage() {
                 disabled={saving}
               >
                 Cancel
+              </Button>
+              <Button type="submit" loading={saving}>
+                Save Patient
               </Button>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}

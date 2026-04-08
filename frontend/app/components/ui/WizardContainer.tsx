@@ -44,7 +44,6 @@ export default function WizardContainer({
         // Sync step from parent (URL restore) without triggering onStepChange
         userNavigatedRef.current = false;
         setCurrentStep(initialStep);
-        setStepError(null);
     }, [initialStep]);
 
     useEffect(() => {
@@ -101,8 +100,8 @@ export default function WizardContainer({
                 userNavigatedRef.current = true;
                 setCurrentStep(currentStep - 1);
             }
-        } catch (err) {
-            logger.error("Error in step transition", err);
+        } catch {
+            logger.error("Error in step transition");
         } finally {
             setIsTransitioning(false);
         }
@@ -115,19 +114,21 @@ export default function WizardContainer({
     const canGoBack = currentStepData.canGoBack !== false && !isFirstStep && !isTransitioning;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl">
+        <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-6 md:py-8">
+            
+            <div className="mx-auto w-full max-w-7xl">
                 {title && (
-                    <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
+                    <div className="mb-6 text-center">
+                        <h1 className="text-5xl font-bold text-slate-900">{title}</h1>
                     </div>
                 )}
-
-                <Card className="min-h-[600px] flex flex-col">
-                    <StepIndicator
+                <StepIndicator
                         steps={steps.map((s) => ({ name: s.name, description: s.description }))}
                         currentStep={currentStep}
                     />
+
+                <Card className="min-h-[600px] rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm flex flex-col md:px-8">
+                    
 
                     <div ref={contentRef} className="flex-1 overflow-auto">
                         <div className="animate-fadeIn">{currentStepData.component}</div>
@@ -140,12 +141,12 @@ export default function WizardContainer({
                     <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
                         {isFirstStep && onExit ? (
                             <Button variant="ghost" onClick={onExit}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4  inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 Exit
                             </Button>
                         ) : (
                             <Button variant="ghost" onClick={handleBack} disabled={!canGoBack}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4  inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                                 Back
                             </Button>
                         )}
@@ -153,8 +154,8 @@ export default function WizardContainer({
                             Step {currentStep + 1} of {steps.length}
                         </div>
                         <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Submit" : "Continue"}
-                            {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                            {isLastStep ? "Submit for Review" : "Continue"}
+                            {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4  inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                         </Button>
                     </div>
                 </Card>

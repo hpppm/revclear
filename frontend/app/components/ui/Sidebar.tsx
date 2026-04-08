@@ -122,13 +122,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         replace
                         aria-current={isActive(item.href) ? "page" : undefined}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
-                            collapsed ? "justify-center" : ""
-                        } ${
+                        className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
                             isActive(item.href)
                                 ? "brand-button-primary text-white"
                                 : "text-slate-400 hover:bg-white/5 hover:text-white"
-                        }`}
+                        } ${collapsed ? "!justify-center" : "!justify-start"}`}
                     >
                         {item.icon}
                         {!collapsed && item.label}
@@ -143,13 +141,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     replace
                     aria-current={pathname === "/dashboard/profile" ? "page" : undefined}
                     title={collapsed ? "Profile" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
-                        collapsed ? "justify-center" : ""
-                    } ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
                         pathname === "/dashboard/profile"
                             ? "brand-button-primary text-white"
                             : "text-slate-400 hover:bg-white/5 hover:text-white"
-                    }`}
+                    } ${collapsed ? "!justify-center" : "!justify-start"}`}
                 >
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-white shrink-0">
                         {userInitials}

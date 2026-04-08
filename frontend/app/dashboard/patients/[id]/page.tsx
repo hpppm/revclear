@@ -154,8 +154,8 @@ export default function PatientProfilePage() {
 
         setSaving(true);
         try {
-            const nullIfEmpty = (v: string | null | undefined) =>
-                v === "" ? null : v ?? null;
+            const nullIfEmpty = (v: string | null | undefined): string | undefined =>
+                v === "" || v == null ? undefined : v;
             await apiClient.patients.update(patientId, {
                 full_name: editedPatient.name,
                 dob: nullIfEmpty(editedPatient.dob),
@@ -371,8 +371,11 @@ export default function PatientProfilePage() {
                                 {!editMode && canWritePatients ? (
                                     <button
                                         onClick={() => setEditMode(true)}
-                                        className="brand-button-primary px-4 py-2 rounded-lg font-medium text-sm text-white"
+                                        className="brand-button-primary inline-flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm text-white"
                                     >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
                                         Edit Profile
                                     </button>
                                 ) : editMode ? (
@@ -589,9 +592,12 @@ export default function PatientProfilePage() {
                         {canManageEncounters && (
                             <Link
                                 href={`/dashboard/encounters/create?patientId=${patientId}`}
-                                className="brand-button-primary rounded-lg px-4 py-2 text-sm font-semibold shadow-sm"
+                                className="brand-button-primary inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm"
                             >
-                                + Start New Encounter
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Encounter
                             </Link>
                         )}
                     </div>
@@ -646,7 +652,7 @@ export default function PatientProfilePage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 {canManageEncounters ? (
-                                                    <>
+                                                    <div className="inline-flex items-center justify-end gap-3">
                                                         {encounter.status === "ready" || encounter.status === "completed" ? (
                                                             <Link
                                                                 href={`/dashboard/encounters/${encounter.id}`}
@@ -666,7 +672,7 @@ export default function PatientProfilePage() {
                                                             type="button"
                                                             aria-label="Delete encounter"
                                                             onClick={() => setConfirmDeleteId(encounter.id)}
-                                                            className="ml-4 text-slate-400 hover:text-red-600 disabled:opacity-50"
+                                                            className="inline-flex items-center text-slate-400 hover:text-red-600 disabled:opacity-50"
                                                         >
                                                             <svg
                                                                 xmlns="http://www.w3.org/2000/svg"
@@ -681,7 +687,7 @@ export default function PatientProfilePage() {
                                                                 />
                                                             </svg>
                                                         </button>
-                                                    </>
+                                                    </div>
                                                 ) : (
                                                     <span className="text-slate-400">No encounter access</span>
                                                 )}

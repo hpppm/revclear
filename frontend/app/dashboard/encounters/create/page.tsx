@@ -292,6 +292,10 @@ export default function EncounterPage() {
         setMetadata((prev) => ({ ...prev, subscriber: null }));
         return;
       }
+      if (!metadata.subscriber?.full_name) {
+        setSubscriberError("Subscriber name is required when relationship is not self");
+        throw new Error("Missing subscriber name");
+      }
       const sub = metadata.subscriber;
       const subPayload: SubscriberWritePayload = {
         full_name: sub?.full_name ?? "",
@@ -594,7 +598,7 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
-          lockedPatientId={searchPatientId}
+          lockedPatientId={searchPatientId || null}
         />
       ),
       canGoNext: (() => {
@@ -637,18 +641,6 @@ export default function EncounterPage() {
 
         setEncounterFieldErrors({});
 
-        // Validate patient insurance fields before any API call
-        const selectedPatient = patients.find((p) => p.id === metadata.patientId);
-        if (selectedPatient && selectedPatient.insuranceType !== "SELF_PAY") {
-          const insuranceErrs: Record<string, string> = {};
-          if (!selectedPatient.insuranceType) insuranceErrs.insurance_provider = "Insurance provider is required — update the patient profile";
-          if (!selectedPatient.insuranceId) insuranceErrs.insurance_member_id = "Member / Policy ID is required — update the patient profile";
-          if (Object.keys(insuranceErrs).length > 0) {
-            setEncounterFieldErrors(insuranceErrs);
-            throw new Error("This patient is missing required insurance information. Please update their profile first.");
-          }
-        }
-
         // Validate required subscriber fields
         if (metadata.relationship !== "self") {
           const subErrs: Record<string, string> = {};
@@ -660,14 +652,13 @@ export default function EncounterPage() {
           if (!metadata.subscriber?.address_state) subErrs.subscriber_address_state = "State is required";
           if (!metadata.subscriber?.member_id) subErrs.subscriber_member_id = "Member ID is required";
           if (Object.keys(subErrs).length > 0) {
-            setEncounterFieldErrors((prev) => ({ ...prev, ...subErrs }));
+            setEncounterFieldErrors(subErrs);
             throw new Error("Please fill in all required subscriber fields.");
           }
         }
 
         // Step 1: Create or update encounter
         await persistSubscriber();
-        try {
         if (!encounterId) {
           const res = await apiClient.encounters.create({
             patient_id: metadata.patientId,
@@ -690,9 +681,6 @@ export default function EncounterPage() {
             encounter_type: metadata.encounterType,
             chief_complaint: metadata.chiefComplaint,
           });
-        }
-        } catch {
-          throw new Error("Failed to save encounter. Please check all fields and try again.");
         }
       },
     },
@@ -751,11 +739,10 @@ export default function EncounterPage() {
           encounterId={encounterId}
           soap={soap}
           savedCodes={savedCodes}
-          selectedCodes={selectedCodes}
           onSelectionChange={handleCodesSelected}
         />
       ),
-      canGoNext: selectedCodes.some((c) => c.type === "ICD-10") && selectedCodes.some((c) => c.type === "CPT"),
+      canGoNext: true, // Codes are optional
       onNext: async () => {
         await handleSaveCodes();
       },
@@ -789,7 +776,6 @@ export default function EncounterPage() {
             }
           } catch (err) {
             logger.error("Failed to save claim", err);
-            throw err;
           }
         }
 

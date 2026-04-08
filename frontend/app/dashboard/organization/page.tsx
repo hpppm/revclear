@@ -15,7 +15,7 @@ import {
 } from "@/app/lib/types";
 import { ORGANIZATION_MEMBER_ROLES, OrganizationMemberRole } from "@/app/lib/auth/roles";
 import logger from "@/app/lib/logger";
-import { OrganizationFormSchema, stripEmptyStrings } from "@/app/lib/validation/schemas";
+import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
 
 const ROLE_OPTIONS: Array<{ value: OrganizationMemberRole; label: string }> = [
     { value: "clinician", label: "Clinician" },
@@ -183,7 +183,7 @@ export default function OrganizationProfilePage() {
         setError(null);
         setFieldErrors({});
 
-        const validation = OrganizationFormSchema.safeParse(stripEmptyStrings(formData));
+        const validation = OrganizationFormSchema.safeParse(formData);
         if (!validation.success) {
             const errs: Record<string, string> = {};
             validation.error.issues.forEach((err) => {
@@ -191,7 +191,6 @@ export default function OrganizationProfilePage() {
                 if (key && !errs[key]) errs[key] = err.message;
             });
             setFieldErrors(errs);
-            setError("Please fix the highlighted fields below before saving.");
             return;
         }
 
@@ -224,18 +223,15 @@ export default function OrganizationProfilePage() {
             // await checkAuth(); 
         } catch (error: any) {
             logger.error("Failed to save organization", error);
-            const backendErrors: any[] = error?.response?.data?.errors || [];
-            if (backendErrors.length > 0) {
-                const errs: Record<string, string> = {};
-                backendErrors.forEach((e: any) => {
-                    const key = String(e.path?.[0] || "");
-                    if (key && !errs[key]) errs[key] = e.message;
-                });
-                setFieldErrors(errs);
-                setError("Please fix the highlighted fields below before saving.");
-            } else {
-                setError(error?.response?.data?.message || error?.response?.data?.error || "Could not save organization.");
+            let message = "Could not save organization.";
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                message = error.response.data.errors
+                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+                    .join(", ");
+            } else if (error?.response?.data?.message) {
+                message = error.response.data.message;
             }
+            setError(message);
         } finally {
             setSaving(false);
         }
@@ -335,14 +331,12 @@ export default function OrganizationProfilePage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Clinic Name"
-                                        error={fieldErrors.name}
                                     />
                                      <Input
                                         label="Phone"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 555-5555"
-                                        error={fieldErrors.phone}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -365,20 +359,16 @@ export default function OrganizationProfilePage() {
                                             label="City"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                            error={fieldErrors.city}
                                         />
                                         <Input
                                             label="State"
                                             value={formData.state}
                                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                                            placeholder="PA"
-                                            error={fieldErrors.state}
                                         />
                                         <Input
                                             label="Postal Code"
                                             value={formData.postal_code}
                                             onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                                            error={fieldErrors.postal_code}
                                         />
                                     </div>
                                 </div>
@@ -401,14 +391,12 @@ export default function OrganizationProfilePage() {
                                         value={formData.billing_npi}
                                         onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
                                         placeholder="10-digit NPI"
-                                        error={fieldErrors.billing_npi}
                                     />
                                     <Input
                                         label="Billing Tax ID"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
                                         placeholder="Tax ID"
-                                        error={fieldErrors.billing_tax_id}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -431,20 +419,16 @@ export default function OrganizationProfilePage() {
                                             label="Billing City"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
-                                            error={fieldErrors.billing_city}
                                         />
                                         <Input
                                             label="Billing State"
                                             value={formData.billing_state}
                                             onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
-                                            placeholder="KS"
-                                            error={fieldErrors.billing_state}
                                         />
                                         <Input
                                             label="Billing Postal Code"
                                             value={formData.billing_postal_code}
                                             onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
-                                            error={fieldErrors.billing_postal_code}
                                         />
                                     </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -453,7 +437,6 @@ export default function OrganizationProfilePage() {
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
                                             placeholder="(555) 555-5555"
-                                            error={fieldErrors.billing_phone}
                                         />
                                         <label className="space-y-1 block">
                                             <span className="text-sm font-medium text-slate-700">Default Place of Service</span>
@@ -572,7 +555,7 @@ export default function OrganizationProfilePage() {
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Phone</label>
-                                        <p className="text-slate-900 font-medium">{organization.phone || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.phone}</p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Address</label>
@@ -582,7 +565,7 @@ export default function OrganizationProfilePage() {
                                                 organization.address_line2,
                                                 [organization.city, organization.state].filter(Boolean).join(", "),
                                                 organization.postal_code
-                                            ].filter(Boolean).join(" · ") || "—"}
+                                            ].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
                                 </div>
@@ -594,19 +577,19 @@ export default function OrganizationProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Name</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_name || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_name}</p>
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Phone</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_phone || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_phone}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing NPI</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_npi || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_npi}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Tax ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.billing_tax_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.billing_tax_id}</p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Billing Address</label>
@@ -616,12 +599,12 @@ export default function OrganizationProfilePage() {
                                                 organization.billing_address_line2,
                                                 [organization.billing_city, organization.billing_state].filter(Boolean).join(", "),
                                                 organization.billing_postal_code
-                                            ].filter(Boolean).join(" · ") || "—"}
+                                            ].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
                                      <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Default POS</label>
-                                        <p className="text-slate-900 font-medium">{organization.default_place_of_service || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.default_place_of_service}</p>
                                     </div>
                                 </div>
                             </div>
@@ -632,19 +615,19 @@ export default function OrganizationProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">EDI Sender ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sender_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_sender_id}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">EDI Receiver ID</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_receiver_id || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_receiver_id}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Host</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_host || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_host}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Username</label>
-                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_username || "—"}</p>
+                                        <p className="text-slate-900 font-medium">{organization.edi_sftp_username}</p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-500 mb-1">SFTP Credentials</label>
