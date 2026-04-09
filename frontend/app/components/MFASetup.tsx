@@ -20,7 +20,7 @@ function getApiError(err: unknown): string | undefined {
   );
 }
 
-type SetupState = "loading" | "ready" | "confirming" | "error";
+type SetupState = "loading" | "ready" | "confirming" | "success" | "error";
 
 export default function MFASetup({ onSuccess }: Props) {
   const [state, setState] = useState<SetupState>("loading");
@@ -71,7 +71,11 @@ export default function MFASetup({ onSuccess }: Props) {
     setState("confirming");
     try {
       await apiClient.auth.confirmTotpSetup({ userCode });
-      onSuccess();
+      // Setup complete — but the returned tokens lack amr:"mfa", so the user
+      // must sign in again with their TOTP code to get an MFA-satisfied session.
+      // Show a brief success state then hand off to the parent to redirect.
+      setState("success");
+      setTimeout(() => onSuccess(), 1800);
     } catch (err: unknown) {
       setErrorMsg(getApiError(err) ?? "Invalid code. Please try again.");
       setState("ready");
@@ -105,6 +109,20 @@ export default function MFASetup({ onSuccess }: Props) {
           </div>
 
           <div className="px-8 py-6 space-y-6">
+            {state === "success" && (
+              <div className="flex flex-col items-center gap-4 py-8 text-center">
+                <span className="flex items-center justify-center w-16 h-16 rounded-full bg-[var(--brand-50)] text-[var(--brand-600)]">
+                  <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-base font-semibold text-gray-800">Authenticator connected!</p>
+                  <p className="text-sm text-gray-500 mt-1">Sign in with your email and password — we'll ask for your authenticator code to complete sign-in.</p>
+                </div>
+              </div>
+            )}
+
             {state === "loading" && (
               <div className="flex flex-col items-center gap-3 py-8 text-[var(--brand-600)]">
                 <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">

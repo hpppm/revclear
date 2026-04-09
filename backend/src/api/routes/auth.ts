@@ -282,17 +282,15 @@ router.post("/confirm-totp-setup", async (req, res) => {
     if (verifyResult.Status !== "SUCCESS") {
       return res.status(400).json({ error: "Invalid verification code. Please try again." });
     }
-    const authResponse = await respondToMfaSetupChallenge(username, verifyResult.Session!);
-    const authResult = authResponse.AuthenticationResult;
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
-    }
+    // Complete the MFA_SETUP challenge to register the TOTP device with Cognito.
+    // IMPORTANT: tokens returned here do NOT include amr:"mfa" — Cognito only
+    // sets that claim when the user responds to a SOFTWARE_TOKEN_MFA challenge.
+    // Do NOT set auth cookies here; the user must sign in again with their new
+    // TOTP code to get MFA-satisfied tokens that pass the auth middleware check.
+    await respondToMfaSetupChallenge(username, verifyResult.Session!);
     res.clearCookie("mfaSession", { path: "/" });
     res.clearCookie("mfaUsername", { path: "/" });
-    res.status(200).json({ message: "MFA setup complete. Signed in successfully." });
+    res.status(200).json({ setupComplete: true });
   } catch (error: any) {
     logger.warn({ err: error.name }, "auth/confirm-totp-setup failed");
     if (error.name === "EnableSoftwareTokenMFAException" || error.name === "CodeMismatchException") {
@@ -328,8 +326,11 @@ router.post("/confirm-totp-code", async (req, res) => {
     res.status(200).json({ message: "Signed in successfully." });
   } catch (error: any) {
     logger.warn({ err: error.name }, "auth/confirm-totp-code failed");
-    if (error.name === "CodeMismatchException" || error.name === "ExpiredCodeException") {
-      return res.status(400).json({ error: "Invalid or expired code. Please try again." });
+    if (error.name === "CodeMismatchException") {
+      return res.status(400).json({ error: "Invalid code. Please try again." });
+    }
+    if (error.name === "ExpiredCodeException") {
+      return res.status(400).json({ error: "Code expired. Open your authenticator app for a fresh code." });
     }
     res.status(401).json({ error: "MFA session expired. Please sign in again." });
   }

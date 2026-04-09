@@ -62,6 +62,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mfaStep, setMfaStep] = useState<MfaStep>("login");
+  const [setupBanner, setSetupBanner] = useState(false);
 
   const isFormInvalid = !email.trim() || !password.trim();
 
@@ -130,7 +131,14 @@ export default function LoginPage() {
   }
 
   if (mfaStep === "totp-setup") {
-    return <MFASetup onSuccess={handleMfaSuccess} />;
+    return (
+      <MFASetup
+        onSuccess={() => {
+          setSetupBanner(true);
+          setMfaStep("login");
+        }}
+      />
+    );
   }
 
   if (mfaStep === "totp-code") {
@@ -164,6 +172,15 @@ export default function LoginPage() {
               Welcome Back
             </h1>
           </div>
+
+          {setupBanner && (
+            <div className="mb-4 flex items-start gap-3 rounded-xl bg-[var(--brand-50)] border border-[var(--brand-200)] px-4 py-3 text-sm text-[var(--brand-700)]">
+              <svg className="mt-0.5 w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Authenticator set up! Sign in to continue — you'll be asked for your code.
+            </div>
+          )}
 
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <AuthSection>
