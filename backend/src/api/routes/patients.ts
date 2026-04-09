@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth";
+import { requireCapability } from "../../middleware/authorization";
 import { requireOrganization } from "../../middleware/context";
-import { PatientService } from "../../services/patientService";
+import {
+  filterPatientForRole,
+  filterSubscriberForRole,
+  PatientService,
+} from "../../services/patientService";
 import { CreatePatientSchema, UpdatePatientSchema, IdParamSchema, UpsertSubscriberSchema } from "../../types/zod";
 
 const router = Router();
@@ -9,7 +14,7 @@ const router = Router();
 // GET all patients for the authenticated clinician (scoped to organization)
 // @query {number} limit - Max results (default 50, max 100)
 // @query {number} offset - Skip results (default 0)
-router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/", authMiddleware, requireCapability("read_patients"), requireOrganization, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
     const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
@@ -19,9 +24,10 @@ router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
       req.user!.id,
       { limit, offset }
     );
+    const role = req.user?.role;
     res.json({
       success: true,
-      data: patients,
+      data: patients.map((patient) => filterPatientForRole(patient, role)),
       pagination: { limit, offset, total, hasMore: offset + patients.length < total }
     });
   } catch (error) {
@@ -30,7 +36,7 @@ router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
 });
 
 // Upsert subscriber for a patient (one per patient)
-router.put("/:id/subscriber", authMiddleware, requireOrganization, async (req, res, next) => {
+router.put("/:id/subscriber", authMiddleware, requireCapability("write_patients"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -50,14 +56,17 @@ router.put("/:id/subscriber", authMiddleware, requireOrganization, async (req, r
       req.user!.id
     );
 
-    res.json({ success: true, data: subscriber });
+    res.json({
+      success: true,
+      data: filterSubscriberForRole(subscriber, req.user?.role),
+    });
   } catch (error) {
     next(error);
   }
 });
 
 // Get subscriber for a patient
-router.get("/:id/subscriber", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/:id/subscriber", authMiddleware, requireCapability("read_patients"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -78,7 +87,7 @@ router.get("/:id/subscriber", authMiddleware, requireOrganization, async (req, r
 });
 
 // GET patient by ID (only if owned by authenticated clinician/org)
-router.get("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/:id", authMiddleware, requireCapability("read_patients"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -95,14 +104,17 @@ router.get("/:id", authMiddleware, requireOrganization, async (req, res, next) =
     if (!patient) {
       return res.status(404).json({ success: false, message: "Patient not found" });
     }
-    res.json({ success: true, data: patient });
+    res.json({
+      success: true,
+      data: filterPatientForRole(patient, req.user?.role),
+    });
   } catch (error) {
     next(error);
   }
 });
 
 // CREATE a new patient
-router.post("/", authMiddleware, requireOrganization, async (req, res, next) => {
+router.post("/", authMiddleware, requireCapability("write_patients"), requireOrganization, async (req, res, next) => {
   try {
     const parsedBody = CreatePatientSchema.safeParse(req.body);
     if (!parsedBody.success) {
@@ -115,14 +127,17 @@ router.post("/", authMiddleware, requireOrganization, async (req, res, next) => 
       req.user!.id
     );
 
-    res.status(201).json({ success: true, data: patient });
+    res.status(201).json({
+      success: true,
+      data: filterPatientForRole(patient, req.user?.role),
+    });
   } catch (error) {
     next(error);
   }
 });
 
 // UPDATE a patient
-router.put("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.put("/:id", authMiddleware, requireCapability("write_patients"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -141,14 +156,17 @@ router.put("/:id", authMiddleware, requireOrganization, async (req, res, next) =
       req.user!.id
     );
 
-    res.json({ success: true, data: patient });
+    res.json({
+      success: true,
+      data: filterPatientForRole(patient, req.user?.role),
+    });
   } catch (error) {
     next(error);
   }
 });
 
 // DELETE a patient
-router.delete("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.delete("/:id", authMiddleware, requireCapability("write_patients"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {

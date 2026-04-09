@@ -1,3 +1,5 @@
+import type { AppRole } from "../auth/roles";
+
 export interface User {
   id: string;
   email: string;
@@ -6,7 +8,7 @@ export interface User {
   licenseId?: string;
   created_at?: string;
   full_name?: string;
-  role?: string;
+  role?: AppRole;
   phone?: string;
   cognito_id?: string;
   // Provider billing fields
@@ -71,6 +73,30 @@ export interface OrganizationMembership {
   is_admin: boolean;
   created_at?: string;
   organization?: Organization;
+}
+
+export interface OrganizationMember {
+  id: string;
+  email: string;
+  full_name: string;
+  role: AppRole;
+  created_at?: string;
+}
+
+export interface OrganizationInviteActor {
+  id: string;
+  email: string;
+  full_name: string;
+}
+
+export interface OrganizationInvite {
+  id: string;
+  role: "clinician" | "nurse" | "billing_staff" | "receptionist";
+  created_at: string;
+  expires_at: string;
+  used_at?: string | null;
+  created_by: OrganizationInviteActor;
+  used_by?: OrganizationInviteActor | null;
 }
 
 export interface Patient {

@@ -2,6 +2,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
+import { getEffectiveOrganizationRole } from "../utils/organization";
 import logger from "../utils/logger";
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
@@ -60,8 +61,10 @@ function getVerifier() {
   return verifier;
 }
 
-// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost
-if (userPoolId && clientId) {
+// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost.
+// Skip this in tests because Jest imports the module repeatedly and the async
+// hydration/retry path leaves open handles after the suite completes.
+if (userPoolId && clientId && process.env.NODE_ENV !== "test") {
   const v = getVerifier();
   if (v) {
     v.hydrate()
@@ -73,28 +76,6 @@ if (userPoolId && clientId) {
         ),
       );
   }
-}
-
-/**
- * Map Cognito group names to application roles.
- * Cognito groups: "Admin", "Users"
- * Application roles: "admin", "clinician", "billing_staff"
- *
- * IMPORTANT: Cognito group membership is the source of truth for roles.
- * The `cognito:groups` claim is automatically included in access tokens
- * when a user belongs to a Cognito User Pool group.
- */
-function mapCognitoGroupsToRole(groups: string[] | undefined): string {
-  if (!groups || groups.length === 0) {
-    return "clinician"; // Default role for users not in any group
-  }
-  if (groups.includes("Admin")) {
-    return "admin";
-  }
-  if (groups.includes("Users")) {
-    return "clinician";
-  }
-  return "clinician"; // Default fallback
 }
 
 export const authMiddleware = async (
@@ -139,22 +120,18 @@ export const authMiddleware = async (
       });
     }
 
-    // NOTE: We previously checked amr: ["mfa"] here, but Cognito only populates
-    // the amr claim when Advanced Security (Threat Protection) is enabled on the
-    // user pool. Without it, tokens from a completed SOFTWARE_TOKEN_MFA challenge
-    // still lack the claim, so the check blocked every valid login.
+    // NOTE: amr: ["mfa"] check removed — Cognito only populates that claim when
+    // Advanced Security (Threat Protection) is enabled on the user pool. Without
+    // it, tokens from a completed SOFTWARE_TOKEN_MFA challenge still lack the
+    // claim, blocking every valid login. MFA enforcement is delegated to the
+    // Cognito pool's mandatory TOTP configuration. Restore the check if Advanced
+    // Security is enabled later.
     //
-    // MFA enforcement is delegated to the Cognito pool itself: since the pool has
-    // mandatory TOTP configured, Cognito will not issue tokens without the user
-    // completing the SOFTWARE_TOKEN_MFA challenge. JWT signature verification above
-    // ensures the token is genuine. Enabling Advanced Security later will re-add
-    // the amr claim and we can restore the check at that point.
-
-    // Extract Cognito groups from JWT and map to application role
+    // Cognito groups are preserved for diagnostics only. Application authorization
+    // is derived from organization membership stored in the database.
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
       | undefined;
-    const cognitoRole = mapCognitoGroupsToRole(cognitoGroups);
 
     // Attach ONLY minimal claims to req.auth — never spread the full payload.
     req.auth = {
@@ -164,7 +141,6 @@ export const authMiddleware = async (
       exp: payload.exp,
       iat: payload.iat,
       cognitoGroups,
-      cognitoRole,
     } as any;
 
     // Resolve DB user — DB errors block the request (fail-closed on outage).
@@ -177,11 +153,11 @@ export const authMiddleware = async (
       if (dbUser) {
         req.user = {
           ...dbUser,
-          role: cognitoRole,
         } as any;
       } else {
         logger.debug({ sub: payload.sub }, "Auth: no DB record yet — new user flow");
       }
+
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
       return res.status(503).json({ error: "Authentication service temporarily unavailable" });
@@ -205,7 +181,27 @@ export const authMiddleware = async (
  */
 export const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = req.user?.role || (req.auth as any)?.cognitoRole;
+    // SECURITY: Must have an authenticated user with DB record
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    // Type-safe user extraction with property validation
+    const user = req.user as any;
+    if (!user || typeof user !== 'object') {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    let userRole: string | undefined;
+    try {
+      userRole = getEffectiveOrganizationRole(user);
+    } catch (err: any) {
+      logger.error(
+        { err: err?.message, userId: user.id },
+        "requireRole: failed to get effective organization role"
+      );
+      return res.status(401).json({ error: "Authentication required" });
+    }
 
     if (!userRole) {
       return res.status(401).json({ error: "Authentication required" });

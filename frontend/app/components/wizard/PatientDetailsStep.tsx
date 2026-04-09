@@ -60,6 +60,7 @@ interface PatientDetailsStepProps {
   subscriberSaving?: boolean;
   encounterFieldErrors?: Record<string, string>;
   lockedPatientId?: string | null;
+  canEditPatientData?: boolean;
 }
 
 export default function PatientDetailsStep({
@@ -74,6 +75,7 @@ export default function PatientDetailsStep({
   subscriberSaving,
   encounterFieldErrors,
   lockedPatientId,
+  canEditPatientData = true,
 }: PatientDetailsStepProps) {
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === metadata.patientId),
@@ -87,7 +89,7 @@ export default function PatientDetailsStep({
     setMetadata({ ...metadata, subscriber: updated });
     // Clear error as soon as user starts correcting the field
     if (subscriberFieldErrors[field]) {
-      setSubscriberFieldErrors((prev) => { const { [field]: _, ...rest } = prev; return rest; });
+      setSubscriberFieldErrors((prev) => { const { [field]: _unused, ...rest } = prev; void _unused; return rest; });
     }
   };
 
@@ -97,7 +99,8 @@ export default function PatientDetailsStep({
     const result = fieldSchema.safeParse(value);
     setSubscriberFieldErrors((prev) => {
       if (result.success) {
-        const { [field]: _, ...rest } = prev;
+        const { [field]: _unused, ...rest } = prev;
+        void _unused;
         return rest;
       }
       return { ...prev, [field]: result.error.issues[0]?.message || "Invalid value" };
@@ -149,44 +152,43 @@ export default function PatientDetailsStep({
         placeholder="e.g., Headache and nausea"
       />
 
-      {lockedPatientId ? (
-        <div className="space-y-1">
-          <span className="text-sm font-medium text-slate-700">Patient</span>
+      <label className="space-y-1 block">
+        <span className="text-sm font-medium text-slate-700">Patient</span>
+        {lockedPatientId ? (
           <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900 flex items-center justify-between">
             <span>{selectedPatient?.name || "Loading..."}</span>
             <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Locked</span>
           </div>
-        </div>
-      ) : (
-        <label className="space-y-1 block">
-          <span className="text-sm font-medium text-slate-700">Patient</span>
-          <select
-            id="patient-select"
-            name="patient-select"
-            disabled={loadingPatients}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400"
-            value={metadata.patientId}
-            onChange={(e) => {
-              const val = e.target.value;
-              const picked = patients.find((p) => p.id === val);
-              const rel = picked?.insurance_relationship || "self";
-              setMetadata({ ...metadata, patientId: val, subscriber: null, relationship: rel });
-              if (val) loadSubscriber(val);
-            }}
-          >
-            <option value="">Select a patient</option>
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-                {patient.age ? ` (${patient.age})` : ""}
-              </option>
-            ))}
-          </select>
-          {loadingPatients && <p className="text-xs text-slate-500">Loading patients...</p>}
-          {patientsError && <p className="text-xs text-amber-700">{patientsError}</p>}
-          {encounterFieldErrors?.patientId && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.patientId}</p>}
-        </label>
-      )}
+        ) : (
+          <>
+            <select
+              id="patient-select"
+              name="patient-select"
+              disabled={loadingPatients}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400"
+              value={metadata.patientId}
+              onChange={(e) => {
+                const val = e.target.value;
+                const picked = patients.find((p) => p.id === val);
+                const rel = picked?.insurance_relationship || "self";
+                setMetadata({ ...metadata, patientId: val, subscriber: null, relationship: rel });
+                if (val) loadSubscriber(val);
+              }}
+            >
+              <option value="">Select a patient</option>
+              {patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.name}
+                  {patient.age ? ` (${patient.age})` : ""}
+                </option>
+              ))}
+            </select>
+            {loadingPatients && <p className="text-xs text-slate-500">Loading patients...</p>}
+            {patientsError && <p className="text-xs text-amber-700">{patientsError}</p>}
+            {encounterFieldErrors?.patientId && <p className="mt-1 text-sm text-red-500">{encounterFieldErrors.patientId}</p>}
+          </>
+        )}
+      </label>
 
       {selectedPatient && (
         <Card className="p-4 space-y-3 bg-slate-50 border border-slate-200">
@@ -253,8 +255,6 @@ export default function PatientDetailsStep({
                   type="date"
                   value={metadata.subscriber?.dob?.split("T")[0] || ""}
                   onChange={(e) => handleSubscriberChange("dob", e.target.value)}
-                  min="1900-01-01"
-                  max={new Date().toISOString().split("T")[0]}
                   onBlur={(e) => handleSubscriberBlur("dob", e.target.value)}
                   error={subscriberFieldErrors.dob || encounterFieldErrors?.subscriber_dob}
                 />
@@ -263,6 +263,7 @@ export default function PatientDetailsStep({
                   variant="select"
                   value={metadata.subscriber?.gender || "M"}
                   onChange={(e) => handleSubscriberChange("gender", e.target.value)}
+                  disabled={!canEditPatientData}
                   options={[
                     { value: "M", label: "Male" },
                     { value: "F", label: "Female" },
@@ -281,35 +282,36 @@ export default function PatientDetailsStep({
                 />
               </div>
               <Input
-                label="Subscriber Address"
+                label="Subscriber Address *"
                 value={metadata.subscriber?.address_street || ""}
                 onChange={(e) => handleSubscriberChange("address_street", e.target.value)}
                 onBlur={(e) => handleSubscriberBlur("address_street", e.target.value)}
                 placeholder="123 Main St"
-                error={subscriberFieldErrors.address_street}
+                error={subscriberFieldErrors.address_street || encounterFieldErrors?.subscriber_address_street}
               />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Input
-                  label="City"
+                  label="City *"
                   value={metadata.subscriber?.address_city || ""}
                   onChange={(e) => handleSubscriberChange("address_city", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("address_city", e.target.value)}
-                  error={subscriberFieldErrors.address_city}
+                  error={subscriberFieldErrors.address_city || encounterFieldErrors?.subscriber_address_city}
                 />
                 <Input
-                  label="State"
+                  label="State *"
                   variant="select"
                   value={metadata.subscriber?.address_state || ""}
                   onChange={(e) => { handleSubscriberChange("address_state", e.target.value); handleSubscriberBlur("address_state", e.target.value); }}
                   options={US_STATES}
-                  error={subscriberFieldErrors.address_state}
+                  error={subscriberFieldErrors.address_state || encounterFieldErrors?.subscriber_address_state}
                 />
                 <Input
-                  label="ZIP *"
+                  label="ZIP"
                   value={metadata.subscriber?.address_zip || ""}
                   onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("address_zip", e.target.value)}
                   error={subscriberFieldErrors.address_zip}
+                  disabled={!canEditPatientData}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

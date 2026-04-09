@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ${BACKEND_ENV_FILE:-./backend/.env}
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+    ports:
+      - "3010:3005"
+    restart: unless-stopped
+    networks:
+      - app
+      - shared
+
+  frontend:
+    build:
+      context: ./frontend
+      target: builder
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3010/api}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3010/api}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: npm run dev
+    networks:
+      - app
+
+networks:
+  app:
+    driver: bridge
+  shared:
+    external: true
+    name: ${SHARED_DOCKER_NETWORK:-revclear-shared}

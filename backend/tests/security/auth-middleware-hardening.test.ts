@@ -79,6 +79,7 @@ const DB_USER = {
   email: "test@example.com",
   cognito_id: "cognito-sub-123",
   organization_id: "org-uuid",
+  role: "billing_staff",
   is_org_admin: false,
 };
 
@@ -254,16 +255,19 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
     expect(next).toHaveBeenCalled();
     expect(req.user).toBeDefined();
     expect(req.user.id).toBe(DB_USER.id);
-    expect(req.user.role).toBe("clinician"); // mapped from cognito:groups = ['Users']
+    expect(req.user.role).toBe("billing_staff");
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("maps Cognito group 'Admin' to application role 'admin'", async () => {
+  it("preserves the database membership role instead of mapping Cognito groups", async () => {
     mockVerify.mockResolvedValue({
       ...VALID_PAYLOAD,
       "cognito:groups": ["Admin"],
     });
-    mockFindUser.mockResolvedValue(DB_USER);
+    mockFindUser.mockResolvedValue({
+      ...DB_USER,
+      role: "nurse",
+    });
 
     const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } }) as any;
     const res = makeRes();
@@ -272,7 +276,7 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
     await authMiddleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(req.user.role).toBe("admin");
+    expect(req.user.role).toBe("nurse");
   });
 });
 
