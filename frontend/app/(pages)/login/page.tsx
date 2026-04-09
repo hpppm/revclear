@@ -72,8 +72,8 @@ export default function LoginPage() {
       const userResponse = await apiClient.me.getProfile();
       login(userResponse.data);
       router.push("/dashboard");
-    } catch {
-      logger.error("MFA auth complete but profile fetch failed");
+    } catch (err) {
+      logger.error("MFA auth complete but profile fetch failed", err);
       setMfaStep("login");
       setErrors({ form: "Authentication failed. Please sign in again." });
     }
