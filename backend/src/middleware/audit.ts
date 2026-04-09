@@ -137,6 +137,11 @@ const SENSITIVE_BODY_KEYS = [
 // Fields that should be partially masked (show last 4 chars)
 const PARTIAL_MASK_KEYS = ["phone", "phone_number", "phonenumber", "fax"];
 
+// Pre-built Sets for O(1) key lookup during sanitization
+const SENSITIVE_QUERY_KEYS_SET = new Set(SENSITIVE_QUERY_KEYS);
+const SENSITIVE_BODY_KEYS_SET = new Set(SENSITIVE_BODY_KEYS);
+const PARTIAL_MASK_KEYS_SET = new Set(PARTIAL_MASK_KEYS);
+
 // UUIDs in URLs and query params can be used to enumerate patient records.
 // HIPAA 45 CFR § 164.312(b): resource identifiers that link to PHI must not
 // appear in cleartext in audit logs.
@@ -164,14 +169,14 @@ function maskTokenIssuer(iss: string | null | undefined): string | null {
   }
 }
 
-function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: string[], partialMaskKeys: string[] = []) {
+function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: ReadonlySet<string>, partialMaskKeys: ReadonlySet<string> = new Set()) {
   if (!obj) return obj;
   const clone: Record<string, any> = {};
   for (const key of Object.keys(obj)) {
     const lowerKey = key.toLowerCase();
-    if (sensitiveKeys.includes(lowerKey)) {
+    if (sensitiveKeys.has(lowerKey)) {
       clone[key] = "[REDACTED]";
-    } else if (partialMaskKeys.includes(lowerKey) && typeof obj[key] === "string") {
+    } else if (partialMaskKeys.has(lowerKey) && typeof obj[key] === "string") {
       const val = obj[key] as string;
       clone[key] = val.length > 4 ? "****" + val.slice(-4) : "[REDACTED]";
     } else if (typeof obj[key] === "object" && obj[key] !== null) {
@@ -195,7 +200,7 @@ function sanitizeAuditBody(body: Record<string, any> | undefined) {
     return "[OMITTED]";
   }
 
-  return sanitizeObject(body, SENSITIVE_BODY_KEYS, PARTIAL_MASK_KEYS);
+  return sanitizeObject(body, SENSITIVE_BODY_KEYS_SET, PARTIAL_MASK_KEYS_SET);
 }
 
 export async function auditLogger(req: Request, res: Response, next: NextFunction) {
@@ -238,7 +243,7 @@ export async function auditLogger(req: Request, res: Response, next: NextFunctio
       ipAddress: req.ip,
       statusCode: res.statusCode,
       durationMs: duration.toFixed(2),
-      query: sanitizeObject(req.query as Record<string, any>, SENSITIVE_QUERY_KEYS),
+      query: sanitizeObject(req.query as Record<string, any>, SENSITIVE_QUERY_KEYS_SET),
       body: sanitizeAuditBody(req.body as Record<string, any> | undefined),
     };
 

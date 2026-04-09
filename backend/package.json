@@ -9,7 +9,7 @@
     "build:watch": "tsc -w",
     "start": "node dist/src/start.js",
     "predev": "node -e \"require('kill-port')(3005).catch(()=>{})\"",
-    "dev": "cross-env NODE_OPTIONS=--no-deprecation nodemon --quiet --watch 'src/**/*.ts' --exec 'npx ts-node --files --transpile-only' src/start.ts",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation nodemon --quiet --watch 'src/**/*.ts' --exec 'npx tsx' src/start.ts",
     "migrate:019": "npx ts-node --files src/scripts/run_migration_019.ts",
     "depcheck": "depcheck"
   },
@@ -65,6 +65,7 @@
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "ts-prune": "^0.10.3",
+    "tsx": "^4.21.0",
     "typescript": "^5.0.0"
   }
 }

@@ -16,6 +16,7 @@ export type CuratedCptCode = {
 type CuratedCptData = Record<string, CuratedCptCode[]>;
 
 let cache: CuratedCptData | null = null;
+let promptCache: string | null = null;
 
 const loadData = (): CuratedCptData => {
   if (cache) return cache;
@@ -40,6 +41,7 @@ export const getFlatCptCodes = (): CuratedCptCode[] => {
 };
 
 export const getCptCodesForPrompt = (): string => {
+  if (promptCache) return promptCache;
   const data = loadData();
   const lines: string[] = [];
   for (const [specialty, codes] of Object.entries(data)) {
@@ -50,5 +52,6 @@ export const getCptCodesForPrompt = (): string => {
       lines.push(`${entry.code} - ${entry.short_description} [${specialty}]`);
     }
   }
-  return lines.join("\n");
+  promptCache = lines.join("\n");
+  return promptCache;
 };
