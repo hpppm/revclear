@@ -139,15 +139,16 @@ export const authMiddleware = async (
       });
     }
 
-    // SECURITY: Enforce MFA — reject tokens issued without TOTP verification.
-    // Cognito includes amr: ["mfa"] in access tokens when SOFTWARE_TOKEN_MFA
-    // was satisfied. Tokens issued before MFA was enforced, or via flows that
-    // bypassed the challenge, will be missing this claim.
-    const amr = (payload as any).amr as string[] | undefined;
-    if (!Array.isArray(amr) || !amr.includes("mfa")) {
-      logger.warn({ sub: payload.sub }, "Auth: MFA not satisfied");
-      return res.status(401).json({ error: "MFA verification required" });
-    }
+    // NOTE: We previously checked amr: ["mfa"] here, but Cognito only populates
+    // the amr claim when Advanced Security (Threat Protection) is enabled on the
+    // user pool. Without it, tokens from a completed SOFTWARE_TOKEN_MFA challenge
+    // still lack the claim, so the check blocked every valid login.
+    //
+    // MFA enforcement is delegated to the Cognito pool itself: since the pool has
+    // mandatory TOTP configured, Cognito will not issue tokens without the user
+    // completing the SOFTWARE_TOKEN_MFA challenge. JWT signature verification above
+    // ensures the token is genuine. Enabling Advanced Security later will re-add
+    // the amr claim and we can restore the check at that point.
 
     // Extract Cognito groups from JWT and map to application role
     const cognitoGroups = (payload as any)["cognito:groups"] as
