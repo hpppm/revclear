@@ -2,17 +2,19 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { Patient, MedicalCode } from "@/app/lib/types";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
-import { EncounterDetailsFormSchema } from "@/app/lib/validation/schemas";
+import { EncounterDetailsFormSchema, SubscriberFormSchema } from "@/app/lib/validation/schemas";
+import { SubscriberWritePayload } from "@/app/lib/api/patients";
 import WizardContainer from "@/app/components/ui/WizardContainer";
 import PatientDetailsStep from "@/app/components/wizard/PatientDetailsStep";
 import TranscriptionStep from "@/app/components/wizard/TranscriptionStep";
 import SoapGenerationStep from "@/app/components/wizard/SoapGenerationStep";
 import MedicalCodesStep from "@/app/components/wizard/MedicalCodesStep";
 import ReviewClaimStep from "@/app/components/wizard/ReviewClaimStep";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 
 const allowedAudioTypes = [
   "audio/mpeg",
@@ -38,6 +40,7 @@ const extractTranscriptText = (t: any): string => {
 
 export default function EncounterPage() {
   const { user } = useAuth();
+  const { canManageEncounters, canManageClaims, canWritePatients } = useAuthorization();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -54,7 +57,7 @@ export default function EncounterPage() {
     encounterType?: string;
     chiefComplaint?: string;
     relationship?: "self" | "spouse" | "child" | "other";
-    subscriber?: any;
+    subscriber?: (Partial<SubscriberWritePayload> & { id?: string }) | null;
     patientName?: string;
   }>({
     patientId: "",
@@ -93,6 +96,7 @@ export default function EncounterPage() {
   const [_savingCodes, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
+  const [claimSubmitAttempt, setClaimSubmitAttempt] = useState(0);
   const loadedEncounterIdRef = useRef<string | null>(null);
 
   const searchEncounterId =
@@ -123,8 +127,9 @@ export default function EncounterPage() {
   }, [user]);
 
   useEffect(() => {
+    if (!canManageEncounters) return;
     fetchPatients();
-  }, []);
+  }, [canManageEncounters]);
 
   // URL state management and refresh recovery
   useEffect(() => {
@@ -264,7 +269,8 @@ export default function EncounterPage() {
       const res = await apiClient.patients.getSubscriber(patientId);
       const subscriber = res.data?.data || null;
       if (subscriber) {
-        setMetadata((prev) => ({ ...prev, subscriber, relationship: "other" }));
+        const normalised = { ...subscriber, dob: subscriber.dob?.split("T")[0] || subscriber.dob };
+        setMetadata((prev) => ({ ...prev, subscriber: normalised, relationship: "other" }));
       } else {
         setMetadata((prev) => ({ ...prev, subscriber: null, relationship: "self" }));
       }
@@ -278,6 +284,7 @@ export default function EncounterPage() {
 
   const persistSubscriber = async () => {
     if (!metadata.patientId) return;
+    if (!canWritePatients) return;
     setSubscriberSaving(true);
     setSubscriberError(null);
     try {
@@ -289,13 +296,25 @@ export default function EncounterPage() {
         setSubscriberError("Subscriber name is required when relationship is not self");
         throw new Error("Missing subscriber name");
       }
-      const subPayload = {
-        ...metadata.subscriber,
+      const sub = metadata.subscriber;
+      const subPayload: SubscriberWritePayload = {
+        full_name: sub?.full_name ?? "",
+        dob: sub?.dob?.split("T")[0] ?? "",
+        phone: sub?.phone ?? "",
+        member_id: sub?.member_id ?? "",
+        gender: sub?.gender || undefined,
+        address_street: sub?.address_street || undefined,
+        address_city: sub?.address_city || undefined,
+        address_state: sub?.address_state || undefined,
+        address_zip: sub?.address_zip || undefined,
+        group_number: sub?.group_number || undefined,
         relationship: metadata.relationship || "other",
       };
       const res = await apiClient.patients.upsertSubscriber(metadata.patientId, subPayload);
       const saved = res.data?.data || res.data;
-      setMetadata((prev) => ({ ...prev, subscriber: saved }));
+      // Normalise DOB back to YYYY-MM-DD so next save doesn't send ISO timestamp
+      const normalisedSaved = { ...saved, dob: saved?.dob?.split("T")[0] || saved?.dob };
+      setMetadata((prev) => ({ ...prev, subscriber: normalisedSaved }));
       await apiClient.patients.update(metadata.patientId, {
         insurance_relationship: metadata.relationship || "other",
         subscriber_id: saved?.id,
@@ -308,6 +327,14 @@ export default function EncounterPage() {
       setSubscriberSaving(false);
     }
   };
+
+  if (!canManageEncounters) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <UnauthorizedState message="Your role does not have access to encounter workflows." />
+      </div>
+    );
+  }
 
   // Helper to update URL with encounter ID and step
   const updateUrl = (id: string, step: number) => {
@@ -344,7 +371,8 @@ export default function EncounterPage() {
           phone: p.phone,
           email: p.email,
           insuranceType: p.insurance_provider,
-          insuranceId: p.insurance_policy_number,
+          insuranceId: p.insurance_member_id || p.insurance_policy_number,
+          insurance_member_id: p.insurance_member_id,
           insurance_group_number: p.insurance_group_number,
           insurance_payer_id: p.insurance_payer_id,
           insurance_payer_name: p.insurance_payer_name,
@@ -494,17 +522,17 @@ export default function EncounterPage() {
 
   const handleComplete = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
   const handleExit = () => {
     if (metadata.patientId) {
-      router.push(`/dashboard/patients/${metadata.patientId}`);
+      router.replace(`/dashboard/patients/${metadata.patientId}`);
     } else {
-      router.push("/dashboard/patients");
+      router.replace("/dashboard/patients");
     }
   };
 
@@ -570,12 +598,22 @@ export default function EncounterPage() {
           subscriberError={subscriberError}
           subscriberSaving={subscriberSaving}
           encounterFieldErrors={encounterFieldErrors}
+          lockedPatientId={searchPatientId || null}
         />
       ),
-      canGoNext:
-        !!metadata.patientId &&
-        !!metadata.date &&
-        (metadata.relationship === "self" || !!metadata.subscriber?.full_name),
+      canGoNext: (() => {
+        if (!metadata.patientId || !metadata.date) return false;
+        const p = patients.find((pt) => pt.id === metadata.patientId);
+        if (!p) return false;
+        if (p.insuranceType !== "SELF_PAY") {
+          if (!p.insuranceType || !p.insuranceId) return false;
+        }
+        if (metadata.relationship !== "self") {
+          const sub = metadata.subscriber;
+          if (!sub?.full_name || !sub?.dob || !sub?.phone || !sub?.member_id || !sub?.address_street || !sub?.address_city || !sub?.address_state) return false;
+        }
+        return true;
+      })(),
       onNext: async () => {
         const validation = EncounterDetailsFormSchema.safeParse({
           patientId: metadata.patientId,
@@ -592,7 +630,32 @@ export default function EncounterPage() {
           const first = validation.error.issues[0];
           throw new Error(first ? first.message : "Please fix encounter details");
         }
+        
+        if (metadata.relationship !== "self") {
+          const subValidation = SubscriberFormSchema.safeParse(metadata.subscriber || {});
+          if (!subValidation.success) {
+            setSubscriberError("Please complete all required subscriber/insurance fields. Scroll down to fix errors.");
+            throw new Error("Missing required subscriber fields");
+          }
+        }
+
         setEncounterFieldErrors({});
+
+        // Validate required subscriber fields
+        if (metadata.relationship !== "self") {
+          const subErrs: Record<string, string> = {};
+          if (!metadata.subscriber?.full_name) subErrs.subscriber_full_name = "Subscriber name is required";
+          if (!metadata.subscriber?.dob) subErrs.subscriber_dob = "Date of birth is required";
+          if (!metadata.subscriber?.phone) subErrs.subscriber_phone = "Phone number is required";
+          if (!metadata.subscriber?.address_street) subErrs.subscriber_address_street = "Street address is required";
+          if (!metadata.subscriber?.address_city) subErrs.subscriber_address_city = "City is required";
+          if (!metadata.subscriber?.address_state) subErrs.subscriber_address_state = "State is required";
+          if (!metadata.subscriber?.member_id) subErrs.subscriber_member_id = "Member ID is required";
+          if (Object.keys(subErrs).length > 0) {
+            setEncounterFieldErrors(subErrs);
+            throw new Error("Please fill in all required subscriber fields.");
+          }
+        }
 
         // Step 1: Create or update encounter
         await persistSubscriber();
@@ -684,7 +747,7 @@ export default function EncounterPage() {
         await handleSaveCodes();
       },
     },
-    {
+    ...(canManageClaims ? [{
       name: "Review Claim",
       description: "Review and finalize",
       component: (
@@ -692,11 +755,13 @@ export default function EncounterPage() {
           encounterId={encounterId}
           onClaimChange={handleClaimChange}
           onValidationChange={setClaimValid}
+          submitAttempt={claimSubmitAttempt}
         />
       ),
-      canGoNext: claimValid,
+      canGoNext: true,
       onNext: async () => {
         if (!claimValid) {
+          setClaimSubmitAttempt((n) => n + 1);
           throw new Error("Claim is missing required fields.");
         }
         // Step 5: Create or update claim, then finalize encounter status
@@ -720,7 +785,7 @@ export default function EncounterPage() {
           });
         }
       },
-    },
+    }] : []),
   ];
 
   return (

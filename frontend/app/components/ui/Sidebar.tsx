@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 
 const navItems = [
@@ -21,6 +21,15 @@ const navItems = [
         icon: (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        ),
+    },
+    {
+        label: "Encounters",
+        href: "/dashboard/encounters",
+        icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
         ),
     },
@@ -52,6 +61,12 @@ type SidebarProps = {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const {
+        canReadPatients,
+        canManageClaims,
+        canManageOrganization,
+        canManageEncounters,
+    } = useAuthorization();
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
@@ -97,36 +112,40 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             {/* Nav */}
             <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
                 {navItems.map((item) => (
+                    ((item.href === "/dashboard/patients" && !canReadPatients) ||
+                    (item.href === "/dashboard/claims" && !canManageClaims) ||
+                    (item.href === "/dashboard/encounters" && !canManageEncounters) ||
+                    (item.href === "/dashboard/organization" && !canManageOrganization)) ? null : (
                     <Link
                         key={item.href}
                         href={item.href}
+                        replace
+                        aria-current={isActive(item.href) ? "page" : undefined}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
-                            collapsed ? "justify-center" : ""
-                        } ${
+                        className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
                             isActive(item.href)
                                 ? "brand-button-primary text-white"
                                 : "text-slate-400 hover:bg-white/5 hover:text-white"
-                        }`}
+                        } ${collapsed ? "!justify-center" : "!justify-start"}`}
                     >
                         {item.icon}
                         {!collapsed && item.label}
                     </Link>
-                ))}
+                )))}
             </nav>
 
             {/* Footer: profile + logout */}
             <div className="border-t border-white/10 p-2 space-y-1">
                 <Link
                     href="/dashboard/profile"
+                    replace
+                    aria-current={pathname === "/dashboard/profile" ? "page" : undefined}
                     title={collapsed ? "Profile" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
-                        collapsed ? "justify-center" : ""
-                    } ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
                         pathname === "/dashboard/profile"
                             ? "brand-button-primary text-white"
                             : "text-slate-400 hover:bg-white/5 hover:text-white"
-                    }`}
+                    } ${collapsed ? "!justify-center" : "!justify-start"}`}
                 >
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-white shrink-0">
                         {userInitials}

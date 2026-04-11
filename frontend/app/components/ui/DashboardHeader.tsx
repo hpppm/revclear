@@ -23,7 +23,7 @@ export default function DashboardHeader({
           {backLink && (
             <Link
               href={backLink}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <svg
                 className="w-5 h-5"
@@ -41,9 +41,9 @@ export default function DashboardHeader({
             </Link>
           )}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
             {subtitle && (
-              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+              <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
             )}
           </div>
         </div>

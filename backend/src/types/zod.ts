@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { registry } from "../config/swagger";
+import { APP_ROLES, ORGANIZATION_MEMBER_ROLES } from "../constants/roles";
 
 extendZodWithOpenApi(z);
 
@@ -8,7 +9,7 @@ extendZodWithOpenApi(z);
 export const UserSchema = z.object({
   email: z.string().email("Invalid email address").openapi({ example: "doctor@example.com" }),
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Dr. John Doe" }),
-  role: z.string().optional().openapi({ example: "clinician" }),
+  role: z.enum(APP_ROLES).optional().openapi({ example: "clinician" }),
   phone: z.string().optional().openapi({ example: "555-123-4567" }),
   // Personal provider credentials (NOT clinic information)
   npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional().openapi({ example: "1234567890" }),
@@ -68,39 +69,68 @@ export const JoinOrganizationSchema = z.object({
   invitationCode: z.string().min(1, "Invitation code is required"),
 });
 
+export const CreateOrganizationInviteSchema = z.object({
+  role: z.enum(ORGANIZATION_MEMBER_ROLES).openapi({ example: "nurse" }),
+});
+
 // Patient Schemas (align with schema: full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number)
 export const PatientSchema = z.object({
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Jane Doe" }),
   dob: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    .union([
+      z.literal(""),
+      z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    ])
     .transform((val) => val ? val.split('T')[0] : val)
     .optional()
+    .nullable()
     .openapi({ example: "1980-01-01" }),
-  gender: z.enum(["M", "F", "U", "O"]).optional().openapi({ example: "F" }),
-  phone: z.string().optional(),
-  email: z.string().email("Invalid email address").optional(),
+  gender: z.enum(["M", "F", "U", "O"]).optional().nullable().openapi({ example: "F" }),
+  phone: z.string().optional().nullable(),
+  email: z.string().email("Invalid email address").optional().nullable(),
   // Address fields
-  address_street: z.string().optional(),
-  address_city: z.string().optional(),
-  address_state: z.string().optional(),
-  address_zip: z.string().optional(),
+  address_street: z.string().optional().nullable(),
+  address_city: z.string().optional().nullable(),
+  address_state: z.string().optional().nullable(),
+  address_zip: z.string().optional().nullable(),
   // Insurance fields
-  insurance_provider: z.string().optional(),
-  insurance_policy_number: z.string().optional(),
-  insurance_member_id: z.string().optional(),
-  insurance_group_number: z.string().optional(),
-  insurance_payer_id: z.string().optional(),
-  insurance_payer_name: z.string().optional(),
-  insurance_relationship: z.enum(["self", "spouse", "child", "other"]).optional(),
-  subscriber_id: z.string().uuid().optional(),
-  plan_name: z.string().optional(),
+  insurance_provider: z.string().optional().nullable(),
+  insurance_policy_number: z.string().optional().nullable(),
+  insurance_member_id: z.string().optional().nullable(),
+  insurance_group_number: z.string().optional().nullable(),
+  insurance_payer_id: z.string().optional().nullable(),
+  insurance_payer_name: z.string().optional().nullable(),
+  insurance_relationship: z.enum(["self", "spouse", "child", "other"]).optional().nullable(),
+  subscriber_id: z.string().uuid().optional().nullable(),
+  plan_name: z.string().optional().nullable(),
 }).openapi("Patient");
 
 registry.register("Patient", PatientSchema);
 
 export const CreatePatientSchema = PatientSchema.extend({
-  // full_name required; rest optional
+  dob: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    .transform((val) => val ? val.split('T')[0] : val)
+    .refine((d) => new Date(d) >= new Date("1900-01-01"), "Date of birth cannot be before 1900-01-01")
+    .refine((d) => new Date(d) < new Date(), "Date of birth cannot be in the future"),
+  gender: z.enum(["M", "F", "U", "O"], { errorMap: () => ({ message: "Gender is required" }) }),
+  phone: z.string().min(1, "Phone number is required"),
+  email: z.string().email("Invalid email address"),
+  address_street: z.string().min(1, "Street address is required"),
+  address_city: z.string().min(1, "City is required"),
+  address_state: z.string().regex(/^[A-Za-z]{2}$/, "State must be a 2-letter abbreviation"),
+  address_zip: z.string().regex(/^\d{5}(-\d{4})?$/, "ZIP code must be valid (e.g. 16501)"),
+  insurance_provider: z.string().min(1, "Insurance provider is required"),
+}).superRefine((data, ctx) => {
+  if (data.insurance_provider && data.insurance_provider !== "SELF_PAY") {
+    if (!data.insurance_policy_number) {
+      ctx.addIssue({ code: "custom", path: ["insurance_policy_number"], message: "Policy number is required" });
+    }
+    if (!data.insurance_member_id) {
+      ctx.addIssue({ code: "custom", path: ["insurance_member_id"], message: "Member ID is required" });
+    }
+  }
 });
 
 export const UpdatePatientSchema = PatientSchema.partial(); // All fields optional for update

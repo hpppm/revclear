@@ -5,6 +5,21 @@ interface Step {
     description?: string;
 }
 
+function getCompactStepLabel(name: string): string {
+    switch (name) {
+        case "Patient Details":
+            return "Patient";
+        case "SOAP Note":
+            return "SOAP";
+        case "Medical Codes":
+            return "Codes";
+        case "Review Claim":
+            return "Review";
+        default:
+            return name;
+    }
+}
+
 interface StepIndicatorProps {
     steps: Step[];
     currentStep: number;
@@ -12,58 +27,49 @@ interface StepIndicatorProps {
 
 export default function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
     return (
-        <div className="mb-8">
-            <div className="flex items-center justify-between">
-                {steps.map((step, index) => {
-                    const isCompleted = index < currentStep;
-                    const isCurrent = index === currentStep;
-                    const stepNumber = index + 1;
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm md:px-6">
+            <div className="overflow-x-auto">
+                <ol className="flex min-w-max items-stretch">
+                    {steps.map((step, index) => {
+                        const isCompleted = index < currentStep;
+                        const isCurrent = index === currentStep;
+                        const label = getCompactStepLabel(step.name);
 
-                    return (
-                        <React.Fragment key={index}>
-                            <div className="flex flex-col items-center flex-1">
+                        return (
+                            <li key={index} className="relative">
                                 <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${isCompleted
-                                            ? "bg-blue-600 text-white"
+                                    className={`relative flex h-12 min-w-[235px] items-center justify-center px-8 text-sm font-semibold transition-colors  ${
+                                        isCompleted
+                                            ? "bg-(--brand-500) text-white"
                                             : isCurrent
-                                                ? "bg-blue-100 text-blue-600 ring-2 ring-blue-600"
-                                                : "bg-slate-200 text-slate-500"
-                                        }`}
+                                              ? "bg-(--brand-200) text-(--brand-700)"
+                                              : "bg-slate-100 text-slate-500"
+                                    } ${index === 0 ? "rounded-l-lg" : ""} ${index === steps.length - 1 ? "rounded-r-lg" : ""}`}
                                 >
-                                    {isCompleted ? (
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
+                                    <span className="truncate">{label}</span>
+
+                                    {index < steps.length - 1 && (
+                                        <>
+                                            <span
+                                                className={`pointer-events-none absolute -right-6 top-0 z-20 h-0 w-0 border-y-[24px] border-l-[24px] border-y-transparent ${
+                                                    isCompleted
+                                                        ? "border-l-(--brand-500)"
+                                                        : isCurrent
+                                                          ? "border-l-(--brand-200)"
+                                                          : "border-l-slate-100"
+                                                }`}
                                             />
-                                        </svg>
-                                    ) : (
-                                        stepNumber
+                                            <span
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute -right-7 top-0 z-10 h-0 w-0 border-y-[24px] border-l-[24px] border-y-transparent border-l-white"
+                                            />
+                                        </>
                                     )}
                                 </div>
-                                <div className="mt-2 text-center">
-                                    <p
-                                        className={`text-sm font-medium ${isCurrent ? "text-blue-600" : isCompleted ? "text-slate-700" : "text-slate-500"
-                                            }`}
-                                    >
-                                        {step.name}
-                                    </p>
-                                    {step.description && (
-                                        <p className="text-xs text-slate-500 mt-0.5">{step.description}</p>
-                                    )}
-                                </div>
-                            </div>
-                            {index < steps.length - 1 && (
-                                <div
-                                    className={`flex-1 h-0.5 mx-2 transition-all ${isCompleted ? "bg-blue-600" : "bg-slate-200"
-                                        }`}
-                                    style={{ maxWidth: "100px" }}
-                                />
-                            )}
-                        </React.Fragment>
-                    );
-                })}
+                            </li>
+                        );
+                    })}
+                </ol>
             </div>
         </div>
     );

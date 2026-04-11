@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuthorization } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
+import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
+import DashboardHeader from "@/app/components/ui/DashboardHeader";
 
 export default function EncounterSummaryPage() {
+    const { canManageEncounters, canManageClaims, canUseClinicalAI } = useAuthorization();
     const params = useParams();
     const router = useRouter();
     const encounterId = params?.id as string;
@@ -29,11 +33,15 @@ export default function EncounterSummaryPage() {
     const [claimExpanded, setClaimExpanded] = useState(false);
 
     useEffect(() => {
+        if (!canManageEncounters) {
+            setLoading(false);
+            return;
+        }
         if (encounterId) {
             fetchEncounterData();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [encounterId]);
+    }, [encounterId, canManageEncounters]);
 
     const fetchEncounterData = async () => {
         setLoading(true);
@@ -45,17 +53,19 @@ export default function EncounterSummaryPage() {
             setEncounter(encounterData);
 
             // Fetch claim
-            try {
-                const claimRes = await apiClient.encounters.previewClaim(encounterId);
-                const claimData = claimRes.data?.data || claimRes.data;
-                logger.log("Claim loaded");
-                setClaim(claimData);
-            } catch {
-                logger.log("No claim found");
+            if (canManageClaims) {
+                try {
+                    const claimRes = await apiClient.encounters.previewClaim(encounterId);
+                    const claimData = claimRes.data?.data || claimRes.data;
+                    logger.log("Claim loaded");
+                    setClaim(claimData);
+                } catch {
+                    logger.log("No claim found");
+                }
             }
 
             // Fetch transcript if available
-            if (encounterData.transcript_result_id) {
+            if (canUseClinicalAI && encounterData.transcript_result_id) {
                 try {
                     const transcriptRes = await apiClient.transcribe.getByEncounterId(encounterId);
                     const transcriptData = transcriptRes.data?.text || transcriptRes.data?.data?.text || "";
@@ -67,7 +77,7 @@ export default function EncounterSummaryPage() {
             }
 
             // Fetch SOAP if available
-            if (encounterData.soap_result_id) {
+            if (canUseClinicalAI && encounterData.soap_result_id) {
                 try {
                     const soapRes = await apiClient.soap.getForEncounter(encounterId);
                     const soapData = soapRes.data?.data || soapRes.data;
@@ -93,7 +103,7 @@ export default function EncounterSummaryPage() {
     };
 
     const handleTranscribe = async () => {
-        if (!encounterId || !encounter?.audio_key) {
+        if (!canUseClinicalAI || !encounterId || !encounter?.audio_key) {
             setTranscribeError("No uploaded audio is available for this encounter.");
             return;
         }
@@ -134,6 +144,7 @@ export default function EncounterSummaryPage() {
     };
 
     const handleSubmit = async () => {
+        if (!canManageClaims) return;
         setSubmitting(true);
         try {
             // Update encounter status to completed
@@ -218,43 +229,54 @@ export default function EncounterSummaryPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="text-slate-500">Loading encounter summary...</div>
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+                    Loading claim review...
+                </div>
+            </div>
+        );
+    }
+
+    if (!canManageEncounters) {
+        return (
+            <div className="min-h-screen bg-slate-50 p-8">
+                <div className="max-w-4xl mx-auto">
+                    <UnauthorizedState message="Your role does not have access to encounter details." />
+                </div>
             </div>
         );
     }
 
     if (!encounter) {
         return (
-            <div className="min-h-screen bg-slate-50 p-8">
-                <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto px-6 py-8">
+                <div className="space-y-4">
                     <p className="text-red-600">Encounter not found</p>
-                    <BackButton href="/dashboard">Back to Dashboard</BackButton>
+                    <BackButton href="/dashboard/claims">Back to Claims</BackButton>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <BackButton href={`/dashboard/patients/${encounter.patient_id}`}>
-                    Back to Patient
+        <div className="max-w-6xl mx-auto px-6 py-8">
+            <div className="space-y-6">
+                <BackButton href="/dashboard/claims">
+                    Back to Claims
                 </BackButton>
 
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Encounter Summary</h1>
-                    <p className="text-slate-600 mt-1">
-                        {new Date(encounter.date_of_service).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                        })}
-                    </p>
-                </div>
+                <DashboardHeader
+                    title="Claim Review"
+                    subtitle={new Date(encounter.date_of_service).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                    })}
+                />
 
                 {/* Transcription Section */}
+                {canUseClinicalAI && (
                 <Card>
                     <button
                         onClick={() => setTranscriptExpanded(!transcriptExpanded)}
@@ -295,8 +317,10 @@ export default function EncounterSummaryPage() {
                         </div>
                     )}
                 </Card>
+                )}
 
                 {/* SOAP Note Section */}
+                {canUseClinicalAI && (
                 <Card>
                     <button
                         onClick={() => setSoapExpanded(!soapExpanded)}
@@ -351,8 +375,10 @@ export default function EncounterSummaryPage() {
                         </div>
                     )}
                 </Card>
+                )}
 
                 {/* Claim Section */}
+                {canManageClaims && (
                 <Card>
                     <button
                         onClick={() => setClaimExpanded(!claimExpanded)}
@@ -362,12 +388,12 @@ export default function EncounterSummaryPage() {
                             <h2 className="text-xl font-semibold text-slate-900">Claim</h2>
                             {claim && (
                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${encounter.status === "ready"
-                                    ? "bg-green-100 text-green-800"
+                                    ? "bg-emerald-100 text-emerald-800"
                                     : encounter.status === "completed"
                                         ? "bg-blue-100 text-blue-800"
-                                        : "bg-gray-100 text-gray-800"
+                                        : "bg-slate-100 text-slate-700"
                                     }`}>
-                                    {encounter.status === "ready" ? "Ready to Submit" : encounter.status?.replace("_", " ")}
+                                    {encounter.status === "ready" ? "Ready to Submit" : encounter.status === "completed" ? "Completed" : encounter.status === "in_progress" ? "In Progress" : encounter.status === "ready_for_review" ? "Ready for Review" : encounter.status === "archived" ? "Archived" : encounter.status === "scheduled" ? "Scheduled" : "Draft"}
                                 </span>
                             )}
                         </div>
@@ -412,9 +438,10 @@ export default function EncounterSummaryPage() {
                         </div>
                     )}
                 </Card>
+                )}
 
                 {/* Submit Button */}
-                {encounter.status === "ready" && (
+                {canManageClaims && encounter.status === "ready" && (
                     <div className="flex justify-end">
                         <Button
                             onClick={handleSubmit}
@@ -427,9 +454,12 @@ export default function EncounterSummaryPage() {
                     </div>
                 )}
 
-                {encounter.status === "completed" && (
+                {canManageClaims && encounter.status === "completed" && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                        <p className="text-blue-800 font-medium">✓ This encounter has been submitted to the clearinghouse</p>
+                        <p className="text-blue-800 font-medium flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            This encounter has been submitted to the clearinghouse
+                        </p>
                     </div>
                 )}
             </div>

@@ -9,6 +9,7 @@ const authMiddleware = jest.fn((req: any, res: any, next: any) => {
   req.user = {
     id: userId,
     role: req.headers["x-test-role"] || "clinician",
+    organization_id: req.headers["x-test-org-id"] || null,
   };
   next();
 });
@@ -63,6 +64,8 @@ jest.mock("../../src/middleware/context", () => ({
 
 jest.mock("../../src/services/patientService", () => ({
   PatientService: patientService,
+  filterPatientForRole: (patient: any) => patient,
+  filterSubscriberForRole: (subscriber: any) => subscriber,
 }));
 
 jest.mock("../../src/services/encounterService", () => ({
@@ -252,17 +255,27 @@ describe("route contract integration", () => {
         clinician_id: "clin-123",
       });
 
+      const validPatientBody = {
+        full_name: "John Doe",
+        dob: "1980-01-01",
+        gender: "M",
+        phone: "5550001234",
+        email: "john.doe@example.com",
+        address_street: "123 Main St",
+        address_city: "Springfield",
+        address_state: "IL",
+        address_zip: "62701",
+        insurance_provider: "SELF_PAY",
+      };
+
       const result = await invokeRoute(patientRoutes, "post", "/", {
         headers: authHeaders,
-        body: {
-          full_name: "John Doe",
-          dob: "1980-01-01",
-        },
+        body: validPatientBody,
       });
 
       expect(result.status).toBe(201);
       expect(patientService.create).toHaveBeenCalledWith(
-        { full_name: "John Doe", dob: "1980-01-01" },
+        expect.objectContaining({ full_name: "John Doe", dob: "1980-01-01", gender: "M" }),
         "org-789",
         "clin-123",
       );
@@ -357,7 +370,7 @@ describe("route contract integration", () => {
       expect(claimService.getPreview).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440000",
         { id: "org-789" },
-        { id: "clin-123", role: "clinician" },
+        { id: "clin-123", role: "clinician", organization_id: "org-789" },
       );
       expect(result.body).toEqual({
         success: true,

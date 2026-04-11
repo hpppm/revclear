@@ -7,9 +7,10 @@
  *   Tokens are accepted from httpOnly cookies only.
  *   An Authorization: Bearer header is no longer a valid token transport.
  *
- * Change 2 — DB lookup failure blocks the request (auth.ts)
- *   If findUserByCognitoId returns null or throws, the request is rejected
- *   instead of silently calling next() with req.user undefined.
+ * Change 2 — DB lookup behaviour (auth.ts)
+ *   If findUserByCognitoId throws, the request is rejected with 503 (fail-closed).
+ *   If it returns null (new user — no DB record yet), next() is called with
+ *   req.user unset so GET /api/me can create the record on first login.
  *
  * Change 3 — Cross-tab cookie collision detection (AuthContext.tsx)
  *   sessionStorage.userId is set on login and compared on every checkAuth()
@@ -70,6 +71,7 @@ const DB_USER = {
   email: "test@example.com",
   cognito_id: "cognito-sub-123",
   organization_id: "org-uuid",
+  role: "billing_staff",
   is_org_admin: false,
 };
 
@@ -198,19 +200,21 @@ describe("Change 2a: Signature verification rejects bad tokens before claims are
 describe("Change 2b: DB lookup failure blocks the request (no silent next())", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("returns 401 when findUserByCognitoId returns null (user not in DB)", async () => {
+  it("calls next() with req.user unset when findUserByCognitoId returns null (new-user first-login flow)", async () => {
     mockVerify.mockResolvedValue(VALID_PAYLOAD);
     mockFindUser.mockResolvedValue(null);
 
-    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } });
+    const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } }) as any;
     const res = makeRes();
     const next = jest.fn();
 
     await authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "Authentication required" });
-    expect(next).not.toHaveBeenCalled();
+    // New-user flow: no DB record yet, but the request is not blocked.
+    // GET /api/me will create the record; requireOrganization gates all other routes.
+    expect(next).toHaveBeenCalled();
+    expect((req as any).user).toBeUndefined();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("returns 503 when findUserByCognitoId throws (database error)", async () => {
@@ -243,16 +247,19 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
     expect(next).toHaveBeenCalled();
     expect(req.user).toBeDefined();
     expect(req.user.id).toBe(DB_USER.id);
-    expect(req.user.role).toBe("clinician"); // mapped from cognito:groups = ['Users']
+    expect(req.user.role).toBe("billing_staff");
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("maps Cognito group 'Admin' to application role 'admin'", async () => {
+  it("preserves the database membership role instead of mapping Cognito groups", async () => {
     mockVerify.mockResolvedValue({
       ...VALID_PAYLOAD,
       "cognito:groups": ["Admin"],
     });
-    mockFindUser.mockResolvedValue(DB_USER);
+    mockFindUser.mockResolvedValue({
+      ...DB_USER,
+      role: "nurse",
+    });
 
     const req = makeReq({ cookies: { accessToken: "valid.jwt.token" } }) as any;
     const res = makeRes();
@@ -261,7 +268,7 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
     await authMiddleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(req.user.role).toBe("admin");
+    expect(req.user.role).toBe("nurse");
   });
 });
 

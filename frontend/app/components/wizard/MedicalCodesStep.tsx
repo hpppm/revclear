@@ -5,7 +5,7 @@ import MedicalCodesViewer from "../MedicalCodesViewer";
 
 interface MedicalCodesStepProps {
     encounterId: string | null;
-    soap: any;
+    soap: Record<string, unknown> | null;
     savedCodes?: MedicalCode[];
     onSelectionChange?: (codes: MedicalCode[]) => void;
 }

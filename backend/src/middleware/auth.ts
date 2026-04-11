@@ -2,6 +2,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
+import { getEffectiveOrganizationRole } from "../utils/organization";
 import logger from "../utils/logger";
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
@@ -60,8 +61,10 @@ function getVerifier() {
   return verifier;
 }
 
-// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost
-if (userPoolId && clientId) {
+// Pre-warm JWKS cache at startup so the first real request doesn't pay fetch cost.
+// Skip this in tests because Jest imports the module repeatedly and the async
+// hydration/retry path leaves open handles after the suite completes.
+if (userPoolId && clientId && process.env.NODE_ENV !== "test") {
   const v = getVerifier();
   if (v) {
     v.hydrate()
@@ -73,28 +76,6 @@ if (userPoolId && clientId) {
         ),
       );
   }
-}
-
-/**
- * Map Cognito group names to application roles.
- * Cognito groups: "Admin", "Users"
- * Application roles: "admin", "clinician", "billing_staff"
- *
- * IMPORTANT: Cognito group membership is the source of truth for roles.
- * The `cognito:groups` claim is automatically included in access tokens
- * when a user belongs to a Cognito User Pool group.
- */
-function mapCognitoGroupsToRole(groups: string[] | undefined): string {
-  if (!groups || groups.length === 0) {
-    return "clinician"; // Default role for users not in any group
-  }
-  if (groups.includes("Admin")) {
-    return "admin";
-  }
-  if (groups.includes("Users")) {
-    return "clinician";
-  }
-  return "clinician"; // Default fallback
 }
 
 export const authMiddleware = async (
@@ -139,11 +120,12 @@ export const authMiddleware = async (
       });
     }
 
-    // Extract Cognito groups from JWT and map to application role
+    // Preserve raw Cognito groups for diagnostics only.
+    // Application authorization is derived from the organization membership
+    // stored in the database.
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
       | undefined;
-    const cognitoRole = mapCognitoGroupsToRole(cognitoGroups);
 
     // Attach ONLY minimal claims to req.auth — never spread the full payload.
     req.auth = {
@@ -153,22 +135,23 @@ export const authMiddleware = async (
       exp: payload.exp,
       iat: payload.iat,
       cognitoGroups,
-      cognitoRole,
     } as any;
 
-    // Resolve DB user — both lookup errors and missing records block the request.
-    // A valid Cognito token for a user with no DB record is rejected: they may
-    // have been deleted or may never have completed registration.
+    // Resolve DB user — DB errors block the request (fail-closed on outage).
+    // A missing DB record is allowed: GET /api/me creates the record on first
+    // login, so new users must be able to reach that route with req.user unset.
+    // Routes that require a fully-provisioned user (all routes except /me)
+    // should check req.user themselves or use requireOrganization.
     try {
       const dbUser = await findUserByCognitoId(payload.sub);
-      if (!dbUser) {
-        logger.warn({ sub: payload.sub }, "Auth: Cognito user has no DB record");
-        return res.status(401).json({ error: "Authentication required" });
+      if (dbUser) {
+        req.user = {
+          ...dbUser,
+        } as any;
+      } else {
+        logger.debug({ sub: payload.sub }, "Auth: no DB record yet — new user flow");
       }
-      req.user = {
-        ...dbUser,
-        role: cognitoRole,
-      } as any;
+
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
       return res.status(503).json({ error: "Authentication service temporarily unavailable" });
@@ -192,7 +175,27 @@ export const authMiddleware = async (
  */
 export const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = req.user?.role || (req.auth as any)?.cognitoRole;
+    // SECURITY: Must have an authenticated user with DB record
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    // Type-safe user extraction with property validation
+    const user = req.user as any;
+    if (!user || typeof user !== 'object') {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    let userRole: string | undefined;
+    try {
+      userRole = getEffectiveOrganizationRole(user);
+    } catch (err: any) {
+      logger.error(
+        { err: err?.message, userId: user.id },
+        "requireRole: failed to get effective organization role"
+      );
+      return res.status(401).json({ error: "Authentication required" });
+    }
 
     if (!userRole) {
       return res.status(401).json({ error: "Authentication required" });

@@ -3,14 +3,14 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --brand-50: #f0fdfa;
-  --brand-100: #ccfbf1;
-  --brand-200: #99f6e4;
-  --brand-500: #14b8a6;
-  --brand-600: #0d9488;
-  --brand-700: #0f766e;
-  --brand-ink: #134e4a;
-  --brand-ring: rgba(20, 184, 166, 0.2);
+  --brand-50: #eff6ff;
+  --brand-100: #dbeafe;
+  --brand-200: #bfdbfe;
+  --brand-500: #2a87d2;
+  --brand-600: #2171ae;
+  --brand-700: #1a5c8f;
+  --brand-ink: #0f3d61;
+  --brand-ring: rgba(33, 113, 174, 0.2);
   --surface-subtle: #f9fafb;
   --border-subtle: #e5e7eb;
   --text-muted: #9ca3af;

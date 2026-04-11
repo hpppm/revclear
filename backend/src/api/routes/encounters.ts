@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth";
+import { requireCapability } from "../../middleware/authorization";
 import { requireOrganization } from "../../middleware/context";
 import { EncounterService } from "../../services/encounterService";
 import { CreateEncounterSchema, UpdateEncounterSchema, IdParamSchema } from "../../types/zod";
@@ -10,7 +11,7 @@ const router = Router();
 // @query {number} limit - Max results (default 50, max 100)
 // @query {number} offset - Skip results (default 0)
 // @query {string} patient_id - Optional: filter encounters by patient UUID
-router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/", authMiddleware, requireCapability("manage_encounters"), requireOrganization, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
     const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
@@ -32,7 +33,7 @@ router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
 });
 
 // GET encounter by ID
-router.get("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/:id", authMiddleware, requireCapability("manage_encounters"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -56,7 +57,7 @@ router.get("/:id", authMiddleware, requireOrganization, async (req, res, next) =
 });
 
 // CREATE a new encounter
-router.post("/", authMiddleware, requireOrganization, async (req, res, next) => {
+router.post("/", authMiddleware, requireCapability("manage_encounters"), requireOrganization, async (req, res, next) => {
   try {
     const parsedBody = CreateEncounterSchema.safeParse(req.body);
     if (!parsedBody.success) {
@@ -76,7 +77,7 @@ router.post("/", authMiddleware, requireOrganization, async (req, res, next) => 
 });
 
 // UPDATE an encounter
-router.put("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.put("/:id", authMiddleware, requireCapability("manage_encounters"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -102,7 +103,7 @@ router.put("/:id", authMiddleware, requireOrganization, async (req, res, next) =
 });
 
 // DELETE an encounter
-router.delete("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.delete("/:id", authMiddleware, requireCapability("manage_encounters"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
