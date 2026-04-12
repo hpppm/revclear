@@ -1383,5 +1383,249 @@ test.describe("Patient Form", () => {
         ).toBe(false);
       });
     });
+
+    // ── Format / regex field adversarial tests ────────────────────────────────
+
+    test("Patient Form | dob | future date blocks submission and shows future-date error", async ({
+      page,
+    }) => {
+      test.info().annotations.push({ type: "feature", description: "Patient Validation" });
+      test.info().annotations.push({ type: "severity", description: "critical" });
+
+      const tracker = trackPatientPost(page);
+
+      await test.step("fill all required fields with a future DOB", async () => {
+        // fill() writes directly to the input value, bypassing the browser's
+        // max={today} date-picker UI constraint. Zod's .refine() fires:
+        //   "Date of birth cannot be in the future"
+        await fillPatientFormExcept(page, "dob");
+        await page.getByLabel(/date of birth/i).fill("2099-01-01");
+      });
+
+      await test.step("submit form", async () => {
+        await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
+      });
+
+      await test.step("assert URL has not changed (form was not submitted)", async () => {
+        await expect(
+          page,
+          "Page must remain on /patients/add — a future DOB must halt submission",
+        ).toHaveURL(/\/patients\/add/);
+      });
+
+      await test.step("assert future-date inline error is visible", async () => {
+        const dobError = page
+          .locator("p.text-xs.text-red-600")
+          .filter({ hasText: /future/i });
+        await expect(
+          dobError,
+          "DOB inline error must mention 'future' after submitting a date of 2099-01-01",
+        ).toBeVisible({ timeout: 3000 });
+      });
+
+      await test.step("assert POST /patients was not fired", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — Zod refine must block the HTTP call",
+        ).toBe(false);
+      });
+    });
+
+    test("Patient Form | phone | invalid format blocks submission and shows format error", async ({
+      page,
+    }) => {
+      test.info().annotations.push({ type: "feature", description: "Patient Validation" });
+      test.info().annotations.push({ type: "severity", description: "critical" });
+
+      const tracker = trackPatientPost(page);
+
+      await test.step("fill all required fields with an invalid phone number", async () => {
+        // "not-a-phone" passes the fast-path !phone.trim() check (non-empty)
+        // but fails Zod: /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/
+        // error: "Please enter a valid 10-digit phone number (e.g. (555) 123-4567)"
+        await fillPatientFormExcept(page, "phone");
+        await page.getByLabel(/^phone/i).fill("not-a-phone");
+      });
+
+      await test.step("submit form", async () => {
+        await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
+      });
+
+      await test.step("assert URL has not changed (form was not submitted)", async () => {
+        await expect(
+          page,
+          "Page must remain on /patients/add — an invalid phone format must halt submission",
+        ).toHaveURL(/\/patients\/add/);
+      });
+
+      await test.step("assert phone format inline error is visible", async () => {
+        const phoneError = page
+          .locator("p.text-xs.text-red-600")
+          .filter({ hasText: /valid.*10.?digit|10.?digit|valid phone/i });
+        await expect(
+          phoneError,
+          "Phone inline error must mention valid 10-digit format after submitting 'not-a-phone'",
+        ).toBeVisible({ timeout: 3000 });
+      });
+
+      await test.step("assert POST /patients was not fired", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — Zod regex must block the HTTP call",
+        ).toBe(false);
+      });
+    });
+
+    test("Patient Form | full_name | value with numbers blocks submission and shows letters-only error", async ({
+      page,
+    }) => {
+      test.info().annotations.push({ type: "feature", description: "Patient Validation" });
+      test.info().annotations.push({ type: "severity", description: "critical" });
+
+      const tracker = trackPatientPost(page);
+
+      await test.step("fill all required fields with a name containing digits", async () => {
+        // "John123" passes min(2) and max(100) but fails the letters-only regex:
+        //   /^[A-Za-z\s'\-\.]+$/ → "Name must contain letters only"
+        await fillPatientFormExcept(page, "full_name");
+        await page.getByLabel(/full name/i).fill("John123");
+      });
+
+      await test.step("submit form", async () => {
+        await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
+      });
+
+      await test.step("assert URL has not changed (form was not submitted)", async () => {
+        await expect(
+          page,
+          "Page must remain on /patients/add — a name with digits must halt submission",
+        ).toHaveURL(/\/patients\/add/);
+      });
+
+      await test.step("assert letters-only inline error is visible", async () => {
+        const nameError = page
+          .locator("p.text-xs.text-red-600")
+          .filter({ hasText: /letters only/i });
+        await expect(
+          nameError,
+          "Full name inline error must mention 'letters only' after submitting 'John123'",
+        ).toBeVisible({ timeout: 3000 });
+      });
+
+      await test.step("assert POST /patients was not fired", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — Zod regex must block the HTTP call",
+        ).toBe(false);
+      });
+    });
+
+    test("Patient Form | insurance_provider | value with special chars blocks submission and shows letters-only error", async ({
+      page,
+    }) => {
+      test.info().annotations.push({ type: "feature", description: "Patient Validation" });
+      test.info().annotations.push({ type: "severity", description: "critical" });
+
+      const tracker = trackPatientPost(page);
+
+      await test.step("fill all required fields with an invalid insurance provider", async () => {
+        // "Aetna@123" is non-empty so it passes the fast-path required check,
+        // but fails the Zod refine:
+        //   v === "SELF_PAY" || /^[A-Za-z\s&'\-\.]+$/.test(v)
+        //   → "Insurance provider must contain letters only"
+        await fillPatientFormExcept(page, "insurance_provider");
+        await page.getByLabel(/insurance provider/i).fill("Aetna@123");
+      });
+
+      await test.step("submit form", async () => {
+        await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
+      });
+
+      await test.step("assert URL has not changed (form was not submitted)", async () => {
+        await expect(
+          page,
+          "Page must remain on /patients/add — an insurance provider with symbols must halt submission",
+        ).toHaveURL(/\/patients\/add/);
+      });
+
+      await test.step("assert insurance provider letters-only error is visible", async () => {
+        const providerError = page
+          .locator("p.text-xs.text-red-600")
+          .filter({ hasText: /letters only/i });
+        await expect(
+          providerError,
+          "Insurance provider inline error must mention 'letters only' after submitting 'Aetna@123'",
+        ).toBeVisible({ timeout: 3000 });
+      });
+
+      await test.step("assert POST /patients was not fired", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — Zod refine must block the HTTP call",
+        ).toBe(false);
+      });
+    });
+
+    /**
+     * Happy path: insured (non-self-pay) patient with all fields valid must submit
+     * successfully and navigate away. Complements the self-pay happy path above.
+     * Verifies that the insurance-required cross-field validation does NOT fire
+     * when all insurance fields are properly filled.
+     */
+    test("Patient Form | submit | insured patient with all fields valid navigates away and persists to DB", async ({
+      page,
+    }) => {
+      test.info().annotations.push({ type: "feature", description: "Patient Validation" });
+      test.info().annotations.push({ type: "severity", description: "critical" });
+
+      // Unique name so the DB assertion cannot match a record from a previous run.
+      const insuredName = `Ins E2E ${Date.now()}`;
+
+      await test.step("fill all personal, address, and insurance fields", async () => {
+        await page.getByLabel(/full name/i).fill(insuredName);
+        await page.getByLabel(/date of birth/i).fill("1985-07-04");
+        await page.getByLabel(/^phone/i).fill("5550003333");
+        await page.getByLabel(/street address/i).fill("77 Insurance Blvd");
+        await page.getByLabel(/^city/i).fill("Chicago");
+        await page.getByLabel(/^state/i).selectOption("IL");
+        await page.getByLabel(/zip code/i).fill("60601");
+        await page.getByLabel(/insurance provider/i).fill("Blue Cross Blue Shield");
+        await page.getByLabel(/policy number/i).fill("POL999888");
+        await page.getByLabel(/^member id/i).fill("MEM77665");
+      });
+
+      await test.step("submit form", async () => {
+        await page.getByRole("button", { name: /save patient/i }).click();
+      });
+
+      await test.step("assert no validation errors are shown", async () => {
+        await expect(
+          page.locator("p.text-xs.text-red-600"),
+          "No inline validation errors must appear after submitting a fully valid insured patient",
+        ).not.toBeVisible({ timeout: 3000 });
+      });
+
+      await test.step("assert navigation away from add page (successful submit)", async () => {
+        await expect(
+          page,
+          "Page must navigate away from /patients/add after a successful insured patient submission",
+        ).not.toHaveURL(/\/patients\/add/, { timeout: 10000 });
+      });
+
+      await test.step("verify patient persisted in backend database", async () => {
+        const res = await page.request.get(`${API_BASE}/patients`);
+        expect(res.ok(), `GET /patients returned ${res.status()} — cannot verify DB persistence`).toBeTruthy();
+        const json = await res.json();
+        const found = (json.data ?? []).some((p: any) => p.full_name === insuredName);
+        expect(
+          found,
+          `Insured patient "${insuredName}" must be retrievable from GET /patients after successful submission`,
+        ).toBe(true);
+      });
+    });
   });
 });
