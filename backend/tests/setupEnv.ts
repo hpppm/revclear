@@ -13,3 +13,6 @@ process.env.DB_DATABASE = process.env.DB_DATABASE || "test";
 // does not short-circuit before mocked jwt verify calls can run.
 process.env.AWS_USER_POOL_ID = process.env.AWS_USER_POOL_ID || "us-east-1_testpool";
 process.env.AWS_CLIENT_ID = process.env.AWS_CLIENT_ID || "test-client-id";
+// S3 placeholder — awsS3.ts throws at module-load time if this is absent.
+// Tests that import server.ts (via supertest) need this to avoid the guard.
+process.env.AWS_S3_BUCKET = process.env.AWS_S3_BUCKET || "test-bucket";

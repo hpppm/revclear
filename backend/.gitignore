@@ -60,6 +60,8 @@ desktop.ini
 *.bak
 *.backup
 
-# Test coverage
+# Test coverage and CI artifacts
 coverage/
 .nyc_output/
+test-results/
+/allure-results/

@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 
 const authFile = path.join(__dirname, "../../playwright/.auth/user.json");
+const API_BASE = process.env.API_URL ?? "http://localhost:3005/api";
 
 setup("authenticate", async ({ page }) => {
   const email = process.env.TEST_EMAIL;
@@ -39,4 +40,13 @@ setup("authenticate", async ({ page }) => {
   await expect(page).not.toHaveURL(/\/login/);
 
   await page.context().storageState({ path: authFile });
+
+  // Verify the saved cookies are accepted by the backend — not just that the
+  // browser ended up on a non-login URL. A redirect to /organization can happen
+  // even with an expired or malformed JWT; this request proves the token is valid.
+  const meRes = await page.request.get(`${API_BASE}/me`);
+  expect(
+    meRes.status(),
+    `GET /me returned ${meRes.status()} — saved auth cookies are not accepted by the backend; downstream tests will fail as unauthenticated`,
+  ).toBe(200);
 });

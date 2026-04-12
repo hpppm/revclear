@@ -10,8 +10,10 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# testing — artifact directories only; test source files are never ignored
 /coverage
+.nyc_output/
+/allure-results/
 
 # Playwright
 /playwright/.auth

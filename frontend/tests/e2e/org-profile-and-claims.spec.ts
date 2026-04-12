@@ -30,10 +30,15 @@ import { test, expect, Page } from "@playwright/test";
 
 const API_BASE = process.env.API_URL ?? "http://localhost:3005/api";
 
+// NPI is generated fresh per test run so the "visible after reload" assertion
+// cannot be satisfied by a stale value left by a previous run. Format: 10 digits
+// starting with 1, last 9 derived from the current timestamp.
+const RUN_NPI = `1${String(Date.now()).slice(-9)}`;
+
 /** Billing profile used across all org and claim tests. */
 const ORG_BILLING = {
   billing_name: "Test Billing Clinic",
-  billing_npi: "1234567890",
+  billing_npi: RUN_NPI,
   billing_tax_id: "12-3456789",
   billing_address_line1: "100 Health Ave",
   billing_city: "Springfield",
@@ -135,6 +140,28 @@ async function clearOrgBillingProfile(page: Page): Promise<void> {
   }
 }
 
+/**
+ * Attaches a listener to page network requests and tracks whether a POST to
+ * /patients was fired. Call `.stop()` after the action under test, then assert
+ * `.wasCalled()` is false (blocking tests) or true (happy-path tests).
+ *
+ * Using a listener instead of page.route / route.fulfill means no real code
+ * path is short-circuited — the network stack is observed, not intercepted.
+ */
+function trackPatientPost(page: Page): { wasCalled: () => boolean; stop: () => void } {
+  let called = false;
+  const listener = (req: any) => {
+    if (req.method() === "POST" && /\/api\/patients$/.test(new URL(req.url()).pathname)) {
+      called = true;
+    }
+  };
+  page.on("request", listener);
+  return {
+    wasCalled: () => called,
+    stop: () => page.off("request", listener),
+  };
+}
+
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 async function goToOrgProfile(page: Page) {
@@ -209,7 +236,7 @@ async function fillPatientFormExcept(page: Page, omit: string) {
 
     // State is a <select> rendered via Input variant="select" — selectOption
     // is the correct API; fill() would silently no-op on a <select> element.
-    address_state: () => page.getByLabel(/^state/i).selectOption("IL"),
+    address_state: async () => { await page.getByLabel(/^state/i).selectOption("IL"); },
 
     // FIX: was `input[placeholder*="16501" i]`
     address_zip: () => page.getByLabel(/zip code/i).fill("62701"),
@@ -232,9 +259,7 @@ async function fillPatientFormExcept(page: Page, omit: string) {
 
   for (const [field, fill] of Object.entries(fields)) {
     if (field !== omit) {
-      await fill().catch(() => {
-        // Field may not be in the DOM (e.g. insurance fields hidden by self-pay toggle)
-      });
+      await fill();
     }
   }
 }
@@ -487,21 +512,22 @@ test.describe("Claim Form", () => {
         ).toBeVisible({ timeout: 15000 });
       });
 
-      await test.step("verify billing provider name is pre-populated with saved org name", async () => {
-        const billingInput = page.getByLabel(/billing.*name|provider.*name/i).first();
-        if (await billingInput.isVisible({ timeout: 3000 })) {
-          const val = await billingInput.inputValue();
-          expect(
-            val,
-            `Billing provider name must equal "${ORG_BILLING.billing_name}" but got "${val}"`,
-          ).toBe(ORG_BILLING.billing_name);
-        } else {
-          // Read-only display renders as text rather than an input
-          await expect(
-            page.getByText(ORG_BILLING.billing_name),
-            `Org billing name "${ORG_BILLING.billing_name}" must appear in read-only claim view`,
-          ).toBeVisible({ timeout: 5000 });
-        }
+      await test.step("verify billing provider name input is pre-populated with saved org name", async () => {
+        // ReviewClaimStep.tsx always renders billing_provider.name as an editable
+        // <Input label="Billing Provider Name *"> — there is no read-only branch.
+        // Asserting the input value (not just text presence) proves auto-population
+        // wrote the correct value, not merely that the string appears somewhere on
+        // the page (e.g. in a heading or nav element).
+        const billingInput = page.getByLabel(/billing.*provider.*name/i).first();
+        await expect(
+          billingInput,
+          "Billing Provider Name input must be visible on the claim review step",
+        ).toBeVisible({ timeout: 5000 });
+        const val = await billingInput.inputValue();
+        expect(
+          val,
+          `Billing provider name must equal "${ORG_BILLING.billing_name}" but got "${val}"`,
+        ).toBe(ORG_BILLING.billing_name);
       });
     });
 
@@ -537,14 +563,19 @@ test.describe("Claim Form", () => {
           "Service Facility section heading must be visible",
         ).toBeVisible();
 
+        // The input must exist and must not be empty — the conditional check that
+        // previously surrounded this was silently skipping the assertion when the
+        // locator didn't match, allowing the test to pass with zero assertions.
         const facilityInput = page.getByLabel(/facility.*name|service.*name/i).first();
-        if (await facilityInput.isVisible({ timeout: 3000 })) {
-          const val = await facilityInput.inputValue();
-          expect(
-            val.length,
-            "Service facility name must be pre-filled from org data — empty string is a regression",
-          ).toBeGreaterThan(0);
-        }
+        await expect(
+          facilityInput,
+          "Service Facility name input must be visible — if absent the section is missing entirely",
+        ).toBeVisible({ timeout: 5000 });
+        const val = await facilityInput.inputValue();
+        expect(
+          val.length,
+          "Service facility name must be pre-filled from org data — empty string is a regression",
+        ).toBeGreaterThan(0);
       });
     });
 
@@ -570,11 +601,20 @@ test.describe("Claim Form", () => {
         ).toBeVisible({ timeout: 15000 });
       });
 
-      await test.step("verify rendering provider section is present", async () => {
+      await test.step("verify rendering provider section is present with input fields", async () => {
+        // Section heading must be visible
         await expect(
           page.getByText(/rendering provider/i).first(),
           "Rendering Provider section must be visible on the claim review step",
         ).toBeVisible();
+
+        // The two required fields must exist as inputs, not just as heading text.
+        // If the section were collapsed or removed, these would not be found.
+        const nameInput = page.getByLabel(/rendering provider name/i);
+        await expect(nameInput, "Rendering Provider Name input must be present").toBeVisible();
+
+        const npiInput = page.getByLabel(/rendering provider npi/i);
+        await expect(npiInput, "Rendering Provider NPI input must be present").toBeVisible();
       });
     });
   });
@@ -595,12 +635,15 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields except DOB", async () => {
         await fillPatientFormExcept(page, "dob");
       });
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -622,6 +665,13 @@ test.describe("Patient Form", () => {
           "DOB inline error must appear after submitting with an empty date of birth",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     test("Patient Form | submit | empty phone field shows required error and halts submission", async ({
@@ -630,12 +680,15 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields except phone", async () => {
         await fillPatientFormExcept(page, "phone");
       });
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -654,6 +707,13 @@ test.describe("Patient Form", () => {
           "Phone inline error must appear after submitting with an empty phone number",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     /**
@@ -667,12 +727,15 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields except policy number", async () => {
         await fillPatientFormExcept(page, "insurance_policy_number");
       });
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -691,6 +754,13 @@ test.describe("Patient Form", () => {
           "Policy number inline error must appear after submitting without a policy number",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     /**
@@ -703,12 +773,15 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields except member ID", async () => {
         await fillPatientFormExcept(page, "insurance_member_id");
       });
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -727,6 +800,13 @@ test.describe("Patient Form", () => {
           "Member ID inline error must appear after submitting without a member ID",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     /**
@@ -740,6 +820,8 @@ test.describe("Patient Form", () => {
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
+
+      const tracker = trackPatientPost(page);
 
       await test.step("fill personal and address fields but omit all insurance fields", async () => {
         // FIX: all placeholder-based selectors replaced with getByLabel
@@ -757,6 +839,7 @@ test.describe("Patient Form", () => {
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -777,6 +860,13 @@ test.describe("Patient Form", () => {
           "Member ID error must appear simultaneously with policy number error",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     /**
@@ -790,9 +880,12 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      // Unique per run so the DB verification below cannot be satisfied by a
+      // record left over from a previous test run.
+      const selfPayName = `SP E2E ${Date.now()}`;
+
       await test.step("fill personal and address fields", async () => {
-        // FIX: all placeholder-based selectors replaced with getByLabel
-        await page.getByLabel(/full name/i).fill("Self Pay Patient");
+        await page.getByLabel(/full name/i).fill(selfPayName);
         await page.getByLabel(/date of birth/i).fill("1990-06-15");
         await page.getByLabel(/^phone/i).fill("5550001111");
         await page.getByLabel(/street address/i).fill("99 Self Pay Blvd");
@@ -829,6 +922,17 @@ test.describe("Patient Form", () => {
           "Page must navigate away from /patients/add after a successful self-pay submission",
         ).not.toHaveURL(/\/patients\/add/, { timeout: 10000 });
       });
+
+      await test.step("verify patient persisted in backend database (not just frontend navigation)", async () => {
+        // Navigation away proves the frontend received a 2xx response, but we also
+        // verify the record is retrievable — ensuring the DB write actually committed
+        // and was not rolled back or silently discarded.
+        const res = await page.request.get(`${API_BASE}/patients`);
+        expect(res.ok(), `GET /patients returned ${res.status()} — cannot verify DB persistence`).toBeTruthy();
+        const json = await res.json();
+        const found = (json.data ?? []).some((p: any) => p.full_name === selfPayName);
+        expect(found, `Patient "${selfPayName}" must be retrievable from GET /patients after successful submission`).toBe(true);
+      });
     });
 
     // ── Name field adversarial tests ─────────────────────────────────────────
@@ -859,6 +963,12 @@ test.describe("Patient Form", () => {
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
+      // Structural bug: the form uses a single full_name input, not separate
+      // first_name / last_name fields. The getByLabel(/^first.?name/i) locator
+      // finds nothing, so this test passes for the wrong reason (other missing
+      // required fields also block submission). Mark fail until the form is
+      // refactored to use separate first_name / last_name inputs.
+      test.fail(true, "first_name field does not exist — form uses full_name; test passes for wrong reason");
 
       await test.step("fill all required non-name fields", async () => {
         // Omit full_name: the correct implementation has separate first_name /
@@ -903,6 +1013,7 @@ test.describe("Patient Form", () => {
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
+      test.fail(true, "last_name field does not exist — form uses full_name; test passes for wrong reason");
 
       await test.step("fill all required non-name fields and provide a valid first_name", async () => {
         await fillPatientFormExcept(page, "full_name");
@@ -949,6 +1060,7 @@ test.describe("Patient Form", () => {
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
+      test.fail(true, "first_name field does not exist — form uses full_name; test passes for wrong reason");
 
       const fiveHundredAs = "A".repeat(500);
 
@@ -993,6 +1105,7 @@ test.describe("Patient Form", () => {
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
+      test.fail(true, "first_name field does not exist — form uses full_name; test passes for wrong reason");
 
       await test.step("fill all required non-name fields", async () => {
         await fillPatientFormExcept(page, "full_name");
@@ -1035,6 +1148,7 @@ test.describe("Patient Form", () => {
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
+      test.fail(true, "first_name field does not exist — form uses full_name; test passes for wrong reason");
 
       await test.step("fill all required non-name fields", async () => {
         await fillPatientFormExcept(page, "full_name");
@@ -1080,6 +1194,8 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields including provider and policy, omit member_id", async () => {
         // fillPatientFormExcept("insurance_member_id") fills every field defined
         // in the helper — including insurance_provider ("Aetna") and
@@ -1089,6 +1205,7 @@ test.describe("Patient Form", () => {
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -1107,6 +1224,13 @@ test.describe("Patient Form", () => {
           "Member ID required error must appear when provider and policy are filled but member_id is absent",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     // BUG: policy_number required validation may not fire when insurance_provider
@@ -1121,6 +1245,8 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields including provider and member_id, omit policy_number", async () => {
         // fillPatientFormExcept("insurance_policy_number") fills every field
         // including insurance_provider ("Aetna") and insurance_member_id
@@ -1130,6 +1256,7 @@ test.describe("Patient Form", () => {
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -1148,6 +1275,13 @@ test.describe("Patient Form", () => {
           "Policy number required error must appear when provider and member_id are filled but policy_number is absent",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     // BUG: member_id minimum length validation not enforced — a 1-character
@@ -1161,6 +1295,8 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields, then override member_id with a single character", async () => {
         // Fill everything including a valid member_id first, then replace it
         // with a 1-char value so every other field is valid.
@@ -1170,6 +1306,7 @@ test.describe("Patient Form", () => {
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -1188,6 +1325,13 @@ test.describe("Patient Form", () => {
           "A minimum length error must appear after submitting a 1-character member ID",
         ).toBeVisible({ timeout: 3000 });
       });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
+      });
     });
 
     // BUG: policy_number minimum length validation not enforced — a 1-character
@@ -1201,6 +1345,8 @@ test.describe("Patient Form", () => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
       test.info().annotations.push({ type: "severity", description: "critical" });
 
+      const tracker = trackPatientPost(page);
+
       await test.step("fill all required fields, then override policy_number with a single character", async () => {
         // Fill everything including a valid policy_number first, then replace it
         // with a 1-char value so every other field is valid.
@@ -1210,6 +1356,7 @@ test.describe("Patient Form", () => {
 
       await test.step("submit form", async () => {
         await page.getByRole("button", { name: /save patient/i }).click();
+        tracker.stop();
       });
 
       await test.step("assert URL has not changed (form was not submitted)", async () => {
@@ -1227,6 +1374,13 @@ test.describe("Patient Form", () => {
           policyError,
           "A minimum length error must appear after submitting a 1-character policy number",
         ).toBeVisible({ timeout: 3000 });
+      });
+
+      await test.step("assert POST /patients was not fired (frontend validation must block HTTP request)", async () => {
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must not be fired — frontend Zod validation must block the HTTP call before it reaches the backend",
+        ).toBe(false);
       });
     });
   });
