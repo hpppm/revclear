@@ -59,7 +59,7 @@ export const soapToCodes = async (
       model_version:
         typeof result.model_version === "string"
           ? result.model_version
-          : process.env.OLLAMA_CODES_MODEL || process.env.OLLAMA_MODEL || "unknown",
+          : process.env.GEMINI_MODEL || "gemini-2.5-flash",
     };
   } catch (error: any) {
     logger.error({ ...auditBase, success: false, code: error?.code }, "soapToCodes failed");

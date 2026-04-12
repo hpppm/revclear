@@ -63,11 +63,11 @@ export const speechToSoap = async (
       plan: "",
     },
     confidence: 0.5,
-    model_version: process.env.OLLAMA_MODEL || "ollama",
+    model_version: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   };
 
   return {
     ...base,
-    model_version: base.model_version || process.env.OLLAMA_MODEL || "ollama",
+    model_version: base.model_version || process.env.GEMINI_MODEL || "gemini-2.5-flash",
   };
 };
