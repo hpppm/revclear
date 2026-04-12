@@ -87,7 +87,6 @@ export default function PatientDetailsStep({
   const handleSubscriberChange = (field: string, value: string) => {
     const updated = { ...(metadata.subscriber || {}), [field]: value };
     setMetadata({ ...metadata, subscriber: updated });
-    // Clear error as soon as user starts correcting the field
     if (subscriberFieldErrors[field]) {
       setSubscriberFieldErrors((prev) => { const { [field]: _unused, ...rest } = prev; void _unused; return rest; });
     }
@@ -106,6 +105,8 @@ export default function PatientDetailsStep({
       return { ...prev, [field]: result.error.issues[0]?.message || "Invalid value" };
     });
   };
+
+  const isSelfPay = selectedPatient?.insuranceType === "SELF_PAY";
 
   return (
     <div className="space-y-6">
@@ -200,36 +201,45 @@ export default function PatientDetailsStep({
                 {selectedPatient.dob && (() => { const [y, m, d] = selectedPatient.dob.split("T")[0].split("-"); return ` • DOB: ${m}/${d}/${y}`; })()}
               </p>
               <p className="text-xs text-slate-500">
-                {selectedPatient.insuranceType || "Insurance not set"} • {selectedPatient.insuranceId || "Member ID not set"}
+                {isSelfPay
+                  ? "Self Pay"
+                  : `${selectedPatient.insuranceType || "Insurance not set"} • ${selectedPatient.insuranceId || "Member ID not set"}`
+                }
               </p>
             </div>
-            {selectedPatient.insurance_relationship && (
+            {!isSelfPay && selectedPatient.insurance_relationship && (
               <Badge variant="neutral" size="sm">
                 Relationship: {selectedPatient.insurance_relationship}
               </Badge>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Input
-              label="Relationship to Subscriber"
-              variant="select"
-              value={metadata.relationship || "self"}
-              onChange={(e) => setMetadata({ ...metadata, relationship: e.target.value as "self" | "spouse" | "child" | "other" })}
-              options={[
-                { value: "self", label: "Self" },
-                { value: "spouse", label: "Spouse" },
-                { value: "child", label: "Child" },
-                { value: "other", label: "Other" },
-              ]}
-            />
-            <Input label="Insurance Provider" value={selectedPatient.insuranceType || ""} disabled error={!selectedPatient.insuranceType ? "Required — update patient profile" : undefined} />
-            <Input label="Member / Policy ID" value={selectedPatient.insuranceId || ""} disabled error={!selectedPatient.insuranceId ? "Required — update patient profile" : undefined} />
-            <Input label="Group Number" value={selectedPatient.insurance_group_number || ""} disabled />
-            <Input label="Payer ID" value={selectedPatient.insurance_payer_id || ""} disabled />
-          </div>
+          {isSelfPay ? (
+            <div className="rounded-md bg-blue-50 border border-blue-100 px-3 py-2">
+              <p className="text-xs text-blue-700 font-medium">Self Pay — no insurance required for this encounter</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input
+                label="Relationship to Subscriber"
+                variant="select"
+                value={metadata.relationship || "self"}
+                onChange={(e) => setMetadata({ ...metadata, relationship: e.target.value as "self" | "spouse" | "child" | "other" })}
+                options={[
+                  { value: "self", label: "Self" },
+                  { value: "spouse", label: "Spouse" },
+                  { value: "child", label: "Child" },
+                  { value: "other", label: "Other" },
+                ]}
+              />
+              <Input label="Insurance Provider" value={selectedPatient.insuranceType || ""} disabled error={!selectedPatient.insuranceType ? "Required — update patient profile" : undefined} />
+              <Input label="Member / Policy ID" value={selectedPatient.insuranceId || ""} disabled error={!selectedPatient.insuranceId ? "Required — update patient profile" : undefined} />
+              <Input label="Group Number" value={selectedPatient.insurance_group_number || ""} disabled />
+              <Input label="Payer ID" value={selectedPatient.insurance_payer_id || ""} disabled />
+            </div>
+          )}
 
-          {metadata.relationship !== "self" && (
+          {!isSelfPay && metadata.relationship !== "self" && (
             <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
