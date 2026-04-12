@@ -8,6 +8,7 @@
 import logger from "../utils/logger";
 import { buildStediPayload } from "./ediService";
 import { appConfig } from "../config/appConfig";
+import type { OrgEdiSettings } from "../utils/organization";
 
 export interface ClearinghouseResponse {
   status: "accepted" | "denied" | "pending";
@@ -18,20 +19,37 @@ export interface ClearinghouseResponse {
 
 export async function submitClaimToClearinghouse(
   claim: any,
+  orgEdi?: OrgEdiSettings | null,
 ): Promise<ClearinghouseResponse> {
-  const { url, apiKey } = appConfig.clearinghouse;
+  // Org-specific settings take priority over global env vars
+  const url = orgEdi?.edi_clearinghouse_url || appConfig.clearinghouse.url;
+  const apiKey = orgEdi?.edi_clearinghouse_api_key || appConfig.clearinghouse.apiKey;
 
-  if (!url || !apiKey) {
-    logger.warn("Clearinghouse not configured — marking claim as pending");
+  const hasOrgSftp = !!(orgEdi?.edi_sftp_host && orgEdi?.edi_sftp_username);
+  const hasHttpClearinghouse = !!(url && apiKey);
+
+  if (!hasOrgSftp && !hasHttpClearinghouse) {
+    logger.warn("Clearinghouse not configured for org — marking claim as pending");
     return {
       status: "pending",
-      reason: "Clearinghouse not configured. Set CLEARINGHOUSE_URL and CLEARINGHOUSE_API_KEY.",
+      reason: "Clearinghouse not configured. Go to Organization Settings → EDI & Clearinghouse and add your Clearinghouse URL and API Key.",
     };
   }
 
-  const payload = buildStediPayload(claim);
+  const payload = buildStediPayload(claim, orgEdi);
 
   logger.info({ claimId: claim.id, payerId: claim.payer_id }, "Submitting claim to clearinghouse");
+
+  if (!hasHttpClearinghouse || !url) {
+    // SFTP is configured but only HTTP submission is currently supported.
+    // To submit electronically, add a Clearinghouse URL and API Key in Organization Settings.
+    // Use "Download EDI" to get the 837P file and upload it to your clearinghouse manually.
+    logger.warn({ claimId: claim.id }, "SFTP-only org — HTTP clearinghouse URL not set");
+    return {
+      status: "pending",
+      reason: "SFTP file-drop is not yet supported for automated submission. Add a Clearinghouse URL and API Key in Organization Settings, or use Download EDI to submit the file manually.",
+    };
+  }
 
   let raw: any;
   try {

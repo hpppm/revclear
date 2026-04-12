@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuthorization } from "@/app/context/AuthContext";
@@ -20,6 +20,7 @@ type Claim = {
     claim_type: string | null;
     service_date_start: string | null;
     service_date_end: string | null;
+    date_of_service: string | null;
     submission_date: string | null;
     rejection_reason: string | null;
     created_at: string;
@@ -36,33 +37,11 @@ type StatusHistory = {
 function statusBadgeVariant(status: string): "success" | "warning" | "error" | "info" | "neutral" {
     const s = status?.toLowerCase();
     if (["approved", "paid", "accepted"].includes(s)) return "success";
-    if (["pending", "submitted", "draft", "in_progress"].includes(s)) return "warning";
+    if (["pending", "submitted", "draft"].includes(s)) return "warning";
     if (["rejected", "denied"].includes(s)) return "error";
     return "neutral";
 }
 
-function statusLabel(status: string): string {
-    switch (status?.toLowerCase()) {
-        case "approved": return "Approved";
-        case "paid": return "Paid";
-        case "pending": return "Pending";
-        case "submitted": return "Submitted";
-        case "draft": return "Draft";
-        case "rejected": return "Rejected";
-        case "denied": return "Denied";
-        default: return status
-            ? status.charAt(0).toUpperCase() + status.slice(1)
-            : "Pending";
-    }
-}
-
-function claimTypeLabel(type: string | null): string {
-    switch (type?.toLowerCase()) {
-        case "professional": return "Professional";
-        case "institutional": return "Institutional";
-        default: return "—";
-    }
-}
 
 function formatDate(dateStr: string | null) {
     if (!dateStr) return "—";
@@ -80,13 +59,11 @@ function formatCurrency(amount: number | null) {
 }
 
 export default function ClaimsPage() {
-    const { canManageClaims, canManageEncounters } = useAuthorization();
+    const { canManageClaims } = useAuthorization();
     const [claims, setClaims] = useState<Claim[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"all" | "denials">("all");
-    const [submitting, setSubmitting] = useState<string | null>(null);
-    const [submitError, setSubmitError] = useState<string | null>(null);
     const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
     const [statusHistories, setStatusHistories] = useState<Record<string, StatusHistory[]>>({});
     const [loadingHistory, setLoadingHistory] = useState<string | null>(null);
@@ -122,21 +99,6 @@ export default function ClaimsPage() {
         }
     };
 
-    const handleSubmit = async (claimId: string) => {
-        setSubmitting(claimId);
-        setSubmitError(null);
-        try {
-            await apiClient.claims.submit(claimId);
-            await loadClaims();
-        } catch (err: any) {
-            logger.error("Failed to submit claim", err);
-            const message = err?.response?.data?.message || err?.response?.data?.error || "Failed to submit claim";
-            setSubmitError(message);
-        } finally {
-            setSubmitting(null);
-        }
-    };
-
     const handleDownload = async (claimId: string) => {
         try {
             const response = await apiClient.claims.download(claimId);
@@ -144,7 +106,7 @@ export default function ClaimsPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `claim_${claimId.slice(0, 8)}.edi.enc`;
+            a.download = `claim_${claimId.slice(0, 8)}.edi`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -212,12 +174,6 @@ export default function ClaimsPage() {
                 ))}
             </div>
 
-            {submitError && (
-                <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                    {submitError}
-                </div>
-            )}
-
             {loading ? (
                 <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -277,7 +233,7 @@ export default function ClaimsPage() {
                             <>
                                 <span className="text-sm">
                                     <span className="font-semibold text-amber-600">
-                                        {claims.filter(c => ["pending", "submitted", "draft", "in_progress"].includes(c.status?.toLowerCase())).length}
+                                        {claims.filter(c => ["pending", "submitted", "draft"].includes(c.status?.toLowerCase())).length}
                                     </span>
                                     <span className="text-slate-400 ml-1">pending</span>
                                 </span>
@@ -318,18 +274,18 @@ export default function ClaimsPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {displayedClaims.map((claim) => (
-                                    <>
-                                        <tr key={claim.id} className="hover:bg-slate-50 transition">
+                                    <React.Fragment key={claim.id}>
+                                        <tr className="hover:bg-slate-50 transition">
                                             <td className="px-6 py-4">
                                                 <Link
                                                     href={`/dashboard/encounters/${claim.encounter_id}`}
-                                                    className="font-mono text-xs text-[var(--brand-600)] hover:text-[var(--brand-700)] hover:underline"
+                                                    className="font-mono text-xs text-(--brand-600) hover:text-(--brand-700) hover:underline"
                                                 >
                                                     {claim.id.slice(0, 8).toUpperCase()}
                                                 </Link>
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">
-                                                {formatDate(claim.service_date_start)}
+                                                {formatDate(claim.service_date_start || claim.date_of_service)}
                                                 {claim.service_date_end && claim.service_date_end !== claim.service_date_start && (
                                                     <span className="text-slate-400"> – {formatDate(claim.service_date_end)}</span>
                                                 )}
@@ -345,9 +301,18 @@ export default function ClaimsPage() {
                                                     {claim.status || "unknown"}
                                                 </Badge>
                                                 {claim.rejection_reason && (
-                                                    <p className="text-xs text-red-500 mt-1 max-w-[180px] truncate" title={claim.rejection_reason}>
-                                                        {claim.rejection_reason}
-                                                    </p>
+                                                    claim.rejection_reason.toLowerCase().includes("clearinghouse not configured") ? (
+                                                        <p className="text-xs text-amber-600 mt-1">
+                                                            Not configured —{" "}
+                                                            <Link href="/dashboard/organization" className="underline hover:text-amber-800">
+                                                                Set up EDI
+                                                            </Link>
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-xs text-red-500 mt-1 max-w-45 truncate" title={claim.rejection_reason}>
+                                                            {claim.rejection_reason}
+                                                        </p>
+                                                    )
                                                 )}
                                             </td>
                                             {activeTab === "denials" && (
@@ -356,28 +321,33 @@ export default function ClaimsPage() {
                                                 </td>
                                             )}
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    {["draft", "in_progress", "denied"].includes(claim.status?.toLowerCase()) && (
-                                                        <button
-                                                            onClick={() => handleSubmit(claim.id)}
-                                                            disabled={submitting === claim.id}
-                                                            className="brand-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 transition"
+                                                <div className="flex items-center gap-1">
+                                                    {activeTab === "denials" && (
+                                                        <Link
+                                                            href={`/dashboard/encounters/create?id=${claim.encounter_id}&step=4`}
+                                                            className="brand-button-primary rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                                                            title="Edit claim and resubmit"
                                                         >
-                                                            {submitting === claim.id ? "Submitting..." : "Submit"}
-                                                        </button>
+                                                            Resubmit
+                                                        </Link>
                                                     )}
                                                     <button
                                                         onClick={() => handleDownload(claim.id)}
-                                                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
-                                                        title="Download encrypted EDI 837 file"
+                                                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
+                                                        title="Download EDI 837 file"
                                                     >
-                                                        Download EDI
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                        </svg>
                                                     </button>
                                                     <button
                                                         onClick={() => toggleHistory(claim.id)}
-                                                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                                                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
+                                                        title={expandedHistory === claim.id ? "Hide history" : "View history"}
                                                     >
-                                                        {expandedHistory === claim.id ? "Hide History" : "History"}
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
                                                     </button>
                                                 </div>
                                             </td>
@@ -408,7 +378,7 @@ export default function ClaimsPage() {
                                                 </td>
                                             </tr>
                                         )}
-                                    </>
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>

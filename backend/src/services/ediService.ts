@@ -58,7 +58,7 @@ export function validateClaimCodes(claim: any): string[] {
 
 // ─── Stedi JSON payload (sent to clearinghouse API) ────────────────────────
 
-export function buildStediPayload(claim: any): object {
+export function buildStediPayload(claim: any, orgEdi?: { edi_sender_id?: string; edi_receiver_id?: string } | null): object {
   const bp = claim.billing_provider || {};
   const sp = claim.service_facility || {};
   const rp = claim.rendering_provider || {};
@@ -89,7 +89,7 @@ export function buildStediPayload(claim: any): object {
 
   return {
     controlNumber: generateControlNumber(),
-    tradingPartnerServiceId: claim.payer_id || "UNKNOWN",
+    tradingPartnerServiceId: orgEdi?.edi_receiver_id || claim.payer_id || "UNKNOWN",
     submitter: {
       organizationName: bp.name || "Unknown Organization",
       taxId: bp.tax_id || "",
@@ -175,7 +175,7 @@ export function buildStediPayload(claim: any): object {
 
 // ─── Raw EDI 837P string (for encrypted file download) ─────────────────────
 
-export function buildEdi837String(claim: any): string {
+export function buildEdi837String(claim: any, orgEdi?: { edi_sender_id?: string; edi_receiver_id?: string } | null): string {
   const bp = claim.billing_provider || {};
   const sp = claim.service_facility || {};
   const rp = claim.rendering_provider || {};
@@ -187,8 +187,8 @@ export function buildEdi837String(claim: any): string {
   const dateFmt = formatDateCompact(now);
   const timeFmt = now.toISOString().slice(11, 16).replace(":", "");
   const ctrl = generateControlNumber();
-  const senderId = padRight((bp.tax_id || "SENDER").replace(/\D/g, ""), 15);
-  const receiverId = padRight(claim.payer_id || "RECEIVER", 15);
+  const senderId = padRight((orgEdi?.edi_sender_id || bp.tax_id || "SENDER").replace(/\D/g, ""), 15);
+  const receiverId = padRight(orgEdi?.edi_receiver_id || claim.payer_id || "RECEIVER", 15);
 
   // ISA15: "T" = test, "P" = production.
   // Set EDI_USAGE_INDICATOR=P in .env when going live — no code change needed.

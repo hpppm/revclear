@@ -6,15 +6,16 @@ import {
 } from "../utils/crypto";
 import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
 import { submitClaimToClearinghouse } from "./clearinghouseService";
-import { buildEdi837String, encryptEdiExport, validateClaimCodes } from "./ediService";
+import { buildEdi837String, validateClaimCodes } from "./ediService";
+import { getOrgEdiSettings } from "../utils/organization";
 
 interface PaginationOptions {
   limit?: number;
   offset?: number;
 }
 
-// Explicit column list for claim queries - data minimization security measure
-const CLAIM_SELECT_COLUMNS = `
+// Used in INSERT ... RETURNING (no JOIN available)
+const CLAIM_BARE_COLUMNS = `
     id, encounter_id, patient_id, clinician_id, organization_id,
     diagnosis_codes, procedure_codes, total_amount, insurance_provider,
     status, rejection_reason, submission_date, payment_date,
@@ -22,6 +23,21 @@ const CLAIM_SELECT_COLUMNS = `
     line_items, billing_provider, service_facility, rendering_provider,
     subscriber, subscriber_relationship, service_date_start, service_date_end,
     created_at, updated_at
+`
+  .replace(/\s+/g, " ")
+  .trim();
+
+// Used in SELECT ... JOIN encounters — COALESCE fills service dates from encounter for older claims
+const CLAIM_SELECT_COLUMNS = `
+    c.id, c.encounter_id, c.patient_id, c.clinician_id, c.organization_id,
+    c.diagnosis_codes, c.procedure_codes, c.total_amount, c.insurance_provider,
+    c.status, c.rejection_reason, c.submission_date, c.payment_date,
+    c.payer_id, c.payer_name, c.claim_type, c.submission_type, c.patient_responsibility,
+    c.line_items, c.billing_provider, c.service_facility, c.rendering_provider,
+    c.subscriber, c.subscriber_relationship,
+    COALESCE(c.service_date_start::text, e.date_of_service::date::text) AS service_date_start,
+    COALESCE(c.service_date_end::text, e.date_of_service::date::text) AS service_date_end,
+    c.created_at, c.updated_at
 `
   .replace(/\s+/g, " ")
   .trim();
@@ -56,31 +72,34 @@ const decryptClaimRow = <T extends Record<string, any> | null>(claim: T): T => {
   return decryptPHIJsonFields(claim, CLAIM_ENCRYPTED_JSON_FIELDS) as T;
 };
 
-export class ClaimService {
-  private static async getClaimColumns() {
-    const result = await query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = 'claims'`,
-    );
-    return result.rows.map((r: { column_name: string }) => r.column_name);
-  }
+// Fix #3: static column set — avoids information_schema query on every write
+const CLAIM_WRITABLE_COLUMNS = new Set([
+  "encounter_id", "clinician_id", "patient_id", "organization_id",
+  "diagnosis_codes", "procedure_codes", "total_amount", "insurance_provider",
+  "status", "rejection_reason", "submission_date", "payment_date",
+  "payer_id", "payer_name", "claim_type", "submission_type", "patient_responsibility",
+  "line_items", "billing_provider", "service_facility", "rendering_provider",
+  "subscriber", "subscriber_relationship", "service_date_start", "service_date_end",
+]);
 
+export class ClaimService {
   static async findAll(
     organizationId: string,
-    clinicianId: string,
+    _clinicianId: string,
     options?: PaginationOptions,
   ) {
     const limit = options?.limit ?? 50;
     const offset = options?.offset ?? 0;
 
     const countResult = await query(
-      "SELECT COUNT(*) as total FROM claims WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2))",
-      [organizationId, clinicianId],
+      "SELECT COUNT(*) as total FROM claims WHERE organization_id = $1",
+      [organizationId],
     );
     const total = parseInt(countResult.rows[0].total);
 
     const result = await query(
-      `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims WHERE (organization_id = $1 OR (organization_id IS NULL AND clinician_id = $2)) ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
-      [organizationId, clinicianId, limit, offset],
+      `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims c LEFT JOIN encounters e ON e.id = c.encounter_id WHERE c.organization_id = $1 ORDER BY c.created_at DESC LIMIT $2 OFFSET $3`,
+      [organizationId, limit, offset],
     );
     return { data: result.rows.map((row) => decryptClaimRow(row)), total };
   }
@@ -88,11 +107,11 @@ export class ClaimService {
   static async findById(
     id: string,
     organizationId: string,
-    clinicianId: string,
+    _clinicianId: string,
   ) {
     const result = await query(
-      `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
-      [id, organizationId, clinicianId],
+      `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims c LEFT JOIN encounters e ON e.id = c.encounter_id WHERE c.id = $1 AND c.organization_id = $2`,
+      [id, organizationId],
     );
     return decryptClaimRow(result.rows[0] || null);
   }
@@ -100,15 +119,13 @@ export class ClaimService {
   static async create(data: any, organizationId: string, clinicianId: string) {
     // Check if encounter_id exists and belongs to org
     const encounterCheck = await query(
-      "SELECT id, patient_id FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
-      [data.encounter_id, organizationId, clinicianId],
+      "SELECT id, patient_id FROM encounters WHERE id = $1 AND organization_id = $2",
+      [data.encounter_id, organizationId],
     );
     if (encounterCheck.rows.length === 0) {
       throw new AppError("Encounter not found", 404);
     }
     const encounterPatientId = encounterCheck.rows[0].patient_id;
-
-    const availableColumns = await this.getClaimColumns();
 
     const columns = [
       "encounter_id",
@@ -150,7 +167,7 @@ export class ClaimService {
     };
 
     for (const [key, value] of Object.entries(optionalFields)) {
-      if (value !== undefined && availableColumns.includes(key)) {
+      if (value !== undefined && CLAIM_WRITABLE_COLUMNS.has(key)) {
         columns.push(key);
         placeholders.push(`$${idx}`);
         values.push(serializeClaimValue(key, value));
@@ -158,9 +175,7 @@ export class ClaimService {
       }
     }
 
-    const insertQuery = `INSERT INTO claims (${columns.join(
-      ", ",
-    )}) VALUES (${placeholders.join(", ")}) RETURNING ${CLAIM_SELECT_COLUMNS}`;
+    const insertQuery = `INSERT INTO claims (${columns.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING ${CLAIM_BARE_COLUMNS}`;
     const result = await query(insertQuery, values);
     return decryptClaimRow(result.rows[0]);
   }
@@ -169,19 +184,18 @@ export class ClaimService {
     id: string,
     data: any,
     organizationId: string,
-    clinicianId: string,
+    _clinicianId: string,
   ) {
     const claimOwner = await query(
-      "SELECT id FROM claims WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))",
-      [id, organizationId, clinicianId],
+      "SELECT id FROM claims WHERE id = $1 AND organization_id = $2",
+      [id, organizationId],
     );
     if (claimOwner.rows.length === 0) {
       throw new AppError("Claim not found", 404);
     }
 
-    const availableColumns = await this.getClaimColumns();
     const entries = Object.entries(data).filter(
-      ([key, value]) => value !== undefined && availableColumns.includes(key),
+      ([key, value]) => value !== undefined && CLAIM_WRITABLE_COLUMNS.has(key),
     );
 
     if (entries.length === 0) {
@@ -196,8 +210,8 @@ export class ClaimService {
     );
 
     const result = await query(
-      `UPDATE claims SET ${fields} WHERE id = $${values.length + 1} RETURNING ${CLAIM_SELECT_COLUMNS}`,
-      [...values, id],
+      `UPDATE claims SET ${fields} WHERE id = $${values.length + 1} AND organization_id = $${values.length + 2} RETURNING ${CLAIM_BARE_COLUMNS}`,
+      [...values, id, organizationId],
     );
 
     if (result.rows.length === 0) {
@@ -223,8 +237,11 @@ export class ClaimService {
       throw new AppError(`Claim has invalid codes: ${codeErrors.join("; ")}`, 400);
     }
 
-    // Send to clearinghouse
-    const response = await submitClaimToClearinghouse(claim);
+    // Fetch org-specific EDI/clearinghouse settings
+    const orgEdi = await getOrgEdiSettings(organizationId);
+
+    // Send to clearinghouse using org settings
+    const response = await submitClaimToClearinghouse(claim, orgEdi);
 
     // Map clearinghouse response to our status
     const newStatus =
@@ -232,7 +249,7 @@ export class ClaimService {
         ? "submitted"
         : response.status === "denied"
         ? "denied"
-        : "in_progress";
+        : "pending";
 
     // Update claim status and submission date
     await query(
@@ -281,15 +298,15 @@ export class ClaimService {
     const claim = await this.findById(id, organizationId, clinicianId);
     if (!claim) throw new AppError("Claim not found", 404);
 
-    const ediString = buildEdi837String(claim);
-    const encrypted = encryptEdiExport(ediString);
-    return { encrypted, claimId: id };
+    const orgEdi = await getOrgEdiSettings(organizationId);
+    const ediString = buildEdi837String(claim, orgEdi);
+    return { ediString, claimId: id };
   }
 
-  static async delete(id: string, organizationId: string, clinicianId: string) {
+  static async delete(id: string, organizationId: string, _clinicianId: string) {
     const result = await query(
-      "DELETE FROM claims WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3)) RETURNING id",
-      [id, organizationId, clinicianId],
+      "DELETE FROM claims WHERE id = $1 AND organization_id = $2 RETURNING id",
+      [id, organizationId],
     );
 
     if (result.rowCount === 0) {
@@ -309,8 +326,8 @@ export class ClaimService {
       // Always refresh live fields from current org/clinician data — these may be
       // stale in claims created before the org billing profile was fully saved.
       const patientForHydration = existing.patient_id ? await query(
-        `SELECT full_name, insurance_member_id, insurance_group_number, insurance_policy_number FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
-        [existing.patient_id, organization.id, user.id]
+        `SELECT full_name, insurance_member_id, insurance_group_number, insurance_policy_number FROM patients WHERE id = $1 AND organization_id = $2`,
+        [existing.patient_id, organization.id]
       ).then(r => r.rows[0] ? decryptPatientRow(r.rows[0]) : null).catch(() => null) : null;
 
       // Refresh billing_provider from current org (fill any missing/empty fields)
@@ -398,8 +415,8 @@ export class ClaimService {
                     insurance_provider, insurance_policy_number, insurance_member_id,
                     insurance_group_number, insurance_payer_id, insurance_payer_name,
                     insurance_relationship, subscriber_id, plan_name
-             FROM patients WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
-      [encounter.patient_id, organization.id, user.id],
+             FROM patients WHERE id = $1 AND organization_id = $2`,
+      [encounter.patient_id, organization.id],
     );
     if (patientResult.rows.length === 0) {
       throw new AppError("Patient not found", 404);
@@ -407,7 +424,7 @@ export class ClaimService {
     const patient = decryptPatientRow(patientResult.rows[0]);
 
     // Get medical codes
-    const codes = await this.getMedicalCodesByEncounter(encounterId);
+    const codes = await this.getMedicalCodesByEncounter(encounterId, organization.id);
     if (codes.length === 0) {
       throw new AppError(
         "No codes selected for this encounter. Add ICD/CPT codes before previewing.",
@@ -444,41 +461,41 @@ export class ClaimService {
 
   private static async getClaimByEncounter(
     encounter_id: string,
-    clinician_id?: string,
+    _clinician_id?: string,
     organization_id?: string,
   ) {
     const params: any[] = [encounter_id];
-    let sql = `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims WHERE encounter_id = $1`;
-    if (organization_id && clinician_id) {
-      sql += " AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))";
-      params.push(organization_id, clinician_id);
-    } else if (clinician_id) {
-      sql += " AND clinician_id = $2";
-      params.push(clinician_id);
+    let sql = `SELECT ${CLAIM_SELECT_COLUMNS} FROM claims c LEFT JOIN encounters e ON e.id = c.encounter_id WHERE c.encounter_id = $1`;
+    if (organization_id) {
+      sql += " AND c.organization_id = $2";
+      params.push(organization_id);
     }
-    sql += " ORDER BY created_at DESC LIMIT 1";
+    sql += " ORDER BY c.created_at DESC LIMIT 1";
     const result = await query(sql, params);
     return decryptClaimRow(result.rows[0] || null);
   }
 
   private static async requireOwnedEncounter(
     encounterId: string,
-    clinicianId: string,
+    _clinicianId: string,
     organizationId?: string,
   ) {
     const result = await query(
       `SELECT id, patient_id, clinician_id, organization_id, date_of_service, status, place_of_service
-             FROM encounters WHERE id = $1 AND (organization_id = $2 OR (organization_id IS NULL AND clinician_id = $3))`,
-      [encounterId, organizationId || null, clinicianId],
+             FROM encounters WHERE id = $1 AND organization_id = $2`,
+      [encounterId, organizationId || null],
     );
     return result.rows[0] || null;
   }
 
-  private static async getMedicalCodesByEncounter(encounter_id: string) {
+  private static async getMedicalCodesByEncounter(encounter_id: string, organization_id: string) {
     const result = await query(
-      `SELECT id, encounter_id, code, code_type, description, category, confidence_score, is_ai_suggested, created_at
-             FROM medical_codes WHERE encounter_id = $1 ORDER BY created_at ASC`,
-      [encounter_id],
+      `SELECT mc.id, mc.encounter_id, mc.code, mc.code_type, mc.description, mc.category, mc.confidence_score, mc.is_ai_suggested, mc.created_at
+       FROM medical_codes mc
+       JOIN encounters e ON e.id = mc.encounter_id
+       WHERE mc.encounter_id = $1 AND e.organization_id = $2
+       ORDER BY mc.created_at ASC`,
+      [encounter_id, organization_id],
     );
     return result.rows;
   }
@@ -500,13 +517,20 @@ export class ClaimService {
       .map((c) => c.code);
     const cptCodes = codes.filter((c) => c.code_type === "CPT");
 
+    // Look up charge from org fee schedule; fall back to 0 so billing staff
+    // can see the line item and fill in the correct amount before submission.
+    const feeSchedule: Record<string, number> =
+      organization?.fee_schedule && typeof organization.fee_schedule === "object"
+        ? (organization.fee_schedule as Record<string, number>)
+        : {};
+
     const lineItems = cptCodes.map((c, index) => ({
       line_number: index + 1,
       procedure_code: c.code,
       modifiers: [],
       diagnosis_pointers: [1],
       units: 1,
-      charge_amount: 150.0,
+      charge_amount: typeof feeSchedule[c.code] === "number" ? feeSchedule[c.code] : 0,
       place_of_service: encounter?.place_of_service || "11",
       date_of_service: dateOfService,
       description: c.description,
