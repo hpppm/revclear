@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth";
+import { requireCapability } from "../../middleware/authorization";
 import { requireOrganization } from "../../middleware/context";
 import { ClaimService } from "../../services/claimService";
 import { CreateClaimSchema, UpdateClaimSchema, IdParamSchema } from "../../types/zod";
@@ -9,7 +10,7 @@ const router = Router();
 // GET all claims (scoped to organization)
 // @query {number} limit - Max results (default 50, max 100)
 // @query {number} offset - Skip results (default 0)
-router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
     const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
@@ -30,7 +31,7 @@ router.get("/", authMiddleware, requireOrganization, async (req, res, next) => {
 });
 
 // GET claim by ID
-router.get("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/:id", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -54,7 +55,7 @@ router.get("/:id", authMiddleware, requireOrganization, async (req, res, next) =
 });
 
 // CREATE a new claim
-router.post("/", authMiddleware, requireOrganization, async (req, res, next) => {
+router.post("/", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
     const parsedBody = CreateClaimSchema.safeParse(req.body);
     if (!parsedBody.success) {
@@ -74,7 +75,7 @@ router.post("/", authMiddleware, requireOrganization, async (req, res, next) => 
 });
 
 // UPDATE a claim
-router.put("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.put("/:id", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -100,7 +101,7 @@ router.put("/:id", authMiddleware, requireOrganization, async (req, res, next) =
 });
 
 // DELETE a claim
-router.delete("/:id", authMiddleware, requireOrganization, async (req, res, next) => {
+router.delete("/:id", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
@@ -119,11 +120,73 @@ router.delete("/:id", authMiddleware, requireOrganization, async (req, res, next
   }
 });
 
+// POST /api/claims/:id/submit — submit claim to clearinghouse
+router.post("/:id/submit", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const result = await ClaimService.submit(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/claims/:id/status-history — get all status changes for a claim
+router.get("/:id/status-history", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const history = await ClaimService.getStatusHistory(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.json({ success: true, data: history });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/claims/:id/download — download EDI 837 file
+router.get("/:id/download", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const { ediString, claimId } = await ClaimService.downloadEdi(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="claim_${claimId}.edi"`);
+    res.send(ediString);
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * GET /api/claims/encounter/:encounterId/preview
  * Build a claim payload without persisting it.
  */
-router.get("/encounter/:encounterId/preview", authMiddleware, requireOrganization, async (req, res, next) => {
+router.get("/encounter/:encounterId/preview", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
     const parsedParams = IdParamSchema.safeParse({ id: req.params.encounterId });
     if (!parsedParams.success) {

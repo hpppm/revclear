@@ -1,3 +1,4 @@
+import { AppRole, ORGANIZATION_MANAGER_ROLES } from "../constants/roles";
 import { query } from "../config/db";
 
 // SECURITY: Explicit column list for organization queries - excludes SFTP credentials
@@ -28,6 +29,58 @@ export const getUserOrganization = async (userId: string) => {
   return result.rows[0] || null;
 };
 
+export const filterOrganizationForRole = <
+  T extends Record<string, any> | null | undefined,
+>(
+  organization: T,
+  role?: AppRole | string,
+): T => {
+  if (!organization) return organization;
+
+  if (role && ORGANIZATION_MANAGER_ROLES.includes(role as AppRole)) {
+    return organization;
+  }
+
+  const {
+    npi,
+    tax_id,
+    billing_name,
+    billing_npi,
+    billing_tax_id,
+    billing_address_line1,
+    billing_address_line2,
+    billing_city,
+    billing_state,
+    billing_postal_code,
+    billing_phone,
+    default_place_of_service,
+    edi_sender_id,
+    edi_receiver_id,
+    edi_sftp_host,
+    edi_sftp_username,
+    edi_sftp_port,
+    fee_schedule,
+    payer_enrollments,
+    billing_defaults,
+    ...summaryOrganization
+  } = organization;
+
+  return summaryOrganization as T;
+};
+
+export const getEffectiveOrganizationRole = (
+  user:
+    | {
+        role?: AppRole | string | null;
+        organization_id?: string | null;
+      }
+    | null
+    | undefined,
+): AppRole | undefined => {
+  if (!user?.organization_id || !user.role) return undefined;
+  return user.role as AppRole;
+};
+
 /**
  * Check if a user is an admin of their organization
  */
@@ -49,10 +102,10 @@ export const assignUserToOrganization = async (
 ) => {
   const result = await query(
     `UPDATE users 
-     SET organization_id = $1, is_org_admin = $2
-     WHERE id = $3
-     RETURNING id, organization_id, is_org_admin`,
-    [organizationId, isAdmin, userId],
+     SET organization_id = $1, role = $2, is_org_admin = $3
+     WHERE id = $4
+     RETURNING id, organization_id, role, is_org_admin`,
+    [organizationId, isAdmin ? "clinician" : null, isAdmin, userId],
   );
   return result.rows[0];
 };
@@ -63,12 +116,40 @@ export const assignUserToOrganization = async (
 export const removeUserFromOrganization = async (userId: string) => {
   const result = await query(
     `UPDATE users 
-     SET organization_id = NULL, is_org_admin = false
+     SET organization_id = NULL, role = NULL, is_org_admin = false
      WHERE id = $1
      RETURNING id`,
     [userId],
   );
   return result.rows[0];
+};
+
+export interface OrgEdiSettings {
+  edi_sender_id?: string;
+  edi_receiver_id?: string;
+  edi_clearinghouse_url?: string;
+  edi_clearinghouse_api_key?: string;
+  edi_sftp_host?: string;
+  edi_sftp_port?: number;
+  edi_sftp_username?: string;
+  edi_sftp_password?: string;
+  edi_sftp_private_key?: string;
+}
+
+/**
+ * Fetch org EDI/SFTP credentials for server-side clearinghouse submission.
+ * SECURITY: includes edi_sftp_password and edi_sftp_private_key — never send to client.
+ */
+export const getOrgEdiSettings = async (
+  organizationId: string,
+): Promise<OrgEdiSettings | null> => {
+  const result = await query(
+    `SELECT edi_sender_id, edi_receiver_id, edi_clearinghouse_url, edi_clearinghouse_api_key,
+            edi_sftp_host, edi_sftp_port, edi_sftp_username, edi_sftp_password, edi_sftp_private_key
+     FROM organizations WHERE id = $1`,
+    [organizationId],
+  );
+  return result.rows[0] || null;
 };
 
 /**

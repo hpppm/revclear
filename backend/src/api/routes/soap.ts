@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
+import { requireCapability } from "../../middleware/authorization";
 import { IdParamSchema } from "../../types/zod";
 import { createAiResult, getLatestAiResult, getLatestAiResultByFlowNames } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
@@ -65,7 +66,7 @@ const ensureEncounterOwnership = async (encounterId: string, clinicianId: string
 // MUST come before POST /:id/soap to avoid route conflict
 // SECURITY: Mock endpoint must not be accessible in production — it bypasses
 // real transcript validation and creates synthetic PHI records.
-router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
+router.post("/:id/soap/mock", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   if (process.env.NODE_ENV !== "development") {
     return res.status(404).send();
   }
@@ -124,7 +125,7 @@ router.post("/:id/soap/mock", authMiddleware, async (req, res) => {
   }
 });
 
-router.get("/:id/soap", authMiddleware, async (req, res) => {
+router.get("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);
@@ -161,7 +162,7 @@ router.get("/:id/soap", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/:id/soap", authMiddleware, async (req, res) => {
+router.post("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);
@@ -227,7 +228,7 @@ router.post("/:id/soap", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:id/soap", authMiddleware, async (req, res) => {
+router.put("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);

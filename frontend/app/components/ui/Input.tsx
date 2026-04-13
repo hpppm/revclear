@@ -31,6 +31,7 @@ export default function Input(props: InputProps) {
 
     const baseClasses = "brand-input w-full rounded-lg border px-3 py-2 text-slate-900 shadow-sm";
     const errorClasses = error ? "border-red-300 focus:border-red-500 focus:ring-red-100" : "border-slate-200";
+    const errorAttr = error ? { "data-field-error": "true" } : {};
 
     const renderInput = () => {
         if (variant === "textarea") {
@@ -40,6 +41,7 @@ export default function Input(props: InputProps) {
                 <textarea
                     className={`${baseClasses} ${errorClasses} ${className}`}
                     onFocus={(e) => { scrollToCenter(e.currentTarget); onFocus?.(e); }}
+                    {...errorAttr}
                     {...remainingTextarea}
                 />
             );
@@ -52,6 +54,7 @@ export default function Input(props: InputProps) {
                 <select
                     className={`${baseClasses} ${errorClasses} ${className}`}
                     onFocus={(e) => { scrollToCenter(e.currentTarget); onFocus?.(e); }}
+                    {...errorAttr}
                     {...remainingSelect}
                 >
                     {options.map((opt) => (
@@ -70,14 +73,33 @@ export default function Input(props: InputProps) {
                 type="text"
                 className={`${baseClasses} ${errorClasses} ${className}`}
                 onFocus={(e) => { scrollToCenter(e.currentTarget); onFocus?.(e); }}
+                {...errorAttr}
                 {...remainingInput}
             />
         );
     };
 
+    const renderLabel = (text: string) => {
+        if (text.endsWith(" *")) {
+            return (
+                <span className="text-sm font-medium text-slate-700">
+                    {text.slice(0, -2)} <span className="text-red-500">*</span>
+                </span>
+            );
+        }
+        if (text.endsWith("*")) {
+            return (
+                <span className="text-sm font-medium text-slate-700">
+                    {text.slice(0, -1)}<span className="text-red-500">*</span>
+                </span>
+            );
+        }
+        return <span className="text-sm font-medium text-slate-700">{text}</span>;
+    };
+
     return (
         <label className="space-y-1 block">
-            {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
+            {label && renderLabel(label)}
             {renderInput()}
             {helperText && !error && <p className="text-xs text-slate-500">{helperText}</p>}
             {error && <p className="text-xs text-red-600">{error}</p>}

@@ -9,6 +9,7 @@ const authMiddleware = jest.fn((req: any, res: any, next: any) => {
   req.user = {
     id: userId,
     role: req.headers["x-test-role"] || "clinician",
+    organization_id: req.headers["x-test-org-id"] || null,
   };
   next();
 });
@@ -63,6 +64,8 @@ jest.mock("../../src/middleware/context", () => ({
 
 jest.mock("../../src/services/patientService", () => ({
   PatientService: patientService,
+  filterPatientForRole: (patient: any) => patient,
+  filterSubscriberForRole: (subscriber: any) => subscriber,
 }));
 
 jest.mock("../../src/services/encounterService", () => ({
@@ -367,7 +370,7 @@ describe("route contract integration", () => {
       expect(claimService.getPreview).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440000",
         { id: "org-789" },
-        { id: "clin-123", role: "clinician" },
+        { id: "clin-123", role: "clinician", organization_id: "org-789" },
       );
       expect(result.body).toEqual({
         success: true,

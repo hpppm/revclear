@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { registry } from "../config/swagger";
+import { APP_ROLES, ORGANIZATION_MEMBER_ROLES } from "../constants/roles";
 
 extendZodWithOpenApi(z);
 
@@ -8,7 +9,7 @@ extendZodWithOpenApi(z);
 export const UserSchema = z.object({
   email: z.string().email("Invalid email address").openapi({ example: "doctor@example.com" }),
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Dr. John Doe" }),
-  role: z.string().optional().openapi({ example: "clinician" }),
+  role: z.enum(APP_ROLES).optional().openapi({ example: "clinician" }),
   phone: z.string().optional().openapi({ example: "555-123-4567" }),
   // Personal provider credentials (NOT clinic information)
   npi: z.string().regex(/^\d{10}$/, "NPI must be 10 digits").optional().openapi({ example: "1234567890" }),
@@ -52,6 +53,8 @@ export const OrganizationSchema = z.object({
   default_place_of_service: z.string().regex(/^[0-9]{2}$/, "POS must be 2-digit code").optional(),
   edi_sender_id: z.string().optional(),
   edi_receiver_id: z.string().optional(),
+  edi_clearinghouse_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  edi_clearinghouse_api_key: z.string().optional(),
   edi_sftp_host: z.string().optional(),
   edi_sftp_username: z.string().optional(),
   edi_sftp_password: z.string().optional(),
@@ -68,12 +71,18 @@ export const JoinOrganizationSchema = z.object({
   invitationCode: z.string().min(1, "Invitation code is required"),
 });
 
+export const CreateOrganizationInviteSchema = z.object({
+  role: z.enum(ORGANIZATION_MEMBER_ROLES).openapi({ example: "nurse" }),
+});
+
 // Patient Schemas (align with schema: full_name, dob, gender, phone, email, insurance_provider, insurance_policy_number)
 export const PatientSchema = z.object({
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Jane Doe" }),
   dob: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    .union([
+      z.literal(""),
+      z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, "DOB must be in YYYY-MM-DD or ISO format")
+    ])
     .transform((val) => val ? val.split('T')[0] : val)
     .optional()
     .nullable()

@@ -201,12 +201,13 @@ describe("ClaimService SQL: every query is scoped by organization_id", () => {
     expect(source).toMatch(/WHERE[^`]*organization_id/s);
   });
 
-  it("findById WHERE includes both organization_id and clinician_id", () => {
+  it("findById WHERE includes organization_id (claims are org-scoped; billing staff can access all org claims)", () => {
     const findByIdStart = source.indexOf("static async findById");
     const createStart = source.indexOf("static async create");
     const block = source.slice(findByIdStart, createStart);
     expect(block).toMatch(/organization_id/);
-    expect(block).toMatch(/clinician_id/);
+    // clinician_id intentionally omitted: billing_staff and admin need access to all claims
+    // in the org, not just ones they created. requireCapability("manage_claims") enforces access.
   });
 
   it("does not use SELECT * — explicit column list prevents accidental field exposure", () => {

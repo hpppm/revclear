@@ -39,6 +39,16 @@ const OLLAMA_ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
 // Any URL not matching this list is rejected to block SSRF attacks.
 const CODES_API_ALLOWLIST: string[] = (process.env.CODES_API_ALLOWLIST || "").split(",").filter(Boolean);
 
+const isPrivateOrInternalHostname = (hostname: string): boolean => {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) return true;
+  // Docker service/container hostnames are typically bare names on the bridge/shared network.
+  if (!hostname.includes(".")) return true;
+  return false;
+};
+
 const validateOllamaUrl = (url: string): void => {
   let parsed: URL;
   try {
@@ -61,15 +71,16 @@ const validateExternalCodesUrl = (url: string): void => {
     throw new Error(`Invalid CODES_API_URL: "${url}"`);
   }
   const isLocalHttpEndpoint =
-    parsed.protocol === "http:" &&
-    (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1");
+    parsed.protocol === "http:" && isPrivateOrInternalHostname(parsed.hostname);
   const allowLocalHttp = process.env.NODE_ENV !== "production" && isLocalHttpEndpoint;
 
   // SECURITY: External AI endpoints must use HTTPS to prevent credential and
   // PHI exposure over unencrypted connections. Local development may use a
   // loopback HTTP endpoint when the AI server runs on the same machine.
   if (parsed.protocol !== "https:" && !allowLocalHttp) {
-    throw new Error(`CODES_API_URL must use HTTPS. Received: "${parsed.protocol}"`);
+    throw new Error(
+      `CODES_API_URL must use HTTPS unless it is a non-production internal endpoint. Received: "${parsed.protocol}//${parsed.hostname}"`,
+    );
   }
   // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
   if (CODES_API_ALLOWLIST.length > 0 && !CODES_API_ALLOWLIST.includes(parsed.hostname)) {

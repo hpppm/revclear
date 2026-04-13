@@ -147,7 +147,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--brand-100)] px-4 py-12 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--brand-50)] via-[#f4fffd] to-[var(--brand-100)] px-4 py-12 font-sans">
       <div className="w-full max-w-xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function SignupPage() {
             <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">
               Create Your Account
             </h1>
-            <p className="text-[rgba(13,148,136,0.68)]">
+            <p className="text-slate-500">
               Join thousands of clinicians automating their workflow
             </p>
           </div>
@@ -384,27 +384,12 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Button
                 type="submit"
-                variant="secondary"
+                variant="primary"
                 size="lg"
                 loading={isLoading}
                 className="group w-full rounded-xl shadow-[0_12px_20px_-12px_rgba(13,148,136,0.25)] hover:shadow-[0_14px_24px_-12px_rgba(13,148,136,0.35)] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
               >
-                <span className="flex items-center justify-center gap-2">
-                  Create Account
-                  <svg
-                    className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6"
-                    />
-                  </svg>
-                </span>
+                Create Account
               </Button>
 
               <p className="text-center text-gray-500">
