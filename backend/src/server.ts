@@ -116,12 +116,15 @@ app.use(securityMonitor);
 // --------------------------------------------------
 // Rate Limiting
 // --------------------------------------------------
+const authRateLimitStore = new (rateLimit as any).MemoryStore();
+
 app.use(
   "/api/auth",
   rateLimit({
     windowMs: 60 * 1000,
     max: 10,
     message: "Too many auth requests. Try again later.",
+    store: authRateLimitStore,
   }),
 );
 
@@ -352,3 +355,7 @@ import { errorHandler } from "./middleware/error";
 app.use(errorHandler);
 
 export default app;
+
+export const resetTestRateLimits = () => {
+  authRateLimitStore.resetAll();
+};
