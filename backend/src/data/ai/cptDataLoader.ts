@@ -41,7 +41,7 @@ export const getFlatCptCodes = (): CuratedCptCode[] => {
 };
 
 export const getCptCodesForPrompt = (): string => {
-  if (promptCache) return promptCache;
+  if (promptCache !== null) return promptCache;
   const data = loadData();
   const lines: string[] = [];
   for (const [specialty, codes] of Object.entries(data)) {
