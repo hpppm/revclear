@@ -141,6 +141,7 @@ const PARTIAL_MASK_KEYS = ["phone", "phone_number", "phonenumber", "fax"];
 const SENSITIVE_QUERY_KEYS_SET = new Set(SENSITIVE_QUERY_KEYS);
 const SENSITIVE_BODY_KEYS_SET = new Set(SENSITIVE_BODY_KEYS);
 const PARTIAL_MASK_KEYS_SET = new Set(PARTIAL_MASK_KEYS);
+const EMPTY_MASK_KEYS_SET: ReadonlySet<string> = new Set<string>();
 
 // UUIDs in URLs and query params can be used to enumerate patient records.
 // HIPAA 45 CFR § 164.312(b): resource identifiers that link to PHI must not
@@ -169,7 +170,7 @@ function maskTokenIssuer(iss: string | null | undefined): string | null {
   }
 }
 
-function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: ReadonlySet<string>, partialMaskKeys: ReadonlySet<string> = new Set()) {
+function sanitizeObject<T extends Record<string, any>>(obj: T, sensitiveKeys: ReadonlySet<string>, partialMaskKeys: ReadonlySet<string> = EMPTY_MASK_KEYS_SET) {
   if (!obj) return obj;
   const clone: Record<string, any> = {};
   for (const key of Object.keys(obj)) {
