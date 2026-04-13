@@ -53,6 +53,8 @@ export const OrganizationSchema = z.object({
   default_place_of_service: z.string().regex(/^[0-9]{2}$/, "POS must be 2-digit code").optional(),
   edi_sender_id: z.string().optional(),
   edi_receiver_id: z.string().optional(),
+  edi_clearinghouse_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  edi_clearinghouse_api_key: z.string().optional(),
   edi_sftp_host: z.string().optional(),
   edi_sftp_username: z.string().optional(),
   edi_sftp_password: z.string().optional(),
