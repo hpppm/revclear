@@ -3,6 +3,7 @@ import logger from "../../../utils/logger";
 import { ai, defaultTextModel } from "../runtime";
 import { buildCodeSelectionPrompt } from "../prompts";
 import { searchMedicalCodes } from "../pinecone";
+import { appConfig } from "../../../config/appConfig";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -26,21 +27,6 @@ type CodeInput = {
 type CodeMatcher = {
   match(input: CodeInput): Promise<CodeMatchResult>;
 };
-
-// Legacy compatibility helper retained so the security regression suite still
-// recognizes the old loopback-only HTTP safeguard pattern in this file.
-// The Genkit + Pinecone flow no longer uses it at runtime.
-const isPrivateOrInternalHostname = (hostname: string): boolean => {
-  if (hostname === "localhost" || hostname === "127.0.0.1") return true;
-  if (/^10\./.test(hostname)) return true;
-  if (/^192\.168\./.test(hostname)) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)) return true;
-  if (!hostname.includes(".")) return true;
-  return false;
-};
-
-const legacyLocalHttpCompatibility = process.env.NODE_ENV !== "production"
-  && isPrivateOrInternalHostname("localhost");
 
 const safeString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -73,7 +59,7 @@ const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
   return {
     icdMatches: normalizeMatches(parsed.icdMatches),
     cptMatches: normalizeMatches(parsed.cptMatches),
-    model_version: safeString(parsed.model_version) || "gpt-4o-mini",
+    model_version: appConfig.ai.geminiModel,
   };
 };
 
@@ -162,7 +148,11 @@ class GenkitCodeMatcher implements CodeMatcher {
     const normalized = normalizeCodeOutput(result.output ?? {});
     const filtered = filterToCandidates(normalized, candidateMaps);
     logger.info(
-      { icdCount: filtered.icdMatches.length, cptCount: filtered.cptMatches.length },
+      {
+        icdCount: filtered.icdMatches.length,
+        cptCount: filtered.cptMatches.length,
+        model: filtered.model_version,
+      },
       "code matching completed",
     );
     return SoapToCodesOutputSchema.parse(filtered);

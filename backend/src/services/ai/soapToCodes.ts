@@ -56,10 +56,7 @@ export const soapToCodes = async (
     return {
       icdMatches: validatedIcd,
       cptMatches: validatedCpt,
-      model_version:
-        typeof result.model_version === "string"
-          ? result.model_version
-          : process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model_version: result.model_version,
     };
   } catch (error: any) {
     logger.error({ ...auditBase, success: false, code: error?.code }, "soapToCodes failed");
