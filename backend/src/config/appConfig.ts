@@ -32,6 +32,7 @@ const EnvSchema = z.object({
   TRANSCRIBE_URL: z.string().url().optional(),
   AI_SERVER_API_KEY: z.string().min(1).optional(),
   AI_SERVER_HEALTH_URL: z.string().url().optional(),
+  OLLAMA_SEED: z.coerce.number().int().nonnegative().default(42),
 
   TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
@@ -119,6 +120,7 @@ export const appConfig = {
       env.AI_TRANSCRIBE_URL || env.TRANSCRIBE_API_URL || env.TRANSCRIBE_URL,
     serverApiKey: env.AI_SERVER_API_KEY,
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
+    ollamaSeed: env.OLLAMA_SEED,
   },
   clearinghouse: {
     url: env.CLEARINGHOUSE_URL,

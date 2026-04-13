@@ -26,6 +26,7 @@ type SoapGenerator = {
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
+const OLLAMA_SEED = Number(process.env.OLLAMA_SEED ?? "42");
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
@@ -161,6 +162,10 @@ class OllamaSoapGenerator implements SoapGenerator {
         messages: [{ role: "user", content: prompt }],
         stream: false,
         format: "json",
+        options: {
+          temperature: 0,
+          seed: OLLAMA_SEED,
+        },
       }),
     });
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'OllamaSoapGenerator: response received');

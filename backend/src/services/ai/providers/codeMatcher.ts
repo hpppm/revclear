@@ -29,6 +29,7 @@ type CodeMatcher = {
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
+const OLLAMA_SEED = Number(process.env.OLLAMA_SEED ?? "42");
 const CODES_API_URL = process.env.CODES_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
 
@@ -170,6 +171,10 @@ class OllamaCodeMatcher implements CodeMatcher {
         messages: [{ role: "user", content: buildPrompt(input) }],
         stream: false,
         format: "json",
+        options: {
+          temperature: 0,
+          seed: OLLAMA_SEED,
+        },
       }),
     });
 
