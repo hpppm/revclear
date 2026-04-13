@@ -92,24 +92,29 @@ const validateExternalCodesUrl = (url: string): void => {
   }
 };
 
-const buildPrompt = ({ soapNote }: CodeInput) => `You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards. Based on the SOAP note below, identify the most appropriate diagnosis and procedure codes.
+// Stable role + schema — placed in system role for Ollama KV prefix caching.
+const CODE_SYSTEM_PROMPT = [
+  "You are a certified medical coder with deep knowledge of ICD-10-CM and CPT coding standards.",
+  "INSTRUCTIONS:",
+  "1) Return up to 3 ICD-10-CM diagnosis codes that best match the documented conditions using your training knowledge.",
+  "2) Return up to 3 CPT procedure codes. PREFER codes from the CURATED CPT CODE REFERENCE when they match. Fall back to your training knowledge only if no curated code is appropriate.",
+  "3) For each code include: the code, its official description, its category, and a confidence score (0.0-1.0).",
+  "4) Order matches by confidence (highest first).",
+  "Return JSON matching this exact schema:",
+  '{"icdMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"cptMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"model_version":"string"}',
+].join("\n");
 
-SOAP NOTE:
-${soapNote}
-
-CURATED CPT CODE REFERENCE:
-The following are verified CPT codes for this practice. Prefer these codes when they match the documented services. If no curated code fits, you may use other valid CPT codes from your training knowledge.
-
-${getCptCodesForPrompt()}
-
-INSTRUCTIONS:
-1) Return up to 3 ICD-10-CM diagnosis codes that best match the documented conditions using your training knowledge.
-2) Return up to 3 CPT procedure codes. PREFER codes from the CURATED CPT CODE REFERENCE above when they match the documented services. Fall back to your training knowledge only if no curated code is appropriate.
-3) Use real, valid ICD-10-CM codes from your training knowledge, and prefer curated CPT codes from the reference list.
-4) For each code include: the code, its official description, its category, and a confidence score (0.0-1.0).
-5) Order matches by confidence (highest first).
-Return JSON matching this exact schema:
-{"icdMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"cptMatches":[{"code":"string","description":"string","category":"string","confidence":0.0}],"model_version":"string"}`;
+// Dynamic content only — SOAP note and CPT block vary per call.
+const buildCodeUserMessage = ({ soapNote, cptBlock }: { soapNote: string; cptBlock: string }): string =>
+  [
+    "SOAP NOTE:",
+    soapNote,
+    "",
+    "CURATED CPT CODE REFERENCE:",
+    "The following are verified CPT codes for this practice. Prefer these codes when they match the documented services. If no curated code fits, you may use other valid CPT codes from your training knowledge.",
+    "",
+    cptBlock,
+  ].join("\n");
 
 const safeString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -163,12 +168,16 @@ class OllamaCodeMatcher implements CodeMatcher {
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
+    const cptBlock = getCptCodesForPrompt();
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: OLLAMA_CODES_MODEL,
-        messages: [{ role: "user", content: buildPrompt(input) }],
+        messages: [
+          { role: "system", content: CODE_SYSTEM_PROMPT },
+          { role: "user", content: buildCodeUserMessage({ soapNote: input.soapNote, cptBlock }) },
+        ],
         stream: false,
         format: "json",
         options: {

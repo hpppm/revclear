@@ -90,17 +90,19 @@ const validateExternalSoapUrl = (url: string): void => {
   }
 };
 
-const buildSoapPrompt = ({ encounterId, transcriptText }: GenerateSoapInput) =>
-  [
-    "You are a concise clinical summarizer that converts doctor-patient conversation text into a SOAP note.",
-    "Use only information present in the transcript; do not invent vitals or labs.",
-    `Encounter ID: ${encounterId}`,
-    "Transcript:",
-    transcriptText,
-    "Return JSON matching this exact schema:",
-    '{"soap":{"subjective":"string","objective":"string","assessment":"string","plan":"string"},"confidence":0.0,"model_version":"string"}',
-    "Keep sections factual and concise.",
-  ].join("\n");
+// Stable role + schema — never changes between calls. Placed in the system
+// role so Ollama can cache the KV activations for this prefix across requests.
+const SOAP_SYSTEM_PROMPT = [
+  "You are a concise clinical summarizer that converts doctor-patient conversation text into a SOAP note.",
+  "Use only information present in the transcript; do not invent vitals or labs.",
+  "Return JSON matching this exact schema:",
+  '{"soap":{"subjective":"string","objective":"string","assessment":"string","plan":"string"},"confidence":0.0,"model_version":"string"}',
+  "Keep sections factual and concise.",
+].join("\n");
+
+// Dynamic content only — encounter ID and transcript vary per call.
+const buildSoapUserMessage = ({ encounterId, transcriptText }: GenerateSoapInput): string =>
+  [`Encounter ID: ${encounterId}`, "Transcript:", transcriptText].join("\n");
 
 const safeString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
@@ -151,7 +153,6 @@ class OllamaSoapGenerator implements SoapGenerator {
     validateOllamaUrl(OLLAMA_BASE_URL);
 
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
-    const prompt = buildSoapPrompt(input);
     logger.debug({ model: OLLAMA_MODEL, encounterId: input.encounterId }, 'OllamaSoapGenerator: sending request');
 
     const response = await fetch(url, {
@@ -159,7 +160,10 @@ class OllamaSoapGenerator implements SoapGenerator {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: SOAP_SYSTEM_PROMPT },
+          { role: "user", content: buildSoapUserMessage(input) },
+        ],
         stream: false,
         format: "json",
         options: {
