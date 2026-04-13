@@ -46,6 +46,7 @@ export default function OrganizationProfilePage() {
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [feeScheduleEntries, setFeeScheduleEntries] = useState<{ code: string; amount: string }[]>([]);
     const [selectedInviteRole, setSelectedInviteRole] = useState<OrganizationMemberRole>("clinician");
     const [generatedInvite, setGeneratedInvite] = useState<{
         code: string;
@@ -79,6 +80,8 @@ export default function OrganizationProfilePage() {
         // EDI/SFTP (credentials excluded for security)
         edi_sender_id: "",
         edi_receiver_id: "",
+        edi_clearinghouse_url: "",
+        edi_clearinghouse_api_key: "",
         edi_sftp_host: "",
         edi_sftp_username: "",
         edi_sftp_port: "",
@@ -121,11 +124,21 @@ export default function OrganizationProfilePage() {
                 default_place_of_service: organization.default_place_of_service || "",
                 edi_sender_id: organization.edi_sender_id || "",
                 edi_receiver_id: organization.edi_receiver_id || "",
+                edi_clearinghouse_url: organization.edi_clearinghouse_url || "",
+                edi_clearinghouse_api_key: "", // SECURITY: write-only — never pre-filled
                 edi_sftp_host: organization.edi_sftp_host || "",
                 edi_sftp_username: organization.edi_sftp_username || "",
                 edi_sftp_port: organization.edi_sftp_port?.toString() || "",
                 // SECURITY: Credentials excluded - managed securely on server
             });
+            // Fee schedule: convert { "99213": 150 } → [{ code, amount }]
+            const fsEntries =
+                organization.fee_schedule && typeof organization.fee_schedule === "object"
+                    ? Object.entries(organization.fee_schedule as Record<string, number>).map(
+                          ([code, amount]) => ({ code, amount: String(amount) })
+                      )
+                    : [];
+            setFeeScheduleEntries(fsEntries);
         }
     }, [organization]);
 
@@ -206,10 +219,20 @@ export default function OrganizationProfilePage() {
                 }
             });
             
-             if (formData.edi_sftp_port) {
+            if (formData.edi_sftp_port) {
                 payload.edi_sftp_port = parseInt(formData.edi_sftp_port as string);
             }
 
+            // Build fee_schedule object from entries
+            const feeSchedule: Record<string, number> = {};
+            feeScheduleEntries.forEach(({ code, amount }) => {
+                const trimmed = code.trim().toUpperCase();
+                const num = parseFloat(amount);
+                if (trimmed && !isNaN(num) && num >= 0) {
+                    feeSchedule[trimmed] = num;
+                }
+            });
+            payload.fee_schedule = feeSchedule;
 
             const response = await apiClient.organizations.updateCurrent(payload);
             const updatedOrganization = extractOrgFromResponse(response);
@@ -465,6 +488,60 @@ export default function OrganizationProfilePage() {
                                 </div>
                             </div>
 
+                            {/* Fee Schedule */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Fee Schedule</h3>
+                                <p className="text-sm text-slate-600 mb-4">
+                                    Set the charge amount for each CPT code. Used when generating claim line items.
+                                </p>
+                                <div className="space-y-2">
+                                    {feeScheduleEntries.map((entry, i) => (
+                                        <div key={i} className="flex items-center gap-3">
+                                            <div className="w-36">
+                                                <input
+                                                    className="brand-input w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm text-sm uppercase"
+                                                    placeholder="CPT code"
+                                                    value={entry.code}
+                                                    maxLength={5}
+                                                    onChange={(e) => {
+                                                        const updated = [...feeScheduleEntries];
+                                                        updated[i] = { ...updated[i], code: e.target.value.toUpperCase() };
+                                                        setFeeScheduleEntries(updated);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <input
+                                                    className="brand-input w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm text-sm"
+                                                    placeholder="Amount (e.g. 150.00)"
+                                                    value={entry.amount}
+                                                    onChange={(e) => {
+                                                        const updated = [...feeScheduleEntries];
+                                                        updated[i] = { ...updated[i], amount: e.target.value };
+                                                        setFeeScheduleEntries(updated);
+                                                    }}
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFeeScheduleEntries(feeScheduleEntries.filter((_, idx) => idx !== i))}
+                                                className="text-red-400 hover:text-red-600 text-lg leading-none px-1"
+                                                aria-label="Remove"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFeeScheduleEntries([...feeScheduleEntries, { code: "", amount: "" }])}
+                                    className="mt-3 text-sm text-(--brand-600) hover:text-(--brand-700) font-medium"
+                                >
+                                    + Add CPT code
+                                </button>
+                            </div>
+
                             {/* EDI/SFTP Settings */}
                             <div>
                                 <button
@@ -497,6 +574,25 @@ export default function OrganizationProfilePage() {
                                                 value={formData.edi_receiver_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_receiver_id: e.target.value })}
                                                 error={fieldErrors.edi_receiver_id}
+                                            />
+                                        </div>
+                                        <div className="mt-4">
+                                            <Input
+                                                label="Clearinghouse URL"
+                                                placeholder="https://api.yourclearinghouse.com/submit"
+                                                value={formData.edi_clearinghouse_url}
+                                                onChange={(e) => setFormData({ ...formData, edi_clearinghouse_url: e.target.value })}
+                                                error={fieldErrors.edi_clearinghouse_url}
+                                            />
+                                        </div>
+                                        <div className="mt-4">
+                                            <Input
+                                                label="Clearinghouse API Key"
+                                                type="password"
+                                                placeholder="Leave blank to keep existing key"
+                                                value={formData.edi_clearinghouse_api_key}
+                                                onChange={(e) => setFormData({ ...formData, edi_clearinghouse_api_key: e.target.value })}
+                                                error={fieldErrors.edi_clearinghouse_api_key}
                                             />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

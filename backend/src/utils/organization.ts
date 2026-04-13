@@ -124,6 +124,34 @@ export const removeUserFromOrganization = async (userId: string) => {
   return result.rows[0];
 };
 
+export interface OrgEdiSettings {
+  edi_sender_id?: string;
+  edi_receiver_id?: string;
+  edi_clearinghouse_url?: string;
+  edi_clearinghouse_api_key?: string;
+  edi_sftp_host?: string;
+  edi_sftp_port?: number;
+  edi_sftp_username?: string;
+  edi_sftp_password?: string;
+  edi_sftp_private_key?: string;
+}
+
+/**
+ * Fetch org EDI/SFTP credentials for server-side clearinghouse submission.
+ * SECURITY: includes edi_sftp_password and edi_sftp_private_key — never send to client.
+ */
+export const getOrgEdiSettings = async (
+  organizationId: string,
+): Promise<OrgEdiSettings | null> => {
+  const result = await query(
+    `SELECT edi_sender_id, edi_receiver_id, edi_clearinghouse_url, edi_clearinghouse_api_key,
+            edi_sftp_host, edi_sftp_port, edi_sftp_username, edi_sftp_password, edi_sftp_private_key
+     FROM organizations WHERE id = $1`,
+    [organizationId],
+  );
+  return result.rows[0] || null;
+};
+
 /**
  * Get all users in an organization
  */

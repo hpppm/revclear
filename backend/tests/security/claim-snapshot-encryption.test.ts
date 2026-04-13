@@ -31,12 +31,11 @@ describe("claim snapshot PHI encryption", () => {
   it("encrypts persisted claim snapshot fields on create and returns decrypted values", async () => {
     const { queryMock, ClaimService } = loadModules();
 
+    // Call [0]: encounter ownership check
+    // Call [1]: INSERT ... RETURNING (no getClaimColumns query — replaced by static CLAIM_WRITABLE_COLUMNS Set)
     queryMock
       .mockResolvedValueOnce({
         rows: [{ id: "enc-1", patient_id: "pat-1" }],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ column_name: "billing_provider" }, { column_name: "subscriber" }],
       })
       .mockResolvedValueOnce({
         rows: [
@@ -62,7 +61,7 @@ describe("claim snapshot PHI encryption", () => {
       "clin-1",
     );
 
-    const insertParams = queryMock.mock.calls[2][1];
+    const insertParams = queryMock.mock.calls[1][1];
     expect(insertParams[4]).toEqual(
       expect.objectContaining({
         __revclear_encrypted: true,
@@ -82,14 +81,10 @@ describe("claim snapshot PHI encryption", () => {
   it("encrypts persisted claim snapshot fields on update and keeps operational fields plaintext", async () => {
     const { queryMock, ClaimService } = loadModules();
 
+    // Call [0]: ownership check (SELECT id FROM claims WHERE id=$1 AND organization_id=$2)
+    // Call [1]: UPDATE ... RETURNING (no getClaimColumns query — replaced by static CLAIM_WRITABLE_COLUMNS Set)
     queryMock
       .mockResolvedValueOnce({ rows: [{ id: "claim-1" }] })
-      .mockResolvedValueOnce({
-        rows: [
-          { column_name: "billing_provider" },
-          { column_name: "status" },
-        ],
-      })
       .mockResolvedValueOnce({
         rows: [
           {
@@ -110,7 +105,7 @@ describe("claim snapshot PHI encryption", () => {
       "clin-1",
     );
 
-    const updateParams = queryMock.mock.calls[2][1];
+    const updateParams = queryMock.mock.calls[1][1];
     expect(updateParams[0]).toEqual(
       expect.objectContaining({
         __revclear_encrypted: true,

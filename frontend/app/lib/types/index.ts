@@ -56,6 +56,8 @@ export interface Organization {
   default_place_of_service?: string;
   edi_sender_id?: string;
   edi_receiver_id?: string;
+  edi_clearinghouse_url?: string;
+  // SECURITY: edi_clearinghouse_api_key is write-only — never returned by API
   edi_sftp_host?: string;
   edi_sftp_username?: string;
   // SECURITY: edi_sftp_password and edi_sftp_private_key are never sent to frontend
