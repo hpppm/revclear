@@ -61,6 +61,8 @@ const SAFE_ERROR_PATTERNS = [
   /unauthorized/i,
   /permission denied/i,
   /no fields to update/i,
+  /code expired/i,
+  /open your authenticator/i,
   /audio/i,
   /transcrib/i,
   /unsupported/i,
