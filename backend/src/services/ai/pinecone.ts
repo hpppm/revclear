@@ -127,7 +127,7 @@ const mapMatch = (match: PineconeSearchMatch, codeType: CodeType): RetrievedCode
 };
 
 const searchNamespace = async (query: string, codeType: CodeType, topK: number) => {
-  const response = await pineconeFetch(`/search/namespaces/${PINECONE_NAMESPACE}-${codeType}`, {
+  const response = await pineconeFetch(`/records/namespaces/${PINECONE_NAMESPACE}-${codeType}/search`, {
     method: "POST",
     body: JSON.stringify({
       query: { inputs: { text: query }, top_k: topK },

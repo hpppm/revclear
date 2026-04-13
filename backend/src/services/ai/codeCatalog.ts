@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import cptCurated from "../../data/ai/cpt_curated.json";
 import icdCurated from "../../data/ai/icd_curated.json";
 
 export type CodeType = "icd10" | "cpt";
@@ -41,8 +40,7 @@ const readMaybeJson = <T>(candidatePaths: string[]): T | null => {
 
 const resolveIcdSource = (): IcdSource => {
   const localPath = path.resolve(__dirname, "../../data/ai/icd_curated.json");
-  const blueprintPath = path.resolve(process.cwd(), "../../revclear-ai-server/data/codes/mockIcdCodes.json");
-  const data = readMaybeJson<IcdSource>([localPath, blueprintPath]);
+  const data = readMaybeJson<IcdSource>([localPath]);
   if (!data) {
     throw new Error("Unable to load ICD code catalog");
   }
@@ -51,10 +49,11 @@ const resolveIcdSource = (): IcdSource => {
 
 const resolveCptSource = (): CuratedCptData => {
   const localPath = path.resolve(__dirname, "../../data/ai/cpt_curated.json");
-  const blueprintPath = path.resolve(process.cwd(), "../../revclear-ai-server/data/codes/mockCptCodes.json");
-  const data = readMaybeJson<CuratedCptData>([localPath, blueprintPath]);
-  if (data) return data;
-  return cptCurated as CuratedCptData;
+  const data = readMaybeJson<CuratedCptData>([localPath]);
+  if (!data) {
+    throw new Error("Unable to load CPT code catalog");
+  }
+  return data;
 };
 
 const flattenCptCodes = (data: CuratedCptData): MedicalCodeRecord[] => {

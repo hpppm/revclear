@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { getMockTranscript } from "./mockTranscript";
 import { getSoapGenerator, SoapSchema } from "./providers/soapGenerator";
 import logger from "../../utils/logger";
 
@@ -16,8 +15,7 @@ const SpeechToSoapInput = z.object({
     .string()
     .min(1)
     .max(MAX_TRANSCRIPT_LENGTH, `Transcript exceeds maximum allowed length of ${MAX_TRANSCRIPT_LENGTH} characters.`)
-    .describe("Flat transcript text from Whisper or mock data.")
-    .optional(),
+    .describe("Flat transcript text from Whisper."),
 });
 
 export type SpeechToSoapInputType = z.infer<typeof SpeechToSoapInput>;
@@ -29,11 +27,6 @@ export const speechToSoap = async (
   const parsedInput = SpeechToSoapInput.parse(input);
 
   const generator = getSoapGenerator();
-
-  const transcriptText =
-    parsedInput.transcript && parsedInput.transcript.trim().length > 0
-      ? parsedInput.transcript
-      : (await getMockTranscript()).transcript;
 
   // HIPAA 45 CFR § 164.312(b): Audit log for AI activity — record who triggered
   // the AI flow, which encounter it applies to, and the outcome.
@@ -47,7 +40,7 @@ export const speechToSoap = async (
   try {
     output = await generator.generate({
       encounterId: parsedInput.encounter_id,
-      transcriptText,
+      transcriptText: parsedInput.transcript,
     });
     logger.info({ ...auditBase, success: true }, "speechToSoap completed");
   } catch (error: any) {
@@ -55,19 +48,5 @@ export const speechToSoap = async (
     throw error;
   }
 
-  const base = output || {
-    soap: {
-      subjective: "",
-      objective: "",
-      assessment: "",
-      plan: "",
-    },
-    confidence: 0.5,
-    model_version: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-  };
-
-  return {
-    ...base,
-    model_version: base.model_version || process.env.GEMINI_MODEL || "gemini-2.5-flash",
-  };
+  return output;
 };

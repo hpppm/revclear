@@ -334,27 +334,11 @@ app.use("/api/security", securityRoutes);
 import swaggerUi from "swagger-ui-express";
 import { generateOpenApiSpec } from "./config/swagger";
 
-// Dev routes and Swagger docs only available in development environment
+// Swagger Documentation
 const isDevelopment =
   appConfig.env === "development" && process.env.NODE_ENV !== "production";
 
 if (isDevelopment && !isTestEnv) {
-  // Rate limit dev routes - less restrictive than production but still protected
-  app.use(
-    "/api/dev",
-    rateLimit({
-      windowMs: 60 * 1000,
-      max: 30,
-      message: "Too many dev requests. Try again later.",
-    }),
-  );
-
-  // Lazily load dev routes only in development to avoid exposure in production
-  const devRoutes = require("./api/routes/dev").default;
-  app.use("/api/dev", devRoutes);
-  logger.warn('Dev routes enabled at /api/dev');
-
-  // Swagger Documentation
   const swaggerSpec = generateOpenApiSpec();
   app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.get("/docs.json", (req, res) => {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ai, defaultTextModel } from "../runtime";
 import { buildSoapPrompt } from "../prompts";
+import { appConfig } from "../../../config/appConfig";
 import logger from "../../../utils/logger";
 
 export const SoapSchema = z.object({
@@ -52,7 +53,7 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
       plan: safeString(rawSoap.plan),
     },
     confidence: clampConfidence(rawObj.confidence),
-    model_version: safeString(rawObj.model_version) || "gpt-4o-mini",
+    model_version: appConfig.ai.geminiModel,
   };
 };
 

@@ -26,15 +26,6 @@ export const soapApi = {
   generateFromTranscript: (encounterId: string) =>
     api.post(`/encounters/${safeId(encounterId)}/soap`),
 
-  // SECURITY: Mock endpoint only exists in development (backend returns 404 in
-  // production). Guard client-side as well to prevent accidental calls in prod.
-  generateFromMockTranscript: (encounterId: string) => {
-    if (process.env.NODE_ENV !== "development") {
-      return Promise.reject(new Error("Mock SOAP endpoint is only available in development."));
-    }
-    return api.post(`/encounters/${safeId(encounterId)}/soap/mock`);
-  },
-
   update: (encounterId: string, data: SoapUpdatePayload) =>
     api.put(`/encounters/${safeId(encounterId)}/soap`, SoapUpdateSchema.parse(data)),
 };
