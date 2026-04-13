@@ -36,7 +36,6 @@ const EnvSchema = z.object({
 
   PINECONE_API_KEY: z.string().min(1).optional(),
   PINECONE_INDEX_NAME: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
 
   TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
@@ -57,7 +56,6 @@ const EnvSchema = z.object({
     ["AI_SERVER_API_KEY", env.AI_SERVER_API_KEY],
     ["PINECONE_API_KEY", env.PINECONE_API_KEY],
     ["PINECONE_INDEX_NAME", env.PINECONE_INDEX_NAME],
-    ["OPENAI_API_KEY", env.OPENAI_API_KEY],
   ];
 
   for (const [key, value] of requiredInProd) {
@@ -130,7 +128,6 @@ export const appConfig = {
     ollamaSeed: env.OLLAMA_SEED,
     pineconeApiKey: env.PINECONE_API_KEY,
     pineconeIndexName: env.PINECONE_INDEX_NAME,
-    openaiApiKey: env.OPENAI_API_KEY,
   },
   clearinghouse: {
     url: env.CLEARINGHOUSE_URL,
