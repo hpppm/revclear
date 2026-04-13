@@ -8,7 +8,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: "list",
+  // list: clean live terminal output with step breadcrumbs (printSteps shows
+  //   test.step() names inline so failures are readable without opening a report)
+  // html: browsable report after each run; open:'never' keeps CI non-interactive
+  reporter: [["list", { printSteps: true }], ["html", { open: "never" }]],
   timeout: 60000,
   use: {
     baseURL: process.env.BASE_URL || "http://localhost:3000",

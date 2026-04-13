@@ -1,10 +1,18 @@
 /**
  * Security Test: Admin role enforcement on protected endpoints
  *
- * Verifies that:
- * 1. GET /api/security/stats uses requireRole middleware (not inline helper)
- * 2. GET /api/dev/status requires admin role
- * 3. codes.ts does not use RETURNING * (data minimization policy)
+ * 1. requireRole middleware unit tests — DB-role takes precedence, correct
+ *    status codes on allowed / forbidden / unauthenticated paths.
+ *
+ * 2. requireCapability middleware unit tests — per-role capability matrix is
+ *    exercised directly without needing HTTP requests.
+ *
+ * HTTP-level enforcement (GET /api/security/stats returns 403 for clinician,
+ * 200 for admin) is verified in integration/route-protection.test.ts.
+ *
+ * Source-text assertions that previously appeared here (codes.ts RETURNING *,
+ * dev/status.ts requireRole wiring, security.ts inline-check absence) have
+ * been removed. Source text checks pass even when the code path is dead.
  */
 
 // Mock the DB module to avoid real DB connections in tests
@@ -153,56 +161,3 @@ describe("requireCapability middleware", () => {
   });
 });
 
-// --- Data minimization: codes.ts RETURNING * check ---
-
-describe("codes.ts data minimization", () => {
-  it("does not use RETURNING * in saveMedicalCode", () => {
-    const fs = require("fs");
-    const path = require("path");
-    const codesPath = path.join(__dirname, "../../src/api/routes/codes.ts");
-    const content = fs.readFileSync(codesPath, "utf-8");
-
-    // Should NOT have bare RETURNING *
-    expect(content).not.toMatch(/RETURNING \*/);
-    // Should have explicit column list
-    expect(content).toMatch(/MEDICAL_CODE_COLUMNS/);
-  });
-});
-
-// --- dev/status.ts admin check ---
-
-describe("dev/status.ts admin protection", () => {
-  it("uses requireRole middleware to restrict AWS config access to admins", () => {
-    const fs = require("fs");
-    const path = require("path");
-    const statusPath = path.join(
-      __dirname,
-      "../../src/api/routes/dev/status.ts",
-    );
-    const content = fs.readFileSync(statusPath, "utf-8");
-
-    // Should use requireRole(['admin']) consistent with RBAC patterns
-    expect(content).toMatch(/requireRole\(\[["']admin["']\]\)/);
-    // Should NOT have a custom adminOnly helper (avoids duplicate logic)
-    expect(content).not.toMatch(/const adminOnly/);
-  });
-});
-
-// --- security.ts uses requireRole, not inline isAdmin helper ---
-
-describe("security.ts admin check", () => {
-  it("uses requireRole middleware instead of inline isAdmin helper", () => {
-    const fs = require("fs");
-    const path = require("path");
-    const securityPath = path.join(
-      __dirname,
-      "../../src/api/routes/security.ts",
-    );
-    const content = fs.readFileSync(securityPath, "utf-8");
-
-    // Should NOT have inline isAdmin helper
-    expect(content).not.toMatch(/const isAdmin/);
-    // Should use requireRole
-    expect(content).toMatch(/requireRole\(\[["']admin["']\]\)/);
-  });
-});

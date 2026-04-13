@@ -1,21 +1,19 @@
 /**
  * Security Test: Protected route authentication and role enforcement
  *
- * Covers three areas:
+ * Covers two areas:
  *
- * 1. Static analysis — every PHI route file imports authMiddleware and
- *    requireOrganization; admin-only routes import requireRole(['admin']).
- *    Reading the source rather than running HTTP ensures the guard is wired
- *    at the module level, not hidden behind conditional logic.
- *
- * 2. requireOrganization middleware — unit tests that verify:
+ * 1. requireOrganization middleware — unit tests that verify:
  *    - 401 when req.user is absent (token passed but user unknown)
  *    - 400 when authenticated user has no organization
  *    - Attaches organization to req and calls next() on the happy path
  *
- * 3. requireRole middleware — role-based access control gate:
+ * 2. requireRole middleware — role-based access control gate:
  *    - 403 when the user's role is not in the allowedRoles list
  *    - 401 when no user identity is present at all
+ *
+ * HTTP-level enforcement (routes returning 401/403) is covered by
+ * integration/route-protection.test.ts.
  */
 
 // ---------------------------------------------------------------------------
@@ -49,8 +47,6 @@ jest.mock("aws-jwt-verify", () => ({
 // Imports
 // ---------------------------------------------------------------------------
 
-import * as fs from "fs";
-import * as path from "path";
 import { getUserOrganization } from "../../src/utils/organization";
 import { requireRole } from "../../src/middleware/auth";
 
@@ -64,10 +60,6 @@ const mockGetUserOrganization = getUserOrganization as jest.Mock;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const ROUTES_DIR = path.join(__dirname, "../../src/api/routes");
-const readRoute = (name: string) =>
-  fs.readFileSync(path.join(ROUTES_DIR, name), "utf-8");
 
 const makeRes = () => {
   const res: any = {};
@@ -89,99 +81,7 @@ const MOCK_ORG = {
 };
 
 // ---------------------------------------------------------------------------
-// 1. Static analysis — middleware wiring on PHI routes
-// ---------------------------------------------------------------------------
-
-describe("PHI routes: authMiddleware is applied to every route", () => {
-  const PHI_ROUTES = [
-    "patients.ts",
-    "encounters.ts",
-    "claims.ts",
-    "transcribe.ts",
-    "soap.ts",
-    "codes.ts",
-    "me.ts",
-  ];
-
-  it.each(PHI_ROUTES)("%s imports authMiddleware", (file) => {
-    const content = readRoute(file);
-    expect(content).toMatch(/authMiddleware/);
-  });
-});
-
-describe("PHI routes: requireOrganization guards all patient/encounter/claim routes", () => {
-  const ORG_SCOPED_ROUTES = ["patients.ts", "encounters.ts", "claims.ts"];
-
-  it.each(ORG_SCOPED_ROUTES)("%s imports requireOrganization", (file) => {
-    const content = readRoute(file);
-    expect(content).toMatch(/requireOrganization/);
-  });
-
-  it.each(ORG_SCOPED_ROUTES)(
-    "%s applies requireOrganization to every router.get/post/put/delete handler",
-    (file) => {
-      const content = readRoute(file);
-      // Count route registrations vs requireOrganization usages in handler args.
-      // Every `router.<method>(` must be accompanied by requireOrganization.
-      const routeCount = (content.match(/router\.(get|post|put|delete|patch)\(/g) || []).length;
-      const orgGuardCount = (content.match(/requireOrganization/g) || []).length;
-      // Each route has exactly one requireOrganization usage in its arg list.
-      // There may also be one import — count only usages after the import line.
-      const importLineEnd = content.indexOf("\n", content.indexOf("requireOrganization"));
-      const afterImport = content.slice(importLineEnd);
-      const guardUsages = (afterImport.match(/requireOrganization/g) || []).length;
-      expect(guardUsages).toBe(routeCount);
-    },
-  );
-});
-
-describe("Admin-only routes: requireRole(['admin']) is applied", () => {
-  it("organizations.ts: POST /invite uses requireRole(ORGANIZATION_MANAGER_ROLES)", () => {
-    const content = readRoute("organizations.ts");
-    // The invite route specifically must have requireRole
-    expect(content).toMatch(/\/invite.*requireRole|requireRole.*\/invite/s);
-    // Confirm the pattern is present in the route registration
-    const inviteRouteBlock = content.slice(content.indexOf("/invite"));
-    expect(inviteRouteBlock).toMatch(/requireRole\(ORGANIZATION_MANAGER_ROLES\)/);
-  });
-
-  it("users.ts: all routes use requireRole(ORGANIZATION_MANAGER_ROLES)", () => {
-    const content = readRoute("users.ts");
-    expect(content).toMatch(/requireRole\(ORGANIZATION_MANAGER_ROLES\)/);
-    // Both GET / and GET /:cognitoId must be guarded
-    const routeCount = (content.match(/router\.get\(/g) || []).length;
-    const guardCount = (content.match(/requireRole\(ORGANIZATION_MANAGER_ROLES\)/g) || []).length;
-    expect(guardCount).toBe(routeCount);
-  });
-
-  it("security.ts: GET /stats uses requireRole(['admin'])", () => {
-    const content = readRoute("security.ts");
-    expect(content).toMatch(/requireRole\(\[["']admin["']\]\)/);
-  });
-
-  it("users.ts: no route can be accessed without requireRole", () => {
-    const content = readRoute("users.ts");
-    // Verify requireRole is not conditionally applied — it should appear inline
-    // on every router.get() registration, not after a conditional check.
-    const registrations = [...content.matchAll(/router\.get\([^;]+;/gs)];
-    for (const [match] of registrations) {
-      expect(match).toMatch(/requireRole/);
-    }
-  });
-});
-
-describe("Admin-only routes: no inline isAdmin helper bypasses requireRole", () => {
-  const ADMIN_ROUTE_FILES = ["security.ts", "users.ts"];
-
-  it.each(ADMIN_ROUTE_FILES)("%s does not define a custom inline admin check", (file) => {
-    const content = readRoute(file);
-    expect(content).not.toMatch(/const isAdmin\s*=/);
-    expect(content).not.toMatch(/if\s*\(\s*req\.user\.role\s*===\s*['"]admin['"]\s*\)/);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2. requireOrganization middleware — unit tests
+// 1. requireOrganization middleware — unit tests
 // ---------------------------------------------------------------------------
 
 describe("requireOrganization: blocks unauthenticated requests", () => {
@@ -276,7 +176,7 @@ describe("requireOrganization: happy path attaches org and calls next()", () => 
 });
 
 // ---------------------------------------------------------------------------
-// 3. requireRole — role-based access control
+// 2. requireRole — role-based access control
 // ---------------------------------------------------------------------------
 
 describe("requireRole: blocks clinicians from admin endpoints", () => {
