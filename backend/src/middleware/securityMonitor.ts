@@ -26,7 +26,7 @@ const requestRates = new Map<string, { count: number; windowStart: Date }>();
 const RATE_LIMIT_THRESHOLD = 100;
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 
-// Per-IP 404 counters — avoids O(n²) scan of requestHistory on every request
+// Per-IP 404 counters — avoids a per-request O(n) scan of requestHistory
 const notFoundCounts = new Map<string, { count: number; windowStart: number }>();
 const NOT_FOUND_THRESHOLD = 20;
 const NOT_FOUND_WINDOW = 5 * 60 * 1000; // 5 minutes
