@@ -64,4 +64,10 @@ export const claimsApi = {
     api.put(`/claims/${safeId(id)}`, ClaimUpdateSchema.parse(data)),
 
   delete: (id: string) => api.delete(`/claims/${safeId(id)}`),
+
+  submit: (id: string) => api.post(`/claims/${safeId(id)}/submit`),
+
+  getStatusHistory: (id: string) => api.get(`/claims/${safeId(id)}/status-history`),
+
+  download: (id: string) => api.get(`/claims/${safeId(id)}/download`, { responseType: "blob" }),
 };

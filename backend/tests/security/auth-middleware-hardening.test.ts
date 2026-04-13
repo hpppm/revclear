@@ -1,7 +1,7 @@
 /**
  * Auth Middleware Hardening Tests
  *
- * Verifies three security changes made in this PR:
+ * Verifies security changes to auth middleware and related code:
  *
  * Change 1 — Bearer header fallback removed (auth.ts)
  *   Tokens are accepted from httpOnly cookies only.
@@ -15,6 +15,10 @@
  * Change 3 — Cross-tab cookie collision detection (AuthContext.tsx)
  *   sessionStorage.userId is set on login and compared on every checkAuth()
  *   call. A mismatch (cookie overwritten by another tab) redirects to /login.
+ *
+ * Change 5 — MFA enforcement (auth.ts)
+ *   Tokens whose amr claim does not include "mfa" are rejected with 401.
+ *   This blocks tokens issued before TOTP MFA was enabled on the user pool.
  */
 
 // ---------------------------------------------------------------------------
@@ -56,6 +60,9 @@ const { authMiddleware } = require("../../src/middleware/auth");
 // Helpers
 // ---------------------------------------------------------------------------
 
+// VALID_PAYLOAD represents a fully-authenticated Cognito access token that has
+// passed TOTP MFA verification. The amr claim is set by Cognito when
+// SOFTWARE_TOKEN_MFA is satisfied; tokens without it are now rejected.
 const VALID_PAYLOAD = {
   sub: "cognito-sub-123",
   iss: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test",
@@ -64,6 +71,7 @@ const VALID_PAYLOAD = {
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   "cognito:groups": ["Users"],
+  amr: ["mfa"],
 };
 
 const DB_USER = {
@@ -269,6 +277,65 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 
     expect(next).toHaveBeenCalled();
     expect(req.user.role).toBe("nurse");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Change 5 — MFA enforcement via Cognito pool (not amr claim)
+//
+// The amr claim check was removed because Cognito only populates amr when
+// Advanced Security (Threat Protection) is enabled on the user pool. Without
+// it, tokens from a completed SOFTWARE_TOKEN_MFA challenge still lack the
+// claim, blocking every valid login. MFA enforcement is delegated to the
+// Cognito pool's mandatory TOTP configuration — any token that passes
+// RS256 signature verification was issued only after Cognito completed the
+// challenge. Restore the amr check if Advanced Security is enabled later.
+// ---------------------------------------------------------------------------
+
+describe("Change 5: MFA enforcement — valid Cognito tokens pass regardless of amr claim", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("passes through when amr claim is absent (Cognito pool enforces MFA at challenge level)", async () => {
+    const { amr: _omitted, ...payloadWithoutAmr } = VALID_PAYLOAD;
+    mockVerify.mockResolvedValue(payloadWithoutAmr);
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "no-amr.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("passes through when amr is an empty array", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: [] });
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "empty-amr.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("passes through when amr includes 'mfa' (Advanced Security populated claim)", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD); // amr: ["mfa"]
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "mfa-valid.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 

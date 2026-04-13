@@ -233,6 +233,8 @@ export const OrganizationFormSchema = z.object({
   default_place_of_service: z.string().max(10).optional().or(z.literal("")),
   edi_sender_id: z.string().max(50).optional().or(z.literal("")),
   edi_receiver_id: z.string().max(50).optional().or(z.literal("")),
+  edi_clearinghouse_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  edi_clearinghouse_api_key: z.string().optional().or(z.literal("")),
   edi_sftp_host: z.string().max(200).optional().or(z.literal("")),
   edi_sftp_username: z.string().max(100).optional().or(z.literal("")),
   edi_sftp_port: z

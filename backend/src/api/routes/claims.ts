@@ -120,6 +120,68 @@ router.delete("/:id", authMiddleware, requireCapability("manage_claims"), requir
   }
 });
 
+// POST /api/claims/:id/submit — submit claim to clearinghouse
+router.post("/:id/submit", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const result = await ClaimService.submit(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/claims/:id/status-history — get all status changes for a claim
+router.get("/:id/status-history", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const history = await ClaimService.getStatusHistory(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.json({ success: true, data: history });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/claims/:id/download — download EDI 837 file
+router.get("/:id/download", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const { ediString, claimId } = await ClaimService.downloadEdi(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="claim_${claimId}.edi"`);
+    res.send(ediString);
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * GET /api/claims/encounter/:encounterId/preview
  * Build a claim payload without persisting it.
