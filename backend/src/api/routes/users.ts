@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, NextFunction, Request, Response } from "express";
 import { authMiddleware, requireRole } from "../../middleware/auth";
 import { ORGANIZATION_MANAGER_ROLES } from "../../constants/roles";
 import { query } from "../../config/db";
@@ -12,7 +12,7 @@ const router = Router();
  * @query {number} limit - Max results (default 50, max 100)
  * @query {number} offset - Skip results (default 0)
  */
-router.get("/", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req, res) => {
+router.get("/", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   try {
     // SECURITY: Scope to user's organization to prevent cross-org data leak
     const orgId = (req.user as any)?.organization_id;
@@ -35,7 +35,7 @@ router.get("/", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (
       pagination: { limit, offset, total, hasMore: offset + result.rows.length < total }
     });
   } catch (err) {
-    return res.status(500).json({ error: "Server Error" });
+    return next(err);
   }
 });
 
@@ -44,7 +44,7 @@ router.get("/", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (
  * @description Get a single user by their Cognito ID (manager only, same org)
  * @access Private (requires authMiddleware + clinician/admin role)
  */
-router.get("/:cognitoId", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req, res) => {
+router.get("/:cognitoId", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (req: Request, res: Response, next: NextFunction) => {
   // SECURITY: Scope to user's organization
   const orgId = (req.user as any)?.organization_id;
   if (!orgId) {
@@ -66,7 +66,7 @@ router.get("/:cognitoId", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES
 
     return res.json(user);
   } catch (err) {
-    return res.status(500).json({ error: "Server Error" });
+    return next(err);
   }
 });
 

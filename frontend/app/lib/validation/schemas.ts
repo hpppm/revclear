@@ -135,7 +135,7 @@ const patientRequiredFields = {
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name cannot exceed 100 characters")
-    .regex(/^[A-Za-z\s'\-\.]+$/, "Name must contain letters only"),
+    .regex(/^[A-Za-z0-9\s'\-\.]+$/, "Name must contain valid characters"),
   dob: z
     .string()
     .min(1, "Date of birth is required")
