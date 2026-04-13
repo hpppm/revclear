@@ -26,6 +26,13 @@ const requestRates = new Map<string, { count: number; windowStart: Date }>();
 const RATE_LIMIT_THRESHOLD = 100;
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 
+// Per-IP 404 counters — avoids a per-request O(n) scan of requestHistory
+const notFoundCounts = new Map<string, { count: number; windowStart: number }>();
+const NOT_FOUND_THRESHOLD = 20;
+const NOT_FOUND_WINDOW = 5 * 60 * 1000; // 5 minutes
+const NOT_FOUND_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
+let lastNotFoundCleanup = 0;
+
 // Blocked IPs (temporary ban for severe violations)
 const blockedIPs = new Map<string, Date>();
 const BLOCK_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -163,14 +170,29 @@ function detectThreats(metrics: RequestMetrics) {
     trackFailedAuth(metrics.ipAddress);
   }
 
-  // Detect scanning behavior (many 404s)
-  const recent404s = requestHistory.filter(
-    r => r.ipAddress === metrics.ipAddress && r.statusCode === 404
-  ).length;
-  
-  if (recent404s > 20) {
-    logger.warn({ ip: metrics.ipAddress }, 'security: potential scanning detected');
-    blockIP(metrics.ipAddress);
+  // Detect scanning behavior (many 404s) — O(1) using per-IP counter
+  if (metrics.statusCode === 404) {
+    const now = Date.now();
+    if (now - lastNotFoundCleanup >= NOT_FOUND_CLEANUP_INTERVAL) {
+      for (const [ip, entry] of notFoundCounts.entries()) {
+        if (now - entry.windowStart > NOT_FOUND_WINDOW) {
+          notFoundCounts.delete(ip);
+        }
+      }
+      lastNotFoundCleanup = now;
+    }
+
+    const existing = notFoundCounts.get(metrics.ipAddress);
+    if (!existing || now - existing.windowStart > NOT_FOUND_WINDOW) {
+      notFoundCounts.set(metrics.ipAddress, { count: 1, windowStart: now });
+    } else {
+      existing.count++;
+      if (existing.count > NOT_FOUND_THRESHOLD) {
+        logger.warn({ ip: metrics.ipAddress }, 'security: potential scanning detected');
+        blockIP(metrics.ipAddress);
+        notFoundCounts.delete(metrics.ipAddress);
+      }
+    }
   }
 
   if (metrics.durationMs > 10000) {
