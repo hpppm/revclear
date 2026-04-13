@@ -395,98 +395,13 @@ describe("Change 4: SignupSchema rejects injected Cognito attributes", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Change 3 — Cross-tab collision: static analysis of AuthContext
-// ---------------------------------------------------------------------------
-
-describe("Change 3: Cross-tab cookie collision detection in AuthContext.tsx", () => {
-  const authContextPath = path.join(
-    __dirname,
-    "../../../frontend/app/context/AuthContext.tsx"
-  );
-  const content = fs.existsSync(authContextPath)
-    ? fs.readFileSync(authContextPath, "utf-8")
-    : null;
-
-  const skip = content === null;
-
-  (skip ? it.skip : it)(
-    "stores userId in sessionStorage on login",
-    () => {
-      expect(content).toMatch(/sessionStorage\.setItem\(["']userId["']/);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "reads userId from sessionStorage in checkAuth",
-    () => {
-      expect(content).toMatch(/sessionStorage\.getItem\(["']userId["']/);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "redirects to /login when stored userId does not match returned userId",
-    () => {
-      expect(content).toMatch(/storedUserId !== returnedUserId/);
-      expect(content).toMatch(/router\.push\(["']\/login["']\)/);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "removes userId from sessionStorage on clearSensitiveData",
-    () => {
-      expect(content).toMatch(/sessionStorage\.removeItem\(["']userId["']\)/);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "clears sessionStorage before setting user state to prevent stale tab data",
-    () => {
-      // clearSensitiveData must call sessionStorage.removeItem before setUser(null)
-      const clearFnStart = content!.indexOf("const clearSensitiveData");
-      const removeItemIdx = content!.indexOf(
-        'sessionStorage.removeItem("userId")',
-        clearFnStart
-      );
-      const setUserNullIdx = content!.indexOf("setUser(null)", clearFnStart);
-      expect(removeItemIdx).toBeGreaterThan(clearFnStart);
-      expect(setUserNullIdx).toBeGreaterThan(removeItemIdx);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "sets sessionEnded flag on collision instead of calling signout",
-    () => {
-      // The correct fix does NOT call signout/GlobalSignOut on collision.
-      // Calling signout would clear the shared httpOnly cookie, which now belongs
-      // to the OTHER user — it would terminate their session too.
-      // Instead we set a sessionEnded flag so the next checkAuth (on /login) skips
-      // auto-authentication, and the user is shown the sign-in form.
-      const collisionBlockStart = content!.indexOf("storedUserId !== returnedUserId");
-      const collisionBlockEnd = content!.indexOf("return;", collisionBlockStart);
-      const collision = content!.slice(collisionBlockStart, collisionBlockEnd);
-      expect(collision).toMatch(/sessionStorage\.setItem\(["']sessionEnded["']/);
-      expect(collision).not.toMatch(/performLogout/);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "skips auto-authentication when sessionEnded flag is set",
-    () => {
-      // After the collision redirect lands on /login, checkAuth runs again.
-      // /me still returns 200 (the other user's valid cookie). Without the
-      // sessionEnded guard, checkAuth would authenticate as the wrong user.
-      expect(content).toMatch(/sessionStorage\.getItem\(["']sessionEnded["']\)/);
-      expect(content).toMatch(/sessionStorage\.removeItem\(["']sessionEnded["']\)/);
-    }
-  );
-
-  (skip ? it.skip : it)(
-    "broadcasts login event via BroadcastChannel so other tabs are notified immediately",
-    () => {
-      expect(content).toMatch(/BroadcastChannel/);
-      expect(content).toMatch(/revclear_auth/);
-      expect(content).toMatch(/type.*login|login.*type/);
-    }
-  );
-});
+// Change 3 — Cross-tab cookie collision detection
+//
+// The static analysis tests that were here read AuthContext.tsx source text and
+// asserted sessionStorage / BroadcastChannel patterns. They have been removed:
+//   1. Frontend behavior belongs in frontend tests, not the backend Jest suite.
+//   2. Source-text assertions pass even when the code path is dead.
+//
+// The correct replacement is a Playwright E2E test:
+//   frontend/tests/e2e/cross-tab-collision.spec.ts
+// TODO: implement that E2E spec.

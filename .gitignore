@@ -99,9 +99,14 @@ desktop.ini
 *.temp
 .cache/
 
-# Test coverage
+# Test coverage and CI artifacts
+# NOTE: only artifact directories are listed here — test source files
+# (*.spec.ts, *.test.ts, tests/) are never ignored.
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+/allure-results/
 
 # PowerShell scripts with credentials
 *setup*.ps1
