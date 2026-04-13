@@ -34,6 +34,10 @@ const EnvSchema = z.object({
   AI_SERVER_HEALTH_URL: z.string().url().optional(),
   OLLAMA_SEED: z.coerce.number().int().nonnegative().default(42),
 
+  PINECONE_API_KEY: z.string().min(1).optional(),
+  PINECONE_INDEX_NAME: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+
   TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
   AUTO_LOGIN_AFTER_SIGNUP: z.string().optional(),
@@ -51,6 +55,9 @@ const EnvSchema = z.object({
     ["SOAP_API_URL", env.SOAP_API_URL],
     ["CODES_API_URL", env.CODES_API_URL],
     ["AI_SERVER_API_KEY", env.AI_SERVER_API_KEY],
+    ["PINECONE_API_KEY", env.PINECONE_API_KEY],
+    ["PINECONE_INDEX_NAME", env.PINECONE_INDEX_NAME],
+    ["OPENAI_API_KEY", env.OPENAI_API_KEY],
   ];
 
   for (const [key, value] of requiredInProd) {
@@ -121,6 +128,9 @@ export const appConfig = {
     serverApiKey: env.AI_SERVER_API_KEY,
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
     ollamaSeed: env.OLLAMA_SEED,
+    pineconeApiKey: env.PINECONE_API_KEY,
+    pineconeIndexName: env.PINECONE_INDEX_NAME,
+    openaiApiKey: env.OPENAI_API_KEY,
   },
   clearinghouse: {
     url: env.CLEARINGHOUSE_URL,

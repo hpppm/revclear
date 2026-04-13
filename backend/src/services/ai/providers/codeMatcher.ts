@@ -1,6 +1,6 @@
 import { z } from "zod";
 import logger from "../../../utils/logger";
-import { getCptCodesForPrompt } from "../../../data/ai/cptDataLoader";
+import { getCptCodesForPrompt, getRelevantCptCodes } from "../../../data/ai/cptDataLoader";
 import { scrubPHI } from "../../../utils/textScrubber";
 
 const CodeMatchSchema = z.object({
@@ -168,7 +168,11 @@ class OllamaCodeMatcher implements CodeMatcher {
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
-    const cptBlock = getCptCodesForPrompt();
+    // Extract only the Assessment section for embedding — it carries the
+    // densest clinical signal and avoids noisy Subjective/Plan text.
+    const assessmentMatch = input.soapNote.match(/Assessment:\s*([\s\S]*?)(?=\nPlan:|$)/i);
+    const assessment = assessmentMatch?.[1]?.trim() ?? input.soapNote;
+    const cptBlock = await getRelevantCptCodes(assessment);
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
