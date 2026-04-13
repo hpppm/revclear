@@ -69,6 +69,7 @@ const VALID_JWT_PAYLOAD = {
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   "cognito:groups": ["Users"],
+  amr: ["mfa"],
 };
 
 const CLINICIAN = {
