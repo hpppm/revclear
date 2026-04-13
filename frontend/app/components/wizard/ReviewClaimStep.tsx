@@ -136,7 +136,7 @@ export default function ReviewClaimStep({
         setLoading(true);
         setError(null);
         try {
-            const res = await apiClient.encounters.previewClaim(encounterId);
+            const res = await apiClient.encounters.getClaim(encounterId);
             const preview = res.data.data;
             setClaim(preview);
             onClaimChange?.(preview);

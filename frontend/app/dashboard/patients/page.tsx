@@ -20,7 +20,7 @@ type Patient = {
 
 const mapPatient = (p: any): Patient => ({
     id: p.id,
-    name: p.full_name || p.name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+    name: p.full_name,
     dob: p.dob,
     phone: p.phone,
     email: p.email,

@@ -1478,17 +1478,17 @@ test.describe("Patient Form", () => {
       });
     });
 
-    test("Patient Form | full_name | value with numbers blocks submission and shows letters-only error", async ({
+    test("Patient Form | full_name | value with numbers is accepted", async ({
       page,
     }) => {
       test.info().annotations.push({ type: "feature", description: "Patient Validation" });
-      test.info().annotations.push({ type: "severity", description: "critical" });
+      test.info().annotations.push({ type: "severity", description: "normal" });
 
       const tracker = trackPatientPost(page);
 
       await test.step("fill all required fields with a name containing digits", async () => {
-        // "John123" passes min(2) and max(100) but fails the letters-only regex:
-        //   /^[A-Za-z\s'\-\.]+$/ → "Name must contain letters only"
+        // Names like "John123" or "E2E Patient 1776027919159" are valid — the
+        // regex /^[A-Za-z0-9\s'\-\.]+$/ allows alphanumeric characters.
         await fillPatientFormExcept(page, "full_name");
         await page.getByLabel(/full name/i).fill("John123");
       });
@@ -1498,28 +1498,25 @@ test.describe("Patient Form", () => {
         tracker.stop();
       });
 
-      await test.step("assert URL has not changed (form was not submitted)", async () => {
-        await expect(
-          page,
-          "Page must remain on /patients/add — a name with digits must halt submission",
-        ).toHaveURL(/\/patients\/add/);
-      });
-
-      await test.step("assert letters-only inline error is visible", async () => {
+      await test.step("assert no letters-only error is shown", async () => {
         const nameError = page
           .locator("p.text-xs.text-red-600")
           .filter({ hasText: /letters only/i });
         await expect(
           nameError,
-          "Full name inline error must mention 'letters only' after submitting 'John123'",
-        ).toBeVisible({ timeout: 3000 });
+          "No 'letters only' error should appear — alphanumeric names are allowed",
+        ).toBeHidden({ timeout: 3000 });
       });
 
-      await test.step("assert POST /patients was not fired", async () => {
+      await test.step("assert patient submission succeeded", async () => {
+        await expect(
+          page,
+          "Page should navigate away from /patients/add after saving a valid patient",
+        ).not.toHaveURL(/\/patients\/add/);
         expect(
           tracker.wasCalled(),
-          "POST /patients must not be fired — Zod regex must block the HTTP call",
-        ).toBe(false);
+          "POST /patients must be fired for a valid patient form submission",
+        ).toBe(true);
       });
     });
 

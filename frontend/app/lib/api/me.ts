@@ -14,14 +14,7 @@ const ProfileUpdateSchema = z.object({
   license_state: z.string().optional().nullable(),
   npi: z.string().optional().nullable(),
   tax_id: z.string().optional().nullable(),
-  clinic_name: z.string().optional().nullable(),
-  clinic_address_street: z.string().optional().nullable(),
-  clinic_address_city: z.string().optional().nullable(),
-  clinic_address_state: z.string().optional().nullable(),
-  clinic_address_zip: z.string().optional().nullable(),
-  clinic_phone: z.string().optional().nullable(),
   taxonomy_code: z.string().optional().nullable(),
-  clinic_npi: z.string().optional().nullable(),
   provider_role: z.enum(["rendering", "billing", "both"]).optional().nullable(),
 });
 
