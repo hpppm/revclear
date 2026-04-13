@@ -52,7 +52,6 @@ export const EncounterSchema = z.object({
   audio_key: z.string().optional().nullable(),
   transcript_result_id: z.string().uuid().optional().nullable(),
   soap_result_id: z.string().uuid().optional().nullable(),
-  codes_result_id: z.string().uuid().optional().nullable(),
   place_of_service: z.string().optional().nullable(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),

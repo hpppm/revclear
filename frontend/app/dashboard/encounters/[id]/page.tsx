@@ -55,7 +55,7 @@ export default function EncounterSummaryPage() {
             // Fetch claim
             if (canManageClaims) {
                 try {
-                    const claimRes = await apiClient.encounters.previewClaim(encounterId);
+                    const claimRes = await apiClient.encounters.getClaim(encounterId);
                     const claimData = claimRes.data?.data || claimRes.data;
                     logger.log("Claim loaded");
                     setClaim(claimData);

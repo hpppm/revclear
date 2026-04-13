@@ -31,6 +31,7 @@ router.get("/", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES), async (
     const total = parseInt(countResult.rows[0].total);
 
     return res.json({
+      success: true,
       data: result.rows,
       pagination: { limit, offset, total, hasMore: offset + result.rows.length < total }
     });
@@ -64,7 +65,7 @@ router.get("/:cognitoId", authMiddleware, requireRole(ORGANIZATION_MANAGER_ROLES
       return res.status(404).json({ error: "Not Found", message: "User not found" });
     }
 
-    return res.json(user);
+    return res.json({ success: true, data: user });
   } catch (err) {
     return next(err);
   }

@@ -44,9 +44,7 @@ export const encountersApi = {
 
   delete: (id: string) => api.delete(`/encounters/${safeId(id)}`),
 
-  getClaim: (id: string) => api.get(`/claims/encounter/${safeId(id)}`),
-
-  previewClaim: (id: string) => api.get(`/claims/encounter/${safeId(id)}/preview`),
+  getClaim: (id: string) => api.get(`/claims/encounter/${safeId(id)}/preview`),
 
   // SECURITY: Only encounter_id is sent — all other claim fields (organization_id,
   // clinician_id, patient_id) are derived server-side from the authenticated session.

@@ -1,10 +1,14 @@
+import { z } from "zod";
 import api from "./axios";
 import { MedicalCode } from "../types";
+
+const UUID = z.string().uuid("Invalid encounter ID format");
+const safeId = (id: string) => encodeURIComponent(UUID.parse(id));
 
 export const codesApi = {
     // Get AI code suggestions based on SOAP note
     match: (encounterId: string) =>
-        api.post<{ data: { icdMatches: MedicalCode[], cptMatches: MedicalCode[] } }>(`/encounters/${encounterId}/codes/match`),
+        api.post<{ data: { icdMatches: MedicalCode[], cptMatches: MedicalCode[] } }>(`/encounters/${safeId(encounterId)}/codes/match`),
 
     // Manual search for codes
     search: (query: string, type: "icd" | "cpt") =>
@@ -21,7 +25,7 @@ export const codesApi = {
             confidence: c.confidence !== undefined ? c.confidence / 100 : undefined,
             isAiSuggested: !!c.confidence, // Assume AI suggested if confidence exists
         }));
-        return api.post(`/encounters/${encounterId}/codes`, { codes: payload });
+        return api.post(`/encounters/${safeId(encounterId)}/codes`, { codes: payload });
     },
 
     // Get saved codes for an encounter
@@ -38,7 +42,7 @@ export const codesApi = {
 
         let response;
         try {
-            response = await api.get<{ data: RawCode[] }>(`/encounters/${encounterId}/codes`);
+            response = await api.get<{ data: RawCode[] }>(`/encounters/${safeId(encounterId)}/codes`);
         } catch (error: unknown) {
             // If no codes are saved yet, the API may return 404; treat that as "no codes"
             const status = typeof error === "object" && error !== null && "response" in error
