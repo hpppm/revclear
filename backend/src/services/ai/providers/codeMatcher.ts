@@ -1,6 +1,7 @@
 import { z } from "zod";
 import logger from "../../../utils/logger";
 import { getCptCodesForPrompt } from "../../../data/ai/cptDataLoader";
+import { scrubPHI } from "../../../utils/textScrubber";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -202,6 +203,15 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
       throw new Error("Missing AI_SERVER_API_KEY for external codes endpoint.");
     }
 
+    // SECURITY: Scrub structured PHI patterns from the SOAP note before it
+    // leaves the server. Free-text names cannot be redacted without NLP — a
+    // BAA with the external AI provider is still required for full HIPAA compliance.
+    const { scrubbed: scrubbedSoapNote, redactionCount } = scrubPHI(input.soapNote);
+    logger.info(
+      { redactionCount },
+      "HttpEndpointCodeMatcher: PHI scrub applied before external transmission",
+    );
+
     logger.debug({}, 'HttpEndpointCodeMatcher: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
@@ -210,7 +220,7 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
         "X-API-Key": AI_SERVER_API_KEY,
       },
       body: JSON.stringify({
-        soapNote: input.soapNote,
+        soapNote: scrubbedSoapNote,
       }),
     });
 

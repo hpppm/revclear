@@ -1,5 +1,6 @@
 import { z } from "zod";
 import logger from "../../../utils/logger";
+import { scrubPHI } from "../../../utils/textScrubber";
 
 export const SoapSchema = z.object({
   soap: z.object({
@@ -193,6 +194,15 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
       throw new Error("Missing AI_SERVER_API_KEY for external SOAP endpoint.");
     }
 
+    // SECURITY: Scrub structured PHI patterns before the transcript leaves the
+    // server. Free-text names cannot be redacted without NLP — a BAA with the
+    // external AI provider is still required for full HIPAA compliance.
+    const { scrubbed: scrubbedTranscript, redactionCount } = scrubPHI(input.transcriptText);
+    logger.info(
+      { encounterId: input.encounterId, redactionCount },
+      "HttpEndpointSoapGenerator: PHI scrub applied before external transmission",
+    );
+
     logger.debug({ encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
@@ -202,7 +212,7 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
       },
       body: JSON.stringify({
         encounterId: input.encounterId,
-        transcriptText: input.transcriptText,
+        transcriptText: scrubbedTranscript,
       }),
     });
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: response received');
