@@ -1507,6 +1507,17 @@ test.describe("Patient Form", () => {
           "No 'letters only' error should appear — alphanumeric names are allowed",
         ).toBeHidden({ timeout: 3000 });
       });
+
+      await test.step("assert patient submission succeeded", async () => {
+        await expect(
+          page,
+          "Page should navigate away from /patients/add after saving a valid patient",
+        ).not.toHaveURL(/\/patients\/add/);
+        expect(
+          tracker.wasCalled(),
+          "POST /patients must be fired for a valid patient form submission",
+        ).toBe(true);
+      });
     });
 
     test("Patient Form | insurance_provider | value with special chars blocks submission and shows letters-only error", async ({
