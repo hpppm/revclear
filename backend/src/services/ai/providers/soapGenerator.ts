@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ai, defaultTextModel } from "../runtime";
 import logger from "../../../utils/logger";
 import { scrubPHI } from "../../../utils/textScrubber";
 
@@ -29,11 +28,10 @@ const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
-const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
+// SECURITY: Ollama must only be reachable via localhost to prevent SSRF and
+// unintended external exposure of the inference server.
 const OLLAMA_ALLOWED_HOSTS = ["127.0.0.1", "localhost"];
-
-const SOAP_API_ALLOWLIST: string[] = (process.env.SOAP_API_ALLOWLIST || "").split(",").filter(Boolean);
 
 const isPrivateOrInternalHostname = (hostname: string): boolean => {
   if (hostname === "localhost" || hostname === "127.0.0.1") return true;
@@ -43,6 +41,10 @@ const isPrivateOrInternalHostname = (hostname: string): boolean => {
   if (!hostname.includes(".")) return true;
   return false;
 };
+
+// SECURITY: Allowlist of approved external SOAP API hostnames.
+// Any URL not matching this list is rejected to block SSRF attacks.
+const SOAP_API_ALLOWLIST: string[] = (process.env.SOAP_API_ALLOWLIST || "").split(",").filter(Boolean);
 
 const validateOllamaUrl = (url: string): void => {
   let parsed: URL;
@@ -71,11 +73,15 @@ const validateExternalSoapUrl = (url: string): void => {
     parsed.protocol === "http:" &&
     isPrivateOrInternalHostname(parsed.hostname);
 
+  // SECURITY: External AI endpoints must use HTTPS to prevent credential and
+  // PHI exposure over unencrypted connections. Local development is allowed
+  // to use http://localhost or http://127.0.0.1 only.
   if (parsed.protocol !== "https:" && !isLocalDevelopmentHttp) {
     throw new Error(
       `SOAP_API_URL must use HTTPS unless it is a non-production internal endpoint. Received: "${parsed.protocol}//${parsed.hostname}"`,
     );
   }
+  // SECURITY: Block any host not in the approved allowlist (SSRF prevention).
   if (SOAP_API_ALLOWLIST.length > 0 && !SOAP_API_ALLOWLIST.includes(parsed.hostname)) {
     throw new Error(
       `SOAP_API_URL hostname "${parsed.hostname}" is not in the approved allowlist.`,
@@ -107,10 +113,15 @@ const clampConfidence = (value: unknown): number => {
 const normalizeSoapOutput = (raw: unknown): SoapOutput => {
   let parsed: unknown = {};
   if (typeof raw === "string") {
-    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = {};
+    }
   } else if (raw && typeof raw === "object") {
     parsed = raw;
   }
+
   const rawObj = parsed as Record<string, unknown>;
   const rawSoap =
     rawObj.soap && typeof rawObj.soap === "object"
@@ -129,49 +140,39 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
   };
 };
 
-// SOAP output is short JSON — 700 tokens is generous for all four sections.
-const SOAP_MAX_OUTPUT_TOKENS = 700;
-const OLLAMA_SOAP_TIMEOUT_MS = 90_000;
-const OLLAMA_KEEP_ALIVE = -1;
-
 class OllamaSoapGenerator implements SoapGenerator {
   async generate(input: GenerateSoapInput): Promise<SoapOutput> {
     if (!OLLAMA_MODEL) {
       throw new Error("Missing OLLAMA_MODEL. Set OLLAMA_MODEL in backend/.env.");
     }
 
+    // SECURITY: Enforce localhost-only binding before making any request.
     validateOllamaUrl(OLLAMA_BASE_URL);
 
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     const prompt = buildSoapPrompt(input);
     logger.debug({ model: OLLAMA_MODEL, encounterId: input.encounterId }, 'OllamaSoapGenerator: sending request');
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), OLLAMA_SOAP_TIMEOUT_MS);
-
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: OLLAMA_MODEL,
-          messages: [{ role: "user", content: prompt }],
-          stream: false,
-          format: "json",
-          keep_alive: OLLAMA_KEEP_ALIVE,
-          options: { num_predict: SOAP_MAX_OUTPUT_TOKENS },
-        }),
-      });
-    } finally {
-      clearTimeout(timer);
-    }
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        stream: false,
+        format: "json",
+      }),
+    });
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'OllamaSoapGenerator: response received');
 
     if (!response.ok) {
+      // SECURITY: Log the raw body server-side only; do not include it in the
+      // thrown error message so it cannot surface in an API response.
       const body = await response.text();
-      logger.error({ encounterId: input.encounterId, status: response.status, body }, "OllamaSoapGenerator: upstream error");
+      logger.error(
+        { encounterId: input.encounterId, status: response.status, body },
+        "OllamaSoapGenerator: upstream error",
+      );
       throw new Error(`Ollama request failed with status ${response.status}`);
     }
 
@@ -183,6 +184,8 @@ class OllamaSoapGenerator implements SoapGenerator {
 
 class HttpEndpointSoapGenerator implements SoapGenerator {
   constructor(private readonly endpoint: string) {
+    // SECURITY: Validate URL at construction time so misconfiguration is caught
+    // at startup rather than on the first patient request.
     validateExternalSoapUrl(this.endpoint);
   }
 
@@ -191,20 +194,36 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
       throw new Error("Missing AI_SERVER_API_KEY for external SOAP endpoint.");
     }
 
+    // SECURITY: Scrub structured PHI patterns before the transcript leaves the
+    // server. Free-text names cannot be redacted without NLP — a BAA with the
+    // external AI provider is still required for full HIPAA compliance.
     const { scrubbed: scrubbedTranscript, redactionCount } = scrubPHI(input.transcriptText);
-    logger.info({ encounterId: input.encounterId, redactionCount }, "HttpEndpointSoapGenerator: PHI scrub applied before external transmission");
-    logger.debug({ encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: sending request');
+    logger.info(
+      { encounterId: input.encounterId, redactionCount },
+      "HttpEndpointSoapGenerator: PHI scrub applied before external transmission",
+    );
 
+    logger.debug({ encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: sending request');
     const response = await fetch(this.endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-Key": AI_SERVER_API_KEY },
-      body: JSON.stringify({ encounterId: input.encounterId, transcriptText: scrubbedTranscript }),
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": AI_SERVER_API_KEY,
+      },
+      body: JSON.stringify({
+        encounterId: input.encounterId,
+        transcriptText: scrubbedTranscript,
+      }),
     });
-
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'HttpEndpointSoapGenerator: response received');
     if (!response.ok) {
+      // SECURITY: Log the raw body server-side only; do not include it in the
+      // thrown error message so it cannot surface in an API response.
       const body = await response.text();
-      logger.error({ encounterId: input.encounterId, status: response.status, body }, "HttpEndpointSoapGenerator: upstream error");
+      logger.error(
+        { encounterId: input.encounterId, status: response.status, body },
+        "HttpEndpointSoapGenerator: upstream error",
+      );
       throw new Error(`External SOAP endpoint failed with status ${response.status}`);
     }
 
@@ -214,91 +233,13 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
   }
 }
 
-class GenkitSoapGenerator implements SoapGenerator {
-  async generate(input: GenerateSoapInput): Promise<SoapOutput> {
-    const { scrubbed: scrubbedTranscript, redactionCount } = scrubPHI(input.transcriptText);
-    if (redactionCount > 0) {
-      logger.info({ encounterId: input.encounterId, redactionCount }, "soap-generator: PHI redacted before Gemini call");
-    }
-
-    const result = await ai.generate({
-      model: defaultTextModel,
-      prompt: buildSoapPrompt({ encounterId: input.encounterId, transcriptText: scrubbedTranscript }),
-      output: { schema: SoapSchema },
-      config: { temperature: 0.2 },
-    });
-
-    const output = normalizeSoapOutput(result.output ?? {});
-    logger.info({ encounterId: input.encounterId, model: output.model_version }, "soap generation completed");
-    return SoapSchema.parse(output);
-  }
-}
-
-const GROQ_SOAP_TIMEOUT_MS = 30_000;
-const GROQ_SOAP_MAX_TOKENS = 700;
-
-class GroqSoapGenerator implements SoapGenerator {
-  async generate(input: GenerateSoapInput): Promise<SoapOutput> {
-    const model = process.env.GROQ_SOAP_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-    const apiKey = process.env.GROQ_API_KEY || "";
-    const prompt = buildSoapPrompt(input);
-    logger.debug({ model, encounterId: input.encounterId }, "GroqSoapGenerator: sending request");
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), GROQ_SOAP_TIMEOUT_MS);
-
-    let response: Response;
-    try {
-      response = await fetch(`${GROQ_API_BASE}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: GROQ_SOAP_MAX_TOKENS,
-          temperature: 0.2,
-          response_format: { type: "json_object" },
-        }),
-      });
-    } finally {
-      clearTimeout(timer);
-    }
-
-    logger.debug({ status: response.status, encounterId: input.encounterId }, "GroqSoapGenerator: response received");
-
-    if (!response.ok) {
-      const body = await response.text();
-      logger.error({ encounterId: input.encounterId, status: response.status, body }, "GroqSoapGenerator: upstream error");
-      throw new Error(`Groq SOAP request failed with status ${response.status}`);
-    }
-
-    const data = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
-    const content = data.choices?.[0]?.message?.content;
-    const output = normalizeSoapOutput(content);
-    return SoapSchema.parse({ ...output, model_version: model });
-  }
-}
-
 let soapGeneratorSingleton: SoapGenerator | null = null;
 
 export const getSoapGenerator = (): SoapGenerator => {
   if (!soapGeneratorSingleton) {
-    const groqKey = process.env.GROQ_API_KEY || "";
-    const soapApiUrl = process.env.SOAP_API_URL || "";
-    if (groqKey) {
-      logger.info({ model: process.env.GROQ_SOAP_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile" }, "AI provider: Groq (SOAP)");
-      soapGeneratorSingleton = new GroqSoapGenerator();
-    } else if (soapApiUrl) {
-      logger.info({ url: soapApiUrl }, "AI provider: HTTP endpoint (SOAP)");
-      soapGeneratorSingleton = new HttpEndpointSoapGenerator(soapApiUrl);
-    } else {
-      logger.info({ model: process.env.OLLAMA_MODEL }, "AI provider: Ollama (SOAP)");
-      soapGeneratorSingleton = new OllamaSoapGenerator();
-    }
+    soapGeneratorSingleton = SOAP_API_URL
+      ? new HttpEndpointSoapGenerator(SOAP_API_URL)
+      : new OllamaSoapGenerator();
   }
   return soapGeneratorSingleton;
 };

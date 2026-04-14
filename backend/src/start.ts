@@ -2,7 +2,6 @@ import app from "./server";
 import { appConfig } from "./config/appConfig";
 import { closePool } from "./config/db";
 import { logAiProviderHealthStartup } from "./services/ai/providerHealth";
-import { ensurePineconeMedicalCodeIndex } from "./services/ai/pinecone";
 import logger from "./utils/logger";
 
 const PORT = appConfig.port;
@@ -15,9 +14,6 @@ if (!isTestEnv && !disableListen) {
   server = app.listen(PORT, () => {
     logger.info({ port: PORT }, 'API server started');
     void logAiProviderHealthStartup();
-    void ensurePineconeMedicalCodeIndex().catch((error) => {
-      logger.warn({ err: error }, "Pinecone code index warmup failed");
-    });
   });
 } else {
   logger.debug('Server listen disabled (test or DISABLE_LISTEN)');
