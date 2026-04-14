@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
@@ -12,8 +12,6 @@ import AuthInput from "@/app/components/ui/AuthInput";
 import AuthSection from "@/app/components/ui/AuthSection";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 import Button from "@/app/components/ui/Button";
-import MFASetup from "@/app/components/MFASetup";
-import MFAChallenge from "@/app/components/MFAChallenge";
 
 interface ApiErrorData {
   error?: string;
@@ -51,8 +49,6 @@ type FieldErrors = {
   form?: string;
 };
 
-type MfaStep = "login" | "totp-setup" | "totp-code";
-
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -61,23 +57,8 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [mfaStep, setMfaStep] = useState<MfaStep>("login");
-  const [setupBanner, setSetupBanner] = useState(false);
 
   const isFormInvalid = !email.trim() || !password.trim();
-
-  // Called by MFASetup and MFAChallenge after the backend sets auth cookies.
-  const handleMfaSuccess = useCallback(async () => {
-    try {
-      const userResponse = await apiClient.me.getProfile();
-      login(userResponse.data);
-      router.push("/dashboard");
-    } catch (err) {
-      logger.error("MFA auth complete but profile fetch failed", err);
-      setMfaStep("login");
-      setErrors({ form: "Authentication failed. Please sign in again." });
-    }
-  }, [login, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,24 +77,12 @@ export default function LoginPage() {
     if (Object.keys(nextErrors).length === 0) {
       setIsLoading(true);
       try {
-        const signinResponse = await apiClient.auth.signin({ email, password });
-        const challenge = signinResponse.data?.challenge as string | undefined;
+        await apiClient.auth.signin({ email, password });
 
-        if (challenge === "CONTINUE_SIGN_IN_WITH_TOTP_SETUP") {
-          setMfaStep("totp-setup");
-          setIsLoading(false);
-          return;
-        }
-
-        if (challenge === "CONFIRM_SIGN_IN_WITH_TOTP_CODE") {
-          setMfaStep("totp-code");
-          setIsLoading(false);
-          return;
-        }
-
-        // No MFA challenge — auth tokens are already in cookies
         const userResponse = await apiClient.me.getProfile();
-        login(userResponse.data);
+        const user = userResponse.data;
+
+        login(user);
         router.push("/dashboard");
       } catch (error: unknown) {
         logger.error("Login failed");
@@ -123,31 +92,13 @@ export default function LoginPage() {
           errorData?.details ||
           errorData?.message ||
           "Invalid email or password";
-        setErrors({ form: errorMessage });
+        setErrors({
+          form: errorMessage,
+        });
       } finally {
         setIsLoading(false);
       }
     }
-  }
-
-  if (mfaStep === "totp-setup") {
-    return (
-      <MFASetup
-        onSuccess={() => {
-          setSetupBanner(true);
-          setMfaStep("login");
-        }}
-      />
-    );
-  }
-
-  if (mfaStep === "totp-code") {
-    return (
-      <MFAChallenge
-        onSuccess={handleMfaSuccess}
-        onCancel={() => setMfaStep("login")}
-      />
-    );
   }
 
   return (
@@ -172,15 +123,6 @@ export default function LoginPage() {
               Welcome Back
             </h1>
           </div>
-
-          {setupBanner && (
-            <div className="mb-4 flex items-start gap-3 rounded-xl bg-[var(--brand-50)] border border-[var(--brand-200)] px-4 py-3 text-sm text-[var(--brand-700)]">
-              <svg className="mt-0.5 w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Authenticator set up! Sign in to continue — you'll be asked for your code.
-            </div>
-          )}
 
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <AuthSection>

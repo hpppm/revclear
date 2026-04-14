@@ -1,5 +1,5 @@
 // AWS Cognito Authentication Configuration
-import {
+import { 
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   SignUpCommand,
@@ -12,9 +12,6 @@ import {
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
   AdminUpdateUserAttributesCommand,
-  AssociateSoftwareTokenCommand,
-  VerifySoftwareTokenCommand,
-  RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -229,59 +226,6 @@ export async function checkCognitoConnectivity() {
   const command = new DescribeUserPoolClientCommand({
     UserPoolId: userPoolId,
     ClientId: clientId,
-  });
-  return cognitoClient.send(command);
-}
-
-/**
- * Begin TOTP software token association for an in-progress MFA_SETUP challenge.
- * Takes the Cognito Session from the challenge and returns a TOTP secret + new Session.
- */
-export async function associateSoftwareToken(session: string) {
-  const command = new AssociateSoftwareTokenCommand({ Session: session });
-  return cognitoClient.send(command);
-}
-
-/**
- * Verify the TOTP code entered by the user during first-time setup.
- * Returns Status ('SUCCESS' | 'ERROR') and a new Session to use in RespondToAuthChallenge.
- */
-export async function verifySoftwareToken(session: string, userCode: string) {
-  const command = new VerifySoftwareTokenCommand({
-    Session: session,
-    UserCode: userCode,
-    FriendlyDeviceName: 'Authenticator App',
-  });
-  return cognitoClient.send(command);
-}
-
-/**
- * Complete the MFA_SETUP challenge after VerifySoftwareToken succeeds.
- * The session here is the one returned by VerifySoftwareTokenCommand.
- */
-export async function respondToMfaSetupChallenge(username: string, session: string) {
-  const command = new RespondToAuthChallengeCommand({
-    ClientId: clientId,
-    ChallengeName: 'MFA_SETUP',
-    Session: session,
-    ChallengeResponses: { USERNAME: username },
-  });
-  return cognitoClient.send(command);
-}
-
-/**
- * Respond to a SOFTWARE_TOKEN_MFA challenge with the 6-digit TOTP code.
- * Used on every login after TOTP setup is complete.
- */
-export async function respondToTotpChallenge(username: string, session: string, totpCode: string) {
-  const command = new RespondToAuthChallengeCommand({
-    ClientId: clientId,
-    ChallengeName: 'SOFTWARE_TOKEN_MFA',
-    Session: session,
-    ChallengeResponses: {
-      USERNAME: username,
-      SOFTWARE_TOKEN_MFA_CODE: totpCode,
-    },
   });
   return cognitoClient.send(command);
 }

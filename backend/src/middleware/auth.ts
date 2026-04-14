@@ -120,15 +120,9 @@ export const authMiddleware = async (
       });
     }
 
-    // NOTE: amr: ["mfa"] check removed — Cognito only populates that claim when
-    // Advanced Security (Threat Protection) is enabled on the user pool. Without
-    // it, tokens from a completed SOFTWARE_TOKEN_MFA challenge still lack the
-    // claim, blocking every valid login. MFA enforcement is delegated to the
-    // Cognito pool's mandatory TOTP configuration. Restore the check if Advanced
-    // Security is enabled later.
-    //
-    // Cognito groups are preserved for diagnostics only. Application authorization
-    // is derived from organization membership stored in the database.
+    // Preserve raw Cognito groups for diagnostics only.
+    // Application authorization is derived from the organization membership
+    // stored in the database.
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
       | undefined;
