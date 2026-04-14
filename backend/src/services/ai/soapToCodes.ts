@@ -56,7 +56,10 @@ export const soapToCodes = async (
     return {
       icdMatches: validatedIcd,
       cptMatches: validatedCpt,
-      model_version: result.model_version,
+      model_version:
+        typeof result.model_version === "string"
+          ? result.model_version
+          : process.env.OLLAMA_CODES_MODEL || process.env.OLLAMA_MODEL || "unknown",
     };
   } catch (error: any) {
     logger.error({ ...auditBase, success: false, code: error?.code }, "soapToCodes failed");

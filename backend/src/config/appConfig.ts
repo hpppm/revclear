@@ -32,12 +32,6 @@ const EnvSchema = z.object({
   TRANSCRIBE_URL: z.string().url().optional(),
   AI_SERVER_API_KEY: z.string().min(1).optional(),
   AI_SERVER_HEALTH_URL: z.string().url().optional(),
-  GEMINI_API_KEY: z.string().min(1).optional(),
-  GEMINI_MODEL: z.string().min(1).optional(),
-  PINECONE_API_KEY: z.string().min(1).optional(),
-  PINECONE_INDEX_HOST: z.string().min(1).optional(),
-  PINECONE_NAMESPACE: z.string().min(1).optional(),
-  PINECONE_API_VERSION: z.string().min(1).optional(),
 
   TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
@@ -53,10 +47,9 @@ const EnvSchema = z.object({
     ["AWS_USER_POOL_ID", env.AWS_USER_POOL_ID],
     ["AWS_CLIENT_ID", env.AWS_CLIENT_ID],
     ["ALLOWED_ORIGINS", env.ALLOWED_ORIGINS],
+    ["SOAP_API_URL", env.SOAP_API_URL],
+    ["CODES_API_URL", env.CODES_API_URL],
     ["AI_SERVER_API_KEY", env.AI_SERVER_API_KEY],
-    ["GEMINI_API_KEY", env.GEMINI_API_KEY],
-    ["PINECONE_API_KEY", env.PINECONE_API_KEY],
-    ["PINECONE_INDEX_HOST", env.PINECONE_INDEX_HOST],
   ];
 
   for (const [key, value] of requiredInProd) {
@@ -126,14 +119,6 @@ export const appConfig = {
       env.AI_TRANSCRIBE_URL || env.TRANSCRIBE_API_URL || env.TRANSCRIBE_URL,
     serverApiKey: env.AI_SERVER_API_KEY,
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
-    geminiApiKey: env.GEMINI_API_KEY,
-    geminiModel: env.GEMINI_MODEL ?? "gemini-2.5-flash",
-    pinecone: {
-      apiKey: env.PINECONE_API_KEY,
-      indexHost: env.PINECONE_INDEX_HOST,
-      namespace: env.PINECONE_NAMESPACE ?? "medical-codes",
-      apiVersion: env.PINECONE_API_VERSION ?? "2026-04",
-    },
   },
   clearinghouse: {
     url: env.CLEARINGHOUSE_URL,

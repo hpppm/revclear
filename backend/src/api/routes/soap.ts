@@ -62,6 +62,69 @@ const ensureEncounterOwnership = async (encounterId: string, clinicianId: string
   return result.rows.length > 0;
 };
 
+// New endpoint specifically for testing with mock transcript
+// MUST come before POST /:id/soap to avoid route conflict
+// SECURITY: Mock endpoint must not be accessible in production — it bypasses
+// real transcript validation and creates synthetic PHI records.
+router.post("/:id/soap/mock", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(404).send();
+  }
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const organizationId = await getRequestOrganizationId(user.id);
+
+  const parsed = IdParamSchema.safeParse(req.params);
+  if (!parsed.success) {
+    return sendError(res, 400, "Invalid encounter id", parsed.error.issues);
+  }
+  const encounterId = parsed.data.id;
+
+  const ownsEncounter = await ensureEncounterOwnership(encounterId, user.id, organizationId);
+  if (!ownsEncounter) {
+    return sendError(res, 404, "Encounter not found");
+  }
+
+  try {
+    logger.debug({ encounterId }, "soap/mock: forcing mock transcript");
+
+    const soapResult = await speechToSoap({
+      encounter_id: encounterId,
+    });
+
+    // SECURITY: Do not log SOAP results - they contain PHI (clinical diagnoses, treatment plans)
+
+    const saved = await createAiResult({
+      encounter_id: encounterId,
+      flow_name: AI_FLOW_NAMES.soapNote,
+      input_json: { transcript_id: "mock", source: "mock_endpoint" },
+      output_json: soapResult,
+      model_version: soapResult.model_version,
+      confidence_score: soapResult.confidence,
+    });
+
+    // Update encounter to reference this SOAP result
+    await query(
+      `UPDATE encounters SET soap_result_id = $1 WHERE id = $2`,
+      [saved.id, encounterId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      data: saved.output_json,
+      metadata: {
+        model_version: saved.model_version,
+        confidence_score: saved.confidence_score,
+        created_at: saved.created_at,
+        source: "mock_transcript",
+      },
+    });
+  } catch (error: any) {
+    logger.error({ encounterId, err: error }, 'POST soap/mock: error');
+    return sendError(res, 500, "Failed to generate SOAP note");
+  }
+});
+
 router.get("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
@@ -117,19 +180,17 @@ router.post("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), a
 
   try {
     // Try to get transcript from database
-    const transcriptResult = await getLatestAiResult(encounterId, AI_FLOW_NAMES.transcript);
+    const transcript = await getLatestAiResult(encounterId, AI_FLOW_NAMES.transcript);
 
-    if (!transcriptResult) {
-      return sendError(res, 404, "No transcript found for encounter");
+    let transcriptText = "";
+    if (transcript) {
+      transcriptText = parseTranscriptText(transcript.output_json) || "";
+      logger.debug({ encounterId, length: transcriptText.length }, 'soap: transcript found in DB');
+    } else {
+      logger.debug({ encounterId }, 'soap: no transcript in DB, using mock');
     }
 
-    const transcriptText = parseTranscriptText(transcriptResult.output_json) || "";
-    logger.debug({ encounterId, length: transcriptText.length }, 'soap: transcript found in DB');
-
-    if (!transcriptText.trim()) {
-      return sendError(res, 404, "No transcript found for encounter");
-    }
-
+    // Call speechToSoap - it will use mock transcript if transcriptText is empty
     const soapResult = await speechToSoap({
       encounter_id: encounterId,
       transcript: transcriptText,
@@ -140,7 +201,7 @@ router.post("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), a
     const saved = await createAiResult({
       encounter_id: encounterId,
       flow_name: AI_FLOW_NAMES.soapNote,
-      input_json: { transcript_id: transcriptResult.id },
+      input_json: { transcript_id: transcript?.id || "mock" },
       output_json: soapResult,
       model_version: soapResult.model_version,
       confidence_score: soapResult.confidence,

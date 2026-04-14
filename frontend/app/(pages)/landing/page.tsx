@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import { BrandMark } from "@/app/components/ui/BrandMark";
+
+const display = Fraunces({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+});
+
+const body = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 const features = [
   {
@@ -46,7 +57,7 @@ const featureAccents = ["teal", "teal", "orange", "pink"];
 
 export default function LandingPage() {
   return (
-    <div className="font-body min-h-screen bg-slate-50 text-slate-900">
+    <div className={`${body.className} min-h-screen bg-slate-50 text-slate-900`}>
       <div className="relative overflow-hidden">
         <div className="absolute -top-40 -right-32 h-80 w-80 rounded-full bg-teal-200/50 blur-3xl" />
         <div className="absolute top-20 -left-20 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
@@ -56,7 +67,7 @@ export default function LandingPage() {
           <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-3">
               <BrandMark size="md" />
-              <span className="font-display text-2xl font-semibold">RevClear</span>
+              <span className={`${display.className} text-2xl font-semibold`}>RevClear</span>
             </div>
             <div className="flex items-center gap-4">
               <Link
@@ -79,7 +90,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
             <div>
               <h1
-                className="font-display text-5xl md:text-6xl font-semibold leading-tight tracking-tight"
+                className={`${display.className} text-5xl md:text-6xl font-semibold leading-tight tracking-tight`}
               >
                 <span className="inline-flex flex-wrap gap-x-3">
                   {["Transform", "Your"].map((word, index) => (
@@ -125,7 +136,7 @@ export default function LandingPage() {
             <div className="space-y-6">
               <div className="rounded-2xl bg-white border border-slate-200 shadow-xl p-6">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Live Workflow</p>
-                <h3 className="font-display text-2xl font-semibold mt-2">
+                <h3 className={`${display.className} text-2xl font-semibold mt-2`}>
                   Documentation and billing, in one view.
                 </h3>
                 <div className="mt-6 space-y-4">
@@ -166,7 +177,7 @@ export default function LandingPage() {
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.18em] text-teal-600">Core Capabilities</p>
-                <h2 className="font-display text-3xl font-semibold mt-3">
+                <h2 className={`${display.className} text-3xl font-semibold mt-3`}>
                   Purpose-built for clinical and billing teams
                 </h2>
               </div>
@@ -197,7 +208,7 @@ export default function LandingPage() {
           <section className="mt-20 grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-center">
             <div className="rounded-2xl border border-slate-200 bg-white p-8">
               <p className="text-sm uppercase tracking-[0.18em] text-teal-600">Workflow</p>
-              <h2 className="font-display text-3xl font-semibold mt-3">From recording to reimbursement</h2>
+              <h2 className={`${display.className} text-3xl font-semibold mt-3`}>From recording to reimbursement</h2>
               <p className="text-slate-600 mt-4">
                 Align documentation, coding, and claims in a single workflow from intake to reimbursement.
               </p>
@@ -226,7 +237,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
             <BrandMark size="sm" />
-            <span className="font-display text-xl font-semibold">RevClear</span>
+            <span className={`${display.className} text-xl font-semibold`}>RevClear</span>
           </div>
           <p className="text-slate-500 text-sm">© 2026 RevClear. All rights reserved.</p>
           <div className="flex gap-6">

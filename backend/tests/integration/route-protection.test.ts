@@ -57,7 +57,7 @@ jest.mock("../../src/api/routes/transcribe", () => {
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 import request from "supertest";
-import app, { resetTestRateLimits } from "../../src/server";
+import app from "../../src/server";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -69,7 +69,6 @@ const VALID_JWT_PAYLOAD = {
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   "cognito:groups": ["Users"],
-  amr: ["mfa"],
 };
 
 const CLINICIAN = {
@@ -176,10 +175,6 @@ describe("Admin-only routes: clinician role receives 403", () => {
 // ── §4  Rate limiting: /api/auth enforces its threshold ───────────────────────
 
 describe("Rate limiting: /api/auth returns 429 after 10 requests/min", () => {
-  beforeEach(() => {
-    resetTestRateLimits();
-  });
-
   it("returns 429 on the 11th request within the same window", async () => {
     // Fire 10 requests — each hits the auth rate limit but does not exceed it.
     // The route itself returns 400 (Zod validation fails on empty body) which

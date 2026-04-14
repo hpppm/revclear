@@ -120,17 +120,9 @@ export const authMiddleware = async (
       });
     }
 
-    // Enforce that the access token came from an MFA-satisfied Cognito login.
-    // We require the amr claim because the application treats Cognito MFA as a
-    // hard gate for protected routes. If Cognito stops including the claim for a
-    // valid MFA flow, the auth contract needs to be revisited explicitly.
-    const amr = (payload as any).amr as string[] | undefined;
-    if (!Array.isArray(amr) || !amr.includes("mfa")) {
-      return res.status(401).json({ error: "MFA verification required" });
-    }
-
-    // Cognito groups are preserved for diagnostics only. Application authorization
-    // is derived from organization membership stored in the database.
+    // Preserve raw Cognito groups for diagnostics only.
+    // Application authorization is derived from the organization membership
+    // stored in the database.
     const cognitoGroups = (payload as any)["cognito:groups"] as
       | string[]
       | undefined;
