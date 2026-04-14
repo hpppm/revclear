@@ -517,12 +517,14 @@ export class ClaimService {
       .map((c) => c.code);
     const cptCodes = codes.filter((c) => c.code_type === "CPT");
 
-    // Look up charge from org fee schedule; fall back to 0 so billing staff
-    // can see the line item and fill in the correct amount before submission.
+    // Look up charge from org fee schedule; fall back to 150.00 when no
+    // fee schedule entry exists so the claim is never generated with $0 charges.
     const feeSchedule: Record<string, number> =
       organization?.fee_schedule && typeof organization.fee_schedule === "object"
         ? (organization.fee_schedule as Record<string, number>)
         : {};
+
+    const DEFAULT_CHARGE = 150.0;
 
     const lineItems = cptCodes.map((c, index) => ({
       line_number: index + 1,
@@ -530,7 +532,7 @@ export class ClaimService {
       modifiers: [],
       diagnosis_pointers: [1],
       units: 1,
-      charge_amount: typeof feeSchedule[c.code] === "number" ? feeSchedule[c.code] : 0,
+      charge_amount: typeof feeSchedule[c.code] === "number" ? feeSchedule[c.code] : DEFAULT_CHARGE,
       place_of_service: encounter?.place_of_service || "11",
       date_of_service: dateOfService,
       description: c.description,
