@@ -557,7 +557,7 @@ export default function ReviewClaimStep({
     if (loading) {
         return (
             <div className="text-center py-12">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-b-transparent" />
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-400 border-b-transparent" />
                 <p className="text-slate-600 mt-4">Building claim preview...</p>
             </div>
         );
@@ -599,18 +599,18 @@ export default function ReviewClaimStep({
                 </Card>
             )}
 
-            <Card className="p-6 space-y-6">
-                <div className="border-b border-slate-200 pb-4">
-                    <h3 className="text-lg font-semibold text-slate-900">Claim Meta</h3>
-                    <p className="text-sm text-slate-600">Encounter, dates, payer, claim/ frequency codes.</p>
+            <Card className="p-7 space-y-6">
+                <div className="border-b border-slate-200 pb-5">
+                    <h3 className="text-base font-semibold text-slate-900 tracking-tight">Claim Meta</h3>
+                    <p className="text-sm text-slate-500 mt-1">Encounter dates, payer, and claim frequency codes.</p>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <Input label="Encounter ID" value={claim.encounter_id || encounterId || ""} disabled className="bg-slate-50" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input label="Patient ID" value={claim.patient_id || ""} disabled className="bg-slate-50" />
                         <Input label="Patient Name" value={claim.patient_name || ""} disabled className="bg-slate-50" />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input
                             label="Date of Service Start"
                             type="date"
@@ -624,7 +624,7 @@ export default function ReviewClaimStep({
                             onChange={(e) => handleUpdateClaim("service_date_end", e.target.value)}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1">Claim Type</label>
                             <select
@@ -655,7 +655,7 @@ export default function ReviewClaimStep({
                             </select>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input
                             label="Payer Name"
                             value={claim.payer_name || ""}
@@ -667,7 +667,7 @@ export default function ReviewClaimStep({
                             onChange={(e) => handleUpdateClaim("payer_id", e.target.value)}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Input
                             label="Policy Number"
                             value={claim.insurance_policy_number || ""}
@@ -690,10 +690,10 @@ export default function ReviewClaimStep({
             {!isSelfSubscriber && (
                 <Card className="p-6 space-y-6">
                     <div className="border-b border-slate-200 pb-4">
-                        <h3 className="text-lg font-semibold text-slate-900">Subscriber Information</h3>
-                        <p className="text-sm text-slate-600">Required when patient is not the subscriber.</p>
+                        <h3 className="text-base font-semibold text-slate-900 tracking-tight">Subscriber Information</h3>
+                        <p className="text-sm text-slate-500 mt-1">Required when patient is not the subscriber.</p>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <Input
                             label="Relationship"
                             value={relationship}
@@ -705,7 +705,7 @@ export default function ReviewClaimStep({
                             value={claim.subscriber?.full_name || ""}
                             onChange={(e) => handleUpdateNested("subscriber", "full_name", e.target.value)}
                         />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
                                 label="Subscriber DOB"
                                 type="date"
@@ -719,7 +719,7 @@ export default function ReviewClaimStep({
                                 placeholder="M / F / U / O"
                             />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
                                 label="Member ID"
                                 value={claim.subscriber?.member_id || ""}
@@ -736,7 +736,7 @@ export default function ReviewClaimStep({
                             value={claim.subscriber?.address_street || claim.subscriber?.address?.street || ""}
                             onChange={(e) => handleUpdateNested("subscriber", "address_street", e.target.value)}
                         />
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Input
                                 label="City"
                                 value={claim.subscriber?.address_city || claim.subscriber?.address?.city || ""}
@@ -758,17 +758,17 @@ export default function ReviewClaimStep({
             )}
 
             {isSelfSubscriber && (
-                <Card className="p-4 border border-green-200 bg-green-50 text-green-800">
-                    Subscriber is Patient (Relationship: Self). Using patient details for subscriber information.
+                <Card className="p-4 border border-slate-200 bg-slate-50 text-slate-600 text-sm">
+                    Subscriber is the patient (Relationship: Self). Patient details will be used for subscriber fields.
                 </Card>
             )}
 
-            <Card className="p-6 space-y-6">
-                <div className="border-b border-slate-200 pb-4">
-                    <h3 className="text-lg font-semibold text-slate-900">Billing Provider</h3>
-                    <p className="text-sm text-slate-600">Solo or organization billing details.</p>
+            <Card className="p-7 space-y-6">
+                <div className="border-b border-slate-200 pb-5">
+                    <h3 className="text-base font-semibold text-slate-900 tracking-tight">Billing Provider</h3>
+                    <p className="text-sm text-slate-500 mt-1">Solo or organization billing details.</p>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <div ref={billingNameRef}>
                         <Input
                             label="Billing Provider Name *"
@@ -779,7 +779,7 @@ export default function ReviewClaimStep({
                             error={showErr("billing_name") ? (!claim.billing_provider?.name ? "Required" : !nameHasLetters(claim.billing_provider.name) ? "Must contain letters (e.g. \"Clinic Name\")" : undefined) : undefined}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div ref={billingNpiRef}>
                             <Input
                                 label="NPI (Type 1) *"
@@ -797,7 +797,7 @@ export default function ReviewClaimStep({
                             onChange={(e) => handleUpdateNested("billing_provider", "organization_npi", e.target.value)}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div ref={billingTaxIdRef}>
                             <Input
                                 label="Tax ID *"
@@ -832,7 +832,7 @@ export default function ReviewClaimStep({
                             error={showErr("billing_street") && !claim.billing_provider?.street && !claim.billing_provider?.address?.street ? "Required" : undefined}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div ref={billingCityRef}>
                             <Input
                                 label="City *"
@@ -867,12 +867,12 @@ export default function ReviewClaimStep({
                 </div>
             </Card>
 
-            <Card className="p-6 space-y-6">
-                <div className="border-b border-slate-200 pb-4">
-                    <h3 className="text-lg font-semibold text-slate-900">Service Facility</h3>
-                    <p className="text-sm text-slate-600">Where the service occurred.</p>
+            <Card className="p-7 space-y-6">
+                <div className="border-b border-slate-200 pb-5">
+                    <h3 className="text-base font-semibold text-slate-900 tracking-tight">Service Facility</h3>
+                    <p className="text-sm text-slate-500 mt-1">Where the service occurred.</p>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <div ref={serviceFacilityNameRef}>
                         <Input
                             label="Facility Name *"
@@ -883,7 +883,7 @@ export default function ReviewClaimStep({
                             error={showErr("facility_name") ? (!claim.service_facility?.name ? "Required" : !nameHasLetters(claim.service_facility.name) ? "Must contain letters (e.g. \"City Clinic\")" : undefined) : undefined}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div ref={serviceFacilityNpiRef}>
                             <Input
                                 label="Facility NPI *"
@@ -915,7 +915,7 @@ export default function ReviewClaimStep({
                             error={showErr("facility_street") && !claim.service_facility?.street && !claim.service_facility?.address?.street ? "Required" : undefined}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div ref={serviceCityRef}>
                             <Input
                                 label="City *"
@@ -950,12 +950,12 @@ export default function ReviewClaimStep({
                 </div>
             </Card>
 
-            <Card className="p-6 space-y-6">
-                <div className="border-b border-slate-200 pb-4">
-                    <h3 className="text-lg font-semibold text-slate-900">Rendering Provider</h3>
-                    <p className="text-sm text-slate-600">Who performed the service (required).</p>
+            <Card className="p-7 space-y-6">
+                <div className="border-b border-slate-200 pb-5">
+                    <h3 className="text-base font-semibold text-slate-900 tracking-tight">Rendering Provider</h3>
+                    <p className="text-sm text-slate-500 mt-1">Who performed the service (required).</p>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <div ref={renderingNameRef}>
                         <Input
                             label="Rendering Provider Name *"
@@ -987,7 +987,7 @@ export default function ReviewClaimStep({
 
             <Card className="p-6 space-y-4">
                 <div className="border-b border-slate-200 pb-3">
-                    <h3 className="text-lg font-semibold text-slate-900">Codes Summary</h3>
+                    <h3 className="text-base font-semibold text-slate-900 tracking-tight">Codes Summary</h3>
                     <p className="text-sm text-slate-600">ICDs (diagnosis) and CPTs (procedure) in this claim.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1025,10 +1025,10 @@ export default function ReviewClaimStep({
             <Card className="overflow-hidden">
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-semibold text-slate-900">Service Lines</h3>
+                        <h3 className="text-base font-semibold text-slate-900 tracking-tight">Service Lines</h3>
                         <p className="text-xs text-slate-500">Codes, ICD pointers, modifiers, units, charges.</p>
                     </div>
-                    <div className={`text-sm font-semibold ${Number(claim.total_amount || 0) === 0 ? "text-amber-600" : "text-blue-600"}`}>
+                    <div className={`text-sm font-semibold ${Number(claim.total_amount || 0) === 0 ? "text-amber-600" : "text-slate-900"}`}>
                         ${Number(claim.total_amount || 0).toFixed(2)}
                     </div>
                 </div>

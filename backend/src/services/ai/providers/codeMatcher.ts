@@ -31,6 +31,9 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const OLLAMA_CODES_MODEL = process.env.OLLAMA_CODES_MODEL || OLLAMA_MODEL;
 const CODES_API_URL = process.env.CODES_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_CODES_MODEL = process.env.GROQ_CODES_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
 // SECURITY: Ollama must only be reachable via localhost to prevent SSRF and
 // unintended external exposure of the inference server.
@@ -152,6 +155,13 @@ const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
   };
 };
 
+// Code output: 3 ICD + 3 CPT entries with descriptions — 400 tokens is plenty.
+const CODES_MAX_OUTPUT_TOKENS = 400;
+// Abort if Ollama hasn't responded within this window.
+const OLLAMA_CODES_TIMEOUT_MS = 60_000;
+// Keep model loaded in memory indefinitely so subsequent requests skip cold-start.
+const OLLAMA_CODES_KEEP_ALIVE = -1;
+
 class OllamaCodeMatcher implements CodeMatcher {
   async match(input: CodeInput): Promise<CodeMatchResult> {
     if (!OLLAMA_CODES_MODEL) {
@@ -162,16 +172,27 @@ class OllamaCodeMatcher implements CodeMatcher {
     const url = `${OLLAMA_BASE_URL.replace(/\/+$/, "")}/api/chat`;
     logger.debug({ model: OLLAMA_CODES_MODEL }, 'OllamaCodeMatcher: sending request');
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: OLLAMA_CODES_MODEL,
-        messages: [{ role: "user", content: buildPrompt(input) }],
-        stream: false,
-        format: "json",
-      }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OLLAMA_CODES_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: OLLAMA_CODES_MODEL,
+          messages: [{ role: "user", content: buildPrompt(input) }],
+          stream: false,
+          format: "json",
+          keep_alive: OLLAMA_CODES_KEEP_ALIVE,
+          options: { num_predict: CODES_MAX_OUTPUT_TOKENS },
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     logger.debug({ status: response.status }, 'OllamaCodeMatcher: response received');
     if (!response.ok) {
@@ -242,13 +263,77 @@ class HttpEndpointCodeMatcher implements CodeMatcher {
   }
 }
 
+const GROQ_CODES_TIMEOUT_MS = 20_000;
+const GROQ_CODES_MAX_TOKENS = 400;
+
+class GroqCodeMatcher implements CodeMatcher {
+  async match(input: CodeInput): Promise<CodeMatchResult> {
+    const model = process.env.GROQ_CODES_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    const apiKey = process.env.GROQ_API_KEY || "";
+
+    // SECURITY: Scrub structured PHI patterns before the SOAP note leaves the server.
+    const { scrubbed: scrubbedSoapNote, redactionCount } = scrubPHI(input.soapNote);
+    logger.info({ redactionCount }, "GroqCodeMatcher: PHI scrub applied before external transmission");
+
+    logger.debug({ model }, "GroqCodeMatcher: sending request");
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GROQ_CODES_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${GROQ_API_BASE}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: buildPrompt({ soapNote: scrubbedSoapNote }) }],
+          max_tokens: GROQ_CODES_MAX_TOKENS,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    logger.debug({ status: response.status }, "GroqCodeMatcher: response received");
+
+    if (!response.ok) {
+      const body = await response.text();
+      logger.error({ status: response.status, body }, "GroqCodeMatcher: upstream error");
+      throw new Error(`Groq codes request failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
+    const content = data.choices?.[0]?.message?.content;
+    const normalized = normalizeCodeOutput(content);
+    return SoapToCodesOutputSchema.parse({ ...normalized, model_version: model });
+  }
+}
+
 let matcherSingleton: CodeMatcher | null = null;
 
 export const getCodeMatcher = (): CodeMatcher => {
   if (!matcherSingleton) {
-    matcherSingleton = CODES_API_URL
-      ? new HttpEndpointCodeMatcher(CODES_API_URL)
-      : new OllamaCodeMatcher();
+    // Read at call time — module-level constants are frozen at import time
+    // and may be evaluated before dotenv has finished loading env vars.
+    const groqKey = process.env.GROQ_API_KEY || "";
+    const codesApiUrl = process.env.CODES_API_URL || "";
+    if (groqKey) {
+      logger.info({ model: process.env.GROQ_CODES_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile" }, "AI provider: Groq (codes)");
+      matcherSingleton = new GroqCodeMatcher();
+    } else if (codesApiUrl) {
+      logger.info({ url: codesApiUrl }, "AI provider: HTTP endpoint (codes)");
+      matcherSingleton = new HttpEndpointCodeMatcher(codesApiUrl);
+    } else {
+      logger.info({ model: process.env.OLLAMA_CODES_MODEL || process.env.OLLAMA_MODEL }, "AI provider: Ollama (codes)");
+      matcherSingleton = new OllamaCodeMatcher();
+    }
   }
   return matcherSingleton;
 };

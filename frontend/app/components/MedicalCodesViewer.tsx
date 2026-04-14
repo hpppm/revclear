@@ -36,6 +36,11 @@ export default function MedicalCodesViewer({
   onCodesSelected,
 }: MedicalCodesViewerProps) {
   const { canUseClinicalAI } = useAuthorization();
+  // Normalize a raw confidence value to a 0–100 integer.
+  // The value may be a 0.0–1.0 decimal (fresh AI / new DB rows) or a legacy
+  // integer percentage stored before the /100 save-fix was applied.
+  const toDisplayPct = (v: number) => v > 1 ? Math.round(v) : Math.round(v * 100);
+
   const ensureType = (codes: RawCode[], type: "ICD-10" | "CPT") =>
     (codes || []).map((c) => ({
       id: c.id || `${type}-${c.code}`,
@@ -45,9 +50,9 @@ export default function MedicalCodesViewer({
       category: c.category || "Unspecified",
       confidence:
         typeof c.confidence === "number"
-          ? Math.round(c.confidence * 100)
+          ? toDisplayPct(c.confidence)
           : typeof c.confidence_score === "number"
-          ? Math.round(c.confidence_score * 100)
+          ? toDisplayPct(c.confidence_score)
           : undefined,
       source: c.is_ai_suggested ? "AI" : c.source,
     }));
@@ -109,8 +114,14 @@ export default function MedicalCodesViewer({
       const response = await apiClient.codes.match(encounterId);
       const { icdMatches, cptMatches } = response.data.data;
 
-      setIcdCandidates(ensureType(icdMatches, "ICD-10"));
-      setCptCandidates(ensureType(cptMatches, "CPT"));
+      const newIcd = ensureType(icdMatches, "ICD-10");
+      const newCpt = ensureType(cptMatches, "CPT");
+
+      setIcdCandidates(newIcd);
+      setCptCandidates(newCpt);
+      // Clear selection so stale saved codes don't accumulate across runs.
+      // The user picks what they want from the fresh AI candidates.
+      setSelection([]);
       setHasGenerated(true);
     } catch {
       logger.error("Code generation failed");
@@ -188,36 +199,39 @@ export default function MedicalCodesViewer({
   }) => (
     <div
       onClick={onSelect}
-      className={`rounded-lg border-2 p-4 cursor-pointer transition-all ${isSelected
-        ? "border-blue-500 bg-blue-50 shadow-md"
-        : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"
+      className={`rounded-xl border-2 p-4 cursor-pointer transition-all flex flex-col gap-2 ${isSelected
+        ? "border-slate-800 bg-white shadow-md"
+        : "border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm"
         }`}
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Badge variant={isSelected ? "info" : "neutral"} size="sm">
-            {code.code}
-          </Badge>
-          {typeof code.confidence === 'number' && (
-            <span className="text-xs text-slate-500">
-              {code.confidence.toFixed(0)}% confidence
-            </span>
-          )}
-        </div>
+      {/* Top row: code badge + checkmark */}
+      <div className="flex items-center justify-between">
+        <Badge variant="neutral" size="sm">
+          {code.code}
+        </Badge>
         {isSelected && (
-          <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-              clipRule="evenodd"
-            />
+          <svg className="w-4 h-4 text-slate-800 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
         )}
       </div>
-      <p className="text-sm font-medium text-slate-900 mb-1">{code.description}</p>
-      {code.category && (
-        <p className="text-xs text-slate-500">{code.category}</p>
-      )}
+
+      {/* Description — capped at 3 lines so cards stay uniform height */}
+      <p className="text-sm font-medium text-slate-900 leading-snug line-clamp-3">
+        {code.description}
+      </p>
+
+      {/* Footer: category + confidence — confidence is stored as 0–100 integer */}
+      <div className="flex items-center justify-between mt-auto pt-1 border-t border-slate-100">
+        {code.category && (
+          <p className="text-xs text-slate-500 truncate mr-2">{code.category}</p>
+        )}
+        {typeof code.confidence === 'number' && (
+          <span className="text-xs font-medium flex-shrink-0 text-slate-400">
+            {Math.round(code.confidence)}%
+          </span>
+        )}
+      </div>
     </div>
   );
 
@@ -264,18 +278,21 @@ export default function MedicalCodesViewer({
       )}
 
       {(icdCandidates.length > 0 || cptCandidates.length > 0) && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* ICD-10 Candidates */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                ICD-10 Diagnosis Codes
-              </h4>
-              <span className="text-xs text-slate-500">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                  ICD-10 Diagnosis Codes
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Click a card to select or deselect</p>
+              </div>
+              <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
                 {selectedCodes.filter(c => c.type === "ICD-10").length} selected
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {icdCandidates.map((code) => (
                 <CandidateCard
                   key={`${code.type}-${code.code}`}
@@ -289,15 +306,18 @@ export default function MedicalCodesViewer({
 
           {/* CPT Candidates */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                CPT Procedure Codes
-              </h4>
-              <span className="text-xs text-slate-500">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                  CPT Procedure Codes
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">Click a card to select or deselect</p>
+              </div>
+              <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
                 {selectedCodes.filter(c => c.type === "CPT").length} selected
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {cptCandidates.map((code) => (
                 <CandidateCard
                   key={`${code.type}-${code.code}`}
@@ -375,28 +395,31 @@ export default function MedicalCodesViewer({
       {/* Selected Codes List */}
       {selectedCodes.length > 0 && (
         <div className="border-t border-slate-200 pt-6">
-          <h4 className="text-sm font-semibold text-slate-700 mb-3">Selected Codes</h4>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-slate-800">Selected Codes</h4>
+            <span className="text-xs text-slate-500">{selectedCodes.length} total</span>
+          </div>
           <div className="space-y-2">
             {selectedCodes.map((code) => (
               <div
                 key={`${code.type}-${code.code}`}
-                className="flex items-center justify-between p-3 rounded-lg border border-blue-200 bg-blue-50"
+                className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white"
               >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="info" size="sm">{code.code}</Badge>
-                    <Badge variant={code.type === "ICD-10" ? "neutral" : "info"} size="sm" className="uppercase">
-                      {code.type || "Unknown"}
-                    </Badge>
-                    <span className="text-sm font-medium text-slate-900">{code.description}</span>
-                  </div>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Badge variant="neutral" size="sm" className="flex-shrink-0">{code.code}</Badge>
+                  <Badge variant="neutral" size="sm" className="flex-shrink-0 uppercase">
+                    {code.type || "Unknown"}
+                  </Badge>
+                  <span className="text-sm text-slate-800 truncate" title={code.description}>
+                    {code.description}
+                  </span>
                 </div>
                 <button
                   onClick={() => handleRemoveCode(code)}
-                  className="text-slate-400 hover:text-red-600 transition-colors"
+                  className="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors"
                   title="Remove code"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
