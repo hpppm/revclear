@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { ai, defaultTextModel } from "../runtime";
-import { appConfig } from "../../../config/appConfig";
 import logger from "../../../utils/logger";
 import { scrubPHI } from "../../../utils/textScrubber";
 
@@ -106,10 +105,13 @@ const clampConfidence = (value: unknown): number => {
 };
 
 const normalizeSoapOutput = (raw: unknown): SoapOutput => {
-  const rawObj =
-    raw && typeof raw === "object"
-      ? (raw as Record<string, unknown>)
-      : {};
+  let parsed: unknown = {};
+  if (typeof raw === "string") {
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+  } else if (raw && typeof raw === "object") {
+    parsed = raw;
+  }
+  const rawObj = parsed as Record<string, unknown>;
   const rawSoap =
     rawObj.soap && typeof rawObj.soap === "object"
       ? (rawObj.soap as Record<string, unknown>)
@@ -123,7 +125,7 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
       plan: safeString(rawSoap.plan),
     },
     confidence: clampConfidence(rawObj.confidence),
-    model_version: appConfig.ai.geminiModel,
+    model_version: safeString(rawObj.model_version) || OLLAMA_MODEL || "ollama",
   };
 };
 

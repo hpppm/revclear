@@ -133,15 +133,17 @@ const normalizeMatches = (value: unknown) => {
 };
 
 const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
-  const parsed =
-    raw && typeof raw === "object"
-      ? (raw as Record<string, unknown>)
-      : {};
-
+  let parsed: unknown = {};
+  if (typeof raw === "string") {
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+  } else if (raw && typeof raw === "object") {
+    parsed = raw;
+  }
+  const obj = parsed as Record<string, unknown>;
   return {
-    icdMatches: normalizeMatches(parsed.icdMatches),
-    cptMatches: normalizeMatches(parsed.cptMatches),
-    model_version: appConfig.ai.geminiModel,
+    icdMatches: normalizeMatches(obj.icdMatches),
+    cptMatches: normalizeMatches(obj.cptMatches),
+    model_version: safeString(obj.model_version) || OLLAMA_CODES_MODEL || "ollama",
   };
 };
 
