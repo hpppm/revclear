@@ -87,44 +87,37 @@ export default function SoapGenerationStep({
     })();
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-5">
-            {/* Left — transcript aligned to first SOAP card */}
-            <div className="flex flex-col gap-3">
-                {/* Spacer matches the height of the SOAP NOTE label row on the right */}
-                <div className="flex items-center" style={{ minHeight: "3.25rem" }}>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Transcript</p>
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.4fr] gap-5 items-start">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">Transcript</h3>
+                    {transcriptText && !soap && (
+                        <Button
+                            size="sm"
+                            onClick={onGenerateSoap}
+                            loading={generatingSoap}
+                            disabled={generatingSoap}
+                        >
+                            Generate SOAP
+                        </Button>
+                    )}
                 </div>
-                <div className="flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-end">
-                        {transcriptText && !soap && (
-                            <Button
-                                size="sm"
-                                onClick={onGenerateSoap}
-                                loading={generatingSoap}
-                                disabled={generatingSoap}
-                            >
-                                Generate SOAP
-                            </Button>
-                        )}
-                    </div>
-                    <div className="flex-1 p-4 overflow-auto max-h-[480px]">
-                        {transcriptText ? (
-                            <pre className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-sans">
-                                {String(transcriptText ?? "")}
-                            </pre>
-                        ) : (
-                            <p className="text-sm text-slate-400 italic">No transcript available.</p>
-                        )}
-                    </div>
+                <div className="p-4 max-h-[560px] overflow-auto">
+                    {transcriptText ? (
+                        <pre className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-sans">
+                            {String(transcriptText ?? "")}
+                        </pre>
+                    ) : (
+                        <p className="text-sm text-slate-400 italic">No transcript available.</p>
+                    )}
                 </div>
-            </div>
+            </section>
 
-            {/* Right — SOAP Note aligned to subtitle */}
-            <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between" style={{ minHeight: "3.25rem" }}>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-900">SOAP Note</p>
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-slate-900">SOAP Note</h3>
                     {soap && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap justify-end">
                             {isEditing ? (
                                 <>
                                     <Button size="sm" onClick={handleSave} loading={saving} disabled={saving}>
@@ -148,25 +141,27 @@ export default function SoapGenerationStep({
                     )}
                 </div>
 
-                {soap ? (
-                    <SoapNoteViewer
-                        soap={isEditing ? editedSoap : soap}
-                        isEditing={isEditing}
-                        onEditChange={handleFieldChange}
-                    />
-                ) : (
-                    <div className="flex-1 flex items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">
-                                {generatingSoap ? "Generating SOAP note…" : "No SOAP note yet."}
-                            </p>
-                            {!generatingSoap && (
-                                <p className="text-xs text-slate-400 mt-1">Generate one from the transcript on the left.</p>
-                            )}
+                <div className="p-4">
+                    {soap ? (
+                        <SoapNoteViewer
+                            soap={isEditing ? editedSoap : soap}
+                            isEditing={isEditing}
+                            onEditChange={handleFieldChange}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
+                            <div>
+                                <p className="text-sm font-medium text-slate-500">
+                                    {generatingSoap ? "Generating SOAP note..." : "No SOAP note yet."}
+                                </p>
+                                {!generatingSoap && (
+                                    <p className="text-xs text-slate-400 mt-1">Generate from transcript to continue.</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

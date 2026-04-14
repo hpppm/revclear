@@ -28,6 +28,9 @@ const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "";
 const SOAP_API_URL = process.env.SOAP_API_URL || "";
 const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_SOAP_MODEL = process.env.GROQ_SOAP_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_API_BASE = "https://api.groq.com/openai/v1";
 
 // SECURITY: Ollama must only be reachable via localhost to prevent SSRF and
 // unintended external exposure of the inference server.
@@ -140,6 +143,13 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
   };
 };
 
+// SOAP output is short JSON — 700 tokens is generous for all four sections.
+const SOAP_MAX_OUTPUT_TOKENS = 700;
+// Abort if Ollama hasn't responded within this window.
+const OLLAMA_SOAP_TIMEOUT_MS = 90_000;
+// Keep model loaded in memory indefinitely so subsequent requests skip cold-start.
+const OLLAMA_KEEP_ALIVE = -1;
+
 class OllamaSoapGenerator implements SoapGenerator {
   async generate(input: GenerateSoapInput): Promise<SoapOutput> {
     if (!OLLAMA_MODEL) {
@@ -153,16 +163,27 @@ class OllamaSoapGenerator implements SoapGenerator {
     const prompt = buildSoapPrompt(input);
     logger.debug({ model: OLLAMA_MODEL, encounterId: input.encounterId }, 'OllamaSoapGenerator: sending request');
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        stream: false,
-        format: "json",
-      }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OLLAMA_SOAP_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: OLLAMA_MODEL,
+          messages: [{ role: "user", content: prompt }],
+          stream: false,
+          format: "json",
+          keep_alive: OLLAMA_KEEP_ALIVE,
+          options: { num_predict: SOAP_MAX_OUTPUT_TOKENS },
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     logger.debug({ status: response.status, encounterId: input.encounterId }, 'OllamaSoapGenerator: response received');
 
     if (!response.ok) {
@@ -233,13 +254,73 @@ class HttpEndpointSoapGenerator implements SoapGenerator {
   }
 }
 
+const GROQ_SOAP_TIMEOUT_MS = 30_000;
+const GROQ_SOAP_MAX_TOKENS = 700;
+
+class GroqSoapGenerator implements SoapGenerator {
+  async generate(input: GenerateSoapInput): Promise<SoapOutput> {
+    const model = process.env.GROQ_SOAP_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    const apiKey = process.env.GROQ_API_KEY || "";
+    const prompt = buildSoapPrompt(input);
+    logger.debug({ model, encounterId: input.encounterId }, "GroqSoapGenerator: sending request");
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GROQ_SOAP_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${GROQ_API_BASE}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: GROQ_SOAP_MAX_TOKENS,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    logger.debug({ status: response.status, encounterId: input.encounterId }, "GroqSoapGenerator: response received");
+
+    if (!response.ok) {
+      const body = await response.text();
+      logger.error({ encounterId: input.encounterId, status: response.status, body }, "GroqSoapGenerator: upstream error");
+      throw new Error(`Groq SOAP request failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
+    const content = data.choices?.[0]?.message?.content;
+    const output = normalizeSoapOutput(content);
+    return SoapSchema.parse({ ...output, model_version: model });
+  }
+}
+
 let soapGeneratorSingleton: SoapGenerator | null = null;
 
 export const getSoapGenerator = (): SoapGenerator => {
   if (!soapGeneratorSingleton) {
-    soapGeneratorSingleton = SOAP_API_URL
-      ? new HttpEndpointSoapGenerator(SOAP_API_URL)
-      : new OllamaSoapGenerator();
+    // Read at call time — module-level constants are frozen at import time
+    // and may be evaluated before dotenv has finished loading env vars.
+    const groqKey = process.env.GROQ_API_KEY || "";
+    const soapApiUrl = process.env.SOAP_API_URL || "";
+    if (groqKey) {
+      logger.info({ model: process.env.GROQ_SOAP_MODEL || process.env.GROQ_MODEL || "llama-3.3-70b-versatile" }, "AI provider: Groq (SOAP)");
+      soapGeneratorSingleton = new GroqSoapGenerator();
+    } else if (soapApiUrl) {
+      logger.info({ url: soapApiUrl }, "AI provider: HTTP endpoint (SOAP)");
+      soapGeneratorSingleton = new HttpEndpointSoapGenerator(soapApiUrl);
+    } else {
+      logger.info({ model: process.env.OLLAMA_MODEL }, "AI provider: Ollama (SOAP)");
+      soapGeneratorSingleton = new OllamaSoapGenerator();
+    }
   }
   return soapGeneratorSingleton;
 };
