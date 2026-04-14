@@ -3,6 +3,7 @@ import { ai, defaultTextModel } from "../runtime";
 import { buildSoapPrompt } from "../prompts";
 import { appConfig } from "../../../config/appConfig";
 import logger from "../../../utils/logger";
+import { scrubPHI } from "../../../utils/textScrubber";
 
 export const SoapSchema = z.object({
   soap: z.object({
@@ -59,9 +60,20 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
 
 class GenkitSoapGenerator implements SoapGenerator {
   async generate(input: GenerateSoapInput): Promise<SoapOutput> {
+    // SECURITY: Scrub structured PHI patterns before the transcript leaves the
+    // server. Free-text names cannot be redacted without NLP — a BAA with the
+    // external AI provider is still required for full HIPAA compliance.
+    const { scrubbed: scrubbedTranscript, redactionCount } = scrubPHI(input.transcriptText);
+    if (redactionCount > 0) {
+      logger.info(
+        { encounterId: input.encounterId, redactionCount },
+        "soap-generator: PHI redacted before Gemini call",
+      );
+    }
+
     const result = await ai.generate({
       model: defaultTextModel,
-      prompt: buildSoapPrompt(input.encounterId, input.transcriptText),
+      prompt: buildSoapPrompt(input.encounterId, scrubbedTranscript),
       output: { schema: SoapSchema },
       config: {
         temperature: 0.2,

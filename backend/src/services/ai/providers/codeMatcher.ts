@@ -4,6 +4,7 @@ import { ai, defaultTextModel } from "../runtime";
 import { buildCodeSelectionPrompt } from "../prompts";
 import { searchMedicalCodes } from "../pinecone";
 import { appConfig } from "../../../config/appConfig";
+import { scrubPHI } from "../../../utils/textScrubber";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -132,13 +133,19 @@ const filterToCandidates = (
 
 class GenkitCodeMatcher implements CodeMatcher {
   async match(input: CodeInput): Promise<CodeMatchResult> {
-    const retrieval = await searchMedicalCodes(input.soapNote, 5);
+    // SECURITY: Scrub structured PHI before sending to external AI endpoint.
+    const { scrubbed: scrubbedNote, redactionCount } = scrubPHI(input.soapNote);
+    if (redactionCount > 0) {
+      logger.info({ redactionCount }, "code-matcher: PHI redacted before Gemini call");
+    }
+
+    const retrieval = await searchMedicalCodes(scrubbedNote, 5);
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
 
     const result = await ai.generate({
       model: defaultTextModel,
-      prompt: buildCodeSelectionPrompt(input.soapNote, icdCandidates, cptCandidates),
+      prompt: buildCodeSelectionPrompt(scrubbedNote, icdCandidates, cptCandidates),
       output: { schema: SoapToCodesOutputSchema },
       config: {
         temperature: 0.2,
