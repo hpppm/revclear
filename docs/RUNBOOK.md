@@ -37,8 +37,8 @@ This runbook provides operational procedures for deploying, monitoring, and main
       │           │           │              │
       ▼           ▼           ▼              ▼
 ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────────┐
-│ AWS RDS  │ │ AWS S3  │ │ Cognito  │ │ Ollama / API │
-│PostgreSQL│ │ Storage │ │  Auth    │ │  AI Provider │
+│ PostgreSQL│ │ AWS S3  │ │ Cognito  │ │ Gemini/Pinecone│
+│ Database  │ │ Storage │ │  Auth    │ │  + Whisper    │
 └──────────┘ └─────────┘ └──────────┘ └──────────────┘
 ```
 
@@ -48,7 +48,7 @@ This runbook provides operational procedures for deploying, monitoring, and main
 |-------------|---------|-----|
 | **Development** | Local development | `http://localhost:3000` |
 | **Staging** | Pre-production testing | TBD |
-| **Production** | Live environment | `https://revclear.gannon.edu` |
+| **Production** | Live environment | Railway public domain |
 
 ---
 
@@ -66,75 +66,53 @@ This runbook provides operational procedures for deploying, monitoring, and main
 
 ### Backend Deployment
 
-#### Reverse Proxy Requirements
+#### Railway Production Layout
 
-Production assumes the backend is deployed behind a reverse proxy under the
-same public origin as the frontend (`https://revclear.gannon.edu`).
+The current production target is:
 
-A reference Nginx site configuration is included at
-`deploy/nginx/revclear.conf`. In the production Docker stack, Nginx runs as
-its own container and proxies to the `frontend` and `backend` services over the
-internal Docker network.
+- Frontend service on Railway, public
+- Backend service on Railway, private
+- Whisper service on Railway, private
 
-The reverse proxy must:
-
-- Terminate TLS on `443`
-- Route browser API traffic from `/api/*` to the backend container
-- Preserve the original `Host` header
-- Forward `X-Forwarded-Proto: https`
-- Forward `X-Forwarded-For`
-- Keep backend container port internal; do not expose it publicly
-
-For Nginx specifically:
-
-- Proxy `/api/` to the backend service on internal port `3005`
-- Proxy `/` to the frontend service on internal port `3000`
-- Keep TLS termination at Nginx
-- Preserve `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`
-- Allow uploads up to at least `50M` for transcription audio
-- Mount the TLS certificate and private key into the Nginx container
+The frontend serves the browser and proxies browser API traffic to the backend
+over the Railway private network. The browser never reaches the backend or
+Whisper directly.
 
 Internal service traffic should stay private:
 
-- Frontend/browser -> `https://revclear.gannon.edu`
-- Reverse proxy -> frontend container
-- Reverse proxy -> backend container for `/api/*`
-- Backend -> AI server over internal Docker network
-- AI server -> Qdrant over internal Docker network
+- Browser -> frontend public Railway domain
+- Frontend -> backend over private Railway networking
+- Backend -> Whisper over private Railway networking
 
-#### Separate AI Stack
+Recommended env vars:
 
-If the medical AI service is deployed from a separate repository, use a shared
-external Docker network instead of combining both repos into one Compose file.
+- Frontend:
+  - `NEXT_PUBLIC_API_URL=/api`
+  - `BACKEND_INTERNAL_URL=http://backend.railway.internal:3005/api`
+- Backend:
+  - `AI_TRANSCRIBE_URL=http://whisper.railway.internal:8000/transcribe`
+  - `GEMINI_API_KEY`
+  - `GEMINI_MODEL=gemini-2.5-flash`
+  - `PINECONE_API_KEY`
+  - `PINECONE_INDEX_HOST`
+  - `PINECONE_NAMESPACE=medical-codes`
+  - `AI_SERVER_API_KEY` (shared secret for Whisper, required if you enable Whisper auth)
+- Whisper:
+  - `PORT=8000`
+  - `WHISPER_MODEL=base`
+  - `WHISPER_DEVICE=cpu`
+  - `WHISPER_COMPUTE_TYPE=int8`
 
-Recommended pattern:
+Deployment notes:
 
-- Keep the RevClear app stack in `docker-compose.prod.yml`
-- Keep the medical AI stack in its own Compose project
-- Create one shared external network, for example `revclear-shared`
-- Attach the RevClear `backend` service to that shared network
-- Attach the AI inference service (`medical-ai` or `medical-ai-cpu`) to that same shared network
-- Keep `qdrant` private to the AI stack unless another service explicitly needs it
-
-Create the shared network once on the server:
-
-```bash
-docker network create revclear-shared
-```
-
-RevClear production stack:
-
-- `docker-compose.prod.yml` already attaches `backend` to `${SHARED_DOCKER_NETWORK:-revclear-shared}`
-
-Medical AI stack:
-
-- Attach the inference service to the same external network
-- Example service URLs from the RevClear backend:
-  - `SOAP_API_URL=http://medical-ai-cpu:8000/api/process`
-  - `CODES_API_URL=http://medical-ai-cpu:8000/api/suggest-codes`
-  - `AI_TRANSCRIBE_URL=http://medical-ai-cpu:8000/api/transcribe`
-
-If the GPU profile is used instead, replace `medical-ai-cpu` with `medical-ai`.
+- Railway service roots:
+  - Frontend service root: `frontend`
+  - Backend service root: `backend`
+  - Whisper service root: `backend`
+- The Whisper service reads `POST /transcribe` and `GET /health`
+- The backend already sends `X-API-Key` when `AI_SERVER_API_KEY` is set
+- The frontend should proxy `/api/*` server-side so cookies stay same-origin from the browser’s perspective
+- Railway does not provide GPU instances, so Whisper is CPU-based in this setup
 
 #### Cookie / Session Requirements
 
@@ -144,12 +122,9 @@ The backend issues httpOnly auth cookies with:
 - `SameSite=Strict` in production
 - `Path=/`
 
-This requires same-origin frontend/backend routing in production. Do not deploy
-the frontend and backend on separate public origins unless cookie strategy and
-CORS are intentionally redesigned.
-
-If secure cookies are not being set or auth appears broken in production, first
-verify the reverse proxy is forwarding `X-Forwarded-Proto=https`.
+Keeping the browser on the frontend public domain and proxying `/api` server-side
+lets the app preserve the current cookie-based auth model without exposing the
+backend hostname to the browser.
 
 #### Manual Deployment
 
@@ -205,31 +180,23 @@ Production compose expectations:
 - Inject secrets and environment variables from the server environment or a server-managed env file
 - Route public traffic through the reverse proxy only
 
-#### AWS Deployment (Lambda/ECS)
+#### Railway Deployment
 
-```bash
-# If using Terraform
-cd terraform
-terraform plan
-terraform apply
-
-# If using AWS CLI
-aws lambda update-function-code \
-  --function-name revclear-api \
-  --zip-file fileb://dist.zip
-```
+Deploy the frontend, backend, and Whisper as separate Railway services in the
+same project. Redeploy from Railway after pushing to the connected branch, or
+use the Railway CLI if you are managing deploys manually.
 
 ### Frontend Deployment
 
-#### Vercel Deployment (Recommended)
+#### Railway Deployment (Frontend)
 
 ```bash
-# Automatic on git push to main
-git push origin main
-
-# Manual deployment
+# Build locally
 cd frontend
-vercel --prod
+npm ci
+npm run build
+
+# Deploy through Railway or the Railway CLI
 ```
 
 #### Self-Hosted Deployment
@@ -364,7 +331,7 @@ aws logs tail /aws/lambda/revclear-api --follow
 | `AUTHENTICATION_BYPASS_ATTEMPT` | CRITICAL | Security review |
 | `RATE_LIMIT_EXCEEDED` | WARNING | Review traffic patterns |
 | `S3_UPLOAD_FAILED` | WARNING | Check S3 permissions |
-| `AI_PROVIDER_ERROR` | WARNING | Check Ollama/API provider status |
+| `AI_PROVIDER_ERROR` | WARNING | Check Gemini/Pinecone/Whisper status |
 
 ---
 
@@ -464,18 +431,19 @@ echo $JWT_SECRET  # Should be set
 
 **Diagnosis:**
 ```bash
-# Check Ollama endpoint
-echo $OLLAMA_BASE_URL
+# Check Gemini and Pinecone configuration
+echo $GEMINI_MODEL
+echo $PINECONE_INDEX_HOST
 
-# Test provider directly
-curl $OLLAMA_BASE_URL/api/tags
+# Check Whisper endpoint
+curl $AI_TRANSCRIBE_URL/health
 ```
 
 **Fix:**
 ```bash
-# 1. Verify OLLAMA_BASE_URL and model env values
-# 2. Ensure model is installed (ollama pull <model>)
-# 3. Restart Ollama service if needed
+# 1. Verify GEMINI_API_KEY and GEMINI_MODEL
+# 2. Verify PINECONE_API_KEY and PINECONE_INDEX_HOST
+# 3. Check Whisper service health and API key handling
 # 4. Check /api/health/ai for detailed provider status
 ```
 
