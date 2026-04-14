@@ -14,12 +14,14 @@ export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
   const isDev = process.env.NODE_ENV === "development";
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005/api";
+  const backendInternalUrl =
+    process.env.BACKEND_INTERNAL_URL || "http://localhost:3005/api";
+
   let apiOrigin = "http://localhost:3005";
   try {
-    apiOrigin = new URL(apiUrl).origin;
+    apiOrigin = new URL(backendInternalUrl).origin;
   } catch {
-    apiOrigin = apiUrl.replace(/\/api\/?$/, "");
+    apiOrigin = backendInternalUrl.replace(/\/api\/?$/, "");
   }
   const connectSrc = isDev
     ? [

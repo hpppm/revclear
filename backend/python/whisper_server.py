@@ -20,6 +20,7 @@ import os
 import sys
 import tempfile
 import logging
+import hmac
 from pathlib import Path
 
 from flask import Flask, request, jsonify
@@ -32,6 +33,7 @@ PORT = int(os.environ.get("PORT", 5000))
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
+API_KEY = os.environ.get("AI_SERVER_API_KEY", "")
 
 ALLOWED_EXTENSIONS = {
     ".mp3", ".mp4", ".mpeg", ".mpga", ".m4a",
@@ -68,6 +70,17 @@ def _extension_ok(filename: str) -> bool:
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
 
+def _require_api_key():
+    if not API_KEY:
+        return None
+
+    provided_key = request.headers.get("X-API-Key", "")
+    if not provided_key or not hmac.compare_digest(provided_key, API_KEY):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    return None
+
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "model": MODEL_SIZE})
@@ -75,6 +88,10 @@ def health():
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
+    auth_response = _require_api_key()
+    if auth_response:
+        return auth_response
+
     # ---- Validate incoming file ----
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided (field name: 'audio')"}), 400
@@ -89,6 +106,7 @@ def transcribe():
 
     # ---- Save to a temp file and transcribe ----
     suffix = Path(audio_file.filename).suffix or ".audio"
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             audio_file.save(tmp)
@@ -113,10 +131,11 @@ def transcribe():
         return jsonify({"error": "Transcription failed", "detail": str(exc)}), 500
 
     finally:
-        try:
-            os.unlink(tmp_path)
-        except Exception:
-            pass
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------

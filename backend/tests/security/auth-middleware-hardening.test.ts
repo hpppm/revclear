@@ -281,21 +281,13 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 });
 
 // ---------------------------------------------------------------------------
-// Change 5 — MFA enforcement via Cognito pool (not amr claim)
-//
-// The amr claim check was removed because Cognito only populates amr when
-// Advanced Security (Threat Protection) is enabled on the user pool. Without
-// it, tokens from a completed SOFTWARE_TOKEN_MFA challenge still lack the
-// claim, blocking every valid login. MFA enforcement is delegated to the
-// Cognito pool's mandatory TOTP configuration — any token that passes
-// RS256 signature verification was issued only after Cognito completed the
-// challenge. Restore the amr check if Advanced Security is enabled later.
+// Change 5 — MFA enforcement via amr claim
 // ---------------------------------------------------------------------------
 
-describe("Change 5: MFA enforcement — valid Cognito tokens pass regardless of amr claim", () => {
+describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("passes through when amr claim is absent (Cognito pool enforces MFA at challenge level)", async () => {
+  it("returns 401 when amr claim is absent (pre-MFA token)", async () => {
     const { amr: _omitted, ...payloadWithoutAmr } = VALID_PAYLOAD;
     mockVerify.mockResolvedValue(payloadWithoutAmr);
     mockFindUser.mockResolvedValue(DB_USER);
@@ -306,13 +298,14 @@ describe("Change 5: MFA enforcement — valid Cognito tokens pass regardless of 
 
     await authMiddleware(req, res, next);
 
-    expect(next).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+    expect(mockFindUser).not.toHaveBeenCalled();
   });
 
-  it("passes through when amr is an empty array", async () => {
+  it("returns 401 when amr claim is an empty array", async () => {
     mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: [] });
-    mockFindUser.mockResolvedValue(DB_USER);
 
     const req = makeReq({ cookies: { accessToken: "empty-amr.token" } }) as any;
     const res = makeRes();
@@ -320,11 +313,26 @@ describe("Change 5: MFA enforcement — valid Cognito tokens pass regardless of 
 
     await authMiddleware(req, res, next);
 
-    expect(next).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
   });
 
-  it("passes through when amr includes 'mfa' (Advanced Security populated claim)", async () => {
+  it("returns 401 when amr contains only 'pwd' (password-only login, MFA skipped)", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: ["pwd"] });
+
+    const req = makeReq({ cookies: { accessToken: "pwd-only.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("passes through when amr includes 'mfa'", async () => {
     mockVerify.mockResolvedValue(VALID_PAYLOAD); // amr: ["mfa"]
     mockFindUser.mockResolvedValue(DB_USER);
 

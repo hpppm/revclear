@@ -36,9 +36,13 @@ router.get("/ai", authMiddleware, async (_req, res) => {
       status: report.overallHealthy ? "healthy" : "degraded",
       // SECURITY: Omit aiServerHealthUrl — it reveals internal infrastructure URLs.
       data: {
-        aiServer: {
-          healthy: report.aiServer.healthy,
-          message: report.aiServer.message,
+        model: {
+          healthy: report.model.healthy,
+          message: report.model.message,
+        },
+        pinecone: {
+          healthy: report.pinecone.healthy,
+          message: report.pinecone.message,
         },
       },
     });
