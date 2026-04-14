@@ -119,9 +119,9 @@ export default function MedicalCodesViewer({
 
       setIcdCandidates(newIcd);
       setCptCandidates(newCpt);
-      // Clear selection so stale saved codes don't accumulate across runs.
-      // The user picks what they want from the fresh AI candidates.
-      setSelection([]);
+      // Default to top suggestion per type so users start with 1 ICD + 1 CPT.
+      const defaultSelection = [newIcd[0], newCpt[0]].filter(Boolean) as MedicalCode[];
+      setSelection(defaultSelection);
       setHasGenerated(true);
     } catch {
       logger.error("Code generation failed");
@@ -162,7 +162,8 @@ export default function MedicalCodesViewer({
     if (isSelected) {
       setSelection(selectedCodes.filter((c) => !(c.code === code.code && c.type === code.type)));
     } else {
-      setSelection([...selectedCodes, code]);
+      const withoutSameType = selectedCodes.filter((c) => c.type !== code.type);
+      setSelection([...withoutSameType, code]);
     }
   };
 
@@ -178,10 +179,9 @@ export default function MedicalCodesViewer({
       }
     }
 
-    // Select the code
-    if (!selectedCodes.some(c => c.code === code.code && c.type === code.type)) {
-      setSelection([...selectedCodes, code]);
-    }
+    // Keep exactly one selected per type.
+    const withoutSameType = selectedCodes.filter((c) => c.type !== code.type);
+    setSelection([...withoutSameType, code]);
 
     // Do not clear search results to allow multiple selections
     // setSearchResults([]);
@@ -192,28 +192,52 @@ export default function MedicalCodesViewer({
     setSelection(selectedCodes.filter((c) => !(c.code === code.code && c.type === code.type)));
   };
 
-  const CandidateCard = ({ code, isSelected, onSelect }: {
+  const isHighAccuracy = (code: MedicalCode) =>
+    typeof code.confidence === "number" && code.confidence >= 85;
+
+  const CandidateCard = ({ code, isSelected, onSelect, isRecommended }: {
     code: MedicalCode;
     isSelected: boolean;
     onSelect: () => void;
-  }) => (
+    isRecommended?: boolean;
+  }) => {
+    const highAccuracy = isHighAccuracy(code);
+    const recommendedHighlight = !isSelected && isRecommended;
+
+    return (
     <div
       onClick={onSelect}
-      className={`rounded-xl border-2 p-4 cursor-pointer transition-all flex flex-col gap-2 ${isSelected
-        ? "border-slate-800 bg-white shadow-md"
-        : "border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm"
+      className={`rounded-xl border-2 p-4 cursor-pointer transition-all flex flex-col gap-3 min-h-[170px] ${isSelected
+        ? "border-slate-800 bg-white shadow-lg"
+        : recommendedHighlight
+          ? "border-sky-300 bg-white shadow-[0_10px_30px_-15px_rgba(14,165,233,0.45)] hover:border-sky-400 hover:shadow-[0_14px_34px_-15px_rgba(14,165,233,0.6)]"
+        : highAccuracy
+          ? "border-emerald-300 bg-white shadow-[0_10px_30px_-15px_rgba(5,150,105,0.55)] hover:border-emerald-400 hover:shadow-[0_14px_34px_-15px_rgba(5,150,105,0.65)]"
+          : "border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm"
         }`}
     >
-      {/* Top row: code badge + checkmark */}
+      {/* Top row: code badge + confidence */}
       <div className="flex items-center justify-between">
         <Badge variant="neutral" size="sm">
           {code.code}
         </Badge>
-        {isSelected && (
-          <svg className="w-4 h-4 text-slate-800 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-        )}
+        <div className="flex items-center gap-2">
+          {highAccuracy && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+              High Accuracy
+            </span>
+          )}
+          {typeof code.confidence === 'number' && (
+            <span className={`text-xs font-semibold flex-shrink-0 ${highAccuracy ? "text-emerald-700" : "text-slate-500"}`}>
+              {Math.round(code.confidence)}%
+            </span>
+          )}
+          {isSelected && (
+            <svg className="w-4 h-4 text-slate-800 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+          )}
+        </div>
       </div>
 
       {/* Description — capped at 3 lines so cards stay uniform height */}
@@ -221,19 +245,18 @@ export default function MedicalCodesViewer({
         {code.description}
       </p>
 
-      {/* Footer: category + confidence — confidence is stored as 0–100 integer */}
-      <div className="flex items-center justify-between mt-auto pt-1 border-t border-slate-100">
-        {code.category && (
-          <p className="text-xs text-slate-500 truncate mr-2">{code.category}</p>
+      {/* Footer: category */}
+      <div className="mt-auto pt-2 border-t border-slate-100 space-y-1">
+        {isRecommended && (
+          <p className="text-[11px] font-semibold text-sky-700">Recommended</p>
         )}
-        {typeof code.confidence === 'number' && (
-          <span className="text-xs font-medium flex-shrink-0 text-slate-400">
-            {Math.round(code.confidence)}%
-          </span>
+        {code.category && (
+          <p className="text-xs text-slate-500 leading-snug">{code.category}</p>
         )}
       </div>
     </div>
   );
+  };
 
   return (
     <Card className="space-y-6">
@@ -241,7 +264,7 @@ export default function MedicalCodesViewer({
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Medical Codes</h3>
           <p className="text-sm text-slate-600">
-            AI-generated codes from the SOAP note. Select the codes you want to apply.
+            Select one ICD-10 and one CPT code.
           </p>
         </div>
         <Button onClick={generateCodes} loading={loading} disabled={loading}>
@@ -281,14 +304,13 @@ export default function MedicalCodesViewer({
         <div className="space-y-8">
           {/* ICD-10 Candidates */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h4 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
                   ICD-10 Diagnosis Codes
                 </h4>
-                <p className="text-xs text-slate-500 mt-0.5">Click a card to select or deselect</p>
               </div>
-              <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap mt-0.5">
                 {selectedCodes.filter(c => c.type === "ICD-10").length} selected
               </span>
             </div>
@@ -298,6 +320,7 @@ export default function MedicalCodesViewer({
                   key={`${code.type}-${code.code}`}
                   code={code}
                   isSelected={selectedCodes.some(c => c.code === code.code && c.type === code.type)}
+                  isRecommended={icdCandidates[0]?.code === code.code}
                   onSelect={() => handleSelectCandidate(code)}
                 />
               ))}
@@ -306,14 +329,13 @@ export default function MedicalCodesViewer({
 
           {/* CPT Candidates */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h4 className="text-sm font-semibold text-slate-800 uppercase tracking-wide">
                   CPT Procedure Codes
                 </h4>
-                <p className="text-xs text-slate-500 mt-0.5">Click a card to select or deselect</p>
               </div>
-              <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap mt-0.5">
                 {selectedCodes.filter(c => c.type === "CPT").length} selected
               </span>
             </div>
@@ -323,6 +345,7 @@ export default function MedicalCodesViewer({
                   key={`${code.type}-${code.code}`}
                   code={code}
                   isSelected={selectedCodes.some(c => c.code === code.code && c.type === code.type)}
+                  isRecommended={cptCandidates[0]?.code === code.code}
                   onSelect={() => handleSelectCandidate(code)}
                 />
               ))}

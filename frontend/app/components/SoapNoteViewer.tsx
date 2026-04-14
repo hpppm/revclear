@@ -49,7 +49,7 @@ interface SoapNoteViewerProps {
 
 export default function SoapNoteViewer({ soap, isEditing = false, onEditChange }: SoapNoteViewerProps) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`grid gap-4 ${isEditing ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
       {sectionOrder.map((key) => {
         const content = soap?.[key] || "";
         const items = listify(content);
@@ -58,18 +58,23 @@ export default function SoapNoteViewer({ soap, isEditing = false, onEditChange }
         return (
           <div
             key={key}
-            className={`flex items-start gap-4 bg-white border ${c.border} rounded-xl px-5 py-4 shadow-sm`}
+            className={`flex items-start gap-3 bg-white border ${c.border} rounded-xl px-4 py-4 shadow-sm`}
           >
             {/* Letter badge */}
-            <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold ${c.tag}`}>
+            <div className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold ${c.tag}`}>
               {sectionInitial[key]}
             </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className={`text-xs font-semibold uppercase tracking-widest mb-2.5 ${c.label}`}>
-                {sectionLabels[key]}
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className={`text-xs font-semibold uppercase tracking-widest ${c.label}`}>
+                  {sectionLabels[key]}
+                </p>
+                {!isEditing && items.length === 0 && (
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Empty</span>
+                )}
+              </div>
 
               {isEditing ? (
                 <textarea
@@ -83,7 +88,7 @@ export default function SoapNoteViewer({ soap, isEditing = false, onEditChange }
               ) : (
                 <div className="text-sm text-slate-700">
                   {items.length === 0 ? (
-                    <p className="text-slate-400 italic">No data found.</p>
+                    <p className="text-slate-400 italic">No details yet.</p>
                   ) : (
                     <ul className="space-y-2">
                       {items.map((line, idx) => (
