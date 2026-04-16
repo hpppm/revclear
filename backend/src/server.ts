@@ -26,6 +26,7 @@ const DEFAULT_PROD_ORIGINS = [
   "https://revclear.gannon.edu",
   "https://revclear.tech",
   "https://www.revclear.tech",
+  "https://revclear-back-production.up.railway.app",
 ];
 
 // --------------------------------------------------

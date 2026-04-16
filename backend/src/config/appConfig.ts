@@ -52,7 +52,6 @@ const EnvSchema = z.object({
     ["AWS_S3_BUCKET", env.AWS_S3_BUCKET],
     ["AWS_USER_POOL_ID", env.AWS_USER_POOL_ID],
     ["AWS_CLIENT_ID", env.AWS_CLIENT_ID],
-    ["ALLOWED_ORIGINS", env.ALLOWED_ORIGINS],
     ["AI_SERVER_API_KEY", env.AI_SERVER_API_KEY],
     ["GEMINI_API_KEY", env.GEMINI_API_KEY],
     ["PINECONE_API_KEY", env.PINECONE_API_KEY],
