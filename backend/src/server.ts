@@ -30,6 +30,9 @@ const DEFAULT_PROD_ORIGINS = [
   "https://revclear-frontend-production.up.railway.app",
 ];
 
+const normalizeOrigin = (origin: string) =>
+  origin.trim().toLowerCase().replace(/\/$/, "");
+
 // --------------------------------------------------
 // Trust Proxy
 // In production (behind a load balancer/reverse proxy), trust exactly 1 hop
@@ -50,7 +53,7 @@ app.use(cookieParser());
 // CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
 const configuredOrigins = process.env.ALLOWED_ORIGINS?.split(",")
-  .map((origin) => origin.trim())
+  .map((origin) => normalizeOrigin(origin))
   .filter(Boolean) || [];
 
 const baseAllowedOrigins = appConfig.env === "production"
@@ -58,7 +61,7 @@ const baseAllowedOrigins = appConfig.env === "production"
   : [...DEFAULT_DEV_ORIGINS, ...DEFAULT_PROD_ORIGINS];
 
 const allowedOrigins = Array.from(new Set([
-  ...baseAllowedOrigins,
+  ...baseAllowedOrigins.map((origin) => normalizeOrigin(origin)),
   ...configuredOrigins,
 ]));
 
@@ -70,14 +73,9 @@ app.use(
       requestPath.startsWith(prefix),
     );
 
-    // In production, require Origin for browser requests but allow health probes
+    // Requests without Origin are valid for same-origin and server-to-server flows.
+    // CORS checks are only meaningful when Origin is present.
     if (!origin) {
-      if (appConfig.env === "production" && !isHealthRoute) {
-        return callback(new Error("Origin header required"), {
-          origin: false,
-        });
-      }
-
       return callback(null, {
         origin: true,
         credentials: true,
@@ -86,7 +84,9 @@ app.use(
       });
     }
 
-    if (allowedOrigins.includes(origin)) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (allowedOrigins.includes(normalizedOrigin)) {
       return callback(null, {
         origin: true,
         credentials: true,
