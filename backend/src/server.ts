@@ -293,6 +293,13 @@ const helmetOptions: HelmetOptions = {
 };
 
 app.use(helmet(helmetOptions));
+app.use((req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  );
+  next();
+});
 // SECURITY: Custom Morgan token strips query string from URL before logging
 // to prevent query params (which may contain PHI on some routes) from reaching stdout.
 morgan.token("url-no-query", (req: Request) =>

@@ -33,12 +33,13 @@ export function proxy(request: NextRequest) {
       ].join(" ")
     : "'self'";
 
-  // Build CSP with nonce
+  // Build CSP. Next.js runtime injects inline bootstrap scripts that may not
+  // always carry a nonce in all render paths, so production must permit them.
   const cspHeader = [
     "default-src 'self'",
-    // Scripts: allow self + nonce-based inline scripts + strict-dynamic for trusted script loading
-    // unsafe-eval is required in development only for React/Turbopack hot reload internals
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    // Scripts: allow app scripts, trusted external scripts, and framework inline runtime.
+    // unsafe-eval is required in development only for React/Turbopack hot reload internals.
+    `script-src 'self' https: 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     // Styles: unsafe-inline required for Tailwind/component libraries that inject styles
     `style-src 'self' 'unsafe-inline'`,
     // Connect to API
@@ -73,6 +74,10 @@ export function proxy(request: NextRequest) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  );
 
   // HIPAA compliance: HSTS forces HTTPS for all future connections, preventing
   // protocol downgrade attacks and cookie hijacking over plain HTTP.
