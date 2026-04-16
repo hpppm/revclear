@@ -1,0 +1,16 @@
+torch
+torchvision
+torchaudio
+transformers
+accelerate
+bitsandbytes
+fastapi
+uvicorn[standard]
+python-multipart
+librosa
+soundfile
+pydantic
+python-dotenv
+openai-whisper
+qdrant-client
+sentence-transformers
