@@ -52,14 +52,6 @@ const ConfirmForgotPasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
-const TotpUserCodeSchema = z.object({
-  userCode: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
-});
-
-const TotpCodeSchema = z.object({
-  totpCode: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
-});
-
 export type SignupPayload = z.infer<typeof SignupSchema>;
 // full_name is sent via attributes.name — not a top-level field on signup
 export type ConfirmSignupPayload = z.infer<typeof ConfirmSignupSchema>;
@@ -99,16 +91,4 @@ export const authApi = {
   },
 
   me: () => api.get("/auth/me"),
-
-  // Exchange the in-progress MFA_SETUP Cognito session for a TOTP secret code.
-  // Backend reads mfaSession cookie; response includes { secretCode, username }.
-  totpSetup: () => api.post("/auth/totp-setup"),
-
-  // Confirm TOTP setup with the 6-digit code the user scanned from the QR code.
-  confirmTotpSetup: (data: { userCode: string }) =>
-    api.post("/auth/confirm-totp-setup", TotpUserCodeSchema.parse(data)),
-
-  // Submit 6-digit TOTP code for the SOFTWARE_TOKEN_MFA challenge on every login.
-  confirmTotpCode: (data: { totpCode: string }) =>
-    api.post("/auth/confirm-totp-code", TotpCodeSchema.parse(data)),
 };

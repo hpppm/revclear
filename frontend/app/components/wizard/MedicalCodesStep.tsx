@@ -18,15 +18,6 @@ export default function MedicalCodesStep({
 }: MedicalCodesStepProps) {
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-semibold text-slate-900 mb-2">
-                    Medical Codes
-                </h2>
-                <p className="text-slate-600">
-                    Generate and select ICD-10 and CPT codes for billing.
-                </p>
-            </div>
-
             {soap && encounterId ? (
                 <MedicalCodesViewer
                     soap={soap}

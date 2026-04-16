@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     // Pin the workspace root to the frontend directory so Turbopack doesn't
     // walk up to the repo root and confuse itself with the backend lockfile.
-    root: __dirname,
+    root: process.cwd(),
   },
   async headers() {
     return [

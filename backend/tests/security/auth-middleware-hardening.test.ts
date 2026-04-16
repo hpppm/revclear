@@ -1,7 +1,7 @@
 /**
  * Auth Middleware Hardening Tests
  *
- * Verifies security changes to auth middleware and related code:
+ * Verifies three security changes made in this PR:
  *
  * Change 1 — Bearer header fallback removed (auth.ts)
  *   Tokens are accepted from httpOnly cookies only.
@@ -15,10 +15,6 @@
  * Change 3 — Cross-tab cookie collision detection (AuthContext.tsx)
  *   sessionStorage.userId is set on login and compared on every checkAuth()
  *   call. A mismatch (cookie overwritten by another tab) redirects to /login.
- *
- * Change 5 — MFA enforcement (auth.ts)
- *   Tokens whose amr claim does not include "mfa" are rejected with 401.
- *   This blocks tokens issued before TOTP MFA was enabled on the user pool.
  */
 
 // ---------------------------------------------------------------------------
@@ -60,9 +56,6 @@ const { authMiddleware } = require("../../src/middleware/auth");
 // Helpers
 // ---------------------------------------------------------------------------
 
-// VALID_PAYLOAD represents a fully-authenticated Cognito access token that has
-// passed TOTP MFA verification. The amr claim is set by Cognito when
-// SOFTWARE_TOKEN_MFA is satisfied; tokens without it are now rejected.
 const VALID_PAYLOAD = {
   sub: "cognito-sub-123",
   iss: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test",
@@ -71,7 +64,6 @@ const VALID_PAYLOAD = {
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   "cognito:groups": ["Users"],
-  amr: ["mfa"],
 };
 
 const DB_USER = {
@@ -280,6 +272,7 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
   });
 });
 
+// ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Change 5 — MFA enforcement via amr claim
 // ---------------------------------------------------------------------------
