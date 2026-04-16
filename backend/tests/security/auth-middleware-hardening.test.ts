@@ -64,6 +64,7 @@ const VALID_PAYLOAD = {
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
   "cognito:groups": ["Users"],
+  amr: ["mfa"],
 };
 
 const DB_USER = {
@@ -269,6 +270,74 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 
     expect(next).toHaveBeenCalled();
     expect(req.user.role).toBe("nurse");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Change 5 — MFA enforcement via amr claim
+// ---------------------------------------------------------------------------
+
+describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns 401 when amr claim is absent (pre-MFA token)", async () => {
+    const { amr: _omitted, ...payloadWithoutAmr } = VALID_PAYLOAD;
+    mockVerify.mockResolvedValue(payloadWithoutAmr);
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "no-amr.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+    expect(mockFindUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when amr claim is an empty array", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: [] });
+
+    const req = makeReq({ cookies: { accessToken: "empty-amr.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when amr contains only 'pwd' (password-only login, MFA skipped)", async () => {
+    mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: ["pwd"] });
+
+    const req = makeReq({ cookies: { accessToken: "pwd-only.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("passes through when amr includes 'mfa'", async () => {
+    mockVerify.mockResolvedValue(VALID_PAYLOAD); // amr: ["mfa"]
+    mockFindUser.mockResolvedValue(DB_USER);
+
+    const req = makeReq({ cookies: { accessToken: "mfa-valid.token" } }) as any;
+    const res = makeRes();
+    const next = jest.fn();
+
+    await authMiddleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 
