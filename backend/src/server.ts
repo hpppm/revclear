@@ -26,7 +26,7 @@ const DEFAULT_PROD_ORIGINS = [
   "https://revclear.gannon.edu",
   "https://revclear.tech",
   "https://www.revclear.tech",
-  "https://revclear-back-production.up.railway.app",
+  "https://txgfeozc.up.railway.app",
 ];
 
 // --------------------------------------------------
@@ -48,11 +48,18 @@ app.use(cookieParser());
 // --------------------------------------------------
 // CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",")
+const configuredOrigins = process.env.ALLOWED_ORIGINS?.split(",")
   .map((origin) => origin.trim())
-  .filter(Boolean) || (appConfig.env === "production"
-    ? DEFAULT_PROD_ORIGINS
-    : [...DEFAULT_DEV_ORIGINS, ...DEFAULT_PROD_ORIGINS]);
+  .filter(Boolean) || [];
+
+const baseAllowedOrigins = appConfig.env === "production"
+  ? DEFAULT_PROD_ORIGINS
+  : [...DEFAULT_DEV_ORIGINS, ...DEFAULT_PROD_ORIGINS];
+
+const allowedOrigins = Array.from(new Set([
+  ...baseAllowedOrigins,
+  ...configuredOrigins,
+]));
 
 app.use(
   cors((req, callback) => {
