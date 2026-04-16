@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_INTERNAL_URL =
   process.env.BACKEND_INTERNAL_URL || "http://localhost:3005/api";
+const API_PROXY_TIMEOUT_MS = 15000;
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -41,12 +42,35 @@ const proxyRequest = async (request: NextRequest, path: string[] = []) => {
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers,
-    body,
-    redirect: "manual",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_PROXY_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body,
+      redirect: "manual",
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    clearTimeout(timeout);
+
+    if (error?.name === "AbortError") {
+      return NextResponse.json(
+        { error: "Upstream API timed out" },
+        { status: 504 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Upstream API unavailable" },
+      { status: 502 },
+    );
+  }
+
+  clearTimeout(timeout);
 
   const responseHeaders = new Headers(response.headers);
   for (const header of HOP_BY_HOP_HEADERS) {

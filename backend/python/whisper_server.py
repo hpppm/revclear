@@ -29,7 +29,7 @@ from faster_whisper import WhisperModel
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-PORT = int(os.environ.get("PORT", 5000))
+PORT = int(os.environ.get("PORT", 8000))
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
