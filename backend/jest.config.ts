@@ -7,10 +7,13 @@ const config: Config.InitialOptions = {
   modulePathIgnorePatterns: ["<rootDir>/dist"],
   clearMocks: true,
   setupFiles: ["<rootDir>/tests/setupEnv.ts"],
-  globals: {
-    "ts-jest": {
-      tsconfig: "tsconfig.test.json",
-    },
+  transform: {
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        tsconfig: "tsconfig.test.json",
+      },
+    ],
   },
 };
 
