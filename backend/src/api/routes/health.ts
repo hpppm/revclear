@@ -5,7 +5,17 @@ import { authMiddleware } from "../../middleware/auth";
 
 const router = Router();
 
+// Liveness probe: process is running and can serve HTTP.
+// Keep this lightweight and dependency-free for platform health checks.
 router.get("/", async (_req, res) => {
+  res.json({
+    success: true,
+    status: "healthy",
+  });
+});
+
+// Readiness probe: verifies critical dependencies are reachable.
+router.get("/ready", async (_req, res) => {
   try {
     await query<{ now: string }>("SELECT NOW() as now");
     // SECURITY: Only return minimal health status - no infrastructure details

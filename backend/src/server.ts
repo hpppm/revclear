@@ -95,8 +95,14 @@ app.use(
 // HTTPS Enforcement (production only)
 // --------------------------------------------------
 app.use((req, res, next) => {
+  const requestPath = req.path || "";
+  const isHealthRoute = HEALTH_ROUTE_PREFIXES.some((prefix) =>
+    requestPath.startsWith(prefix),
+  );
+
   if (
     appConfig.env === "production" &&
+    !isHealthRoute &&
     req.headers["x-forwarded-proto"] !== "https"
   ) {
     return res
