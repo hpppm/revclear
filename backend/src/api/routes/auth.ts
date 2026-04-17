@@ -358,6 +358,12 @@ router.post("/associate-totp", async (req, res) => {
     // Update mfaSession cookie with the new Session returned by Cognito
     if (response.Session) {
       res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
+      logger.debug(
+        { session_prefix: response.Session.slice(0, 8) },
+        "auth/associate-totp: mfaSession cookie updated with refreshed session",
+      );
+    } else {
+      logger.warn("auth/associate-totp: Cognito did not return a new Session — mfaSession cookie NOT refreshed");
     }
     // SecretCode is the base32 TOTP secret the user scans into their authenticator app.
     res.status(200).json({ secretCode: response.SecretCode });
@@ -387,14 +393,29 @@ router.post("/verify-totp-setup", async (req, res) => {
   }
 
   try {
+    logger.debug(
+      { session_prefix: session.slice(0, 8) },
+      "auth/verify-totp-setup: reading mfaSession cookie before verifySoftwareToken",
+    );
+
     const verifyResponse = await AuthService.verifyTotpSetup({ session }, code);
 
     if (verifyResponse.Status !== "SUCCESS") {
       return res.status(401).json({ error: "Invalid verification code." });
     }
 
+    if (!verifyResponse.Session) {
+      logger.warn({ email }, "auth/verify-totp-setup: VerifySoftwareToken returned SUCCESS but no Session — cannot complete MFA setup");
+      return res.status(401).json({ error: "MFA setup incomplete. Please sign in again." });
+    }
+
+    logger.debug(
+      { session_prefix: verifyResponse.Session.slice(0, 8) },
+      "auth/verify-totp-setup: VerifySoftwareToken SUCCESS, calling completeMfaSetup with post-verify session",
+    );
+
     // Exchange the post-verify Session for authentication tokens.
-    const authResponse = await AuthService.completeMfaSetup(email, verifyResponse.Session!);
+    const authResponse = await AuthService.completeMfaSetup(email, verifyResponse.Session);
     const authResult = authResponse.AuthenticationResult;
 
     if (!authResult?.AccessToken) {
