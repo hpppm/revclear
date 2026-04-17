@@ -3,8 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --font-body: "Aptos", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Georgia", "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Fraunces", "Georgia", "Times New Roman", serif;
   --font-code: "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
   --brand-50: #eff6ff;
   --brand-100: #dbeafe;
@@ -44,11 +44,15 @@
 
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 10% -10%, rgba(42, 135, 210, 0.11), transparent 38%),
+    radial-gradient(circle at 95% 0%, rgba(15, 163, 177, 0.09), transparent 32%),
+    var(--background);
   color: var(--foreground);
   font-family: var(--font-body), system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.55;
+  letter-spacing: 0.005em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -60,6 +64,13 @@ body {
   font-family: var(--font-display);
 }
 
+h1,
+h2,
+h3,
+.heading-display {
+  font-family: var(--font-display), serif;
+}
+
 .brand-button-primary {
   background: var(--brand-600);
   color: #fff;
@@ -67,25 +78,34 @@ body {
   align-items: center;
   justify-content: center;
   text-decoration: none;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(26, 92, 143, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .brand-button-primary:hover {
   background: var(--brand-700);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(26, 92, 143, 0.28);
 }
 
 .brand-button-secondary {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--brand-ink);
   border: 1px solid var(--border-subtle);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
+  border-radius: 0.75rem;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
 .brand-button-secondary:hover {
   border-color: var(--brand-500);
   color: var(--brand-700);
+  background: #fff;
 }
 
 .brand-button-ghost {
@@ -102,9 +122,10 @@ body {
 }
 
 .brand-input {
-  background: var(--surface-subtle);
+  background: #fff;
   border: 1px solid var(--border-subtle);
   color: var(--brand-ink);
+  border-radius: 0.75rem;
 }
 
 .brand-input::placeholder {
@@ -113,7 +134,7 @@ body {
 
 .brand-input:focus {
   border-color: var(--brand-500);
-  box-shadow: 0 0 0 2px var(--brand-ring);
+  box-shadow: 0 0 0 3px var(--brand-ring);
   outline: none;
 }
 
