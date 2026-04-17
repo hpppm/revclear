@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { invalidateDedupeCache } from "@/app/lib/api/deduplicate";
 import { useAuth } from "@/app/context/AuthContext";
 import { LoginFormSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
@@ -121,13 +122,14 @@ export default function LoginPage() {
           return;
         }
 
+        invalidateDedupeCache("me.getProfile");
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
         login(user);
         router.push("/dashboard");
       } catch (error: unknown) {
-        logger.error("Login failed");
+        logger.error("Login failed", error);
         if (isLikelyNetworkOrTlsFailure(error)) {
           setErrors({
             form:
@@ -179,13 +181,14 @@ export default function LoginPage() {
         await apiClient.auth.verifyMfa({ email: mfaState.email, code: mfaCode });
       }
 
+      invalidateDedupeCache("me.getProfile");
       const userResponse = await apiClient.me.getProfile();
       const user = userResponse.data;
 
       login(user);
       router.push("/dashboard");
     } catch (error: unknown) {
-      logger.error("MFA verification failed");
+      logger.error("MFA verification failed", error);
       const errorData = getApiErrorData(error);
       setErrors({
         form: errorData?.error || "Invalid or expired code. Please try again.",
@@ -231,7 +234,7 @@ export default function LoginPage() {
                       <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 break-all select-all">{totpSecret}</code>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-400">Loading QR code…</p>
+                    <p className="text-sm text-gray-400">Loading QR code...</p>
                   )}
                 </>
               ) : (
@@ -375,7 +378,7 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="********"
                     autoComplete="current-password"
                     required
                     rightElement={

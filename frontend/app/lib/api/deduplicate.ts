@@ -23,15 +23,21 @@ export function deduplicateGet<T>(key: string, fn: () => Promise<T>): Promise<T>
   const cached = resolved.get(key);
   if (cached && Date.now() < cached.expiresAt) return cached.promise as Promise<T>;
 
-  const promise = fn().finally(() => {
-    pending.delete(key);
-    // Schedule TTL cache eviction
-    setTimeout(() => resolved.delete(key), TTL_MS);
-  });
-
+  const promise = fn();
   pending.set(key, promise);
-  resolved.set(key, { promise, expiresAt: Date.now() + TTL_MS });
-  return promise;
+
+  return promise.then((result) => {
+    // Cache only successful responses. Rejected promises can represent
+    // transient auth state (e.g. /me 401 before signin) and must not be reused.
+    const resolvedPromise = Promise.resolve(result);
+    resolved.set(key, { promise: resolvedPromise, expiresAt: Date.now() + TTL_MS });
+
+    // Schedule TTL cache eviction for successful responses.
+    setTimeout(() => resolved.delete(key), TTL_MS);
+    return result;
+  }).finally(() => {
+    pending.delete(key);
+  });
 }
 
 /**
