@@ -133,125 +133,113 @@ app.use(securityMonitor);
 // --------------------------------------------------
 const authRateLimitStore = new (rateLimit as any).MemoryStore();
 
+const createRateLimiter = (
+  max: number,
+  message: string,
+  store?: any,
+) => {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    max,
+    message,
+    ...(store ? { store } : {}),
+  });
+};
+
 app.use(
   "/api/auth",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many auth requests. Try again later.",
-    store: authRateLimitStore,
-  }),
+  createRateLimiter(
+    10,
+    "Too many auth requests. Try again later.",
+    authRateLimitStore,
+  ),
 );
 
 app.use(
   "/api/transcribe",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 20,
-    message: "Too many transcribe requests. Try again later.",
-  }),
+  createRateLimiter(
+    20,
+    "Too many transcribe requests. Try again later.",
+  ),
 );
 
 // Rate limiting for other API routes
 app.use(
   "/api/patients",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many patient requests. Try again later.",
-  }),
+  createRateLimiter(
+    60,
+    "Too many patient requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/encounters",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many encounter requests. Try again later.",
-  }),
+  createRateLimiter(
+    60,
+    "Too many encounter requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/claims",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many claim requests. Try again later.",
-  }),
+  createRateLimiter(60, "Too many claim requests. Try again later."),
 );
 
 app.use(
   "/api/organizations",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many organization requests. Try again later.",
-  }),
+  createRateLimiter(
+    30,
+    "Too many organization requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/me",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many profile requests. Try again later.",
-  }),
+  createRateLimiter(30, "Too many profile requests. Try again later."),
 );
 
 app.use(
   "/api/users",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many user requests. Try again later.",
-  }),
+  createRateLimiter(30, "Too many user requests. Try again later."),
 );
 
 app.use(
   "/api/codes",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many code requests. Try again later.",
-  }),
+  createRateLimiter(60, "Too many code requests. Try again later."),
 );
 
 app.use(
   "/api/security",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many security requests. Try again later.",
-  }),
+  createRateLimiter(
+    10,
+    "Too many security requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/health",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many health check requests. Try again later.",
-  }),
+  createRateLimiter(
+    30,
+    "Too many health check requests. Try again later.",
+  ),
 );
 
 // Rate limiting for AI endpoints (SOAP generation and code matching)
 // These are expensive operations that call external AI APIs
 app.use(
   "/api/encounters/:id/soap",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many SOAP generation requests. Try again later.",
-  }),
+  createRateLimiter(
+    10,
+    "Too many SOAP generation requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/encounters/:id/codes",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many code matching requests. Try again later.",
-  }),
+  createRateLimiter(
+    10,
+    "Too many code matching requests. Try again later.",
+  ),
 );
 
 /**
@@ -348,7 +336,6 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/encounters", encounterRoutes);
 app.use("/api/encounters", soapRoutes);
 app.use("/api/encounters", codesRoutes);
-app.use("/api/codes", codesRoutes);
 app.use("/api/claims", claimRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);

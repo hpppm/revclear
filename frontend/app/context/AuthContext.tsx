@@ -297,10 +297,6 @@ export function useAuth() {
 // UI-only authorization checks (backend enforces actual authorization)
 export function useAuthorization() {
   const { user } = useAuth();
-  const role = user?.role;
-  const isAdmin = role === "admin";
-  const isClinician = role === "clinician";
-  const isBillingStaff = role === "billing_staff";
 
   return {
     isAdmin: user?.role === "admin",

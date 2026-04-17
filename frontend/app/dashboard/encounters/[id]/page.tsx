@@ -157,7 +157,7 @@ export default function EncounterSummaryPage() {
             setTimeout(() => {
                 router.push(`/dashboard/patients/${encounter.patient_id}`);
             }, 3000);
-        } catch (err) {
+        } catch {
             logger.error("Failed to submit claim");
             setSubmitting(false);
         }

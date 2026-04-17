@@ -4,14 +4,13 @@ import React, { useState, useEffect } from "react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuthorization } from "@/app/context/AuthContext";
 import logger from "@/app/lib/logger";
-import { MedicalCode, SoapNote } from "@/app/lib/types";
+import { MedicalCode } from "@/app/lib/types";
 import Button from "./ui/Button";
 import Card from "./ui/Card";
 import Input from "./ui/Input";
 import Badge from "./ui/Badge";
 
 type MedicalCodesViewerProps = {
-  soap?: SoapNote | null;
   encounterId?: string | null;
   savedCodes?: MedicalCode[];
   onCodesSelected?: (codes: MedicalCode[]) => void;
@@ -30,7 +29,6 @@ type RawCode = {
 };
 
 export default function MedicalCodesViewer({
-  soap: _,
   encounterId,
   savedCodes = [],
   onCodesSelected,

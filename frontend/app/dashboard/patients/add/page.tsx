@@ -85,7 +85,8 @@ export default function AddPatientPage() {
       const err = validateField(field, value);
       setFieldErrors((prev) => {
         if (err) return { ...prev, [field]: err };
-        const { [field]: _, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[field];
         return rest;
       });
     }
@@ -96,7 +97,8 @@ export default function AddPatientPage() {
     const err = validateField(field, value);
     setFieldErrors((prev) => {
       if (err) return { ...prev, [field]: err };
-      const { [field]: _, ...rest } = prev;
+      const rest = { ...prev };
+      delete rest[field];
       return rest;
     });
     if (err && el) {
