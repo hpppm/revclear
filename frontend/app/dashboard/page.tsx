@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { Organization, Patient } from "@/app/lib/types";
@@ -40,7 +40,6 @@ export default function DashboardHome() {
         canReadPatients,
         canManageEncounters,
         canManageClaims,
-        canManageOrganization,
         canWritePatients,
     } = useAuthorization();
     const [organization, setOrganization] = useState<Organization | null>(null);

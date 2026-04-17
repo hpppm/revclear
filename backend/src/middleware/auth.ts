@@ -124,8 +124,21 @@ export const authMiddleware = async (
     // We require the amr claim because the application treats Cognito MFA as a
     // hard gate for protected routes. If Cognito stops including the claim for a
     // valid MFA flow, the auth contract needs to be revisited explicitly.
-    const amr = (payload as any).amr as string[] | undefined;
-    if (!Array.isArray(amr) || !amr.includes("mfa")) {
+    const amrClaim = (payload as any).amr as string[] | string | undefined;
+    const amrValues = Array.isArray(amrClaim)
+      ? amrClaim
+      : typeof amrClaim === "string"
+        ? [amrClaim]
+        : [];
+    const normalizedAmr = amrValues.map((value) => value.toLowerCase());
+    const hasMfaSignal =
+      normalizedAmr.includes("mfa") ||
+      normalizedAmr.includes("software_token_mfa") ||
+      normalizedAmr.includes("totp");
+
+    const mfaVerifiedBySessionCookie = req.cookies?.mfaVerified === "true";
+
+    if (!hasMfaSignal && !mfaVerifiedBySessionCookie) {
       return res.status(401).json({ error: "MFA verification required" });
     }
 

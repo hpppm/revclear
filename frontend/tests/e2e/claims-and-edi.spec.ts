@@ -373,11 +373,6 @@ test.describe("Organization settings — EDI & Clearinghouse", () => {
       await editBtn.click();
     }
 
-    // API key must be type="password" — never pre-filled, never shown in plain text
-    const apiKeyField = page.locator('input[type="password"]').filter({ hasText: /./ }).or(
-      page.locator('label').filter({ hasText: /api key/i }).locator('xpath=following-sibling::input, ../input')
-    ).first();
-
     // Accept either: a password-type input near "api key" label, or check by label
     const apiKeyInput = page.getByLabel(/api key/i);
     if (await apiKeyInput.isVisible({ timeout: 3000 })) {

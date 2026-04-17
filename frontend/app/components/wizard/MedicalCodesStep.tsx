@@ -20,7 +20,6 @@ export default function MedicalCodesStep({
         <div className="space-y-6">
             {soap && encounterId ? (
                 <MedicalCodesViewer
-                    soap={soap}
                     encounterId={encounterId}
                     savedCodes={savedCodes}
                     onCodesSelected={onSelectionChange}

@@ -5,7 +5,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-export type CuratedCptCode = {
+type CuratedCptCode = {
   code: string;
   short_description: string;
   clinical: { type: string; complexity: string | null };
@@ -16,7 +16,6 @@ export type CuratedCptCode = {
 type CuratedCptData = Record<string, CuratedCptCode[]>;
 
 let cache: CuratedCptData | null = null;
-let promptCache: string | null = null;
 
 const loadData = (): CuratedCptData => {
   if (cache) return cache;
@@ -25,8 +24,6 @@ const loadData = (): CuratedCptData => {
   cache = JSON.parse(raw) as CuratedCptData;
   return cache;
 };
-
-export const getCuratedCptCodes = (): CuratedCptData => loadData();
 
 export const getFlatCptCodes = (): CuratedCptCode[] => {
   const data = loadData();
@@ -38,20 +35,4 @@ export const getFlatCptCodes = (): CuratedCptCode[] => {
       seen.add(entry.code);
       return true;
     });
-};
-
-export const getCptCodesForPrompt = (): string => {
-  if (promptCache !== null) return promptCache;
-  const data = loadData();
-  const lines: string[] = [];
-  for (const [specialty, codes] of Object.entries(data)) {
-    const seen = new Set<string>();
-    for (const entry of codes) {
-      if (seen.has(entry.code)) continue;
-      seen.add(entry.code);
-      lines.push(`${entry.code} - ${entry.short_description} [${specialty}]`);
-    }
-  }
-  promptCache = lines.join("\n");
-  return promptCache;
 };
