@@ -4,6 +4,27 @@ const BACKEND_INTERNAL_URL =
   process.env.BACKEND_INTERNAL_URL || "http://localhost:3005/api";
 const API_PROXY_TIMEOUT_MS = 15000;
 
+const ALLOWED_ORIGINS = new Set(
+  (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim().toLowerCase().replace(/\/$/, ""))
+    .filter(Boolean),
+);
+
+// Dev origins always allowed so local development works without env config.
+const DEV_ORIGINS = new Set([
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+]);
+
+function isOriginAllowed(origin: string | null): boolean {
+  if (!origin) return true; // same-origin / server-to-server — no Origin header
+  const normalized = origin.toLowerCase().replace(/\/$/, "");
+  if (process.env.NODE_ENV !== "production" && DEV_ORIGINS.has(normalized)) return true;
+  return ALLOWED_ORIGINS.has(normalized);
+}
+
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
   "keep-alive",
@@ -32,6 +53,11 @@ const buildTargetUrl = (request: NextRequest, path: string[] = []) => {
 };
 
 const proxyRequest = async (request: NextRequest, path: string[] = []) => {
+  const origin = request.headers.get("origin");
+  if (!isOriginAllowed(origin)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const targetUrl = buildTargetUrl(request, path);
   const headers = new Headers(request.headers);
 

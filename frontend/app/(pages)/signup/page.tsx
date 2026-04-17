@@ -139,20 +139,12 @@ export default function SignupPage() {
       }
     } catch (error: unknown) {
       logger.error("Signup failed");
-      const errorData = getApiErrorData(error);
-      let errorMessage = "Signup failed. Please try again.";
-
-      if (errorData?.error) {
-        errorMessage = errorData.error;
-        if (errorData.message) {
-          errorMessage += " " + errorData.message;
-        }
-        if (errorData.policy) {
-          errorMessage += " " + errorData.policy;
-        }
-      }
-
-      setError(errorMessage);
+      // Use the already-sanitized message from the axios interceptor — never
+      // concatenate raw backend strings which may contain internal details.
+      const sanitized =
+        (error as { message?: string })?.message ||
+        "Signup failed. Please try again.";
+      setError(sanitized);
     } finally {
       setIsLoading(false);
     }
