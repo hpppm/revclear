@@ -9,6 +9,7 @@ import {
     confirmForgotPassword,
     adminMarkEmailVerified,
     adminAddUserToGroup,
+    respondToEmailOtp,
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
@@ -93,12 +94,23 @@ export class AuthService {
             }
         }
 
+        let mfaChallenge: { challengeName: string; session: string; destination?: string } | undefined;
+
         if (this.autoLoginAfterSignup) {
             if (!this.autoConfirmSignups || autoConfirmResult.success !== false) {
                 try {
                     const loginResponse = await signInUser(email, password);
-                    authenticationResult = loginResponse.AuthenticationResult;
-                    autoLoginResult.success = true;
+                    if (loginResponse.ChallengeName === 'EMAIL_OTP') {
+                        mfaChallenge = {
+                            challengeName: 'EMAIL_OTP',
+                            session: loginResponse.Session!,
+                            destination: loginResponse.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
+                        };
+                        autoLoginResult.success = true;
+                    } else {
+                        authenticationResult = loginResponse.AuthenticationResult;
+                        autoLoginResult.success = true;
+                    }
                 } catch (loginError: any) {
                     logger.warn({ err: loginError }, 'Auto login failed');
                     autoLoginResult.success = false;
@@ -132,6 +144,7 @@ export class AuthService {
             autoConfirm: autoConfirmResult,
             autoLogin: autoLoginResult,
             AuthenticationResult: authenticationResult,
+            mfaChallenge,
             response,
         };
     }
@@ -189,5 +202,9 @@ export class AuthService {
 
     static async confirmForgotPassword(email: string, code: string, newPassword: string) {
         return confirmForgotPassword(email, code, newPassword);
+    }
+
+    static async respondToMfaChallenge(email: string, session: string, code: string) {
+        return respondToEmailOtp(email, session, code);
     }
 }

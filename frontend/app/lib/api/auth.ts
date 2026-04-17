@@ -52,11 +52,17 @@ const ConfirmForgotPasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
+const VerifyMfaSchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
+});
+
 export type SignupPayload = z.infer<typeof SignupSchema>;
 // full_name is sent via attributes.name — not a top-level field on signup
 export type ConfirmSignupPayload = z.infer<typeof ConfirmSignupSchema>;
 export type SigninPayload = z.infer<typeof SigninSchema>;
 export type ConfirmForgotPasswordPayload = z.infer<typeof ConfirmForgotPasswordSchema>;
+export type VerifyMfaPayload = z.infer<typeof VerifyMfaSchema>;
 
 export const authApi = {
   // Cooldown applied — each signup triggers Cognito user creation + email/SMS.
@@ -88,6 +94,12 @@ export const authApi = {
   confirmForgotPassword: (data: ConfirmForgotPasswordPayload) => {
     enforceCooldown("confirmForgotPassword");
     return api.post("/auth/confirm-forgot-password", ConfirmForgotPasswordSchema.parse(data));
+  },
+
+  // Cooldown applied — verifyMfa triggers Cognito challenge verification.
+  verifyMfa: (data: VerifyMfaPayload) => {
+    enforceCooldown("verifyMfa");
+    return api.post("/auth/verify-mfa", VerifyMfaSchema.parse(data));
   },
 
   me: () => api.get("/auth/me"),

@@ -1,5 +1,5 @@
 // AWS Cognito Authentication Configuration
-import { 
+import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   SignUpCommand,
@@ -12,6 +12,7 @@ import {
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
   AdminUpdateUserAttributesCommand,
+  RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -226,6 +227,22 @@ export async function checkCognitoConnectivity() {
   const command = new DescribeUserPoolClientCommand({
     UserPoolId: userPoolId,
     ClientId: clientId,
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Respond to an EMAIL_OTP MFA challenge after initial sign-in.
+ */
+export async function respondToEmailOtp(email: string, session: string, code: string) {
+  const command = new RespondToAuthChallengeCommand({
+    ClientId: clientId,
+    ChallengeName: 'EMAIL_OTP',
+    Session: session,
+    ChallengeResponses: {
+      USERNAME: email,
+      EMAIL_OTP_CODE: code,
+    },
   });
   return cognitoClient.send(command);
 }

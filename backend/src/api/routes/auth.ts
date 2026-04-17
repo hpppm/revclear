@@ -49,6 +49,11 @@ const ConfirmForgotPasswordSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
+const VerifyMfaSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Verification code must be 6 digits"),
+});
+
 const router = Router();
 
 // Cookie configuration for JWT tokens
@@ -77,6 +82,17 @@ const CLEAR_COOKIE_OPTIONS = {
   sameSite: COOKIE_OPTIONS.sameSite,
 };
 
+// Short-lived session cookie to carry the Cognito Session token between
+// the MFA challenge step and the verify-mfa response step.
+// httpOnly prevents XSS from reading it; 5 min matches Cognito challenge TTL.
+const MFA_SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: cookieSameSite,
+  path: "/",
+  maxAge: 5 * 60 * 1000,
+};
+
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches Cognito refresh token validity
@@ -98,6 +114,20 @@ router.post("/signup", async (req, res) => {
       practitionerType,
       licenseId,
     );
+
+    // Auto-login triggered an EMAIL_OTP MFA challenge — store session in httpOnly cookie
+    // so the frontend can complete MFA via /verify-mfa.
+    if (result?.mfaChallenge) {
+      res.cookie("mfaSession", result.mfaChallenge.session, MFA_SESSION_COOKIE_OPTIONS);
+      return res.status(200).json({
+        message: "Account created successfully.",
+        autoLoggedIn: false,
+        mfaRequired: true,
+        challengeName: "EMAIL_OTP",
+        email,
+        destination: result.mfaChallenge.destination,
+      });
+    }
 
     // If Cognito auto-confirmed the user and returned tokens, set httpOnly cookies
     // exactly like signin does — never expose raw tokens in the response body.
@@ -158,6 +188,20 @@ router.post("/signin", async (req, res) => {
   const { email, password } = parsed.data;
   try {
     const response = await AuthService.signin(email, password);
+
+    // EMAIL_OTP MFA challenge — Cognito requires a second factor before issuing tokens.
+    // Store the Session token in an httpOnly cookie so the frontend can complete
+    // the challenge via /verify-mfa without ever touching a token directly.
+    if (response.ChallengeName === 'EMAIL_OTP') {
+      res.cookie("mfaSession", response.Session!, MFA_SESSION_COOKIE_OPTIONS);
+      return res.status(200).json({
+        mfaRequired: true,
+        challengeName: "EMAIL_OTP",
+        email,
+        destination: response.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
+      });
+    }
+
     const authResult = response.AuthenticationResult;
 
     // Set httpOnly cookies for secure token storage
@@ -226,6 +270,40 @@ router.post("/signout", async (req, res) => {
   }
 
   res.status(200).json({ message: "Signed out successfully." });
+});
+
+// Verify MFA code (EMAIL_OTP challenge)
+router.post("/verify-mfa", async (req, res) => {
+  const parsed = VerifyMfaSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, code } = parsed.data;
+
+  const session = req.cookies?.mfaSession;
+  if (!session) {
+    return res.status(401).json({ error: "MFA session expired. Please sign in again." });
+  }
+
+  try {
+    const response = await AuthService.respondToMfaChallenge(email, session, code);
+    const authResult = response.AuthenticationResult;
+
+    // Clear MFA session — it's single-use and now consumed.
+    res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
+
+    if (authResult?.AccessToken) {
+      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    }
+    if (authResult?.RefreshToken) {
+      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
+    }
+
+    res.status(200).json({ message: "MFA verified successfully.", autoLoggedIn: true });
+  } catch (error: any) {
+    logger.warn({ cognito_error: error.name, email }, "auth/verify-mfa failed");
+    res.status(401).json({ error: "Invalid or expired verification code." });
+  }
 });
 
 // Refresh token route

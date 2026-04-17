@@ -49,6 +49,11 @@ type FieldErrors = {
   form?: string;
 };
 
+interface MfaState {
+  email: string;
+  destination?: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -57,8 +62,11 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [mfaState, setMfaState] = useState<MfaState | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
 
   const isFormInvalid = !email.trim() || !password.trim();
+  const isMfaInvalid = mfaCode.length !== 6 || !/^\d{6}$/.test(mfaCode);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,7 +85,13 @@ export default function LoginPage() {
     if (Object.keys(nextErrors).length === 0) {
       setIsLoading(true);
       try {
-        await apiClient.auth.signin({ email, password });
+        const signinResponse = await apiClient.auth.signin({ email, password });
+        const data = signinResponse.data;
+
+        if (data?.mfaRequired) {
+          setMfaState({ email, destination: data.destination });
+          return;
+        }
 
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
@@ -99,6 +113,113 @@ export default function LoginPage() {
         setIsLoading(false);
       }
     }
+  }
+
+  async function handleMfaSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!mfaState || isMfaInvalid) return;
+
+    setIsLoading(true);
+    setErrors({});
+    try {
+      await apiClient.auth.verifyMfa({ email: mfaState.email, code: mfaCode });
+
+      const userResponse = await apiClient.me.getProfile();
+      const user = userResponse.data;
+
+      login(user);
+      router.push("/dashboard");
+    } catch (error: unknown) {
+      logger.error("MFA verification failed");
+      const errorData = getApiErrorData(error);
+      setErrors({
+        form: errorData?.error || "Invalid or expired code. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  if (mfaState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--brand-50)] via-[#f4fffd] to-[var(--brand-100)] px-4 py-12 font-sans">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center gap-2">
+                <Link href="/landing" className="cursor-pointer transition-transform hover:scale-105">
+                  <BrandMark size="md" className="shadow-[0_10px_20px_-12px_rgba(13,148,136,0.45)]" />
+                </Link>
+                <span className="text-2xl font-bold text-[var(--brand-600)]">RevClear</span>
+              </div>
+            </div>
+
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-50)]">
+                <svg className="h-7 w-7 text-[var(--brand-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">Check Your Email</h1>
+              <p className="text-sm text-gray-500">
+                We sent a 6-digit code to{" "}
+                <span className="font-semibold text-gray-700">
+                  {mfaState.destination ?? mfaState.email}
+                </span>
+              </p>
+            </div>
+
+            <form className="space-y-4" onSubmit={handleMfaSubmit} noValidate>
+              <AuthSection>
+                <AuthField label="Verification Code" required>
+                  <AuthInput
+                    name="mfaCode"
+                    type="text"
+                    inputMode="numeric"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    autoComplete="one-time-code"
+                    required
+                  />
+                </AuthField>
+              </AuthSection>
+
+              {errors.form && (
+                <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                  <p className="text-sm text-red-600 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    {errors.form}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  loading={isLoading}
+                  disabled={isMfaInvalid}
+                  className="group w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
+                >
+                  Verify Code
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => { setMfaState(null); setMfaCode(""); setErrors({}); }}
+                  className="w-full text-center text-sm text-gray-500 hover:text-[var(--brand-600)] transition-colors"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
