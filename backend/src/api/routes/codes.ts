@@ -189,7 +189,7 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
  * GET /api/codes/search?q=<query>&type=<icd|cpt>
  * Manual search for codes
  */
-router.get("/search", authMiddleware, async (req, res) => {
+router.get("/search", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const parsed = SearchQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     return sendError(
@@ -305,7 +305,7 @@ router.post("/:id/codes", authMiddleware, requireCapability("use_clinical_ai"), 
  * GET /api/encounters/:id/codes
  * Get saved codes for encounter
  */
-router.get("/:id/codes", authMiddleware, async (req, res) => {
+router.get("/:id/codes", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);

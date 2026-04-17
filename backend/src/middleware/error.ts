@@ -11,6 +11,16 @@ export const errorHandler = (
     res: Response,
     _next: NextFunction
 ) => {
+        const isCorsOriginError =
+            err.message === "Not allowed by CORS" ||
+            err.message === "Origin header required";
+
+        if (isCorsOriginError) {
+            return res.status(403).json({
+                error: "Origin not allowed",
+            });
+        }
+
     // Operational errors (expected) - return message to client
     if (err instanceof AppError) {
         return res.status(err.statusCode).json({

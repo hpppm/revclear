@@ -23,10 +23,15 @@ const DEFAULT_DEV_ORIGINS = [
   "http://127.0.0.1:3005",
 ];
 const DEFAULT_PROD_ORIGINS = [
-  "https://revclear.gannon.edu",
   "https://revclear.tech",
   "https://www.revclear.tech",
+  "https://api.revclear.tech",
+  "https://txgfeozc.up.railway.app",
+  "https://revclear-frontend-production.up.railway.app",
 ];
+
+const normalizeOrigin = (origin: string) =>
+  origin.trim().toLowerCase().replace(/\/$/, "");
 
 // --------------------------------------------------
 // Trust Proxy
@@ -47,11 +52,18 @@ app.use(cookieParser());
 // --------------------------------------------------
 // CORS - Configured for security (not allowing all origins)
 // --------------------------------------------------
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean) || (appConfig.env === "production"
-    ? DEFAULT_PROD_ORIGINS
-    : [...DEFAULT_DEV_ORIGINS, ...DEFAULT_PROD_ORIGINS]);
+const configuredOrigins = process.env.ALLOWED_ORIGINS?.split(",")
+  .map((origin) => normalizeOrigin(origin))
+  .filter(Boolean) || [];
+
+const baseAllowedOrigins = appConfig.env === "production"
+  ? DEFAULT_PROD_ORIGINS
+  : [...DEFAULT_DEV_ORIGINS, ...DEFAULT_PROD_ORIGINS];
+
+const allowedOrigins = Array.from(new Set([
+  ...baseAllowedOrigins.map((origin) => normalizeOrigin(origin)),
+  ...configuredOrigins,
+]));
 
 app.use(
   cors((req, callback) => {
@@ -61,14 +73,9 @@ app.use(
       requestPath.startsWith(prefix),
     );
 
-    // In production, require Origin for browser requests but allow health probes
+    // Requests without Origin are valid for same-origin and server-to-server flows.
+    // CORS checks are only meaningful when Origin is present.
     if (!origin) {
-      if (appConfig.env === "production" && !isHealthRoute) {
-        return callback(new Error("Origin header required"), {
-          origin: false,
-        });
-      }
-
       return callback(null, {
         origin: true,
         credentials: true,
@@ -77,7 +84,9 @@ app.use(
       });
     }
 
-    if (allowedOrigins.includes(origin)) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (allowedOrigins.includes(normalizedOrigin)) {
       return callback(null, {
         origin: true,
         credentials: true,
@@ -95,8 +104,14 @@ app.use(
 // HTTPS Enforcement (production only)
 // --------------------------------------------------
 app.use((req, res, next) => {
+  const requestPath = req.path || "";
+  const isHealthRoute = HEALTH_ROUTE_PREFIXES.some((prefix) =>
+    requestPath.startsWith(prefix),
+  );
+
   if (
     appConfig.env === "production" &&
+    !isHealthRoute &&
     req.headers["x-forwarded-proto"] !== "https"
   ) {
     return res
@@ -118,125 +133,113 @@ app.use(securityMonitor);
 // --------------------------------------------------
 const authRateLimitStore = new (rateLimit as any).MemoryStore();
 
+const createRateLimiter = (
+  max: number,
+  message: string,
+  store?: any,
+) => {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    max,
+    message,
+    ...(store ? { store } : {}),
+  });
+};
+
 app.use(
   "/api/auth",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many auth requests. Try again later.",
-    store: authRateLimitStore,
-  }),
+  createRateLimiter(
+    10,
+    "Too many auth requests. Try again later.",
+    authRateLimitStore,
+  ),
 );
 
 app.use(
   "/api/transcribe",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 20,
-    message: "Too many transcribe requests. Try again later.",
-  }),
+  createRateLimiter(
+    20,
+    "Too many transcribe requests. Try again later.",
+  ),
 );
 
 // Rate limiting for other API routes
 app.use(
   "/api/patients",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many patient requests. Try again later.",
-  }),
+  createRateLimiter(
+    60,
+    "Too many patient requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/encounters",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many encounter requests. Try again later.",
-  }),
+  createRateLimiter(
+    60,
+    "Too many encounter requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/claims",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many claim requests. Try again later.",
-  }),
+  createRateLimiter(60, "Too many claim requests. Try again later."),
 );
 
 app.use(
   "/api/organizations",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many organization requests. Try again later.",
-  }),
+  createRateLimiter(
+    30,
+    "Too many organization requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/me",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many profile requests. Try again later.",
-  }),
+  createRateLimiter(30, "Too many profile requests. Try again later."),
 );
 
 app.use(
   "/api/users",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many user requests. Try again later.",
-  }),
+  createRateLimiter(30, "Too many user requests. Try again later."),
 );
 
 app.use(
   "/api/codes",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    message: "Too many code requests. Try again later.",
-  }),
+  createRateLimiter(60, "Too many code requests. Try again later."),
 );
 
 app.use(
   "/api/security",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many security requests. Try again later.",
-  }),
+  createRateLimiter(
+    10,
+    "Too many security requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/health",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    message: "Too many health check requests. Try again later.",
-  }),
+  createRateLimiter(
+    30,
+    "Too many health check requests. Try again later.",
+  ),
 );
 
 // Rate limiting for AI endpoints (SOAP generation and code matching)
 // These are expensive operations that call external AI APIs
 app.use(
   "/api/encounters/:id/soap",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many SOAP generation requests. Try again later.",
-  }),
+  createRateLimiter(
+    10,
+    "Too many SOAP generation requests. Try again later.",
+  ),
 );
 
 app.use(
   "/api/encounters/:id/codes",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 10,
-    message: "Too many code matching requests. Try again later.",
-  }),
+  createRateLimiter(
+    10,
+    "Too many code matching requests. Try again later.",
+  ),
 );
 
 /**
@@ -286,6 +289,13 @@ const helmetOptions: HelmetOptions = {
 };
 
 app.use(helmet(helmetOptions));
+app.use((req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  );
+  next();
+});
 // SECURITY: Custom Morgan token strips query string from URL before logging
 // to prevent query params (which may contain PHI on some routes) from reaching stdout.
 morgan.token("url-no-query", (req: Request) =>
@@ -326,7 +336,6 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/encounters", encounterRoutes);
 app.use("/api/encounters", soapRoutes);
 app.use("/api/encounters", codesRoutes);
-app.use("/api/codes", codesRoutes);
 app.use("/api/claims", claimRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/health", healthRoutes);

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,8 +19,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-body antialiased" suppressHydrationWarning>
-        {/* Error suppression script moved to external file for CSP compliance */}
-        <Script src="/suppress-errors.js" strategy="afterInteractive" />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

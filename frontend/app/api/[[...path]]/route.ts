@@ -2,6 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_INTERNAL_URL =
   process.env.BACKEND_INTERNAL_URL || "http://localhost:3005/api";
+const API_PROXY_TIMEOUT_MS = 15000;
+const API_PROXY_TRANSCRIBE_TIMEOUT_MS = 120000; // Whisper on CPU can take 60-90s
+
+const ALLOWED_ORIGINS = new Set(
+  (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim().toLowerCase().replace(/\/$/, ""))
+    .filter(Boolean),
+);
+
+// Dev origins always allowed so local development works without env config.
+const DEV_ORIGINS = new Set([
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+]);
+
+function isOriginAllowed(origin: string | null, request: NextRequest): boolean {
+  if (!origin) return true; // same-origin / server-to-server — no Origin header
+  const normalized = origin.toLowerCase().replace(/\/$/, "");
+  if (process.env.NODE_ENV !== "production" && DEV_ORIGINS.has(normalized)) return true;
+  // Same-origin requests: browser sends Origin matching the public host.
+  // Use x-forwarded-host first — Railway's CDN rewrites the Host header to an
+  // internal address, but preserves the original public domain in x-forwarded-host.
+  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "").toLowerCase();
+  if (host && normalized === `https://${host}`) return true;
+  if (host && normalized === `http://${host}`) return true;
+  return ALLOWED_ORIGINS.has(normalized);
+}
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -31,6 +60,11 @@ const buildTargetUrl = (request: NextRequest, path: string[] = []) => {
 };
 
 const proxyRequest = async (request: NextRequest, path: string[] = []) => {
+  const origin = request.headers.get("origin");
+  if (!isOriginAllowed(origin, request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const targetUrl = buildTargetUrl(request, path);
   const headers = new Headers(request.headers);
 
@@ -41,12 +75,38 @@ const proxyRequest = async (request: NextRequest, path: string[] = []) => {
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers,
-    body,
-    redirect: "manual",
-  });
+  const isTranscribePath = path[0] === "transcribe";
+  const timeoutMs = isTranscribePath ? API_PROXY_TRANSCRIBE_TIMEOUT_MS : API_PROXY_TIMEOUT_MS;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body,
+      redirect: "manual",
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    clearTimeout(timeout);
+
+    if (error?.name === "AbortError") {
+      return NextResponse.json(
+        { error: "Upstream API timed out" },
+        { status: 504 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Upstream API unavailable" },
+      { status: 502 },
+    );
+  }
+
+  clearTimeout(timeout);
 
   const responseHeaders = new Headers(response.headers);
   for (const header of HOP_BY_HOP_HEADERS) {

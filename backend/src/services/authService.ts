@@ -9,6 +9,10 @@ import {
     confirmForgotPassword,
     adminMarkEmailVerified,
     adminAddUserToGroup,
+    respondToSoftwareTokenMfa,
+    associateSoftwareToken,
+    verifySoftwareToken,
+    respondToMfaSetup,
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
@@ -93,12 +97,25 @@ export class AuthService {
             }
         }
 
+        let mfaChallenge: { challengeName: string; session: string } | undefined;
+
         if (this.autoLoginAfterSignup) {
             if (!this.autoConfirmSignups || autoConfirmResult.success !== false) {
                 try {
                     const loginResponse = await signInUser(email, password);
-                    authenticationResult = loginResponse.AuthenticationResult;
-                    autoLoginResult.success = true;
+                    if (
+                        loginResponse.ChallengeName === 'SOFTWARE_TOKEN_MFA' ||
+                        loginResponse.ChallengeName === 'MFA_SETUP'
+                    ) {
+                        mfaChallenge = {
+                            challengeName: loginResponse.ChallengeName,
+                            session: loginResponse.Session!,
+                        };
+                        autoLoginResult.success = true;
+                    } else {
+                        authenticationResult = loginResponse.AuthenticationResult;
+                        autoLoginResult.success = true;
+                    }
                 } catch (loginError: any) {
                     logger.warn({ err: loginError }, 'Auto login failed');
                     autoLoginResult.success = false;
@@ -132,6 +149,7 @@ export class AuthService {
             autoConfirm: autoConfirmResult,
             autoLogin: autoLoginResult,
             AuthenticationResult: authenticationResult,
+            mfaChallenge,
             response,
         };
     }
@@ -189,5 +207,24 @@ export class AuthService {
 
     static async confirmForgotPassword(email: string, code: string, newPassword: string) {
         return confirmForgotPassword(email, code, newPassword);
+    }
+
+    static async respondToMfaChallenge(email: string, session: string, code: string) {
+        return respondToSoftwareTokenMfa(email, session, code);
+    }
+
+    static async associateTotp(params: { accessToken: string } | { session: string }) {
+        return associateSoftwareToken(params);
+    }
+
+    static async verifyTotpSetup(
+        params: { accessToken: string } | { session: string },
+        code: string,
+    ) {
+        return verifySoftwareToken(params, code);
+    }
+
+    static async completeMfaSetup(email: string, session: string) {
+        return respondToMfaSetup(email, session);
     }
 }

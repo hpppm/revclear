@@ -1,11 +1,16 @@
 import axios from "axios";
 
-const defaultApiBaseUrl =
+// In production the browser always calls through the Next.js proxy (/api).
+// Direct backend calls set cookies on the backend domain, which the middleware
+// can't see — causing a 307 redirect loop on every /dashboard navigation.
+// The proxy (app/api/[[...path]]/route.ts) forwards requests internally via
+// BACKEND_INTERNAL_URL and returns Set-Cookie headers on the frontend domain.
+const baseURL =
   process.env.NODE_ENV === "development" ? "http://localhost:3005/api" : "/api";
 
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || defaultApiBaseUrl,
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -48,6 +53,9 @@ function getGenericErrorMessage(status?: number): string {
 
 // Whitelist of safe error message patterns from backend
 const SAFE_ERROR_PATTERNS = [
+  /mfa session expired/i,
+  /mfa (challenge|setup) incomplete/i,
+  /mfa verification required/i,
   /invalid (email|password|credentials|code|invitation)/i,
   /not found/i,
   /already exists/i,

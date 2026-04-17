@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      // NOTE: CSP with nonces is now handled by middleware.ts
-      // These headers are for static assets and fallback
+      // CSP with nonces is handled by middleware.ts on dynamic requests.
+      // These headers cover static assets and edge-cache fallback paths.
       {
         source: "/:path*",
         headers: [

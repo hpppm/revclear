@@ -46,8 +46,8 @@ export default function EncounterPage() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [encounterId, setEncounterId] = useState<string | null>(null);
-  const [_loading, setLoading] = useState(true);
-  const [_error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
 
   // Step 1: Patient Details State
   const [metadata, setMetadata] = useState<{
@@ -93,7 +93,7 @@ export default function EncounterPage() {
   // Step 4: Medical Codes State
   const [savedCodes, setSavedCodes] = useState<MedicalCode[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<MedicalCode[]>([]);
-  const [_savingCodes, setSavingCodes] = useState(false);
+  const [, setSavingCodes] = useState(false);
   const [claimDraft, setClaimDraft] = useState<any>(null);
   const [claimValid, setClaimValid] = useState(false);
   const [claimSubmitAttempt, setClaimSubmitAttempt] = useState(0);

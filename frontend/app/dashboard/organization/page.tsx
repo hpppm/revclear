@@ -13,7 +13,7 @@ import {
     OrganizationInvite,
     OrganizationMember,
 } from "@/app/lib/types";
-import { ORGANIZATION_MEMBER_ROLES, OrganizationMemberRole } from "@/app/lib/auth/roles";
+import { OrganizationMemberRole } from "@/app/lib/auth/roles";
 import logger from "@/app/lib/logger";
 import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
 
