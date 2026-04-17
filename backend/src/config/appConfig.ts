@@ -31,7 +31,9 @@ const EnvSchema = z.object({
   TRANSCRIBE_API_URL: z.string().url().optional(),
   TRANSCRIBE_URL: z.string().url().optional(),
   AI_SERVER_API_KEY: z.string().min(1).optional(),
-  AI_SERVER_HEALTH_URL: z.string().url().optional(),
+  // Optional observability URL. Keep non-fatal if malformed so startup does not
+  // hard-fail on an unused/deployment-misconfigured value.
+  AI_SERVER_HEALTH_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
   PINECONE_API_KEY: z.string().min(1).optional(),
