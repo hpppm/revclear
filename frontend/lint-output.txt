@@ -1,10 +1,17 @@
 
 > frontend@0.1.0 lint
-> eslint --max-warnings=0
+> eslint
 
+
+C:\Users\hppm1\Projects\Dev\revclear\frontend\app\(pages)\login\page.tsx
+  230:63  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\hppm1\Projects\Dev\revclear\frontend\app\(pages)\signup\page.tsx
+   35:10  warning  'getApiErrorData' is defined but never used                      @typescript-eslint/no-unused-vars
+  222:63  warning  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
 
 C:\Users\hppm1\Projects\Dev\revclear\frontend\app\api\[[...path]]\route.ts
-  57:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  83:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\hppm1\Projects\Dev\revclear\frontend\app\components\wizard\TranscriptionStep.tsx
    12:17  warning  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
@@ -110,6 +117,5 @@ C:\Users\hppm1\Projects\Dev\revclear\frontend\tests\e2e\org-profile-and-claims.s
    933:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
   1620:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
-Γ£û 79 problems (0 errors, 79 warnings)
+Γ£û 82 problems (0 errors, 82 warnings)
 
-ESLint found too many warnings (maximum: 0).

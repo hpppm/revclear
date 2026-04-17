@@ -288,6 +288,11 @@ router.post("/verify-mfa", async (req, res) => {
     const response = await AuthService.respondToMfaChallenge(email, session, code);
     const authResult = response.AuthenticationResult;
 
+    if (!authResult?.AccessToken) {
+      logger.warn({ email }, "auth/verify-mfa missing AuthenticationResult.AccessToken");
+      return res.status(401).json({ error: "MFA challenge incomplete. Please sign in again." });
+    }
+
     // Clear MFA session — it's single-use and now consumed.
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
 
@@ -357,6 +362,11 @@ router.post("/verify-totp-setup", async (req, res) => {
     // Exchange the post-verify Session for authentication tokens.
     const authResponse = await AuthService.completeMfaSetup(email, verifyResponse.Session!);
     const authResult = authResponse.AuthenticationResult;
+
+    if (!authResult?.AccessToken) {
+      logger.warn({ email }, "auth/verify-totp-setup missing AuthenticationResult.AccessToken");
+      return res.status(401).json({ error: "MFA setup incomplete. Please sign in again." });
+    }
 
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
 

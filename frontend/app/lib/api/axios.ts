@@ -54,6 +54,9 @@ function getGenericErrorMessage(status?: number): string {
 
 // Whitelist of safe error message patterns from backend
 const SAFE_ERROR_PATTERNS = [
+  /mfa session expired/i,
+  /mfa (challenge|setup) incomplete/i,
+  /mfa verification required/i,
   /invalid (email|password|credentials|code|invitation)/i,
   /not found/i,
   /already exists/i,

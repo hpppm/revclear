@@ -156,7 +156,14 @@ export default function LoginPage() {
     if (mfaState?.challengeName !== "MFA_SETUP") return;
     apiClient.auth.associateTotp()
       .then((res) => setTotpSecret(res.data.secretCode))
-      .catch(() => setErrors({ form: "Failed to start authenticator setup. Please sign in again." }));
+      .catch((error: unknown) => {
+        const errorData = getApiErrorData(error);
+        setErrors({
+          form:
+            errorData?.error ||
+            "Failed to start authenticator setup. Please sign in again.",
+        });
+      });
   }, [mfaState]);
 
   async function handleMfaSubmit(event: FormEvent<HTMLFormElement>) {
@@ -220,7 +227,7 @@ export default function LoginPage() {
                           size={160}
                         />
                       </div>
-                      <p className="text-xs text-gray-400">Can't scan? Enter this key manually:</p>
+                      <p className="text-xs text-gray-400">Can&apos;t scan? Enter this key manually:</p>
                       <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 break-all select-all">{totpSecret}</code>
                     </div>
                   ) : (
