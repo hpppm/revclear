@@ -3,9 +3,15 @@ import axios from "axios";
 const defaultApiBaseUrl =
   process.env.NODE_ENV === "development" ? "http://localhost:3005/api" : "/api";
 
+// NEXT_PUBLIC_API_URL is the bare origin (e.g. https://api.revclear.tech).
+// The /api prefix is always appended here so env vars never need to include it.
+const baseURL = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api`
+  : defaultApiBaseUrl;
+
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || defaultApiBaseUrl,
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },
