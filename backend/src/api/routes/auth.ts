@@ -225,6 +225,13 @@ router.post("/signin", async (req, res) => {
       autoLoggedIn,
     });
   } catch (error: any) {
+    // Ensure a failed sign-in does not leave stale auth/mfa cookies in place.
+    // This prevents confusing follow-up 401s (for example /me requiring MFA)
+    // caused by previous sessions.
+    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
+
     // Log the actual Cognito error server-side (never sent to client)
     logger.warn(
       { cognito_error: error.name, message: error.message, email },
