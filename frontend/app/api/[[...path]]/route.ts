@@ -18,10 +18,14 @@ const DEV_ORIGINS = new Set([
   "http://127.0.0.1:3000",
 ]);
 
-function isOriginAllowed(origin: string | null): boolean {
+function isOriginAllowed(origin: string | null, request: NextRequest): boolean {
   if (!origin) return true; // same-origin / server-to-server — no Origin header
   const normalized = origin.toLowerCase().replace(/\/$/, "");
   if (process.env.NODE_ENV !== "production" && DEV_ORIGINS.has(normalized)) return true;
+  // Same-origin requests: browser sends Origin matching the host of this server.
+  const host = request.headers.get("host");
+  if (host && normalized === `https://${host.toLowerCase()}`) return true;
+  if (host && normalized === `http://${host.toLowerCase()}`) return true;
   return ALLOWED_ORIGINS.has(normalized);
 }
 
@@ -54,7 +58,7 @@ const buildTargetUrl = (request: NextRequest, path: string[] = []) => {
 
 const proxyRequest = async (request: NextRequest, path: string[] = []) => {
   const origin = request.headers.get("origin");
-  if (!isOriginAllowed(origin)) {
+  if (!isOriginAllowed(origin, request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
