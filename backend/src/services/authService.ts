@@ -9,7 +9,10 @@ import {
     confirmForgotPassword,
     adminMarkEmailVerified,
     adminAddUserToGroup,
-    respondToEmailOtp,
+    respondToSoftwareTokenMfa,
+    associateSoftwareToken,
+    verifySoftwareToken,
+    respondToMfaSetup,
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
@@ -94,17 +97,19 @@ export class AuthService {
             }
         }
 
-        let mfaChallenge: { challengeName: string; session: string; destination?: string } | undefined;
+        let mfaChallenge: { challengeName: string; session: string } | undefined;
 
         if (this.autoLoginAfterSignup) {
             if (!this.autoConfirmSignups || autoConfirmResult.success !== false) {
                 try {
                     const loginResponse = await signInUser(email, password);
-                    if (loginResponse.ChallengeName === 'EMAIL_OTP') {
+                    if (
+                        loginResponse.ChallengeName === 'SOFTWARE_TOKEN_MFA' ||
+                        loginResponse.ChallengeName === 'MFA_SETUP'
+                    ) {
                         mfaChallenge = {
-                            challengeName: 'EMAIL_OTP',
+                            challengeName: loginResponse.ChallengeName,
                             session: loginResponse.Session!,
-                            destination: loginResponse.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
                         };
                         autoLoginResult.success = true;
                     } else {
@@ -205,6 +210,21 @@ export class AuthService {
     }
 
     static async respondToMfaChallenge(email: string, session: string, code: string) {
-        return respondToEmailOtp(email, session, code);
+        return respondToSoftwareTokenMfa(email, session, code);
+    }
+
+    static async associateTotp(params: { accessToken: string } | { session: string }) {
+        return associateSoftwareToken(params);
+    }
+
+    static async verifyTotpSetup(
+        params: { accessToken: string } | { session: string },
+        code: string,
+    ) {
+        return verifySoftwareToken(params, code);
+    }
+
+    static async completeMfaSetup(email: string, session: string) {
+        return respondToMfaSetup(email, session);
     }
 }

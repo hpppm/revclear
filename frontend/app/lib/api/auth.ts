@@ -102,5 +102,14 @@ export const authApi = {
     return api.post("/auth/verify-mfa", VerifyMfaSchema.parse(data));
   },
 
+  // Step 1 of MFA_SETUP: get the TOTP secret code to show as QR / manual key.
+  associateTotp: () => api.post("/auth/associate-totp"),
+
+  // Step 2 of MFA_SETUP: confirm the device with the first TOTP code.
+  verifyTotpSetup: (data: VerifyMfaPayload) => {
+    enforceCooldown("verifyTotpSetup");
+    return api.post("/auth/verify-totp-setup", VerifyMfaSchema.parse(data));
+  },
+
   me: () => api.get("/auth/me"),
 };

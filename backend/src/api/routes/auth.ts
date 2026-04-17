@@ -115,17 +115,15 @@ router.post("/signup", async (req, res) => {
       licenseId,
     );
 
-    // Auto-login triggered an EMAIL_OTP MFA challenge — store session in httpOnly cookie
-    // so the frontend can complete MFA via /verify-mfa.
+    // Auto-login triggered an MFA challenge — store session in httpOnly cookie.
     if (result?.mfaChallenge) {
       res.cookie("mfaSession", result.mfaChallenge.session, MFA_SESSION_COOKIE_OPTIONS);
       return res.status(200).json({
         message: "Account created successfully.",
         autoLoggedIn: false,
         mfaRequired: true,
-        challengeName: "EMAIL_OTP",
+        challengeName: result.mfaChallenge.challengeName,
         email,
-        destination: result.mfaChallenge.destination,
       });
     }
 
@@ -189,16 +187,17 @@ router.post("/signin", async (req, res) => {
   try {
     const response = await AuthService.signin(email, password);
 
-    // EMAIL_OTP MFA challenge — Cognito requires a second factor before issuing tokens.
-    // Store the Session token in an httpOnly cookie so the frontend can complete
-    // the challenge via /verify-mfa without ever touching a token directly.
-    if (response.ChallengeName === 'EMAIL_OTP') {
+    // MFA challenge — store Session in httpOnly cookie so the frontend can
+    // complete via /verify-mfa (SOFTWARE_TOKEN_MFA) or /associate-totp (MFA_SETUP).
+    if (
+      response.ChallengeName === 'SOFTWARE_TOKEN_MFA' ||
+      response.ChallengeName === 'MFA_SETUP'
+    ) {
       res.cookie("mfaSession", response.Session!, MFA_SESSION_COOKIE_OPTIONS);
       return res.status(200).json({
         mfaRequired: true,
-        challengeName: "EMAIL_OTP",
+        challengeName: response.ChallengeName,
         email,
-        destination: response.ChallengeParameters?.CODE_DELIVERY_DESTINATION,
       });
     }
 
@@ -272,7 +271,7 @@ router.post("/signout", async (req, res) => {
   res.status(200).json({ message: "Signed out successfully." });
 });
 
-// Verify MFA code (EMAIL_OTP challenge)
+// Verify MFA code (SOFTWARE_TOKEN_MFA challenge) — user submits TOTP code from authenticator app
 router.post("/verify-mfa", async (req, res) => {
   const parsed = VerifyMfaSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -302,6 +301,75 @@ router.post("/verify-mfa", async (req, res) => {
     res.status(200).json({ message: "MFA verified successfully.", autoLoggedIn: true });
   } catch (error: any) {
     logger.warn({ cognito_error: error.name, email }, "auth/verify-mfa failed");
+    res.status(401).json({ error: "Invalid or expired verification code." });
+  }
+});
+
+// Associate TOTP device — step 1 of MFA_SETUP challenge flow.
+// Reads the mfaSession cookie set during signin, returns the base32 SecretCode
+// the frontend uses to render the QR code / manual entry key.
+router.post("/associate-totp", async (req, res) => {
+  const session = req.cookies?.mfaSession;
+  if (!session) {
+    return res.status(401).json({ error: "MFA session expired. Please sign in again." });
+  }
+
+  try {
+    const response = await AuthService.associateTotp({ session });
+    // Update mfaSession cookie with the new Session returned by Cognito
+    if (response.Session) {
+      res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
+    }
+    // SecretCode is the base32 TOTP secret the user scans into their authenticator app.
+    res.status(200).json({ secretCode: response.SecretCode });
+  } catch (error: any) {
+    logger.warn({ cognito_error: error.name }, "auth/associate-totp failed");
+    res.status(400).json({ error: "Failed to associate authenticator app. Please sign in again." });
+  }
+});
+
+// Verify TOTP setup — step 2 of MFA_SETUP challenge flow.
+// User enters the 6-digit code from their authenticator app to confirm the device.
+const VerifyTotpSetupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
+});
+
+router.post("/verify-totp-setup", async (req, res) => {
+  const parsed = VerifyTotpSetupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, code } = parsed.data;
+
+  const session = req.cookies?.mfaSession;
+  if (!session) {
+    return res.status(401).json({ error: "MFA session expired. Please sign in again." });
+  }
+
+  try {
+    const verifyResponse = await AuthService.verifyTotpSetup({ session }, code);
+
+    if (verifyResponse.Status !== "SUCCESS") {
+      return res.status(401).json({ error: "Invalid verification code." });
+    }
+
+    // Exchange the post-verify Session for authentication tokens.
+    const authResponse = await AuthService.completeMfaSetup(email, verifyResponse.Session!);
+    const authResult = authResponse.AuthenticationResult;
+
+    res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
+
+    if (authResult?.AccessToken) {
+      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    }
+    if (authResult?.RefreshToken) {
+      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
+    }
+
+    res.status(200).json({ message: "Authenticator app linked successfully.", autoLoggedIn: true });
+  } catch (error: any) {
+    logger.warn({ cognito_error: error.name, email }, "auth/verify-totp-setup failed");
     res.status(401).json({ error: "Invalid or expired verification code." });
   }
 });

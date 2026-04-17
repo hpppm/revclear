@@ -13,6 +13,8 @@ import {
   ConfirmForgotPasswordCommand,
   AdminUpdateUserAttributesCommand,
   RespondToAuthChallengeCommand,
+  AssociateSoftwareTokenCommand,
+  VerifySoftwareTokenCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -232,17 +234,67 @@ export async function checkCognitoConnectivity() {
 }
 
 /**
- * Respond to an EMAIL_OTP MFA challenge after initial sign-in.
+ * Respond to a SOFTWARE_TOKEN_MFA challenge — user enters TOTP code from authenticator app.
  */
-export async function respondToEmailOtp(email: string, session: string, code: string) {
+export async function respondToSoftwareTokenMfa(email: string, session: string, code: string) {
   const command = new RespondToAuthChallengeCommand({
     ClientId: clientId,
-    ChallengeName: 'EMAIL_OTP',
+    ChallengeName: 'SOFTWARE_TOKEN_MFA',
     Session: session,
     ChallengeResponses: {
       USERNAME: email,
-      EMAIL_OTP_CODE: code,
+      SOFTWARE_TOKEN_MFA_CODE: code,
     },
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Begin TOTP device association.
+ * During MFA_SETUP challenge: pass { session }.
+ * For an already-authenticated user: pass { accessToken }.
+ * Returns SecretCode (base32) and a new Session for the setup flow.
+ */
+export async function associateSoftwareToken(
+  params: { accessToken: string } | { session: string },
+) {
+  const command = new AssociateSoftwareTokenCommand(
+    'accessToken' in params
+      ? { AccessToken: params.accessToken }
+      : { Session: params.session },
+  );
+  return cognitoClient.send(command);
+}
+
+/**
+ * Confirm TOTP device association with the user-entered code.
+ * During MFA_SETUP challenge: pass { session }.
+ * For an already-authenticated user: pass { accessToken }.
+ */
+export async function verifySoftwareToken(
+  params: { accessToken: string } | { session: string },
+  code: string,
+) {
+  const command = new VerifySoftwareTokenCommand({
+    ...('accessToken' in params
+      ? { AccessToken: params.accessToken }
+      : { Session: params.session }),
+    UserCode: code,
+    FriendlyDeviceName: 'Authenticator App',
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Complete the MFA_SETUP challenge after TOTP is verified — exchanges the
+ * post-verify Session for final authentication tokens.
+ */
+export async function respondToMfaSetup(email: string, session: string) {
+  const command = new RespondToAuthChallengeCommand({
+    ClientId: clientId,
+    ChallengeName: 'MFA_SETUP',
+    Session: session,
+    ChallengeResponses: { USERNAME: email },
   });
   return cognitoClient.send(command);
 }

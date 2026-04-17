@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { useAuth } from "@/app/context/AuthContext";
 import { LoginFormSchema } from "@/app/lib/validation/schemas";
@@ -77,7 +78,7 @@ type FieldErrors = {
 
 interface MfaState {
   email: string;
-  destination?: string;
+  challengeName: "SOFTWARE_TOKEN_MFA" | "MFA_SETUP";
 }
 
 export default function LoginPage() {
@@ -90,6 +91,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [mfaState, setMfaState] = useState<MfaState | null>(null);
   const [mfaCode, setMfaCode] = useState("");
+  const [totpSecret, setTotpSecret] = useState<string | null>(null);
 
   const isFormInvalid = !email.trim() || !password.trim();
   const isMfaInvalid = mfaCode.length !== 6 || !/^\d{6}$/.test(mfaCode);
@@ -115,7 +117,7 @@ export default function LoginPage() {
         const data = signinResponse.data;
 
         if (data?.mfaRequired) {
-          setMfaState({ email, destination: data.destination });
+          setMfaState({ email, challengeName: data.challengeName });
           return;
         }
 
@@ -149,6 +151,14 @@ export default function LoginPage() {
     }
   }
 
+  // Fetch TOTP secret when MFA_SETUP challenge starts
+  useEffect(() => {
+    if (mfaState?.challengeName !== "MFA_SETUP") return;
+    apiClient.auth.associateTotp()
+      .then((res) => setTotpSecret(res.data.secretCode))
+      .catch(() => setErrors({ form: "Failed to start authenticator setup. Please sign in again." }));
+  }, [mfaState]);
+
   async function handleMfaSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!mfaState || isMfaInvalid) return;
@@ -156,7 +166,11 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrors({});
     try {
-      await apiClient.auth.verifyMfa({ email: mfaState.email, code: mfaCode });
+      if (mfaState.challengeName === "MFA_SETUP") {
+        await apiClient.auth.verifyTotpSetup({ email: mfaState.email, code: mfaCode });
+      } else {
+        await apiClient.auth.verifyMfa({ email: mfaState.email, code: mfaCode });
+      }
 
       const userResponse = await apiClient.me.getProfile();
       const user = userResponse.data;
@@ -191,16 +205,34 @@ export default function LoginPage() {
             <div className="mb-6 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-50)]">
                 <svg className="h-7 w-7 text-[var(--brand-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">Check Your Email</h1>
-              <p className="text-sm text-gray-500">
-                We sent a 6-digit code to{" "}
-                <span className="font-semibold text-gray-700">
-                  {mfaState.destination ?? mfaState.email}
-                </span>
-              </p>
+              {mfaState.challengeName === "MFA_SETUP" ? (
+                <>
+                  <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">Set Up Two-Factor Auth</h1>
+                  <p className="text-sm text-gray-500 mb-4">Scan this QR code with your authenticator app, then enter the 6-digit code to confirm.</p>
+                  {totpSecret ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="rounded-xl border border-[var(--brand-100)] p-3 bg-white">
+                        <QRCodeSVG
+                          value={`otpauth://totp/RevClear:${encodeURIComponent(mfaState.email)}?secret=${totpSecret}&issuer=RevClear`}
+                          size={160}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400">Can't scan? Enter this key manually:</p>
+                      <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 break-all select-all">{totpSecret}</code>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Loading QR code…</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-2">Two-Factor Authentication</h1>
+                  <p className="text-sm text-gray-500">Enter the 6-digit code from your authenticator app.</p>
+                </>
+              )}
             </div>
 
             <form className="space-y-4" onSubmit={handleMfaSubmit} noValidate>
@@ -239,11 +271,11 @@ export default function LoginPage() {
                   disabled={isMfaInvalid}
                   className="group w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
                 >
-                  Verify Code
+                  {mfaState.challengeName === "MFA_SETUP" ? "Verify & Enable 2FA" : "Verify Code"}
                 </Button>
                 <button
                   type="button"
-                  onClick={() => { setMfaState(null); setMfaCode(""); setErrors({}); }}
+                  onClick={() => { setMfaState(null); setMfaCode(""); setTotpSecret(null); setErrors({}); }}
                   className="w-full text-center text-sm text-gray-500 hover:text-[var(--brand-600)] transition-colors"
                 >
                   Back to sign in
