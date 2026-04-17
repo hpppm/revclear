@@ -248,7 +248,7 @@ export default function DashboardHome() {
                         </p>
                         {organization && (
                             <p className="mt-2 text-xs text-slate-500">
-                                In this app, <span className="font-semibold text-slate-700">Visit</span> refers to a patient encounter, and <span className="font-semibold text-slate-700">SOAP note</span> stands for Subjective, Objective, Assessment, and Plan.
+                                Terminology: <span className="font-semibold text-slate-700">Visit</span> = encounter. <span className="font-semibold text-slate-700">SOAP</span> = Subjective, Objective, Assessment, Plan.
                             </p>
                         )}
                     </div>
