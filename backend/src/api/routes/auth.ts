@@ -193,6 +193,10 @@ router.post("/signin", async (req, res) => {
       response.ChallengeName === 'SOFTWARE_TOKEN_MFA' ||
       response.ChallengeName === 'MFA_SETUP'
     ) {
+      // Prevent stale authenticated cookies from a previous session from
+      // coexisting with a fresh MFA challenge.
+      res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+      res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
       res.cookie("mfaSession", response.Session!, MFA_SESSION_COOKIE_OPTIONS);
       return res.status(200).json({
         mfaRequired: true,
@@ -202,6 +206,16 @@ router.post("/signin", async (req, res) => {
     }
 
     const authResult = response.AuthenticationResult;
+
+    if (!authResult?.AccessToken) {
+      logger.warn(
+        { challengeName: response.ChallengeName, email },
+        "auth/signin returned no supported challenge and no access token",
+      );
+      return res.status(401).json({
+        error: "Sign-in incomplete. Please sign in again.",
+      });
+    }
 
     // Set httpOnly cookies for secure token storage
     if (authResult?.AccessToken) {
