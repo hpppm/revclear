@@ -271,6 +271,7 @@ export default function AddPatientPage() {
                 <Input
                   label="Email"
                   type="email"
+                  autoComplete="off"
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   onBlur={(e) => handleBlur("email", e.target.value, e.target as HTMLElement)}
@@ -373,15 +374,31 @@ export default function AddPatientPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Insurance Provider *"
-                    value={formData.insurance_provider}
-                    onChange={(e) => handleChange("insurance_provider", e.target.value)}
-                    onBlur={(e) => handleBlur("insurance_provider", e.target.value, e.target as HTMLElement)}
-                    placeholder="Blue Cross Blue Shield"
-                    required
-                    error={fieldErrors.insurance_provider}
-                  />
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700">
+                      Insurance Provider <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.insurance_provider}
+                      onChange={(e) => handleChange("insurance_provider", e.target.value)}
+                      onBlur={(e) => handleBlur("insurance_provider", e.target.value, e.target as HTMLElement)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                      <option value="">Select insurance provider…</option>
+                      <option value="Medicare">Medicare</option>
+                      <option value="Medicaid">Medicaid</option>
+                      <option value="Blue Cross Blue Shield">Blue Cross Blue Shield</option>
+                      <option value="Aetna">Aetna</option>
+                      <option value="UnitedHealthcare">UnitedHealthcare</option>
+                      <option value="Cigna">Cigna</option>
+                      <option value="Humana">Humana</option>
+                      <option value="Tricare">Tricare</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {fieldErrors.insurance_provider && (
+                      <p className="text-xs text-red-600">{fieldErrors.insurance_provider}</p>
+                    )}
+                  </div>
                   <Input
                     label="Policy Number *"
                     value={formData.insurance_policy_number}

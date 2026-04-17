@@ -103,7 +103,7 @@ const REFRESH_COOKIE_OPTIONS = {
 // access tokens omit/reshape amr claims.
 const MFA_VERIFIED_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
-  maxAge: 30 * 1000, // 30 seconds — short bridge window after MFA verify
+  maxAge: 60 * 60 * 1000, // 1 hour — matches Cognito access token lifetime
 };
 
 // Sign-up route

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const BACKEND_INTERNAL_URL =
   process.env.BACKEND_INTERNAL_URL || "http://localhost:3005/api";
 const API_PROXY_TIMEOUT_MS = 15000;
+const API_PROXY_TRANSCRIBE_TIMEOUT_MS = 120000; // Whisper on CPU can take 60-90s
 
 const ALLOWED_ORIGINS = new Set(
   (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS || "")
@@ -22,10 +23,12 @@ function isOriginAllowed(origin: string | null, request: NextRequest): boolean {
   if (!origin) return true; // same-origin / server-to-server — no Origin header
   const normalized = origin.toLowerCase().replace(/\/$/, "");
   if (process.env.NODE_ENV !== "production" && DEV_ORIGINS.has(normalized)) return true;
-  // Same-origin requests: browser sends Origin matching the host of this server.
-  const host = request.headers.get("host");
-  if (host && normalized === `https://${host.toLowerCase()}`) return true;
-  if (host && normalized === `http://${host.toLowerCase()}`) return true;
+  // Same-origin requests: browser sends Origin matching the public host.
+  // Use x-forwarded-host first — Railway's CDN rewrites the Host header to an
+  // internal address, but preserves the original public domain in x-forwarded-host.
+  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "").toLowerCase();
+  if (host && normalized === `https://${host}`) return true;
+  if (host && normalized === `http://${host}`) return true;
   return ALLOWED_ORIGINS.has(normalized);
 }
 
@@ -72,8 +75,11 @@ const proxyRequest = async (request: NextRequest, path: string[] = []) => {
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
+  const isTranscribePath = path[0] === "transcribe";
+  const timeoutMs = isTranscribePath ? API_PROXY_TRANSCRIBE_TIMEOUT_MS : API_PROXY_TIMEOUT_MS;
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_PROXY_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
