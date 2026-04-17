@@ -48,7 +48,7 @@ This runbook provides operational procedures for deploying, monitoring, and main
 |-------------|---------|-----|
 | **Development** | Local development | `http://localhost:3000` |
 | **Staging** | Pre-production testing | TBD |
-| **Production** | Live environment | Railway public domain |
+| **Production** | Live environment | `https://revclear.tech` (app), `https://api.revclear.tech` (API) |
 
 ---
 

@@ -71,7 +71,7 @@ const COOKIE_OPTIONS = {
 };
 
 // Use the same cookie attributes on clear as on set.
-// In production behind revclear.gannon.edu, the reverse proxy must:
+// In production behind revclear.tech / api.revclear.tech, the reverse proxy must:
 // 1) terminate TLS,
 // 2) forward X-Forwarded-Proto=https,
 // 3) preserve the original Host header,
