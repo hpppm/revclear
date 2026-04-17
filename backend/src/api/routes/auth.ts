@@ -98,6 +98,14 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches Cognito refresh token validity
 };
 
+// Server-issued marker that this browser session completed MFA challenge
+// via /verify-mfa or /verify-totp-setup. Used as a fallback when Cognito
+// access tokens omit/reshape amr claims.
+const MFA_VERIFIED_COOKIE_OPTIONS = {
+  ...COOKIE_OPTIONS,
+  maxAge: 30 * 1000, // 30 seconds — short bridge window after MFA verify
+};
+
 // Sign-up route
 router.post("/signup", async (req, res) => {
   const parsed = SignupSchema.safeParse(req.body);
@@ -197,6 +205,7 @@ router.post("/signin", async (req, res) => {
       // coexisting with a fresh MFA challenge.
       res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
       res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+      res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
       res.cookie("mfaSession", response.Session!, MFA_SESSION_COOKIE_OPTIONS);
       return res.status(200).json({
         mfaRequired: true,
@@ -245,6 +254,7 @@ router.post("/signin", async (req, res) => {
     res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
     res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
 
     // Log the actual Cognito error server-side (never sent to client)
     logger.warn(
@@ -278,6 +288,7 @@ router.post("/signout", async (req, res) => {
   // token is already expired. The cookie clear is the security-critical action.
   res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
   res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
 
   const accessToken = req.cookies?.accessToken;
   if (accessToken) {
@@ -323,6 +334,8 @@ router.post("/verify-mfa", async (req, res) => {
     if (authResult?.RefreshToken) {
       res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
     }
+
+    res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
 
     res.status(200).json({ message: "MFA verified successfully.", autoLoggedIn: true });
   } catch (error: any) {
@@ -398,6 +411,8 @@ router.post("/verify-totp-setup", async (req, res) => {
       res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
     }
 
+    res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
+
     res.status(200).json({ message: "Authenticator app linked successfully.", autoLoggedIn: true });
   } catch (error: any) {
     logger.warn({ cognito_error: error.name, email }, "auth/verify-totp-setup failed");
@@ -431,6 +446,7 @@ router.post("/refresh-token", async (req, res) => {
     // Clear cookies on refresh failure
     res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
     res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+    res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
     res.status(401).json({ error: "Invalid or expired refresh token." });
   }
 });

@@ -136,7 +136,9 @@ export const authMiddleware = async (
       normalizedAmr.includes("software_token_mfa") ||
       normalizedAmr.includes("totp");
 
-    if (!hasMfaSignal) {
+    const mfaVerifiedBySessionCookie = req.cookies?.mfaVerified === "true";
+
+    if (!hasMfaSignal && !mfaVerifiedBySessionCookie) {
       return res.status(401).json({ error: "MFA verification required" });
     }
 
