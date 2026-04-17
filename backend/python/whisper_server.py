@@ -114,8 +114,9 @@ def transcribe():
 
         log.info("Transcribing %s (saved as %s) …", audio_file.filename, tmp_path)
 
-        segments, info = model.transcribe(tmp_path, beam_size=3)
-        full_text = "".join(seg.text for seg in segments)
+        segments, info = model.transcribe(tmp_path, beam_size=1)
+        segments_list = list(segments)  # force generator evaluation before logging
+        full_text = "".join(seg.text for seg in segments_list)
 
         log.info(
             "Done  lang=%s  prob=%.2f  chars=%d",
