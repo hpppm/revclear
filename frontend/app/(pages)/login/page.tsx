@@ -23,6 +23,8 @@ interface ApiErrorShape {
   response?: {
     data?: unknown;
   };
+  message?: string;
+  request?: unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -41,6 +43,30 @@ function getApiErrorData(error: unknown): ApiErrorData | undefined {
     message: typeof data.message === "string" ? data.message : undefined,
     details: typeof data.details === "string" ? data.details : undefined,
   };
+}
+
+function isLikelyNetworkOrTlsFailure(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+
+  const hasResponse = "response" in error && error.response !== undefined;
+  if (hasResponse) return false;
+
+  const message = typeof error.message === "string"
+    ? error.message.toLowerCase()
+    : "";
+
+  if (
+    message.includes("network") ||
+    message.includes("failed to fetch") ||
+    message.includes("ssl") ||
+    message.includes("certificate") ||
+    message.includes("cert")
+  ) {
+    return true;
+  }
+
+  // Axios/XHR failures usually include request but no response.
+  return "request" in error && error.request !== undefined;
 }
 
 type FieldErrors = {
@@ -100,6 +126,14 @@ export default function LoginPage() {
         router.push("/dashboard");
       } catch (error: unknown) {
         logger.error("Login failed");
+        if (isLikelyNetworkOrTlsFailure(error)) {
+          setErrors({
+            form:
+              "Secure connection to the API failed. Please try again in a minute. If this continues, contact support.",
+          });
+          return;
+        }
+
         const errorData = getApiErrorData(error);
         const errorMessage =
           errorData?.error ||

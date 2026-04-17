@@ -114,7 +114,7 @@ def transcribe():
 
         log.info("Transcribing %s (saved as %s) …", audio_file.filename, tmp_path)
 
-        segments, info = model.transcribe(tmp_path, beam_size=5)
+        segments, info = model.transcribe(tmp_path, beam_size=3)
         full_text = "".join(seg.text for seg in segments)
 
         log.info(
@@ -128,7 +128,7 @@ def transcribe():
 
     except Exception as exc:
         log.exception("Transcription error: %s", exc)
-        return jsonify({"error": "Transcription failed", "detail": str(exc)}), 500
+        return jsonify({"error": "Transcription failed"}), 500
 
     finally:
         if tmp_path and os.path.exists(tmp_path):
