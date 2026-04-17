@@ -1,13 +1,12 @@
 import axios from "axios";
 
-const defaultApiBaseUrl =
+// In production the browser always calls through the Next.js proxy (/api).
+// Direct backend calls set cookies on the backend domain, which the middleware
+// can't see — causing a 307 redirect loop on every /dashboard navigation.
+// The proxy (app/api/[[...path]]/route.ts) forwards requests internally via
+// BACKEND_INTERNAL_URL and returns Set-Cookie headers on the frontend domain.
+const baseURL =
   process.env.NODE_ENV === "development" ? "http://localhost:3005/api" : "/api";
-
-// NEXT_PUBLIC_API_URL is the bare origin (e.g. https://api.revclear.tech).
-// The /api prefix is always appended here so env vars never need to include it.
-const baseURL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")}/api`
-  : defaultApiBaseUrl;
 
 // Create an axios instance with default config
 const api = axios.create({
