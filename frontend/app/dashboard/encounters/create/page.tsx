@@ -742,7 +742,8 @@ export default function EncounterPage() {
           onSelectionChange={handleCodesSelected}
         />
       ),
-      canGoNext: true, // Codes are optional
+      canGoNext: selectedCodes.length > 0,
+      canGoNextHint: selectedCodes.length === 0 ? "Select at least one ICD-10 or CPT code to continue" : undefined,
       onNext: async () => {
         await handleSaveCodes();
       },

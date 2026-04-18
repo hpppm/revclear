@@ -354,12 +354,36 @@ export default function OrganizationProfilePage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="Clinic Name"
+                                        maxLength={200}
                                     />
                                      <Input
                                         label="Phone"
+                                        type="tel"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 555-5555"
+                                        maxLength={15}
+                                        error={fieldErrors.phone}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                    <Input
+                                        label="Organization NPI"
+                                        value={formData.npi}
+                                        onChange={(e) => setFormData({ ...formData, npi: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                                        placeholder="10-digit Type 2 NPI"
+                                        maxLength={10}
+                                        inputMode="numeric"
+                                        pattern="\d{10}"
+                                        error={fieldErrors.npi}
+                                    />
+                                    <Input
+                                        label="Tax ID"
+                                        value={formData.tax_id}
+                                        onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
+                                        placeholder="XX-XXXXXXX"
+                                        maxLength={20}
+                                        error={fieldErrors.tax_id}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -368,6 +392,7 @@ export default function OrganizationProfilePage() {
                                         value={formData.address_line1}
                                         onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                                         placeholder="123 Main St"
+                                        maxLength={200}
                                         error={fieldErrors.address_line1}
                                     />
                                     <Input
@@ -375,6 +400,7 @@ export default function OrganizationProfilePage() {
                                         value={formData.address_line2}
                                         onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
                                         placeholder="Suite 100"
+                                        maxLength={200}
                                         error={fieldErrors.address_line2}
                                     />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -382,16 +408,23 @@ export default function OrganizationProfilePage() {
                                             label="City"
                                             value={formData.city}
                                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                            maxLength={100}
                                         />
                                         <Input
                                             label="State"
                                             value={formData.state}
-                                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                                            onChange={(e) => setFormData({ ...formData, state: e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() })}
+                                            maxLength={2}
+                                            placeholder="TX"
                                         />
                                         <Input
                                             label="Postal Code"
                                             value={formData.postal_code}
-                                            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                                            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value.replace(/[^\d-]/g, "").slice(0, 10) })}
+                                            maxLength={10}
+                                            inputMode="numeric"
+                                            placeholder="12345"
+                                            error={fieldErrors.postal_code}
                                         />
                                     </div>
                                 </div>
@@ -406,20 +439,26 @@ export default function OrganizationProfilePage() {
                                     value={formData.billing_name}
                                     onChange={(e) => setFormData({ ...formData, billing_name: e.target.value })}
                                     placeholder="Official Billing Name"
+                                    maxLength={200}
                                     error={fieldErrors.billing_name}
                                 />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                     <Input
                                         label="Billing NPI"
                                         value={formData.billing_npi}
-                                        onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, billing_npi: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                                         placeholder="10-digit NPI"
+                                        maxLength={10}
+                                        inputMode="numeric"
+                                        pattern="\d{10}"
+                                        error={fieldErrors.billing_npi}
                                     />
                                     <Input
                                         label="Billing Tax ID"
                                         value={formData.billing_tax_id}
                                         onChange={(e) => setFormData({ ...formData, billing_tax_id: e.target.value })}
-                                        placeholder="Tax ID"
+                                        placeholder="XX-XXXXXXX"
+                                        maxLength={20}
                                     />
                                 </div>
                                 <div className="mt-4 space-y-4">
@@ -428,6 +467,7 @@ export default function OrganizationProfilePage() {
                                         value={formData.billing_address_line1}
                                         onChange={(e) => setFormData({ ...formData, billing_address_line1: e.target.value })}
                                         placeholder="123 Main St"
+                                        maxLength={200}
                                         error={fieldErrors.billing_address_line1}
                                     />
                                     <Input
@@ -435,6 +475,7 @@ export default function OrganizationProfilePage() {
                                         value={formData.billing_address_line2}
                                         onChange={(e) => setFormData({ ...formData, billing_address_line2: e.target.value })}
                                         placeholder="Suite 100"
+                                        maxLength={200}
                                         error={fieldErrors.billing_address_line2}
                                     />
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -442,24 +483,34 @@ export default function OrganizationProfilePage() {
                                             label="Billing City"
                                             value={formData.billing_city}
                                             onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
+                                            maxLength={100}
                                         />
                                         <Input
                                             label="Billing State"
                                             value={formData.billing_state}
-                                            onChange={(e) => setFormData({ ...formData, billing_state: e.target.value })}
+                                            onChange={(e) => setFormData({ ...formData, billing_state: e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() })}
+                                            maxLength={2}
+                                            placeholder="TX"
                                         />
                                         <Input
                                             label="Billing Postal Code"
                                             value={formData.billing_postal_code}
-                                            onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value })}
+                                            onChange={(e) => setFormData({ ...formData, billing_postal_code: e.target.value.replace(/[^\d-]/g, "").slice(0, 10) })}
+                                            maxLength={10}
+                                            inputMode="numeric"
+                                            placeholder="12345"
+                                            error={fieldErrors.billing_postal_code}
                                         />
                                     </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
                                             label="Billing Phone"
+                                            type="tel"
                                             value={formData.billing_phone}
                                             onChange={(e) => setFormData({ ...formData, billing_phone: e.target.value })}
                                             placeholder="(555) 555-5555"
+                                            maxLength={15}
+                                            error={fieldErrors.billing_phone}
                                         />
                                         <label className="space-y-1 block">
                                             <span className="text-sm font-medium text-slate-700">Default Place of Service</span>
@@ -514,6 +565,10 @@ export default function OrganizationProfilePage() {
                                                 <input
                                                     className="brand-input w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 shadow-sm text-sm"
                                                     placeholder="Amount (e.g. 150.00)"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    maxLength={10}
                                                     value={entry.amount}
                                                     onChange={(e) => {
                                                         const updated = [...feeScheduleEntries];
@@ -567,21 +622,25 @@ export default function OrganizationProfilePage() {
                                                 label="EDI Sender ID"
                                                 value={formData.edi_sender_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_sender_id: e.target.value })}
+                                                maxLength={50}
                                                 error={fieldErrors.edi_sender_id}
                                             />
                                             <Input
                                                 label="EDI Receiver ID"
                                                 value={formData.edi_receiver_id}
                                                 onChange={(e) => setFormData({ ...formData, edi_receiver_id: e.target.value })}
+                                                maxLength={50}
                                                 error={fieldErrors.edi_receiver_id}
                                             />
                                         </div>
                                         <div className="mt-4">
                                             <Input
                                                 label="Clearinghouse URL"
+                                                type="url"
                                                 placeholder="https://api.yourclearinghouse.com/submit"
                                                 value={formData.edi_clearinghouse_url}
                                                 onChange={(e) => setFormData({ ...formData, edi_clearinghouse_url: e.target.value })}
+                                                maxLength={500}
                                                 error={fieldErrors.edi_clearinghouse_url}
                                             />
                                         </div>
@@ -600,10 +659,14 @@ export default function OrganizationProfilePage() {
                                                 label="SFTP Host"
                                                 value={formData.edi_sftp_host}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_host: e.target.value })}
+                                                maxLength={200}
                                                 error={fieldErrors.edi_sftp_host}
                                             />
                                             <Input
                                                 label="SFTP Port"
+                                                type="number"
+                                                min={1}
+                                                max={65535}
                                                 value={formData.edi_sftp_port}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_port: e.target.value })}
                                                 error={fieldErrors.edi_sftp_port}
@@ -614,6 +677,7 @@ export default function OrganizationProfilePage() {
                                                 label="SFTP Username"
                                                 value={formData.edi_sftp_username}
                                                 onChange={(e) => setFormData({ ...formData, edi_sftp_username: e.target.value })}
+                                                maxLength={100}
                                                 error={fieldErrors.edi_sftp_username}
                                             />
                                         </div>
@@ -630,6 +694,16 @@ export default function OrganizationProfilePage() {
                                 )}
                             </div>
 
+                            {Object.keys(fieldErrors).length > 0 && (
+                                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                    <p className="font-medium mb-1">Please fix the following errors:</p>
+                                    <ul className="list-disc list-inside space-y-0.5">
+                                        {Object.entries(fieldErrors).map(([field, msg]) => (
+                                            <li key={field}><span className="capitalize">{field.replace(/_/g, " ")}</span>: {msg}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                             <div className="flex gap-3 pt-4 border-t border-slate-200">
                                 <Button onClick={handleSave} loading={saving}>
                                     Save Changes

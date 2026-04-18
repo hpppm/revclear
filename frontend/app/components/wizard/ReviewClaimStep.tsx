@@ -147,9 +147,13 @@ export default function ReviewClaimStep({
             onClaimChange?.(preview);
             updateValidation(preview);
             await hydrateWithDefaults(preview);
-        } catch {
+        } catch (err: unknown) {
+            const msg =
+                typeof err === "object" && err !== null && "response" in err
+                    ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? null)
+                    : null;
             logger.error("Failed to build claim preview");
-            setError("Failed to build claim preview. Please try again.");
+            setError(msg ?? "Failed to build claim preview. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -253,30 +257,30 @@ export default function ReviewClaimStep({
         if (billingNameErr) errs.push(billingNameErr);
 
         if (!current.billing_provider?.npi) {
-            errs.push("Billing provider NPI is required.");
+            errs.push("Billing provider NPI is required — set Billing NPI in Organization settings.");
         } else if (!isValidNpiFormat(current.billing_provider.npi)) {
             errs.push("Billing provider NPI must be exactly 10 digits.");
         }
         if (!current.billing_provider?.tax_id) {
-            errs.push("Billing provider Tax ID is required.");
+            errs.push("Billing provider Tax ID is required — set Billing Tax ID in Organization settings.");
         } else if (!isValidTaxIdFormat(current.billing_provider.tax_id)) {
             errs.push("Billing provider Tax ID must be in format XX-XXXXXXX.");
         }
 
         const renderingNameErr = nameError(current.rendering_provider?.name, "Rendering provider name");
-        if (renderingNameErr) errs.push(renderingNameErr);
+        if (renderingNameErr) errs.push(renderingNameErr + " — set your name in Profile settings.");
 
         if (!current.rendering_provider?.npi) {
-            errs.push("Rendering provider NPI is required.");
+            errs.push("Rendering provider NPI is required — set your Individual NPI in Profile settings.");
         } else if (!isValidNpiFormat(current.rendering_provider.npi)) {
             errs.push("Rendering provider NPI must be exactly 10 digits.");
         }
 
         const facilityNameErr = nameError(current.service_facility?.name, "Service facility name");
-        if (facilityNameErr) errs.push(facilityNameErr);
+        if (facilityNameErr) errs.push(facilityNameErr + " — set Organization Name in Organization settings.");
 
         if (!current.service_facility?.npi) {
-            errs.push("Service facility NPI is required.");
+            errs.push("Service facility NPI is required — set Organization NPI in Organization settings.");
         } else if (!isValidNpiFormat(current.service_facility.npi)) {
             errs.push("Service facility NPI must be exactly 10 digits.");
         }
@@ -581,6 +585,9 @@ export default function ReviewClaimStep({
 
     const relationship = (claim.subscriber_relationship || claim.subscriber?.relationship || "self").toLowerCase();
     const isSelfSubscriber = relationship === "self";
+    const isSelfPay = (claim.insurance_provider as string | null | undefined)?.toUpperCase() === "SELF_PAY" ||
+        (claim.payer_name as string | null | undefined)?.toUpperCase() === "SELF_PAY" ||
+        !(claim.payer_name || claim.payer_id);
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
@@ -655,35 +662,48 @@ export default function ReviewClaimStep({
                             </select>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                            label="Payer Name"
-                            value={claim.payer_name || ""}
-                            onChange={(e) => handleUpdateClaim("payer_name", e.target.value)}
-                        />
-                        <Input
-                            label="Payer ID"
-                            value={claim.payer_id || ""}
-                            onChange={(e) => handleUpdateClaim("payer_id", e.target.value)}
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Input
-                            label="Policy Number"
-                            value={claim.insurance_policy_number || ""}
-                            onChange={(e) => handleUpdateClaim("insurance_policy_number", e.target.value)}
-                        />
-                        <Input
-                            label="Member ID"
-                            value={claim.subscriber?.member_id || ""}
-                            onChange={(e) => handleUpdateNested("subscriber", "member_id", e.target.value)}
-                        />
-                        <Input
-                            label="Group Number"
-                            value={claim.subscriber?.group_number || ""}
-                            onChange={(e) => handleUpdateNested("subscriber", "group_number", e.target.value)}
-                        />
-                    </div>
+                    {isSelfPay ? (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                            Self-pay encounter — no payer or insurance information required.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input
+                                    label="Payer Name"
+                                    value={claim.payer_name || ""}
+                                    onChange={(e) => handleUpdateClaim("payer_name", e.target.value)}
+                                    maxLength={100}
+                                />
+                                <Input
+                                    label="Payer ID"
+                                    value={claim.payer_id || ""}
+                                    onChange={(e) => handleUpdateClaim("payer_id", e.target.value)}
+                                    maxLength={50}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Input
+                                    label="Policy Number"
+                                    value={claim.insurance_policy_number || ""}
+                                    onChange={(e) => handleUpdateClaim("insurance_policy_number", e.target.value)}
+                                    maxLength={50}
+                                />
+                                <Input
+                                    label="Member ID"
+                                    value={claim.subscriber?.member_id || ""}
+                                    onChange={(e) => handleUpdateNested("subscriber", "member_id", e.target.value)}
+                                    maxLength={50}
+                                />
+                                <Input
+                                    label="Group Number"
+                                    value={claim.subscriber?.group_number || ""}
+                                    onChange={(e) => handleUpdateNested("subscriber", "group_number", e.target.value)}
+                                    maxLength={50}
+                                />
+                            </div>
+                        </>
+                    )}
                 </div>
             </Card>
 
@@ -699,11 +719,13 @@ export default function ReviewClaimStep({
                             value={relationship}
                             onChange={(e) => handleUpdateClaim("subscriber_relationship", e.target.value)}
                             placeholder="self / spouse / child / other"
+                            maxLength={20}
                         />
                         <Input
                             label="Subscriber Name"
                             value={claim.subscriber?.full_name || ""}
                             onChange={(e) => handleUpdateNested("subscriber", "full_name", e.target.value)}
+                            maxLength={100}
                         />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
@@ -715,8 +737,9 @@ export default function ReviewClaimStep({
                             <Input
                                 label="Gender"
                                 value={claim.subscriber?.gender || ""}
-                                onChange={(e) => handleUpdateNested("subscriber", "gender", e.target.value)}
+                                onChange={(e) => handleUpdateNested("subscriber", "gender", e.target.value.replace(/[^MFUOmfuo]/g, "").slice(0, 1).toUpperCase())}
                                 placeholder="M / F / U / O"
+                                maxLength={1}
                             />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -724,33 +747,40 @@ export default function ReviewClaimStep({
                                 label="Member ID"
                                 value={claim.subscriber?.member_id || ""}
                                 onChange={(e) => handleUpdateNested("subscriber", "member_id", e.target.value)}
+                                maxLength={50}
                             />
                             <Input
                                 label="Group Number"
                                 value={claim.subscriber?.group_number || ""}
                                 onChange={(e) => handleUpdateNested("subscriber", "group_number", e.target.value)}
+                                maxLength={50}
                             />
                         </div>
                         <Input
                             label="Address Street"
                             value={claim.subscriber?.address_street || claim.subscriber?.address?.street || ""}
                             onChange={(e) => handleUpdateNested("subscriber", "address_street", e.target.value)}
+                            maxLength={200}
                         />
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Input
                                 label="City"
                                 value={claim.subscriber?.address_city || claim.subscriber?.address?.city || ""}
                                 onChange={(e) => handleUpdateNested("subscriber", "address_city", e.target.value)}
+                                maxLength={100}
                             />
                             <Input
                                 label="State"
                                 value={claim.subscriber?.address_state || claim.subscriber?.address?.state || ""}
-                                onChange={(e) => handleUpdateNested("subscriber", "address_state", e.target.value)}
+                                onChange={(e) => handleUpdateNested("subscriber", "address_state", e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase())}
+                                maxLength={2}
                             />
                             <Input
                                 label="ZIP"
                                 value={claim.subscriber?.address_zip || claim.subscriber?.address?.zip || ""}
-                                onChange={(e) => handleUpdateNested("subscriber", "address_zip", e.target.value)}
+                                onChange={(e) => handleUpdateNested("subscriber", "address_zip", e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
+                                maxLength={10}
+                                inputMode="numeric"
                             />
                         </div>
                     </div>
@@ -776,6 +806,7 @@ export default function ReviewClaimStep({
                             value={claim.billing_provider?.name || ""}
                             onChange={(e) => handleUpdateNested("billing_provider", "name", e.target.value)}
                             onBlur={() => markTouched("billing_name")}
+                            maxLength={200}
                             error={showErr("billing_name") ? (!claim.billing_provider?.name ? "Required" : !nameHasLetters(claim.billing_provider.name) ? "Must contain letters (e.g. \"Clinic Name\")" : undefined) : undefined}
                         />
                     </div>
@@ -785,8 +816,11 @@ export default function ReviewClaimStep({
                                 label="NPI (Type 1) *"
                                 placeholder="10-digit NPI"
                                 value={claim.billing_provider?.npi || ""}
-                                onChange={(e) => handleUpdateNested("billing_provider", "npi", e.target.value)}
+                                onChange={(e) => handleUpdateNested("billing_provider", "npi", e.target.value.replace(/\D/g, "").slice(0, 10))}
                                 onBlur={() => markTouched("billing_npi")}
+                                maxLength={10}
+                                inputMode="numeric"
+                                pattern="\d{10}"
                                 error={showErr("billing_npi") && (!claim.billing_provider?.npi || !/^\d{10}$/.test(claim.billing_provider.npi)) ? (!claim.billing_provider?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
                             />
                         </div>
@@ -794,7 +828,9 @@ export default function ReviewClaimStep({
                             label="Organization NPI (Type 2, optional)"
                             placeholder="10-digit NPI"
                             value={claim.billing_provider?.organization_npi || claim.billing_provider?.clinic_npi || ""}
-                            onChange={(e) => handleUpdateNested("billing_provider", "organization_npi", e.target.value)}
+                            onChange={(e) => handleUpdateNested("billing_provider", "organization_npi", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            maxLength={10}
+                            inputMode="numeric"
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -806,21 +842,25 @@ export default function ReviewClaimStep({
                                 value={claim.billing_provider?.tax_id || ""}
                                 onChange={(e) => handleUpdateNested("billing_provider", "tax_id", e.target.value)}
                                 onBlur={() => markTouched("billing_tax_id")}
+                                maxLength={12}
                                 error={showErr("billing_tax_id") ? (!claim.billing_provider?.tax_id ? "Required" : !isValidTaxIdFormat(claim.billing_provider.tax_id) ? "Must be in format XX-XXXXXXX (e.g. 12-3456789)" : undefined) : undefined}
                             />
                         </div>
                         <Input
                             label="Phone (optional)"
+                            type="tel"
                             placeholder="e.g. 555-867-5309"
                             value={claim.billing_provider?.phone || ""}
                             onChange={(e) => handleUpdateNested("billing_provider", "phone", e.target.value)}
+                            maxLength={15}
                         />
                     </div>
                     <Input
                         label="Taxonomy Code"
                         placeholder="e.g. 207Q00000X"
                         value={claim.billing_provider?.taxonomy_code || ""}
-                        onChange={(e) => handleUpdateNested("billing_provider", "taxonomy_code", e.target.value)}
+                        onChange={(e) => handleUpdateNested("billing_provider", "taxonomy_code", e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 10).toUpperCase())}
+                        maxLength={10}
                     />
                     <div ref={billingStreetRef}>
                         <Input
@@ -829,6 +869,7 @@ export default function ReviewClaimStep({
                             value={claim.billing_provider?.street || claim.billing_provider?.address?.street || ""}
                             onChange={(e) => handleUpdateNested("billing_provider", "street", e.target.value)}
                             onBlur={() => markTouched("billing_street")}
+                            maxLength={200}
                             error={showErr("billing_street") && !claim.billing_provider?.street && !claim.billing_provider?.address?.street ? "Required" : undefined}
                         />
                     </div>
@@ -840,6 +881,7 @@ export default function ReviewClaimStep({
                                 value={claim.billing_provider?.city || claim.billing_provider?.address?.city || ""}
                                 onChange={(e) => handleUpdateNested("billing_provider", "city", e.target.value)}
                                 onBlur={() => markTouched("billing_city")}
+                                maxLength={100}
                                 error={showErr("billing_city") && !claim.billing_provider?.city && !claim.billing_provider?.address?.city ? "Required" : undefined}
                             />
                         </div>
@@ -848,8 +890,9 @@ export default function ReviewClaimStep({
                                 label="State *"
                                 placeholder="CA"
                                 value={claim.billing_provider?.state || claim.billing_provider?.address?.state || ""}
-                                onChange={(e) => handleUpdateNested("billing_provider", "state", e.target.value)}
+                                onChange={(e) => handleUpdateNested("billing_provider", "state", e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase())}
                                 onBlur={() => markTouched("billing_state")}
+                                maxLength={2}
                                 error={showErr("billing_state") && !claim.billing_provider?.state && !claim.billing_provider?.address?.state ? "Required" : undefined}
                             />
                         </div>
@@ -858,8 +901,10 @@ export default function ReviewClaimStep({
                                 label="ZIP *"
                                 placeholder="XXXXX"
                                 value={claim.billing_provider?.zip || claim.billing_provider?.address?.zip || ""}
-                                onChange={(e) => handleUpdateNested("billing_provider", "zip", e.target.value)}
+                                onChange={(e) => handleUpdateNested("billing_provider", "zip", e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
                                 onBlur={() => markTouched("billing_zip")}
+                                maxLength={10}
+                                inputMode="numeric"
                                 error={showErr("billing_zip") && !claim.billing_provider?.zip && !claim.billing_provider?.address?.zip ? "Required" : undefined}
                             />
                         </div>
@@ -880,6 +925,7 @@ export default function ReviewClaimStep({
                             value={claim.service_facility?.name || ""}
                             onChange={(e) => handleUpdateNested("service_facility", "name", e.target.value)}
                             onBlur={() => markTouched("facility_name")}
+                            maxLength={200}
                             error={showErr("facility_name") ? (!claim.service_facility?.name ? "Required" : !nameHasLetters(claim.service_facility.name) ? "Must contain letters (e.g. \"City Clinic\")" : undefined) : undefined}
                         />
                     </div>
@@ -889,21 +935,28 @@ export default function ReviewClaimStep({
                                 label="Facility NPI *"
                                 placeholder="10-digit NPI"
                                 value={claim.service_facility?.npi || ""}
-                                onChange={(e) => handleUpdateNested("service_facility", "npi", e.target.value)}
+                                onChange={(e) => handleUpdateNested("service_facility", "npi", e.target.value.replace(/\D/g, "").slice(0, 10))}
                                 onBlur={() => markTouched("facility_npi")}
+                                maxLength={10}
+                                inputMode="numeric"
+                                pattern="\d{10}"
                                 error={showErr("facility_npi") && (!claim.service_facility?.npi || !/^\d{10}$/.test(claim.service_facility.npi)) ? (!claim.service_facility?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
                             />
                         </div>
                         <Input
                             label="Place of Service (POS)"
                             value={claim.service_facility?.place_of_service || "11"}
-                            onChange={(e) => handleUpdateNested("service_facility", "place_of_service", e.target.value)}
+                            onChange={(e) => handleUpdateNested("service_facility", "place_of_service", e.target.value.replace(/\D/g, "").slice(0, 2))}
+                            maxLength={2}
+                            inputMode="numeric"
                         />
                     </div>
                     <Input
                         label="Phone (optional)"
+                        type="tel"
                         value={claim.service_facility?.phone || ""}
                         onChange={(e) => handleUpdateNested("service_facility", "phone", e.target.value)}
+                        maxLength={15}
                     />
                     <div ref={serviceStreetRef}>
                         <Input
@@ -912,6 +965,7 @@ export default function ReviewClaimStep({
                             value={claim.service_facility?.street || claim.service_facility?.address?.street || ""}
                             onChange={(e) => handleUpdateNested("service_facility", "street", e.target.value)}
                             onBlur={() => markTouched("facility_street")}
+                            maxLength={200}
                             error={showErr("facility_street") && !claim.service_facility?.street && !claim.service_facility?.address?.street ? "Required" : undefined}
                         />
                     </div>
@@ -923,6 +977,7 @@ export default function ReviewClaimStep({
                                 value={claim.service_facility?.city || claim.service_facility?.address?.city || ""}
                                 onChange={(e) => handleUpdateNested("service_facility", "city", e.target.value)}
                                 onBlur={() => markTouched("facility_city")}
+                                maxLength={100}
                                 error={showErr("facility_city") && !claim.service_facility?.city && !claim.service_facility?.address?.city ? "Required" : undefined}
                             />
                         </div>
@@ -931,8 +986,9 @@ export default function ReviewClaimStep({
                                 label="State *"
                                 placeholder="CA"
                                 value={claim.service_facility?.state || claim.service_facility?.address?.state || ""}
-                                onChange={(e) => handleUpdateNested("service_facility", "state", e.target.value)}
+                                onChange={(e) => handleUpdateNested("service_facility", "state", e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase())}
                                 onBlur={() => markTouched("facility_state")}
+                                maxLength={2}
                                 error={showErr("facility_state") && !claim.service_facility?.state && !claim.service_facility?.address?.state ? "Required" : undefined}
                             />
                         </div>
@@ -941,8 +997,10 @@ export default function ReviewClaimStep({
                                 label="ZIP *"
                                 placeholder="XXXXX"
                                 value={claim.service_facility?.zip || claim.service_facility?.address?.zip || ""}
-                                onChange={(e) => handleUpdateNested("service_facility", "zip", e.target.value)}
+                                onChange={(e) => handleUpdateNested("service_facility", "zip", e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
                                 onBlur={() => markTouched("facility_zip")}
+                                maxLength={10}
+                                inputMode="numeric"
                                 error={showErr("facility_zip") && !claim.service_facility?.zip && !claim.service_facility?.address?.zip ? "Required" : undefined}
                             />
                         </div>
@@ -963,6 +1021,7 @@ export default function ReviewClaimStep({
                             value={claim.rendering_provider?.name || ""}
                             onChange={(e) => handleUpdateNested("rendering_provider", "name", e.target.value)}
                             onBlur={() => markTouched("rendering_name")}
+                            maxLength={200}
                             error={showErr("rendering_name") ? (!claim.rendering_provider?.name ? "Required" : !nameHasLetters(claim.rendering_provider.name) ? "Must contain letters (e.g. \"Dr. Smith\")" : undefined) : undefined}
                         />
                     </div>
@@ -971,8 +1030,11 @@ export default function ReviewClaimStep({
                             label="Rendering Provider NPI *"
                             placeholder="10-digit NPI"
                             value={claim.rendering_provider?.npi || ""}
-                            onChange={(e) => handleUpdateNested("rendering_provider", "npi", e.target.value)}
+                            onChange={(e) => handleUpdateNested("rendering_provider", "npi", e.target.value.replace(/\D/g, "").slice(0, 10))}
                             onBlur={() => markTouched("rendering_npi")}
+                            maxLength={10}
+                            inputMode="numeric"
+                            pattern="\d{10}"
                             error={showErr("rendering_npi") && (!claim.rendering_provider?.npi || !/^\d{10}$/.test(claim.rendering_provider.npi)) ? (!claim.rendering_provider?.npi ? "Required" : "Must be exactly 10 digits") : undefined}
                         />
                     </div>
@@ -980,7 +1042,8 @@ export default function ReviewClaimStep({
                         label="Taxonomy Code"
                         placeholder="e.g. 207Q00000X"
                         value={claim.rendering_provider?.taxonomy_code || ""}
-                        onChange={(e) => handleUpdateNested("rendering_provider", "taxonomy_code", e.target.value)}
+                        onChange={(e) => handleUpdateNested("rendering_provider", "taxonomy_code", e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 10).toUpperCase())}
+                        maxLength={10}
                     />
                 </div>
             </Card>
@@ -1062,14 +1125,16 @@ export default function ReviewClaimStep({
                                     <td className="px-4 py-3">
                                         <Input
                                             value={item.procedure_code}
-                                            onChange={(e) => handleUpdateLineItem(index, "procedure_code", e.target.value)}
+                                            onChange={(e) => handleUpdateLineItem(index, "procedure_code", e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 5).toUpperCase())}
                                             className="font-mono"
+                                            maxLength={5}
                                         />
                                     </td>
                                     <td className="px-4 py-3">
                                         <Input
                                             value={item.description || ""}
                                             onChange={(e) => handleUpdateLineItem(index, "description", e.target.value)}
+                                            maxLength={200}
                                         />
                                     </td>
                                     <td className="px-4 py-3">
@@ -1093,6 +1158,8 @@ export default function ReviewClaimStep({
                                             value={item.units}
                                             onChange={(e) => handleUpdateLineItem(index, "units", Number(e.target.value))}
                                             className="text-right"
+                                            min={1}
+                                            max={999}
                                         />
                                     </td>
                                     <td className="px-4 py-3 text-right">
@@ -1101,6 +1168,8 @@ export default function ReviewClaimStep({
                                             value={item.charge_amount}
                                             onChange={(e) => handleUpdateLineItem(index, "charge_amount", Number(e.target.value))}
                                             className="text-right"
+                                            min={0}
+                                            step={0.01}
                                             error={submitAttempt != null && submitAttempt > 0 && !!hasZeroCharge ? "Must be > $0" : undefined}
                                         />
                                     </td>

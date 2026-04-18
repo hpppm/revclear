@@ -140,7 +140,15 @@ class GenkitCodeMatcher implements CodeMatcher {
       logger.info({ redactionCount }, "code-matcher: PHI redacted before AI call");
     }
 
-    const retrieval = await searchMedicalCodes(scrubbedNote, 5);
+    let retrieval: Awaited<ReturnType<typeof searchMedicalCodes>>;
+    try {
+      retrieval = await searchMedicalCodes(scrubbedNote, 5);
+    } catch (pineconeError) {
+      logger.warn({ err: (pineconeError as Error)?.message }, "code-matcher: pinecone search failed, continuing without retrieval");
+      retrieval = { icdMatches: [], cptMatches: [] };
+    }
+
+    const pineconeHasResults = retrieval.icdMatches.length > 0 || retrieval.cptMatches.length > 0;
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
     const prompt = buildCodeSelectionPrompt(scrubbedNote, icdCandidates, cptCandidates);
@@ -166,7 +174,13 @@ class GenkitCodeMatcher implements CodeMatcher {
     }
 
     const normalized = normalizeCodeOutput(rawOutput);
-    const filtered = filterToCandidates(normalized, candidateMaps);
+    // Use Pinecone candidates to re-rank/validate when available, but fall back
+    // to raw LLM output when the catalog is too small to cover the encounter.
+    const candidateFiltered = pineconeHasResults ? filterToCandidates(normalized, candidateMaps) : null;
+    const hasCandidateResults =
+      candidateFiltered &&
+      (candidateFiltered.icdMatches.length > 0 || candidateFiltered.cptMatches.length > 0);
+    const filtered = hasCandidateResults ? candidateFiltered : normalized;
     logger.info(
       {
         icdCount: filtered.icdMatches.length,
