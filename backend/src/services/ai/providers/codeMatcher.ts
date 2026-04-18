@@ -5,6 +5,7 @@ import { buildCodeSelectionPrompt } from "../prompts";
 import { searchMedicalCodes } from "../pinecone";
 import { appConfig } from "../../../config/appConfig";
 import { scrubPHI } from "../../../utils/textScrubber";
+import { callGroqForJson } from "./groqFallback";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -60,7 +61,7 @@ const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
   return {
     icdMatches: normalizeMatches(parsed.icdMatches),
     cptMatches: normalizeMatches(parsed.cptMatches),
-    model_version: appConfig.ai.geminiModel,
+    model_version: safeString(parsed.model_version) || appConfig.ai.geminiModel,
   };
 };
 
@@ -136,29 +137,42 @@ class GenkitCodeMatcher implements CodeMatcher {
     // SECURITY: Scrub structured PHI before sending to external AI endpoint.
     const { scrubbed: scrubbedNote, redactionCount } = scrubPHI(input.soapNote);
     if (redactionCount > 0) {
-      logger.info({ redactionCount }, "code-matcher: PHI redacted before Gemini call");
+      logger.info({ redactionCount }, "code-matcher: PHI redacted before AI call");
     }
 
     const retrieval = await searchMedicalCodes(scrubbedNote, 5);
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
+    const prompt = buildCodeSelectionPrompt(scrubbedNote, icdCandidates, cptCandidates);
 
-    const result = await ai.generate({
-      model: defaultTextModel,
-      prompt: buildCodeSelectionPrompt(scrubbedNote, icdCandidates, cptCandidates),
-      output: { schema: SoapToCodesOutputSchema },
-      config: {
-        temperature: 0.2,
-      },
-    });
+    let rawOutput: unknown;
+    let providerUsed: "gemini" | "groq" = "gemini";
 
-    const normalized = normalizeCodeOutput(result.output ?? {});
+    try {
+      const result = await ai.generate({
+        model: defaultTextModel,
+        prompt,
+        output: { schema: SoapToCodesOutputSchema },
+        config: { temperature: 0.2 },
+      });
+      rawOutput = result.output ?? {};
+    } catch (geminiError) {
+      logger.warn(
+        { provider: "gemini", err: (geminiError as Error)?.message },
+        "code-matcher: gemini failed, attempting groq fallback",
+      );
+      rawOutput = await callGroqForJson(prompt, { operation: "codes" });
+      providerUsed = "groq";
+    }
+
+    const normalized = normalizeCodeOutput(rawOutput);
     const filtered = filterToCandidates(normalized, candidateMaps);
     logger.info(
       {
         icdCount: filtered.icdMatches.length,
         cptCount: filtered.cptMatches.length,
         model: filtered.model_version,
+        provider: providerUsed,
       },
       "code matching completed",
     );

@@ -5,7 +5,8 @@
       "Bash(grep -rn \"error.response\\\\|error.message\\\\|throw error\" \"C:\\\\Projects\\\\Dev\\\\revclear\\\\frontend\\\\app\\\\lib\\\\api\"\" --include=\"*.ts \")",
       "Bash(npm run:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(npm ls *)"
     ]
   }
 }
