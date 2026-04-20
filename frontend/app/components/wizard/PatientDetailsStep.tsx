@@ -151,6 +151,7 @@ export default function PatientDetailsStep({
         value={metadata.chiefComplaint || ""}
         onChange={(e) => setMetadata({ ...metadata, chiefComplaint: e.target.value })}
         placeholder="e.g., Headache and nausea"
+        maxLength={500}
       />
 
       <label className="space-y-1 block">
@@ -258,6 +259,7 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.full_name || ""}
                   onChange={(e) => handleSubscriberChange("full_name", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("full_name", e.target.value)}
+                  maxLength={100}
                   error={subscriberFieldErrors.full_name || encounterFieldErrors?.subscriber_full_name}
                 />
                 <Input
@@ -284,10 +286,12 @@ export default function PatientDetailsStep({
                 />
                 <Input
                   label="Subscriber Phone *"
+                  type="tel"
                   value={metadata.subscriber?.phone || ""}
                   onChange={(e) => handleSubscriberChange("phone", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("phone", e.target.value)}
                   placeholder="(555) 123-4567"
+                  maxLength={15}
                   error={subscriberFieldErrors.phone || encounterFieldErrors?.subscriber_phone}
                 />
               </div>
@@ -297,6 +301,7 @@ export default function PatientDetailsStep({
                 onChange={(e) => handleSubscriberChange("address_street", e.target.value)}
                 onBlur={(e) => handleSubscriberBlur("address_street", e.target.value)}
                 placeholder="123 Main St"
+                maxLength={200}
                 error={subscriberFieldErrors.address_street || encounterFieldErrors?.subscriber_address_street}
               />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -305,6 +310,7 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.address_city || ""}
                   onChange={(e) => handleSubscriberChange("address_city", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("address_city", e.target.value)}
+                  maxLength={100}
                   error={subscriberFieldErrors.address_city || encounterFieldErrors?.subscriber_address_city}
                 />
                 <Input
@@ -318,8 +324,10 @@ export default function PatientDetailsStep({
                 <Input
                   label="ZIP"
                   value={metadata.subscriber?.address_zip || ""}
-                  onChange={(e) => handleSubscriberChange("address_zip", e.target.value)}
+                  onChange={(e) => handleSubscriberChange("address_zip", e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
                   onBlur={(e) => handleSubscriberBlur("address_zip", e.target.value)}
+                  maxLength={10}
+                  inputMode="numeric"
                   error={subscriberFieldErrors.address_zip}
                   disabled={!canEditPatientData}
                 />
@@ -330,6 +338,7 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.member_id || ""}
                   onChange={(e) => handleSubscriberChange("member_id", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("member_id", e.target.value)}
+                  maxLength={50}
                   error={subscriberFieldErrors.member_id || encounterFieldErrors?.subscriber_member_id}
                 />
                 <Input
@@ -337,6 +346,7 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.group_number || ""}
                   onChange={(e) => handleSubscriberChange("group_number", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("group_number", e.target.value)}
+                  maxLength={50}
                   error={subscriberFieldErrors.group_number}
                 />
               </div>

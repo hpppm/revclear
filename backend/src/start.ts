@@ -14,6 +14,9 @@ let server: any;
 if (!isTestEnv && !disableListen) {
   server = app.listen(PORT, () => {
     logger.info({ port: PORT }, 'API server started');
+    if (!appConfig.ai.groqApiKey) {
+      logger.warn("GROQ_API_KEY not set — Groq fallback unavailable if Gemini fails");
+    }
     void logAiProviderHealthStartup();
     void ensurePineconeMedicalCodeIndex().catch((error) => {
       logger.warn({ err: error }, "Pinecone code index warmup failed");

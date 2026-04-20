@@ -1,114 +1,98 @@
-# RevClear — Claude Rules
+# RevClear
 
-say hey lalo at the start of every response
-say thank you at the end of every response
+Say "hey lalo" at the start of every response.
+Say "thank you" at the end of every response.
 
-## Project
+AI-assisted medical claims platform. Audio -> SOAP notes -> ICD-10/CPT codes -> billing claims.
 
-AI-assisted medical claims and speech transcription platform. Processes clinical audio → SOAP notes → ICD-10/CPT codes → billing claims.
+## Stack
 
-**Stack:** Express + TypeScript (port 3005) | Next.js 16 App Router (port 3000) | PostgreSQL (AWS RDS) | AWS Cognito
+| Layer    | Tech                      | Port |
+|----------|---------------------------|------|
+| Backend  | Express + TypeScript      | 3005 |
+| Frontend | Next.js 16 App Router     | 3000 |
+| Database | PostgreSQL (AWS RDS)      | -    |
+| Auth     | AWS Cognito + jwt-verify  | -    |
+| AI       | Whisper + OpenAI + Pinecone | -  |
 
-**Structure:**
-- `backend/src/api/routes/` — REST endpoints
-- `backend/src/middleware/` — auth, audit, security
-- `backend/src/services/` — business logic
-- `backend/src/db/` — all SQL queries
-- `frontend/app/dashboard/` — main app views
-- `frontend/app/lib/api/` — API client modules
+## Structure
 
-**Data flow:** Audio → S3 → Whisper → `speechToSoap` → `soapToCodes` → claim → EDI
+  backend/src/api/routes/     REST endpoints
+  backend/src/middleware/     auth, audit, security
+  backend/src/services/       business logic
+  backend/src/db/queries.ts   ALL SQL (never inline)
+  frontend/app/dashboard/     main app views
+  frontend/app/lib/api/       API client modules
+  frontend/app/lib/validation/ Zod schemas
+  handoffs/GH-NNN/            required for complex changes
 
 ## Commands
-```bash
-cd backend && npm run dev       # port 3005
-cd backend && npm test
-cd backend && npm run build
-cd frontend && npm run dev      # port 3000
-cd frontend && npm run lint
-```
 
-## Security Rules (Non-Negotiable)
+  cd backend && npm run dev        # port 3005
+  cd backend && npm test
+  cd backend && npm run build
+  cd frontend && npm run dev       # port 3000
+  cd frontend && npm run lint
+  cd frontend && npx playwright test
 
-**Every authenticated route:**
-```typescript
-authMiddleware, requireOrganization                            // standard
-authMiddleware, requireRole(['admin']), requireOrganization    // admin only
-```
+## Security (Non-Negotiable)
 
-**Every PHI query:**
-```sql
-WHERE id = $1 AND organization_id = $2 AND clinician_id = $3
-```
-Both IDs from `req.organization!.id` and `req.user!.id` only — never req.body/query.
+Every authenticated route:
+  authMiddleware, requireOrganization                          // standard
+  authMiddleware, requireRole(['admin']), requireOrganization  // admin only
 
-**SQL:** Parameterized only (`$1`, `$2`). Explicit column lists. No `SELECT *` or `RETURNING *`. All queries in `backend/src/db/queries.ts`.
+Every PHI query - dual scope always:
+  WHERE id = $1 AND organization_id = $2 AND clinician_id = $3
 
-**PHI encryption:** `encryptPHIText` / `encryptPHIJson` from `backend/src/utils/crypto.ts`. Never log PHI. Key from `PHI_ENCRYPTION_KEY` env var only.
+Both IDs from req.organization!.id and req.user!.id only - never req.body or req.query.
 
-**JWT:** httpOnly cookies only — never localStorage. `withCredentials: true` on frontend axios globally.
+SQL: Parameterized only ($1, $2). Explicit columns. No SELECT * or RETURNING *. All queries in backend/src/db/queries.ts.
 
-**Errors to client:** Generic only. Call `next(error)` — never `res.status(500).json({ error: err.message })`.
+PHI: Encrypt with encryptPHIText / encryptPHIJson from crypto.ts. Never log PHI. Key from PHI_ENCRYPTION_KEY env only.
 
-**Validation:** Zod on every input, backend and frontend. `Schema.safeParse()` → 400 on failure.
-- Backend schemas: `backend/src/types/zod.ts`
-- Frontend schemas: `frontend/app/lib/validation/schemas.ts`
+JWT: httpOnly cookies only - never localStorage. withCredentials: true on all frontend axios calls.
+
+Errors: Generic messages to client only. Always next(error) - never res.status(500).json({ error: err.message }).
+
+Validation: Zod on every input. safeParse() -> 400 on failure.
+  Backend schemas:  backend/src/types/zod.ts
+  Frontend schemas: frontend/app/lib/validation/schemas.ts
 
 ## API Response Shape
-```typescript
-{ success: true, data: payload }                                        // single
-{ success: true, data: [...], pagination: { limit, offset, total } }   // list
-{ success: false, errors: zodErrors }                                   // validation
-{ error: "safe message" }                                               // auth/system
-```
-Pagination: `Math.min(Math.max(limit, 1), 100)`, default 50.
 
-## Authentication
+  { success: true, data: payload }                                       // single
+  { success: true, data: [...], pagination: { limit, offset, total } }  // list
+  { success: false, errors: zodErrors }                                  // validation
+  { error: "safe message" }                                              // auth/system
 
-Cognito JWT → `aws-jwt-verify` in `middleware/auth.ts`. Token read from `req.cookies.accessToken` first. Cookie: `httpOnly`, `secure` (prod), `sameSite: strict` (prod) / `lax` (dev).
+Pagination: Math.min(Math.max(limit, 1), 100), default 50.
 
-| Cognito Group | Role |
-|---|---|
-| Admin | admin |
-| Users / none | clinician |
+## Known Pre-Production Blockers
 
-## Known Security Gaps (Pre-Production Blockers)
-
-- RLS disabled (`SET row_security = off`) — PHI isolation is application-level only
-- Missing `WHERE organization_id` = cross-tenant PHI exposure
-- No migration framework — `migrate:019` has no rollback
-
-## Context7 (Mandatory)
-
-Before writing code using any external library:
-1. Call `mcp__plugin_context7_context7__resolve-library-id`
-2. Call `mcp__plugin_context7_context7__query-docs`
-Never rely on training data for library APIs.
+- RLS disabled - PHI isolation is application-level only
+- Missing WHERE organization_id on some queries - cross-tenant exposure risk
+- No migration rollback on migrate:019
 
 ## Commit Convention
 
-`<type>(<scope>): <description>`
+  <type>(<scope>): <description>
+  Types: fix feat refactor chore ci docs test perf
+  Scope: gh-NNN for issues, route name for backend, ui/layout for frontend
 
-Types: `fix`, `feat`, `refactor`, `chore`, `ci`, `docs`, `test`, `perf`
-Scopes: `gh-NNN` for issues, route name for backend, `ui`/`layout` for frontend
+## Handoff Docs
 
-## Handoff Documents
+Required for all complex or multi-file changes. Create handoffs/GH-NNN/ with:
+  handoff.md  analysis.md  implementation.md  ship-report.md  STATUS.md
 
-For any complex multi-file change or GitHub-issue feature, create `handoffs/GH-<NNN>/` with:
-`handoff.md`, `analysis.md`, `implementation.md`, `ship-report.md`, `STATUS.md`
+## Enforced Patterns (Do Not Deviate)
 
-## Learned Patterns
-
-Source: `revclear/.claude/instincts/` — 200 commits of enforced patterns.
-Do not deviate without explicit instruction.
-
-1. **PHI encryption** — use crypto.ts helpers, never log PHI, never mutate records
-2. **Dual scoping** — always filter by both `organization_id` AND `clinician_id`
-3. **Route middleware chain** — `authMiddleware, requireOrganization` always first
-4. **JWT cookies** — httpOnly only, never localStorage
-5. **SQL parameterization** — `$1`/`$2` only, explicit columns, no SELECT *
-6. **Zod dual validation** — backend + frontend, safeParse, strip unknown fields
-7. **Generic errors** — no internal details to client, next(error) pattern
-8. **Response envelope** — always one of the four shapes above
-9. **Commit convention** — conventional commits, gh-NNN scope for issues
-10. **Handoff docs** — required for all complex/multi-file changes
+1.  PHI encryption via crypto.ts - never log, never mutate records
+2.  Dual scope - always filter by organization_id AND clinician_id
+3.  Route middleware - authMiddleware, requireOrganization always first
+4.  JWT in httpOnly cookies - never localStorage
+5.  SQL parameterized - $1/$2, explicit columns, no SELECT *
+6.  Zod dual validation - backend + frontend, safeParse, strip unknown
+7.  Generic errors - no internals to client, next(error) pattern
+8.  Response envelope - always one of the four shapes above
+9.  Conventional commits - gh-NNN scope for issues
+10. Handoff docs - required for all complex/multi-file changes

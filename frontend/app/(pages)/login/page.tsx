@@ -234,7 +234,7 @@ export default function LoginPage() {
                       <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 break-all select-all">{totpSecret}</code>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-400">Loading QR code...</p>
+                    <p className="text-sm text-gray-400">Loading QR code…</p>
                   )}
                 </>
               ) : (

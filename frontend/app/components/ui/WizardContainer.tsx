@@ -11,9 +11,10 @@ interface WizardStep {
     description?: string;
     component: React.ReactNode;
     canGoNext?: boolean;
+    canGoNextHint?: string;
     canGoBack?: boolean;
-    onNext?: () => Promise<void> | void; // Called before advancing
-    onBack?: () => Promise<void> | void; // Called before going back
+    onNext?: () => Promise<void> | void;
+    onBack?: () => Promise<void> | void;
 }
 
 interface WizardContainerProps {
@@ -153,10 +154,15 @@ export default function WizardContainer({
                         <div className="text-sm text-slate-500">
                             Step {currentStep + 1} of {steps.length}
                         </div>
-                        <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
-                            {isLastStep ? "Submit for Review" : "Continue"}
-                            {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4  inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
-                        </Button>
+                        <div className="flex flex-col items-end gap-1">
+                            {!canGoNext && currentStepData.canGoNextHint && (
+                                <p className="text-xs text-amber-600">{currentStepData.canGoNextHint}</p>
+                            )}
+                            <Button onClick={handleNext} disabled={!canGoNext} loading={isTransitioning}>
+                                {isLastStep ? "Submit for Review" : "Continue"}
+                                {!isLastStep && <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4  inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                            </Button>
+                        </div>
                     </div>
                 </Card>
             </div>

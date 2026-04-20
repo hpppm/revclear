@@ -7,10 +7,10 @@ import { sendError } from "../../utils/httpResponses";
 import { soapToCodes } from "../../services/ai/soapToCodes";
 import { getFlatCptCodes } from "../../data/ai/cptDataLoader";
 import { query } from "../../config/db";
-import { getLatestAiResultByFlowNames } from "../../db/queries";
+import { getLatestAiResultByFlowNames, createAiResult } from "../../db/queries";
 import { getAuthenticatedUser } from "../../utils/auth";
 import { getUserOrganization } from "../../utils/organization";
-import { SOAP_READ_FLOW_NAMES } from "../../constants/aiFlows";
+import { SOAP_READ_FLOW_NAMES, AI_FLOW_NAMES } from "../../constants/aiFlows";
 import logger from "../../utils/logger";
 
 const router = Router();
@@ -169,6 +169,15 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
     // Call soapToCodes flow
     const matches = await soapToCodes({ soapNote: soapText });
 
+    // Persist AI suggestions for audit trail — separate from user-confirmed selections
+    void createAiResult({
+      encounter_id: encounterId,
+      flow_name: AI_FLOW_NAMES.codeMatch,
+      input_json: { soapLength: soapText.length },
+      output_json: { icdMatches: matches.icdMatches, cptMatches: matches.cptMatches },
+      model_version: matches.model_version,
+    }).catch((err) => logger.warn({ err }, "codes/match: failed to persist ai_result"));
+
     return res.json({
       success: true,
       data: {
@@ -177,6 +186,7 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
       },
       metadata: {
         model_version: matches.model_version,
+        pineconeDegraded: (matches as any).pineconeDegraded ?? false,
       },
     });
   } catch (error: any) {

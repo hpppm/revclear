@@ -435,11 +435,8 @@ export default function EncounterPage() {
       form.append("audio", file);
       form.append("encounterId", currentEncounterId);
 
-      const uploadRes = await apiClient.transcribe.uploadAudio(form, true);
-      const key = uploadRes.data?.s3Key;
-
-      if (!key) throw new Error("Failed to get S3 key from upload");
-      setS3Key(key);
+      await apiClient.transcribe.uploadAudio(form, true);
+      setS3Key("uploaded");
     } catch (err: any) {
       logger.error("Save failed", err);
       setTranscribeError(
@@ -463,7 +460,6 @@ export default function EncounterPage() {
 
     try {
       const res = await apiClient.transcribe.transcribeS3({
-        s3Key: s3Key,
         encounterId: encounterId,
       });
 
@@ -476,8 +472,14 @@ export default function EncounterPage() {
       setSoap(receivedSoap);
     } catch (err: any) {
       logger.error("Transcription failed", err);
+      const isTimeout =
+        err?.name === "CanceledError" ||
+        err?.code === "ERR_CANCELED" ||
+        err?.message === "canceled";
       setTranscribeError(
-        err?.response?.data?.error || err?.message || "Transcription failed.",
+        isTimeout
+          ? "Transcription timed out. Please try again."
+          : err?.response?.data?.error || err?.message || "Transcription failed.",
       );
     } finally {
       setTranscribing(false);
@@ -742,7 +744,8 @@ export default function EncounterPage() {
           onSelectionChange={handleCodesSelected}
         />
       ),
-      canGoNext: true, // Codes are optional
+      canGoNext: selectedCodes.length > 0,
+      canGoNextHint: selectedCodes.length === 0 ? "Select at least one ICD-10 or CPT code to continue" : undefined,
       onNext: async () => {
         await handleSaveCodes();
       },

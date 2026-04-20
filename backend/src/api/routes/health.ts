@@ -50,6 +50,14 @@ router.get("/ai", authMiddleware, async (_req, res) => {
           healthy: report.model.healthy,
           message: report.model.message,
         },
+        groq: {
+          healthy: report.groq.healthy,
+          message: report.groq.message,
+        },
+        whisper: {
+          healthy: report.whisper.healthy,
+          message: report.whisper.message,
+        },
         pinecone: {
           healthy: report.pinecone.healthy,
           message: report.pinecone.message,
