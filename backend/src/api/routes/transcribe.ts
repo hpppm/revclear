@@ -46,10 +46,6 @@ const TranscriptUpdateSchema = z.object({
   text: z.string().min(1, "Transcript text is required"),
 });
 
-const S3FallbackSchema = z.object({
-  encounterId: z.string().min(1, "Encounter ID is required"),
-  s3Key: z.string().min(1, "s3Key is required"),
-});
 
 // SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
 // access within the same organization. Using OR would allow any clinician in the
@@ -155,7 +151,6 @@ router.post(
           return res.json({
             success: true,
             message: "Audio uploaded successfully.",
-            s3Key: s3Key,
           });
         }
 
@@ -163,25 +158,10 @@ router.post(
         audioFilename = req.file.originalname || audioFilename;
         audioContentType = req.file.mimetype || audioContentType;
       } else {
-        const parsed = S3FallbackSchema.safeParse(req.body);
-        if (!parsed.success) {
-          return sendError(
-            res,
-            400,
-            "Audio file is required, or provide valid s3Key + encounterId",
-            parsed.error.issues,
-          );
-        }
-
-        s3Key = parsed.data.s3Key;
-
-        // SECURITY: Verify the provided s3Key matches the audio_key stored on
-        // latest uploaded audio record for the encounter. This prevents an
-        // authenticated user from supplying an arbitrary S3 path belonging to
-        // another user's encounter.
-        const storedAudioKey = await getLatestEncounterAudioKey(encounterId);
-        if (!storedAudioKey || storedAudioKey !== s3Key) {
-          return sendError(res, 403, "S3 key does not match encounter audio");
+        // Look up the S3 key server-side — never accept it from the client.
+        s3Key = await getLatestEncounterAudioKey(encounterId) ?? "";
+        if (!s3Key) {
+          return sendError(res, 404, "No uploaded audio found for this encounter.");
         }
 
         const s3Object = await getFile(s3Key);
@@ -287,8 +267,7 @@ router.post(
 
       res.json({
         success: true,
-        message: `Transcription complete.`,
-        s3Key: s3Key,
+        message: "Transcription complete.",
         transcript: transcript,
       });
     } catch (error: any) {

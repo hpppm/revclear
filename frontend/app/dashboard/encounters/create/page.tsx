@@ -435,11 +435,8 @@ export default function EncounterPage() {
       form.append("audio", file);
       form.append("encounterId", currentEncounterId);
 
-      const uploadRes = await apiClient.transcribe.uploadAudio(form, true);
-      const key = uploadRes.data?.s3Key;
-
-      if (!key) throw new Error("Failed to get S3 key from upload");
-      setS3Key(key);
+      await apiClient.transcribe.uploadAudio(form, true);
+      setS3Key("uploaded");
     } catch (err: any) {
       logger.error("Save failed", err);
       setTranscribeError(
@@ -463,7 +460,6 @@ export default function EncounterPage() {
 
     try {
       const res = await apiClient.transcribe.transcribeS3({
-        s3Key: s3Key,
         encounterId: encounterId,
       });
 

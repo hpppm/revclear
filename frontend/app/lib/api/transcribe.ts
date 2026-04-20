@@ -37,7 +37,6 @@ function validateAudioFile(file: File): void {
 }
 
 const TranscribeS3Schema = z.object({
-  s3Key: z.string().min(1),
   encounterId: z.string().uuid("Invalid encounter ID format"),
 });
 
