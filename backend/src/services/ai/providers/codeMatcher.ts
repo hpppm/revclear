@@ -18,6 +18,7 @@ export const SoapToCodesOutputSchema = z.object({
   icdMatches: z.array(CodeMatchSchema).max(3),
   cptMatches: z.array(CodeMatchSchema).max(3),
   model_version: z.string(),
+  pineconeDegraded: z.boolean().optional(),
 });
 
 export type CodeMatchResult = z.infer<typeof SoapToCodesOutputSchema>;
