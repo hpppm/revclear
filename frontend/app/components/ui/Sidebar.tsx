@@ -25,7 +25,7 @@ const navItems = [
         ),
     },
     {
-        label: "Encounters",
+        label: "Visits",
         href: "/dashboard/encounters",
         icon: (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,7 +93,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             className="rounded-lg"
                             labelClassName="text-sm tracking-tight"
                         />
-                        <span className="text-base font-semibold tracking-tight">RevClear</span>
+                        <div className="flex flex-col leading-tight">
+                            <span className="font-display text-base font-semibold tracking-tight">RevClear</span>
+                            <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Visits = Encounters</span>
+                        </div>
                     </div>
                 )}
                 <button
@@ -101,11 +104,20 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors ${
                         collapsed ? "mx-auto" : ""
                     }`}
-                    aria-label="Toggle sidebar"
+                    aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                    title={collapsed ? "Expand navigation" : "Collapse navigation"}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
+                    {collapsed ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5v14" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-7 7 7 7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 5v14" />
+                        </svg>
+                    )}
                 </button>
             </div>
 
