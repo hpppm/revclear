@@ -26,6 +26,16 @@ from pathlib import Path
 
 from flask import Flask, request, jsonify
 from faster_whisper import WhisperModel
+from huggingface_hub import login
+
+# ---------------------------------------------------------------------------
+# HuggingFace authentication
+# ---------------------------------------------------------------------------
+_hf_token = os.getenv("HF_TOKEN")
+if _hf_token:
+    login(token=_hf_token)
+else:
+    print("WARNING: HF_TOKEN not set, using unauthenticated HuggingFace access")
 
 # ---------------------------------------------------------------------------
 # Config
