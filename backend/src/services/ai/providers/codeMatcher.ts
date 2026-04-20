@@ -141,11 +141,13 @@ class GenkitCodeMatcher implements CodeMatcher {
     }
 
     let retrieval: Awaited<ReturnType<typeof searchMedicalCodes>>;
+    let pineconeDegraded = false;
     try {
       retrieval = await searchMedicalCodes(scrubbedNote, 5);
     } catch (pineconeError) {
       logger.warn({ err: (pineconeError as Error)?.message }, "code-matcher: pinecone search failed, continuing without retrieval");
       retrieval = { icdMatches: [], cptMatches: [] };
+      pineconeDegraded = true;
     }
 
     const pineconeHasResults = retrieval.icdMatches.length > 0 || retrieval.cptMatches.length > 0;
@@ -187,10 +189,11 @@ class GenkitCodeMatcher implements CodeMatcher {
         cptCount: filtered.cptMatches.length,
         model: filtered.model_version,
         provider: providerUsed,
+        pineconeDegraded,
       },
       "code matching completed",
     );
-    return SoapToCodesOutputSchema.parse(filtered);
+    return { ...SoapToCodesOutputSchema.parse(filtered), pineconeDegraded };
   }
 }
 
