@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/app/context/AuthContext";
+import ServerActionErrorBoundary from "@/app/components/ServerActionErrorBoundary";
 
 export default function RootLayout({
   children,
@@ -19,7 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-body antialiased" suppressHydrationWarning>
-        <AuthProvider>{children}</AuthProvider>
+        <ServerActionErrorBoundary>
+          <AuthProvider>{children}</AuthProvider>
+        </ServerActionErrorBoundary>
       </body>
     </html>
   );

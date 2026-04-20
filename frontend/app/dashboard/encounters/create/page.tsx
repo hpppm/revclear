@@ -476,8 +476,14 @@ export default function EncounterPage() {
       setSoap(receivedSoap);
     } catch (err: any) {
       logger.error("Transcription failed", err);
+      const isTimeout =
+        err?.name === "CanceledError" ||
+        err?.code === "ERR_CANCELED" ||
+        err?.message === "canceled";
       setTranscribeError(
-        err?.response?.data?.error || err?.message || "Transcription failed.",
+        isTimeout
+          ? "Transcription timed out. Please try again."
+          : err?.response?.data?.error || err?.message || "Transcription failed.",
       );
     } finally {
       setTranscribing(false);

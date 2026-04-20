@@ -60,8 +60,13 @@ export const transcribeApi = {
     );
   },
 
-  transcribeS3: (data: TranscribeS3Payload) =>
-    api.post("/transcribe", TranscribeS3Schema.parse(data)),
+  transcribeS3: (data: TranscribeS3Payload) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90_000);
+    return api
+      .post("/transcribe", TranscribeS3Schema.parse(data), { signal: controller.signal })
+      .finally(() => clearTimeout(timer));
+  },
 
   getByEncounterId: (encounterId: string) =>
     api.get(`/transcribe/${encodeURIComponent(z.string().uuid().parse(encounterId))}`),
