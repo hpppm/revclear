@@ -45,6 +45,9 @@ MODEL_SIZE = os.environ.get("WHISPER_MODEL", "tiny")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
 API_KEY = os.environ.get("AI_SERVER_API_KEY", "")
+if not API_KEY:
+    print("FATAL: AI_SERVER_API_KEY is not set. Refusing to start.")
+    sys.exit(1)
 
 ALLOWED_EXTENSIONS = {
     ".mp3", ".mp4", ".mpeg", ".mpga", ".m4a",
@@ -143,7 +146,7 @@ def transcribe():
 
     except Exception as exc:
         log.exception("Transcription error: %s", exc)
-        return jsonify({"error": "Transcription failed", "detail": str(exc)}), 500
+        return jsonify({"error": "Transcription failed"}), 500
 
     finally:
         if tmp_path and os.path.exists(tmp_path):

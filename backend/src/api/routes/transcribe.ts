@@ -7,14 +7,13 @@ import { IdParamSchema } from "../../types/zod";
 import FormData from "form-data";
 import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
+import { requireOrganization } from "../../middleware/context";
 import { requireCapability } from "../../middleware/authorization";
 import { getFile, uploadFile } from "../../config/awsS3";
 import { createAudioRecord, createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
-import { getAuthenticatedUser } from "../../utils/auth";
 import { query } from "../../config/db";
 import { AI_FLOW_NAMES } from "../../constants/aiFlows";
-import { getUserOrganization } from "../../utils/organization";
 import logger from "../../utils/logger";
 
 const router = Router();
@@ -51,20 +50,6 @@ const S3FallbackSchema = z.object({
   encounterId: z.string().min(1, "Encounter ID is required"),
   s3Key: z.string().min(1, "s3Key is required"),
 });
-
-const requireUser = async (req: any, res: any) => {
-  const user = await getAuthenticatedUser(req);
-  if (!user) {
-    res.status(401).json({ success: false, message: "User not authenticated" });
-    return null;
-  }
-  return user;
-};
-
-const getRequestOrganizationId = async (userId: string) => {
-  const organization = await getUserOrganization(userId);
-  return organization?.id;
-};
 
 // SECURITY: Require BOTH clinician_id AND organization_id — prevents cross-clinician
 // access within the same organization. Using OR would allow any clinician in the
@@ -109,14 +94,14 @@ const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
 router.post(
   "/",
   authMiddleware,
+  requireOrganization,
   requireCapability("use_clinical_ai"),
   json(),
   upload.single("audio"),
   async (req, res) => {
     try {
-      const user = await requireUser(req, res);
-      if (!user) return;
-      const organizationId = await getRequestOrganizationId(user.id);
+      const user = req.user!;
+      const organizationId = req.organization!.id;
 
       const parsedId = IdParamSchema.safeParse({ id: req.body.encounterId });
       if (!parsedId.success) {
@@ -130,6 +115,7 @@ router.post(
         user.id,
         organizationId,
       );
+
       if (!ownsEncounter) {
         return sendError(res, 404, "Encounter not found");
       }
@@ -150,7 +136,7 @@ router.post(
         // audio lives under its own prefix, matching the IAM policy condition
         // on the Cognito Identity Pool role.
         const originalExtension = path.extname(req.file.originalname);
-        const orgPrefix = organizationId ?? "unscoped";
+        const orgPrefix = organizationId;
         s3Key = `audio/${orgPrefix}/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
 
         // Upload to S3
@@ -316,11 +302,10 @@ router.post(
  * @route GET /api/transcribe/audio/:encounterId
  * @description Gets a presigned URL for the audio file
  */
-router.get("/audio/:encounterId", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
+router.get("/audio/:encounterId", authMiddleware, requireOrganization, requireCapability("use_clinical_ai"), async (req, res) => {
   try {
-    const user = await requireUser(req, res);
-    if (!user) return;
-    const organizationId = await getRequestOrganizationId(user.id);
+    const user = req.user!;
+    const organizationId = req.organization!.id;
 
     const { encounterId } = req.params;
 
@@ -358,11 +343,10 @@ router.get("/audio/:encounterId", authMiddleware, requireCapability("use_clinica
  * @route GET /api/transcribe/:encounterId
  * @description Retrieves the transcript for a given encounter
  */
-router.get("/:encounterId", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
+router.get("/:encounterId", authMiddleware, requireOrganization, requireCapability("use_clinical_ai"), async (req, res) => {
   try {
-    const user = await requireUser(req, res);
-    if (!user) return;
-    const organizationId = await getRequestOrganizationId(user.id);
+    const user = req.user!;
+    const organizationId = req.organization!.id;
 
     const { encounterId } = req.params;
 
@@ -396,11 +380,10 @@ router.get("/:encounterId", authMiddleware, requireCapability("use_clinical_ai")
  * @route PUT /api/transcribe/:encounterId
  * @description Save/overwrite transcript text for an encounter (e.g., after manual edits).
  */
-router.put("/:encounterId", authMiddleware, requireCapability("use_clinical_ai"), json(), async (req, res) => {
+router.put("/:encounterId", authMiddleware, requireOrganization, requireCapability("use_clinical_ai"), json(), async (req, res) => {
   try {
-    const user = await requireUser(req, res);
-    if (!user) return;
-    const organizationId = await getRequestOrganizationId(user.id);
+    const user = req.user!;
+    const organizationId = req.organization!.id;
 
     const { encounterId } = req.params;
     if (!encounterId) {
