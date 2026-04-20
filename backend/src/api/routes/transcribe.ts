@@ -207,14 +207,22 @@ router.post(
         contentType: audioContentType,
       });
 
-      const response = await fetch(AI_TRANSCRIBE_URL, {
-        method: "POST",
-        body: formData as any,
-        headers: {
-          ...formData.getHeaders(),
-          ...(AI_SERVER_API_KEY ? { "X-API-Key": AI_SERVER_API_KEY } : {}),
-        },
-      });
+      const aiAbort = new AbortController();
+      const aiTimeout = setTimeout(() => aiAbort.abort(), 110_000);
+      let response: Awaited<ReturnType<typeof fetch>>;
+      try {
+        response = await fetch(AI_TRANSCRIBE_URL, {
+          method: "POST",
+          body: formData as any,
+          headers: {
+            ...formData.getHeaders(),
+            ...(AI_SERVER_API_KEY ? { "X-API-Key": AI_SERVER_API_KEY } : {}),
+          },
+          signal: aiAbort.signal,
+        });
+      } finally {
+        clearTimeout(aiTimeout);
+      }
 
       logger.debug({ status: response.status }, "transcribe: AI server response");
 
@@ -237,7 +245,7 @@ router.post(
 
       const transcript = {
         text: aiResponse.transcript,
-        model_version: "whisper-base",
+        model_version: `whisper-${process.env.WHISPER_MODEL ?? "tiny"}`,
       };
 
       logger.info(
