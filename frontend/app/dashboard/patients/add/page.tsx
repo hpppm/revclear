@@ -13,6 +13,13 @@ import { CreatePatientFormSchema } from "@/app/lib/validation/schemas";
 
 import BackButton from "@/app/components/ui/BackButton";
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 const US_STATES = [
   { value: "", label: "Select state" },
   { value: "AL", label: "AL — Alabama" }, { value: "AK", label: "AK — Alaska" },
@@ -262,7 +269,7 @@ export default function AddPatientPage() {
                   label="Phone *"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => handleChange("phone", e.target.value)}
+                  onChange={(e) => handleChange("phone", formatPhone(e.target.value))}
                   onBlur={(e) => handleBlur("phone", e.target.value, e.target as HTMLElement)}
                   placeholder="(555) 123-4567"
                   required
