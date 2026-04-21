@@ -43,6 +43,28 @@ export const countRecentOtpCodes = async (email: string): Promise<number> => {
 };
 
 // ------------------------------------------------------------
+// Email verification
+// ------------------------------------------------------------
+
+export const setEmailVerified = async (email: string): Promise<void> => {
+  await query(
+    `UPDATE users SET email_verified = TRUE WHERE email = $1`,
+    [email],
+  );
+};
+
+// Sets email_verified=true for an existing user, or creates the user row
+// with email_verified=true when Cognito auto-confirmed and no row exists yet.
+export const upsertUserEmailVerified = async (email: string, cognitoId: string): Promise<void> => {
+  await query(
+    `INSERT INTO users (cognito_id, email, email_verified)
+     VALUES ($1, $2, TRUE)
+     ON CONFLICT (email) DO UPDATE SET email_verified = TRUE`,
+    [cognitoId, email],
+  );
+};
+
+// ------------------------------------------------------------
 // Active sessions (concurrent session limiting)
 // ------------------------------------------------------------
 
