@@ -12,18 +12,6 @@ export const metadata: Metadata = {
 import { AuthProvider } from "@/app/context/AuthContext";
 import ServerActionErrorBoundary from "@/app/components/ServerActionErrorBoundary";
 
-const bodyFont = Source_Sans_3({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
-});
-
-const displayFont = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["500", "600", "700"],
-});
-
 export default function RootLayout({
   children,
 }: Readonly<{
