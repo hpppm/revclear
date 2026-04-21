@@ -187,6 +187,10 @@ const OTP_PENDING_COOKIE_OPTIONS = {
   maxAge: 10 * 60 * 1000, // 10 minutes — matches OTP expiry
 };
 
+const OTP_FLOW_COOKIE_OPTIONS = {
+  ...OTP_PENDING_COOKIE_OPTIONS,
+};
+
 // Helper: sets all auth cookies and registers the active session after a successful login.
 async function establishSession(
   res: import("express").Response,
@@ -239,6 +243,7 @@ router.post("/signup", async (req, res) => {
 
     res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
     res.cookie("otpNextStep", "MFA_SETUP", OTP_PENDING_COOKIE_OPTIONS);
+    res.cookie("otpFlow", "signup", OTP_FLOW_COOKIE_OPTIONS);
     res.cookie("otpPendingCreds", encryptForCookie(password), OTP_PENDING_COOKIE_OPTIONS);
 
     return res.status(200).json({
@@ -266,6 +271,7 @@ router.post("/signup", async (req, res) => {
           await sendOTPEmail(email, otp);
           res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
           res.cookie("otpNextStep", "MFA_SETUP", OTP_PENDING_COOKIE_OPTIONS);
+          res.cookie("otpFlow", "signup", OTP_FLOW_COOKIE_OPTIONS);
           res.cookie("otpPendingCreds", encryptForCookie(password), OTP_PENDING_COOKIE_OPTIONS);
           return res.status(200).json({
             message: "A new verification code has been sent to your email.",
@@ -339,6 +345,13 @@ router.post("/signin", async (req, res) => {
       await saveOTP(email, otp);
       await sendOTPEmail(email, otp);
       res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+      const challengeName = response.ChallengeName as string | undefined;
+      const nextChallenge =
+        challengeName === "MFA_SETUP" || challengeName === "SOFTWARE_TOKEN_MFA"
+          ? challengeName
+          : "MFA_SETUP";
+      res.cookie("otpNextStep", nextChallenge, OTP_PENDING_COOKIE_OPTIONS);
+      res.cookie("otpFlow", "signin", OTP_FLOW_COOKIE_OPTIONS);
       if (response.Session) {
         res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
       }
@@ -438,9 +451,11 @@ router.post("/verify-otp", async (req, res) => {
   }
 
   const nextStep: string = req.cookies?.otpNextStep ?? "AUTHENTICATED";
+  const otpFlow: string = req.cookies?.otpFlow ?? "unknown";
 
   res.clearCookie("otpPending", CLEAR_COOKIE_OPTIONS);
   res.clearCookie("otpNextStep", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("otpFlow", CLEAR_COOKIE_OPTIONS);
 
   // Signup path — auto-signin to trigger MFA_SETUP challenge, then hand off to TOTP setup.
   if (nextStep === "MFA_SETUP") {
@@ -488,8 +503,17 @@ router.post("/verify-otp", async (req, res) => {
     }
   }
 
-  // MFA path (signin with existing TOTP) — mfaSession already set by signin route.
-  return res.status(200).json({ message: "OTP verified", step: "verify-mfa", challengeName: nextStep });
+  // Signin path — continue with the challenge captured during /signin.
+  if (otpFlow === "signin") {
+    const challengeName =
+      nextStep === "MFA_SETUP" || nextStep === "SOFTWARE_TOKEN_MFA"
+        ? nextStep
+        : "MFA_SETUP";
+    return res.status(200).json({ message: "OTP verified", step: "verify-mfa", challengeName });
+  }
+
+  // Fallback to setup challenge when flow marker is unavailable.
+  return res.status(200).json({ message: "OTP verified", step: "verify-mfa", challengeName: "MFA_SETUP" });
 });
 
 const ResendOtpSchema = z.object({
@@ -505,6 +529,12 @@ router.post("/resend-otp", async (req, res) => {
     return res.status(400).json({ success: false, errors: parsed.error.issues });
   }
   const { email } = parsed.data;
+
+  // Product requirement: resend OTP is only available during signup verification.
+  const otpFlow = req.cookies?.otpFlow;
+  if (otpFlow !== "signup") {
+    return res.status(403).json({ error: "Resend code is only available during account signup." });
+  }
 
   // If cookie is present, it must match the requested email to prevent resending
   // to a different address than the one that started the OTP session.

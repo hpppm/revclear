@@ -162,7 +162,7 @@ function LoginPageInner() {
 
         if (errorData?.step === "confirm-email") {
           router.push(
-            `/confirm-email?email=${encodeURIComponent(errorData.email ?? email)}&banner=unverified`,
+            `/confirm-email?email=${encodeURIComponent(errorData.email ?? email)}&banner=unverified&source=signin`,
           );
           return;
         }

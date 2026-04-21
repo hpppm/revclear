@@ -9,8 +9,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 import Button from "@/app/components/ui/Button";
 
-const RESEND_COOLDOWN_S = 60;
-
 function getApiError(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;
   const data = (error as any)?.response?.data;
@@ -27,18 +25,11 @@ function VerifyOtpPageInner() {
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [formError, setFormError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
 
   const code = digits.join("");
   const isComplete = code.length === 6 && /^\d{6}$/.test(code);
@@ -92,17 +83,6 @@ function VerifyOtpPageInner() {
       setFormError(getApiError(error) ?? "Invalid or expired code. Please try again.");
     } finally {
       setIsLoading(false);
-    }
-  }
-
-  async function handleResend() {
-    if (cooldown > 0 || !email) return;
-    setFormError("");
-    try {
-      await apiClient.auth.resendOtp({ email });
-      setCooldown(RESEND_COOLDOWN_S);
-    } catch (error: unknown) {
-      setFormError(getApiError(error) ?? "Could not resend code. Please try again.");
     }
   }
 
@@ -193,17 +173,6 @@ function VerifyOtpPageInner() {
               >
                 Continue
               </Button>
-
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={cooldown > 0}
-                className="w-full text-center text-sm text-gray-500 hover:text-[var(--brand-600)] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              >
-                {cooldown > 0
-                  ? `Resend code in ${cooldown}s`
-                  : "Resend code"}
-              </button>
 
               <button
                 type="button"

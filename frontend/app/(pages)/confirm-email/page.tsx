@@ -24,6 +24,8 @@ function ConfirmEmailPageInner() {
 
   const email = params.get("email") ?? "";
   const showUnverifiedBanner = params.get("banner") === "unverified";
+  const source = params.get("source");
+  const allowResend = source === "signup";
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [formError, setFormError] = useState("");
@@ -201,16 +203,18 @@ function ConfirmEmailPageInner() {
                 Activate account
               </Button>
 
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={cooldown > 0}
-                className="w-full text-center text-sm text-gray-500 hover:text-[var(--brand-600)] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              >
-                {cooldown > 0
-                  ? `Resend code in ${cooldown}s`
-                  : "Didn't receive it? Resend code"}
-              </button>
+              {allowResend && (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={cooldown > 0}
+                  className="w-full text-center text-sm text-gray-500 hover:text-[var(--brand-600)] disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                >
+                  {cooldown > 0
+                    ? `Resend code in ${cooldown}s`
+                    : "Didn't receive it? Resend code"}
+                </button>
+              )}
 
               <button
                 type="button"
