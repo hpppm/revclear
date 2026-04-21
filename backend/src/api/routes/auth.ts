@@ -319,6 +319,9 @@ router.post("/signin", async (req, res) => {
       await saveOTP(email, otp);
       await sendOTPEmail(email, otp);
       res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+      // Signin unverified path has no stashed Cognito session — the MFA_SETUP
+      // challenge must be re-triggered after the user completes confirm-email.
+      // Store the Cognito session if available so verify-otp can continue.
       if (response.Session) {
         res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
       }
