@@ -1,9 +1,33 @@
 import { Router } from "express";
 import { z } from "zod";
+import { createHmac, timingSafeEqual } from "crypto";
 import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
+import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser } from "../../db/queries";
 import logger from "../../utils/logger";
+
+const SESSION_START_COOKIE = "sessionStart";
+
+function signSessionStart(ts: number): string {
+  const mac = createHmac("sha256", appConfig.session.secret)
+    .update(String(ts))
+    .digest("hex");
+  return `${ts}.${mac}`;
+}
+
+function verifySessionStart(value: string): number | null {
+  const dot = value.lastIndexOf(".");
+  if (dot === -1) return null;
+  const ts = Number(value.slice(0, dot));
+  const mac = value.slice(dot + 1);
+  if (!Number.isFinite(ts)) return null;
+  const expected = createHmac("sha256", appConfig.session.secret)
+    .update(String(ts))
+    .digest("hex");
+  const safe = timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"));
+  return safe ? ts : null;
+}
 
 const SignupSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -98,6 +122,16 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches Cognito refresh token validity
 };
 
+// Signed cookie tracking absolute session start time for 8h HIPAA timeout.
+// maxAge matches refresh token so it outlives the access token.
+const SESSION_START_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: cookieSameSite,
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 // Server-issued marker that this browser session completed MFA challenge
 // via /verify-mfa or /verify-totp-setup. Used as a fallback when Cognito
 // access tokens omit/reshape amr claims.
@@ -105,6 +139,31 @@ const MFA_VERIFIED_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
   maxAge: 60 * 60 * 1000, // 1 hour — matches Cognito access token lifetime
 };
+
+// Helper: sets all auth cookies and registers the active session after a successful login.
+async function establishSession(
+  res: import("express").Response,
+  accessToken: string,
+  refreshToken: string | undefined,
+  userId: string,
+  jti: string,
+): Promise<void> {
+  res.cookie("accessToken", accessToken, COOKIE_OPTIONS);
+  if (refreshToken) {
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
+  }
+  res.cookie(SESSION_START_COOKIE, signSessionStart(Date.now()), SESSION_START_COOKIE_OPTIONS);
+  await upsertActiveSession(userId, jti);
+}
+
+// Helper: clears all auth-related cookies.
+function clearAllAuthCookies(res: import("express").Response): void {
+  res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie(SESSION_START_COOKIE, CLEAR_COOKIE_OPTIONS);
+}
 
 // Sign-up route
 router.post("/signup", async (req, res) => {
@@ -226,35 +285,18 @@ router.post("/signin", async (req, res) => {
       });
     }
 
-    // Set httpOnly cookies for secure token storage
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie(
-        "refreshToken",
-        authResult.RefreshToken,
-        REFRESH_COOKIE_OPTIONS,
-      );
-    }
-
-    // Tokens are already set in httpOnly cookies above.
-    // NEVER return raw tokens in the response body — the frontend can
-    // base64-decode any JWT to read all Cognito claims (sub, username, device_key, etc).
-    const autoLoggedIn = !!(authResult?.AccessToken);
+    // Decode jti + sub from access token (no verify needed — Cognito just issued it)
+    const [, payloadB64] = authResult.AccessToken.split(".");
+    const tokenPayload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
+    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayload.sub, tokenPayload.jti);
 
     res.status(200).json({
       message: "User signed in successfully.",
-      autoLoggedIn,
+      autoLoggedIn: true,
     });
   } catch (error: any) {
     // Ensure a failed sign-in does not leave stale auth/mfa cookies in place.
-    // This prevents confusing follow-up 401s (for example /me requiring MFA)
-    // caused by previous sessions.
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+    clearAllAuthCookies(res);
 
     // Log the actual Cognito error server-side (never sent to client)
     logger.warn(
@@ -286,18 +328,21 @@ router.post("/signout", async (req, res) => {
   // GlobalSignOut (Cognito) invalidates all devices and can take several seconds —
   // fire it with a 5-second timeout and let it fail silently if it's slow or the
   // token is already expired. The cookie clear is the security-critical action.
-  res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-  res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-  res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+  clearAllAuthCookies(res);
 
   const accessToken = req.cookies?.accessToken;
   if (accessToken) {
+    try {
+      const [, payloadB64So] = accessToken.split(".");
+      const { jti: soJti, sub: soSub } = JSON.parse(Buffer.from(payloadB64So, "base64url").toString());
+      if (soJti) await deleteActiveSession(soJti);
+      else if (soSub) await deleteAllSessionsForUser(soSub);
+    } catch { /* token malformed — cookies already cleared */ }
+
     const timeout = new Promise<void>((_, reject) =>
       setTimeout(() => reject(new Error("signout timeout")), 5000),
     );
-    Promise.race([AuthService.signout(accessToken), timeout]).catch(() => {
-      // Token may be expired or Cognito may be slow — cookies already cleared
-    });
+    Promise.race([AuthService.signout(accessToken), timeout]).catch(() => {});
   }
 
   res.status(200).json({ message: "Signed out successfully." });
@@ -325,16 +370,11 @@ router.post("/verify-mfa", async (req, res) => {
       return res.status(401).json({ error: "MFA challenge incomplete. Please sign in again." });
     }
 
-    // Clear MFA session — it's single-use and now consumed.
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
 
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
-    }
-
+    const [, payloadB64Mfa] = authResult.AccessToken.split(".");
+    const tokenPayloadMfa = JSON.parse(Buffer.from(payloadB64Mfa, "base64url").toString());
+    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayloadMfa.sub, tokenPayloadMfa.jti);
     res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
 
     res.status(200).json({ message: "MFA verified successfully.", autoLoggedIn: true });
@@ -425,13 +465,9 @@ router.post("/verify-totp-setup", async (req, res) => {
 
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
 
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
-    }
-
+    const [, payloadB64Totp] = authResult.AccessToken.split(".");
+    const tokenPayloadTotp = JSON.parse(Buffer.from(payloadB64Totp, "base64url").toString());
+    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayloadTotp.sub, tokenPayloadTotp.jti);
     res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
 
     res.status(200).json({ message: "Authenticator app linked successfully.", autoLoggedIn: true });
@@ -443,31 +479,32 @@ router.post("/verify-totp-setup", async (req, res) => {
 
 // Refresh token route
 router.post("/refresh-token", async (req, res) => {
-  // Read refresh token from httpOnly cookie only — never from the request body.
-  // Accepting it via req.body would allow scripts (which cannot read httpOnly
-  // cookies) to inject an arbitrary token, defeating the cookie-only transport.
   const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
     return res.status(400).json({ error: "Refresh token is required." });
   }
+
+  // Enforce absolute 8h session timeout — reject refresh if session is too old.
+  const sessionStartRaw = req.cookies?.[SESSION_START_COOKIE];
+  if (sessionStartRaw) {
+    const loginTime = verifySessionStart(sessionStartRaw);
+    if (!loginTime || Date.now() - loginTime > appConfig.session.maxAgeMs) {
+      clearAllAuthCookies(res);
+      return res.status(401).json({ error: "Session expired. Please sign in again." });
+    }
+  }
+
   try {
     const response = await AuthService.refreshToken(refreshToken);
     const authResult = response.AuthenticationResult;
 
-    // Set new access token cookie
     if (authResult?.AccessToken) {
       res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
     }
 
-    // Do NOT return raw tokens in the body — cookie is the only token transport.
-    res.status(200).json({
-      message: "Tokens refreshed successfully.",
-    });
+    res.status(200).json({ message: "Tokens refreshed successfully." });
   } catch (error: any) {
-    // Clear cookies on refresh failure
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+    clearAllAuthCookies(res);
     res.status(401).json({ error: "Invalid or expired refresh token." });
   }
 });

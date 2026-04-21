@@ -2,6 +2,36 @@ import { query } from "../config/db";
 import { decryptPHIJsonFields, encryptPHIJson } from "../utils/crypto";
 import logger from "../utils/logger";
 
+// ------------------------------------------------------------
+// Active sessions (concurrent session limiting)
+// ------------------------------------------------------------
+
+export const upsertActiveSession = async (userId: string, jti: string): Promise<void> => {
+  // Delete all existing sessions for this user, then insert the new one.
+  // This enforces a single concurrent session per user.
+  await query(`DELETE FROM active_sessions WHERE user_id = $1`, [userId]);
+  await query(
+    `INSERT INTO active_sessions (user_id, jti) VALUES ($1, $2)`,
+    [userId, jti],
+  );
+};
+
+export const validateActiveSession = async (userId: string, jti: string): Promise<boolean> => {
+  const result = await query(
+    `SELECT 1 FROM active_sessions WHERE user_id = $1 AND jti = $2`,
+    [userId, jti],
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+};
+
+export const deleteActiveSession = async (jti: string): Promise<void> => {
+  await query(`DELETE FROM active_sessions WHERE jti = $1`, [jti]);
+};
+
+export const deleteAllSessionsForUser = async (userId: string): Promise<void> => {
+  await query(`DELETE FROM active_sessions WHERE user_id = $1`, [userId]);
+};
+
 type AiResultRow = {
   id: string;
   encounter_id: string;

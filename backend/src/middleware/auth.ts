@@ -2,6 +2,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
+import { validateActiveSession } from "../db/queries";
 import { getEffectiveOrganizationRole } from "../utils/organization";
 import logger from "../utils/logger";
 
@@ -172,10 +173,22 @@ export const authMiddleware = async (
       } else {
         logger.debug({ sub: payload.sub }, "Auth: no DB record yet — new user flow");
       }
-
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
       return res.status(503).json({ error: "Authentication service temporarily unavailable" });
+    }
+
+    // Enforce concurrent session limit — reject if this jti was invalidated by a newer login.
+    const jti = (payload as any).jti as string | undefined;
+    if (jti && req.user) {
+      try {
+        const sessionValid = await validateActiveSession((req.user as any).id, jti);
+        if (!sessionValid) {
+          return res.status(401).json({ error: "Session invalidated. Please sign in again." });
+        }
+      } catch (sessionErr: any) {
+        logger.warn({ err: sessionErr?.message }, "Auth: session validation check failed — allowing request");
+      }
     }
 
     next();
