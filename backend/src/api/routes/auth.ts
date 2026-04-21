@@ -176,6 +176,16 @@ const MFA_VERIFIED_COOKIE_OPTIONS = {
   maxAge: 60 * 60 * 1000, // 1 hour — matches Cognito access token lifetime
 };
 
+// Short-lived cookie carrying the pending OTP email so verify-otp and resend-otp
+// can look it up without trusting user-supplied body params.
+const OTP_PENDING_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: cookieSameSite,
+  path: "/",
+  maxAge: 10 * 60 * 1000, // 10 minutes — matches OTP expiry
+};
+
 // Helper: sets all auth cookies and registers the active session after a successful login.
 async function establishSession(
   res: import("express").Response,
@@ -270,16 +280,6 @@ router.post("/confirm-signup", async (req, res) => {
     res.status(400).json({ error: "Invalid or expired confirmation code." });
   }
 });
-
-// Short-lived cookie carrying the pending OTP email so verify-otp and resend-otp
-// can look it up without trusting user-supplied body params.
-const OTP_PENDING_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: COOKIE_OPTIONS.secure,
-  sameSite: cookieSameSite,
-  path: "/",
-  maxAge: 10 * 60 * 1000, // 10 minutes — matches OTP expiry
-};
 
 // Sign-in route
 router.post("/signin", async (req, res) => {
