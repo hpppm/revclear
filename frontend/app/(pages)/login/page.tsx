@@ -122,6 +122,11 @@ export default function LoginPage() {
           return;
         }
 
+        if (data?.mfaRequired) {
+          setMfaState({ email, challengeName: data.challengeName });
+          return;
+        }
+
         invalidateDedupeCache("me.getProfile");
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
@@ -129,7 +134,7 @@ export default function LoginPage() {
         login(user);
         router.push("/dashboard");
       } catch (error: unknown) {
-        logger.error("Login failed", error);
+        logger.error("Login failed");
         if (isLikelyNetworkOrTlsFailure(error)) {
           setErrors({
             form:
@@ -181,14 +186,13 @@ export default function LoginPage() {
         await apiClient.auth.verifyMfa({ email: mfaState.email, code: mfaCode });
       }
 
-      invalidateDedupeCache("me.getProfile");
       const userResponse = await apiClient.me.getProfile();
       const user = userResponse.data;
 
       login(user);
       router.push("/dashboard");
     } catch (error: unknown) {
-      logger.error("MFA verification failed", error);
+      logger.error("MFA verification failed");
       const errorData = getApiErrorData(error);
       setErrors({
         form: errorData?.error || "Invalid or expired code. Please try again.",
