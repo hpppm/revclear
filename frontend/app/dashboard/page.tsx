@@ -234,9 +234,22 @@ export default function DashboardHome() {
                                 ? `Today · ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`
                                 : "Create a clinic or join with an invitation code to get started."}
                         </p>
+                        {organization && (
+                            <p className="mt-2 text-xs text-slate-500">
+                                Terminology: <span className="font-semibold text-slate-700">Visit</span> = encounter. <span className="font-semibold text-slate-700">SOAP</span> = Subjective, Objective, Assessment, Plan.
+                            </p>
+                        )}
                     </div>
                     {organization && (
                         <div className="flex items-center gap-2">
+                            {canWritePatients && (
+                                <Link
+                                    href="/dashboard/patients/add"
+                                    className="brand-button-secondary rounded-lg px-3 py-2 text-sm font-semibold"
+                                >
+                                    Add patient
+                                </Link>
+                            )}
                             {/* Notification bell */}
                             <div className="relative">
                                 <button
