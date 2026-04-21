@@ -1,6 +1,9 @@
 import { Router, NextFunction, Request, Response } from "express";
 import { authMiddleware, requireRole } from "../../middleware/auth";
 import { query } from "../../config/db";
+import { adminDeleteUser } from "../../config/awsCognito";
+import { deleteUserFromDb, deleteAllSessionsForUser } from "../../db/queries";
+import logger from "../../utils/logger";
 
 const router = Router();
 
@@ -65,6 +68,55 @@ router.get("/:cognitoId", authMiddleware, requireRole(['admin']), async (req: Re
     }
 
     return res.json({ success: true, data: user });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * @route DELETE /api/users/:cognitoId
+ * @description Delete a user from both Cognito and the DB. Admin-only, scoped
+ *   to the admin's own organization — cannot delete users from other orgs.
+ *   Cognito deletion is attempted first; if it fails (e.g. user already
+ *   deleted from Cognito console) we still remove the DB row so the two
+ *   stores stay in sync.
+ * @access Private (admin only)
+ */
+router.delete("/:cognitoId", authMiddleware, requireRole(["admin"]), async (req: Request, res: Response, next: NextFunction) => {
+  const orgId = (req.user as any)?.organization_id;
+  if (!orgId) {
+    return res.status(400).json({ error: "User must belong to an organization" });
+  }
+
+  const { cognitoId } = req.params;
+
+  // Prevent self-deletion
+  if ((req.auth as any)?.sub === cognitoId) {
+    return res.status(400).json({ error: "You cannot delete your own account." });
+  }
+
+  try {
+    // 1. Remove from DB first (scoped to org — prevents cross-org deletion)
+    const deleted = await deleteUserFromDb(cognitoId, orgId);
+    if (!deleted) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // 2. Invalidate all active sessions
+    await deleteAllSessionsForUser(deleted.id).catch((err) =>
+      logger.warn({ err: err?.message, cognitoId }, "users/delete: failed to clear active sessions"),
+    );
+
+    // 3. Delete from Cognito — fire-and-forget on UserNotFoundException since
+    //    the user may have already been removed from the Cognito console.
+    await adminDeleteUser(deleted.email).catch((err) => {
+      if (err?.name !== "UserNotFoundException") {
+        logger.warn({ err: err?.name, cognitoId }, "users/delete: Cognito deletion failed");
+      }
+    });
+
+    logger.info({ cognitoId, orgId, deletedBy: (req.auth as any)?.sub }, "users/delete: user deleted");
+    return res.status(200).json({ success: true, data: { message: "User deleted successfully." } });
   } catch (err) {
     return next(err);
   }
