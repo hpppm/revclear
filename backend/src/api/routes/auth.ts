@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { createHmac, timingSafeEqual } from "crypto";
 import { AuthService } from "../../services/authService";
+import { refreshAuthTokensWithRotation } from "../../config/awsCognito";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser } from "../../db/queries";
@@ -495,11 +496,21 @@ router.post("/refresh-token", async (req, res) => {
   }
 
   try {
-    const response = await AuthService.refreshToken(refreshToken);
+    const response = await refreshAuthTokensWithRotation(refreshToken);
     const authResult = response.AuthenticationResult;
 
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    if (!authResult?.AccessToken) {
+      clearAllAuthCookies(res);
+      return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
+    }
+
+    res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    if (authResult.IdToken) {
+      res.cookie("idToken", authResult.IdToken, COOKIE_OPTIONS);
+    }
+    // Rotate refresh token cookie — old token is now invalidated by Cognito.
+    if (authResult.RefreshToken) {
+      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
     }
 
     res.status(200).json({ message: "Tokens refreshed successfully." });
