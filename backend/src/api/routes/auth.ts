@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv, randomBy
 import { AuthService } from "../../services/authService";
 import { refreshAuthTokensWithRotation } from "../../config/awsCognito";
 import { authMiddleware } from "../../middleware/auth";
+import { changeUserPassword } from "../../config/awsCognito";
 import { appConfig } from "../../config/appConfig";
 import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes, setEmailVerified, upsertUserEmailVerified } from "../../db/queries";
 import { findUserByEmail } from "../../config/db";
@@ -291,8 +292,27 @@ router.post("/signin", async (req, res) => {
   try {
     const response = await AuthService.signin(email, password);
 
+    // MFA challenge — handle before the email_verified gate.
+    // A SOFTWARE_TOKEN_MFA challenge means the user already completed TOTP setup
+    // in a prior session, so they have a working second factor regardless of
+    // whether the DB email_verified flag was set. Let them through to TOTP.
+    // MFA_SETUP means TOTP is not yet configured — still require email verification
+    // so we don't issue a session to an unverified address.
+    if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+      res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+      res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+      res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+      res.cookie("mfaSession", response.Session!, MFA_SESSION_COOKIE_OPTIONS);
+      return res.status(200).json({
+        mfaRequired: true,
+        challengeName: response.ChallengeName,
+        email,
+      });
+    }
+
     // Block unverified users — check after Cognito password verification so we
     // don't leak whether an account exists to unauthenticated callers.
+    // Skipped above for SOFTWARE_TOKEN_MFA (TOTP already proves identity).
     const existingUser = await findUserByEmail(email);
     if (!existingUser || !existingUser.email_verified) {
       const otp = generateOTP();
@@ -312,14 +332,8 @@ router.post("/signin", async (req, res) => {
       });
     }
 
-    // MFA challenge — store Session in httpOnly cookie so the frontend can
-    // complete via /verify-mfa (SOFTWARE_TOKEN_MFA) or /associate-totp (MFA_SETUP).
-    if (
-      response.ChallengeName === 'SOFTWARE_TOKEN_MFA' ||
-      response.ChallengeName === 'MFA_SETUP'
-    ) {
-      // Prevent stale authenticated cookies from a previous session from
-      // coexisting with a fresh MFA challenge.
+    // MFA_SETUP challenge — email is verified, proceed to TOTP setup.
+    if (response.ChallengeName === 'MFA_SETUP') {
       res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
       res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
       res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
@@ -391,10 +405,13 @@ router.post("/verify-otp", async (req, res) => {
   }
   const { email, code } = parsed.data;
 
-  // Verify the email matches the pending cookie so the body cannot be
-  // spoofed to verify another user's OTP.
+  // If the otpPending cookie is present it must match the submitted email —
+  // this prevents a body-spoofing attack where an attacker submits a different
+  // email to consume another user's OTP. If the cookie is absent (e.g. expired,
+  // old user arriving directly at /confirm-email) we still allow the attempt;
+  // the OTP itself is the credential and is scoped to the email in the DB.
   const pendingEmail = req.cookies?.otpPending;
-  if (!pendingEmail || pendingEmail !== email) {
+  if (pendingEmail && pendingEmail !== email) {
     return res.status(401).json({ error: "OTP session expired. Please sign in again." });
   }
 
@@ -463,6 +480,8 @@ const ResendOtpSchema = z.object({
 });
 
 // Resend OTP — rate-limited to 3 attempts per 10-minute window.
+// Accepts requests with or without the otpPending cookie so that users arriving
+// directly at /confirm-email (e.g. old accounts, expired cookie) can still resend.
 router.post("/resend-otp", async (req, res) => {
   const parsed = ResendOtpSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -470,8 +489,10 @@ router.post("/resend-otp", async (req, res) => {
   }
   const { email } = parsed.data;
 
+  // If cookie is present, it must match the requested email to prevent resending
+  // to a different address than the one that started the OTP session.
   const pendingEmail = req.cookies?.otpPending;
-  if (!pendingEmail || pendingEmail !== email) {
+  if (pendingEmail && pendingEmail !== email) {
     return res.status(401).json({ error: "OTP session expired. Please sign in again." });
   }
 
@@ -484,7 +505,7 @@ router.post("/resend-otp", async (req, res) => {
   await saveOTP(email, otp);
   await sendOTPEmail(email, otp);
 
-  // Refresh the pending cookie TTL.
+  // Set (or refresh) the pending cookie so subsequent verify-otp calls succeed.
   res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
 
   return res.status(200).json({ message: "OTP sent" });
@@ -730,6 +751,47 @@ router.get("/me", authMiddleware, (req, res) => {
   res
     .status(200)
     .json({ user: req.user, message: "User data fetched successfully." });
+});
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+});
+
+// Change password for an authenticated user.
+router.post("/change-password", authMiddleware, async (req, res) => {
+  const parsed = ChangePasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { currentPassword, newPassword } = parsed.data;
+
+  const accessToken = req.cookies?.accessToken;
+  if (!accessToken) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  try {
+    await changeUserPassword(accessToken, currentPassword, newPassword);
+    return res.status(200).json({ success: true, data: { message: "Password changed successfully." } });
+  } catch (error: any) {
+    logger.warn({ cognito_error: error.name }, "auth/change-password failed");
+    if (error.name === "NotAuthorizedException") {
+      return res.status(400).json({ error: "Current password is incorrect." });
+    }
+    if (error.name === "InvalidPasswordException") {
+      return res.status(400).json({ error: "New password does not meet the complexity requirements." });
+    }
+    if (error.name === "LimitExceededException") {
+      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+    }
+    return res.status(400).json({ error: "Failed to change password. Please try again." });
+  }
 });
 
 export default router;
