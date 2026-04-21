@@ -18,14 +18,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Semgrep
-        run: pip install semgrep
-
       - name: Run Semgrep
-        run: |
-          semgrep ci \
-            --config p/typescript \
-            --config p/nodejs \
-            --config p/jwt \
-            --config p/sql-injection \
-            --config p/secrets
+        uses: semgrep/semgrep-action@v2
+        with:
+          config: >-
+            p/typescript
+            p/nodejs
+            p/jwt
+            p/sql-injection
+            p/secrets
