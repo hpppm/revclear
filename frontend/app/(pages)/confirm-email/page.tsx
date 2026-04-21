@@ -17,7 +17,7 @@ function getApiError(error: unknown): string | undefined {
   return typeof data?.error === "string" ? data.error : undefined;
 }
 
-function VerifyOtpPageInner() {
+function ConfirmEmailPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
@@ -85,8 +85,6 @@ function VerifyOtpPageInner() {
         return;
       }
 
-      // OTP passed, now MFA/TOTP is required — go back to login page in MFA mode.
-      // Pass state via search param; login page will detect and render MFA step.
       router.push(`/login?mfa=1&email=${encodeURIComponent(email)}&challenge=${data?.challengeName ?? "SOFTWARE_TOKEN_MFA"}`);
     } catch (error: unknown) {
       setFormError(getApiError(error) ?? "Invalid or expired code. Please try again.");
@@ -140,35 +138,35 @@ function VerifyOtpPageInner() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-1">2-step verification</h1>
+            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-1">Confirm your email</h1>
             <p className="text-sm text-gray-500">
-              Enter the code we sent to <span className="font-medium text-gray-700">{email}</span> to continue signing in.
+              We sent a 6-digit code to <span className="font-medium text-gray-700">{email}</span>. Enter it below to activate your account.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
-                Verification code
+                Confirmation code
               </label>
-            <div className="flex justify-center gap-2">
-              {digits.map((d, i) => (
-                <input
-                  key={i}
-                  ref={(el) => { inputRefs.current[i] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={d}
-                  onChange={(e) => handleDigitChange(i, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(i, e)}
-                  onPaste={i === 0 ? handlePaste : undefined}
-                  autoComplete={i === 0 ? "one-time-code" : "off"}
-                  className="w-11 h-14 text-center text-xl font-bold rounded-xl border-2 border-gray-200 text-gray-800 focus:border-[var(--brand-500)] focus:outline-none transition-colors"
-                  aria-label={`Digit ${i + 1}`}
-                />
-              ))}
-            </div>
+              <div className="flex justify-center gap-2">
+                {digits.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={d}
+                    onChange={(e) => handleDigitChange(i, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(i, e)}
+                    onPaste={i === 0 ? handlePaste : undefined}
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    className="w-11 h-14 text-center text-xl font-bold rounded-xl border-2 border-gray-200 text-gray-800 focus:border-[var(--brand-500)] focus:outline-none transition-colors"
+                    aria-label={`Digit ${i + 1}`}
+                  />
+                ))}
+              </div>
             </div>
 
             {formError && (
@@ -191,7 +189,7 @@ function VerifyOtpPageInner() {
                 disabled={!isComplete}
                 className="w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
               >
-                Continue
+                Activate account
               </Button>
 
               <button
@@ -202,7 +200,7 @@ function VerifyOtpPageInner() {
               >
                 {cooldown > 0
                   ? `Resend code in ${cooldown}s`
-                  : "Resend code"}
+                  : "Didn't receive it? Resend code"}
               </button>
 
               <button
@@ -220,10 +218,10 @@ function VerifyOtpPageInner() {
   );
 }
 
-export default function VerifyOtpPage() {
+export default function ConfirmEmailPage() {
   return (
     <Suspense>
-      <VerifyOtpPageInner />
+      <ConfirmEmailPageInner />
     </Suspense>
   );
 }
