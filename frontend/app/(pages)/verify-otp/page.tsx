@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
@@ -17,7 +17,7 @@ function getApiError(error: unknown): string | undefined {
   return typeof data?.error === "string" ? data.error : undefined;
 }
 
-export default function VerifyOtpPage() {
+function VerifyOtpPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
@@ -212,5 +212,13 @@ export default function VerifyOtpPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VerifyOtpPage() {
+  return (
+    <Suspense>
+      <VerifyOtpPageInner />
+    </Suspense>
   );
 }
