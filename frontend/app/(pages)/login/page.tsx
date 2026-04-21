@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { invalidateDedupeCache } from "@/app/lib/api/deduplicate";
@@ -84,6 +84,7 @@ interface MfaState {
 
 export default function LoginPage() {
   const router = useRouter();
+  const params = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -93,6 +94,16 @@ export default function LoginPage() {
   const [mfaState, setMfaState] = useState<MfaState | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
+
+  // Resume MFA step after /verify-otp redirects back with ?mfa=1&email=...&challenge=...
+  useEffect(() => {
+    const mfaParam = params.get("mfa");
+    const emailParam = params.get("email");
+    const challenge = params.get("challenge") as MfaState["challengeName"] | null;
+    if (mfaParam === "1" && emailParam && challenge) {
+      setMfaState({ email: emailParam, challengeName: challenge });
+    }
+  }, [params]);
 
   const isFormInvalid = !email.trim() || !password.trim();
   const isMfaInvalid = mfaCode.length !== 6 || !/^\d{6}$/.test(mfaCode);
@@ -117,8 +128,8 @@ export default function LoginPage() {
         const signinResponse = await apiClient.auth.signin({ email, password });
         const data = signinResponse.data;
 
-        if (data?.mfaRequired) {
-          setMfaState({ email, challengeName: data.challengeName });
+        if (data?.step === "verify-otp") {
+          router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
           return;
         }
 

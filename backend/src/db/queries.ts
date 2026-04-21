@@ -3,6 +3,46 @@ import { decryptPHIJsonFields, encryptPHIJson } from "../utils/crypto";
 import logger from "../utils/logger";
 
 // ------------------------------------------------------------
+// OTP codes
+// ------------------------------------------------------------
+
+export const insertOtpCode = async (email: string, hashedCode: string): Promise<void> => {
+  await query(
+    `INSERT INTO otp_codes (user_email, code, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '10 minutes')`,
+    [email, hashedCode],
+  );
+};
+
+export const findValidOtpCode = async (email: string, hashedCode: string): Promise<{ id: string } | null> => {
+  const result = await query<{ id: string }>(
+    `SELECT id FROM otp_codes
+     WHERE user_email = $1 AND code = $2 AND used = FALSE AND expires_at > NOW()
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [email, hashedCode],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const markOtpCodeUsed = async (id: string): Promise<void> => {
+  await query(`UPDATE otp_codes SET used = TRUE WHERE id = $1`, [id]);
+};
+
+export const deleteExpiredOtpCodes = async (email: string): Promise<void> => {
+  await query(`DELETE FROM otp_codes WHERE user_email = $1 AND expires_at <= NOW()`, [email]);
+};
+
+export const countRecentOtpCodes = async (email: string): Promise<number> => {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM otp_codes
+     WHERE user_email = $1 AND created_at > NOW() - INTERVAL '10 minutes'`,
+    [email],
+  );
+  return parseInt(result.rows[0]?.count ?? "0", 10);
+};
+
+// ------------------------------------------------------------
 // Active sessions (concurrent session limiting)
 // ------------------------------------------------------------
 
