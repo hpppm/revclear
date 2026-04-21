@@ -76,6 +76,14 @@ const SAFE_ERROR_PATTERNS = [
   /encounter id/i,
   /service failed/i,
   /temporarily unavailable/i,
+  /otp session expired/i,
+  /invalid or expired code/i,
+  /too many (requests|attempts)/i,
+  /could not (resend|send|complete)/i,
+  /email not verified/i,
+  /current password is incorrect/i,
+  /new password does not meet/i,
+  /password changed successfully/i,
 ];
 
 function sanitizeErrorMessage(

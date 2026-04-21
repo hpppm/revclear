@@ -16,6 +16,7 @@ import {
   RespondToAuthChallengeCommand,
   AssociateSoftwareTokenCommand,
   VerifySoftwareTokenCommand,
+  ChangePasswordCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -312,6 +313,23 @@ export async function respondToMfaSetup(email: string, session: string) {
     ChallengeName: 'MFA_SETUP',
     Session: session,
     ChallengeResponses: { USERNAME: email },
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Change password for an authenticated user.
+ * Requires a valid (non-expired) access token.
+ */
+export async function changeUserPassword(
+  accessToken: string,
+  previousPassword: string,
+  proposedPassword: string,
+) {
+  const command = new ChangePasswordCommand({
+    AccessToken: accessToken,
+    PreviousPassword: previousPassword,
+    ProposedPassword: proposedPassword,
   });
   return cognitoClient.send(command);
 }
