@@ -21,7 +21,7 @@ cd frontend && npm install && npm run dev
 docker-compose up
 ```
 
-See [docs/workflow/QUICK_START_GUIDE.md](docs/workflow/QUICK_START_GUIDE.md) for detailed setup.
+See [docs/RUNBOOK.md](docs/RUNBOOK.md) for operational guidance.
 
 ---
 
@@ -31,12 +31,10 @@ See [docs/workflow/QUICK_START_GUIDE.md](docs/workflow/QUICK_START_GUIDE.md) for
 revclear/
 ├── backend/           # Express + TypeScript API
 ├── frontend/          # Next.js App Router
-├── testing-dashboard/ # Reference AWS helper implementation
-├── terraform/         # AWS Infrastructure as Code
-├── Demo/              # Interactive workflow demo
 ├── docs/              # Project documentation
-│   └── workflow/      # Development process guides
-└── .github/agents/    # AI agent skills & prompts
+├── deploy/            # Deployment and NGINX config
+├── tests/             # Integration/security/manual tests
+└── docker-compose.yml # Local full-stack orchestration
 ```
 
 ---
@@ -46,9 +44,8 @@ revclear/
 | Document | Description |
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | AI assistant guidance |
-| [COLLABORATOR_CONTRIBUTIONS.md](https://github.com/hpppm/revclear/blob/main/COLLABORATOR_CONTRIBUTIONS.md) | Detailed contributor vertical ownership and responsibilities |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [docs/](docs/) | Full documentation hub |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Operational runbook |
 | [Backend Docs](backend/docs/) | API & database documentation |
 
 ---

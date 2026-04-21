@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { apiClient } from "@/app/lib/api/apiClient";
+import { invalidateDedupeCache } from "@/app/lib/api/deduplicate";
 import { useAuth } from "@/app/context/AuthContext";
 import { LoginFormSchema } from "@/app/lib/validation/schemas";
 import logger from "@/app/lib/logger";
@@ -121,6 +122,12 @@ export default function LoginPage() {
           return;
         }
 
+        if (data?.mfaRequired) {
+          setMfaState({ email, challengeName: data.challengeName });
+          return;
+        }
+
+        invalidateDedupeCache("me.getProfile");
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
 
@@ -375,7 +382,7 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="********"
                     autoComplete="current-password"
                     required
                     rightElement={
