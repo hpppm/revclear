@@ -188,7 +188,7 @@ describe("Change 2a: Signature verification rejects bad tokens before claims are
     await authMiddleware(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "Token expired" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Session expired", code: "REFRESH_FAILED" });
     expect(next).not.toHaveBeenCalled();
     expect(mockFindUser).not.toHaveBeenCalled();
   });

@@ -18,3 +18,5 @@ process.env.AWS_CLIENT_ID = process.env.AWS_CLIENT_ID || "test-client-id";
 process.env.AWS_S3_BUCKET = process.env.AWS_S3_BUCKET || "test-bucket";
 // SESSION_SECRET placeholder — must be ≥32 chars to pass appConfig Zod validation.
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret-placeholder-for-jest-runs-only";
+// RESEND_API_KEY placeholder — Resend SDK throws at module load without a key.
+process.env.RESEND_API_KEY = process.env.RESEND_API_KEY || "re_test_placeholder_for_jest_runs_only";
