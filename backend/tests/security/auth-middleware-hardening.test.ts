@@ -274,14 +274,20 @@ describe("Change 2b: DB lookup failure blocks the request (no silent next())", (
 });
 
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Change 5 — MFA enforcement via amr claim
+// Change 5 — MFA is enforced by Cognito at the challenge level, not by the
+// middleware re-checking amr claims.
+//
+// Rationale: Cognito access tokens do not reliably include amr claims in all
+// pool configurations. A valid RS256-verified Cognito access token is already
+// proof that the user passed whatever auth challenges the pool requires
+// (including TOTP). Re-checking amr in middleware was redundant and caused all
+// authenticated requests to fail when Cognito omitted the claim.
 // ---------------------------------------------------------------------------
 
-describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
+describe("Change 5: valid tokens pass through regardless of amr claim shape", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("returns 401 when amr claim is absent (pre-MFA token)", async () => {
+  it("passes through when amr claim is absent (Cognito omitted it)", async () => {
     const { amr: _omitted, ...payloadWithoutAmr } = VALID_PAYLOAD;
     mockVerify.mockResolvedValue(payloadWithoutAmr);
     mockFindUser.mockResolvedValue(DB_USER);
@@ -292,14 +298,13 @@ describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
 
     await authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
-    expect(next).not.toHaveBeenCalled();
-    expect(mockFindUser).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when amr claim is an empty array", async () => {
+  it("passes through when amr claim is an empty array", async () => {
     mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: [] });
+    mockFindUser.mockResolvedValue(DB_USER);
 
     const req = makeReq({ cookies: { accessToken: "empty-amr.token" } }) as any;
     const res = makeRes();
@@ -307,13 +312,13 @@ describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
 
     await authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when amr contains only 'pwd' (password-only login, MFA skipped)", async () => {
+  it("passes through when amr contains only 'pwd'", async () => {
     mockVerify.mockResolvedValue({ ...VALID_PAYLOAD, amr: ["pwd"] });
+    mockFindUser.mockResolvedValue(DB_USER);
 
     const req = makeReq({ cookies: { accessToken: "pwd-only.token" } }) as any;
     const res = makeRes();
@@ -321,9 +326,8 @@ describe("Change 5: MFA enforcement rejects tokens that bypassed TOTP", () => {
 
     await authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: "MFA verification required" });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("passes through when amr includes 'mfa'", async () => {

@@ -117,11 +117,11 @@ const VerifyMfaSchema = z.object({
 
 const router = Router();
 
-// Cookie configuration for JWT tokens
-// Use 'lax' for development (different ports = different origins)
-// Use 'strict' in production when frontend/backend share same origin
-const cookieSameSite: "strict" | "lax" =
-  appConfig.env === "production" ? "strict" : "lax";
+// All API traffic goes through the Next.js same-origin proxy (/api → backend),
+// so cookies are always same-origin from the browser's perspective. 'lax' is
+// used in all environments — 'strict' gives no additional protection here but
+// can cause cookies to be dropped after top-level navigations on some browsers.
+const cookieSameSite: "lax" = "lax";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -256,6 +256,26 @@ router.post("/signup", async (req, res) => {
       });
     }
     if (error.name === "UsernameExistsException") {
+      // If the account exists but was never verified, resend the OTP so the user
+      // can complete the email verification step they missed.
+      const existingUser = await findUserByEmail(email).catch(() => null);
+      if (existingUser && !existingUser.email_verified) {
+        try {
+          const otp = generateOTP();
+          await saveOTP(email, otp);
+          await sendOTPEmail(email, otp);
+          res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+          res.cookie("otpNextStep", "MFA_SETUP", OTP_PENDING_COOKIE_OPTIONS);
+          res.cookie("otpPendingCreds", encryptForCookie(password), OTP_PENDING_COOKIE_OPTIONS);
+          return res.status(200).json({
+            message: "A new verification code has been sent to your email.",
+            step: "verify-otp",
+            email,
+          });
+        } catch (resendErr) {
+          logger.warn({ email }, "signup: failed to resend OTP for unverified existing account");
+        }
+      }
       return res.status(400).json({
         error: "An account with this email already exists.",
         message:
