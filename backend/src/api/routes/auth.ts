@@ -37,7 +37,7 @@ function decryptFromCookie(ciphertext: string): string | null {
       createHmac("sha256", appConfig.session.secret).update("otp-creds-v1").digest("hex"),
       "hex",
     );
-    const decipher = createDecipheriv("aes-256-gcm", keyBuf, iv);
+    const decipher = createDecipheriv("aes-256-gcm", keyBuf, iv, { authTagLength: 16 });
     decipher.setAuthTag(tag);
     return decipher.update(enc) + decipher.final("utf8");
   } catch {
