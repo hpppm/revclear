@@ -1,9 +1,10 @@
 import { Resend } from "resend";
+import logger from "./logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendOTPEmail(toEmail: string, code: string): Promise<void> {
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: "noreply@revclear.tech",
     to: toEmail,
     subject: "Your RevClear verification code",
@@ -49,4 +50,11 @@ export async function sendOTPEmail(toEmail: string, code: string): Promise<void>
 </html>
     `.trim(),
   });
+
+  if (error) {
+    logger.error({ resend_error: error, to: toEmail }, "sendOTPEmail: Resend rejected the send request");
+    throw new Error(`Failed to send OTP email: ${error.message}`);
+  }
+
+  logger.info({ resend_id: data?.id, to: toEmail }, "sendOTPEmail: email queued");
 }

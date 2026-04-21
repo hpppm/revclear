@@ -17,6 +17,7 @@ import {
   AssociateSoftwareTokenCommand,
   VerifySoftwareTokenCommand,
   ChangePasswordCommand,
+  AdminDeleteUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -335,6 +336,18 @@ export async function changeUserPassword(
 }
 
 export { cognitoClient, userPoolId, clientId };
+
+/**
+ * Admin delete a user from Cognito by their username (email).
+ * Immediately invalidates all tokens for that user.
+ */
+export async function adminDeleteUser(email: string) {
+  const command = new AdminDeleteUserCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+  });
+  return cognitoClient.send(command);
+}
 
 /**
  * Admin add user to a Cognito group.
