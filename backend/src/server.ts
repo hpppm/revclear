@@ -281,6 +281,7 @@ const helmetOptions: HelmetOptions = {
         "https://cdn.lineicons.com",
       ],
       connectSrc: ["'self'"],
+      mediaSrc: ["'self'", "https://*.s3.amazonaws.com", "https://*.s3.us-east-1.amazonaws.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
     },

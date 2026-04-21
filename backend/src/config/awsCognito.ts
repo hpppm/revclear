@@ -2,6 +2,7 @@
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
+  GetTokensFromRefreshTokenCommand,
   SignUpCommand,
   ConfirmSignUpCommand,
   AdminCreateUserCommand,
@@ -110,7 +111,8 @@ export async function signInUser(email: string, password: string) {
 }
 
 /**
- * Refresh authentication tokens
+ * Refresh authentication tokens (legacy — used when token rotation is OFF).
+ * Uses REFRESH_TOKEN_AUTH via InitiateAuth. Does not rotate the refresh token.
  */
 export async function refreshAuthTokens(refreshToken: string) {
   const command = new InitiateAuthCommand({
@@ -119,6 +121,21 @@ export async function refreshAuthTokens(refreshToken: string) {
     AuthParameters: {
       REFRESH_TOKEN: refreshToken,
     },
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
+ * Refresh tokens with rotation enabled (Cognito token rotation ON).
+ * Uses GetTokensFromRefreshToken — returns new AccessToken, IdToken, AND
+ * a new RefreshToken. The old refresh token is invalidated immediately.
+ * Must be used when ALLOW_REFRESH_TOKEN_AUTH is disabled on the app client.
+ */
+export async function refreshAuthTokensWithRotation(refreshToken: string) {
+  const command = new GetTokensFromRefreshTokenCommand({
+    ClientId: clientId,
+    RefreshToken: refreshToken,
   });
 
   return cognitoClient.send(command);

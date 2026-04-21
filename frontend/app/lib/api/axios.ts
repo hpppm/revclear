@@ -107,7 +107,8 @@ api.interceptors.response.use(
     if (status === 401 && typeof window !== "undefined") {
       const isAuthRoute = error?.config?.url?.includes("/auth/");
       const isDashboard = window.location.pathname.startsWith("/dashboard");
-      if (!isAuthRoute && isDashboard) {
+      const isRefreshFailed = error?.response?.data?.code === "REFRESH_FAILED";
+      if (!isAuthRoute && (isDashboard || isRefreshFailed)) {
         window.location.href = "/login?reason=expired";
       }
     }

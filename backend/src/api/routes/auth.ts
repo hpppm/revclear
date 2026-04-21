@@ -1,9 +1,69 @@
 import { Router } from "express";
 import { z } from "zod";
+import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { AuthService } from "../../services/authService";
+import { refreshAuthTokensWithRotation } from "../../config/awsCognito";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
+import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes, setEmailVerified, upsertUserEmailVerified } from "../../db/queries";
+import { findUserByEmail } from "../../config/db";
+import { generateOTP, saveOTP, verifyOTP } from "../../utils/otp";
+import { sendOTPEmail } from "../../utils/sendOTP";
 import logger from "../../utils/logger";
+
+const SESSION_START_COOKIE = "sessionStart";
+
+// Encrypt/decrypt a short string (e.g. password) for temporary httpOnly cookie storage.
+// Uses AES-256-GCM with a key derived from the session secret.
+function encryptForCookie(plaintext: string): string {
+  const keyBuf = Buffer.from(
+    createHmac("sha256", appConfig.session.secret).update("otp-creds-v1").digest("hex"),
+    "hex",
+  );
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", keyBuf, iv);
+  const enc = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString("base64url");
+}
+
+function decryptFromCookie(ciphertext: string): string | null {
+  try {
+    const buf = Buffer.from(ciphertext, "base64url");
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const enc = buf.subarray(28);
+    const keyBuf = Buffer.from(
+      createHmac("sha256", appConfig.session.secret).update("otp-creds-v1").digest("hex"),
+      "hex",
+    );
+    const decipher = createDecipheriv("aes-256-gcm", keyBuf, iv, { authTagLength: 16 });
+    decipher.setAuthTag(tag);
+    return decipher.update(enc) + decipher.final("utf8");
+  } catch {
+    return null;
+  }
+}
+
+function signSessionStart(ts: number): string {
+  const mac = createHmac("sha256", appConfig.session.secret)
+    .update(String(ts))
+    .digest("hex");
+  return `${ts}.${mac}`;
+}
+
+function verifySessionStart(value: string): number | null {
+  const dot = value.lastIndexOf(".");
+  if (dot === -1) return null;
+  const ts = Number(value.slice(0, dot));
+  const mac = value.slice(dot + 1);
+  if (!Number.isFinite(ts)) return null;
+  const expected = createHmac("sha256", appConfig.session.secret)
+    .update(String(ts))
+    .digest("hex");
+  const safe = timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"));
+  return safe ? ts : null;
+}
 
 const SignupSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -98,6 +158,16 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches Cognito refresh token validity
 };
 
+// Signed cookie tracking absolute session start time for 8h HIPAA timeout.
+// maxAge matches refresh token so it outlives the access token.
+const SESSION_START_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: cookieSameSite,
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 // Server-issued marker that this browser session completed MFA challenge
 // via /verify-mfa or /verify-totp-setup. Used as a fallback when Cognito
 // access tokens omit/reshape amr claims.
@@ -106,7 +176,44 @@ const MFA_VERIFIED_COOKIE_OPTIONS = {
   maxAge: 60 * 60 * 1000, // 1 hour — matches Cognito access token lifetime
 };
 
+// Short-lived cookie carrying the pending OTP email so verify-otp and resend-otp
+// can look it up without trusting user-supplied body params.
+const OTP_PENDING_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: cookieSameSite,
+  path: "/",
+  maxAge: 10 * 60 * 1000, // 10 minutes — matches OTP expiry
+};
+
+// Helper: sets all auth cookies and registers the active session after a successful login.
+async function establishSession(
+  res: import("express").Response,
+  accessToken: string,
+  refreshToken: string | undefined,
+  userId: string,
+  jti: string,
+): Promise<void> {
+  res.cookie("accessToken", accessToken, COOKIE_OPTIONS);
+  if (refreshToken) {
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
+  }
+  res.cookie(SESSION_START_COOKIE, signSessionStart(Date.now()), SESSION_START_COOKIE_OPTIONS);
+  await upsertActiveSession(userId, jti);
+}
+
+// Helper: clears all auth-related cookies.
+function clearAllAuthCookies(res: import("express").Response): void {
+  res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie(SESSION_START_COOKIE, CLEAR_COOKIE_OPTIONS);
+}
+
 // Sign-up route
+// Cognito auto-confirms accounts in this pool, so we gate on our own OTP email
+// to verify the user owns the address before issuing any session.
 router.post("/signup", async (req, res) => {
   const parsed = SignupSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -115,7 +222,7 @@ router.post("/signup", async (req, res) => {
   const { email, password, attributes, practitionerType, licenseId } = parsed.data;
 
   try {
-    const result = await AuthService.signup(
+    await AuthService.signup(
       email,
       password,
       attributes,
@@ -123,31 +230,20 @@ router.post("/signup", async (req, res) => {
       licenseId,
     );
 
-    // Auto-login triggered an MFA challenge — store session in httpOnly cookie.
-    if (result?.mfaChallenge) {
-      res.cookie("mfaSession", result.mfaChallenge.session, MFA_SESSION_COOKIE_OPTIONS);
-      return res.status(200).json({
-        message: "Account created successfully.",
-        autoLoggedIn: false,
-        mfaRequired: true,
-        challengeName: result.mfaChallenge.challengeName,
-        email,
-      });
-    }
+    // Account created — send OTP for email verification.
+    // Tokens are not issued until OTP is verified, then TOTP is set up.
+    const otp = generateOTP();
+    await saveOTP(email, otp);
+    await sendOTPEmail(email, otp);
 
-    // If Cognito auto-confirmed the user and returned tokens, set httpOnly cookies
-    // exactly like signin does — never expose raw tokens in the response body.
-    const authResult = result?.AuthenticationResult;
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
-    }
+    res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+    res.cookie("otpNextStep", "MFA_SETUP", OTP_PENDING_COOKIE_OPTIONS);
+    res.cookie("otpPendingCreds", encryptForCookie(password), OTP_PENDING_COOKIE_OPTIONS);
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Account created successfully.",
-      autoLoggedIn: !!(authResult?.AccessToken),
+      step: "verify-otp",
+      email,
     });
   } catch (error: any) {
     // Log internally but don't expose details
@@ -195,6 +291,27 @@ router.post("/signin", async (req, res) => {
   try {
     const response = await AuthService.signin(email, password);
 
+    // Block unverified users — check after Cognito password verification so we
+    // don't leak whether an account exists to unauthenticated callers.
+    const existingUser = await findUserByEmail(email);
+    if (!existingUser || !existingUser.email_verified) {
+      const otp = generateOTP();
+      await saveOTP(email, otp);
+      await sendOTPEmail(email, otp);
+      res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+      // Signin unverified path has no stashed Cognito session — the MFA_SETUP
+      // challenge must be re-triggered after the user completes confirm-email.
+      // Store the Cognito session if available so verify-otp can continue.
+      if (response.Session) {
+        res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
+      }
+      return res.status(401).json({
+        error: "Email not verified",
+        step: "confirm-email",
+        email,
+      });
+    }
+
     // MFA challenge — store Session in httpOnly cookie so the frontend can
     // complete via /verify-mfa (SOFTWARE_TOKEN_MFA) or /associate-totp (MFA_SETUP).
     if (
@@ -226,35 +343,17 @@ router.post("/signin", async (req, res) => {
       });
     }
 
-    // Set httpOnly cookies for secure token storage
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie(
-        "refreshToken",
-        authResult.RefreshToken,
-        REFRESH_COOKIE_OPTIONS,
-      );
-    }
-
-    // Tokens are already set in httpOnly cookies above.
-    // NEVER return raw tokens in the response body — the frontend can
-    // base64-decode any JWT to read all Cognito claims (sub, username, device_key, etc).
-    const autoLoggedIn = !!(authResult?.AccessToken);
+    const [, payloadB64] = authResult.AccessToken.split(".");
+    const tokenPayload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
+    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayload.sub, tokenPayload.jti);
 
     res.status(200).json({
       message: "User signed in successfully.",
-      autoLoggedIn,
+      autoLoggedIn: true,
     });
   } catch (error: any) {
     // Ensure a failed sign-in does not leave stale auth/mfa cookies in place.
-    // This prevents confusing follow-up 401s (for example /me requiring MFA)
-    // caused by previous sessions.
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+    clearAllAuthCookies(res);
 
     // Log the actual Cognito error server-side (never sent to client)
     logger.warn(
@@ -279,6 +378,118 @@ router.post("/signin", async (req, res) => {
   }
 });
 
+const VerifyOtpSchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
+});
+
+// Verify OTP — second factor before TOTP/MFA or before issuing tokens directly.
+router.post("/verify-otp", async (req, res) => {
+  const parsed = VerifyOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, code } = parsed.data;
+
+  // Verify the email matches the pending cookie so the body cannot be
+  // spoofed to verify another user's OTP.
+  const pendingEmail = req.cookies?.otpPending;
+  if (!pendingEmail || pendingEmail !== email) {
+    return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+  }
+
+  const valid = await verifyOTP(email, code);
+  if (!valid) {
+    return res.status(400).json({ error: "Invalid or expired code." });
+  }
+
+  const nextStep: string = req.cookies?.otpNextStep ?? "AUTHENTICATED";
+
+  res.clearCookie("otpPending", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("otpNextStep", CLEAR_COOKIE_OPTIONS);
+
+  // Signup path — auto-signin to trigger MFA_SETUP challenge, then hand off to TOTP setup.
+  if (nextStep === "MFA_SETUP") {
+    const encryptedCreds = req.cookies?.otpPendingCreds;
+    res.clearCookie("otpPendingCreds", CLEAR_COOKIE_OPTIONS);
+    const password = encryptedCreds ? decryptFromCookie(encryptedCreds) : null;
+    if (!password) {
+      return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+    }
+    try {
+      const signinResponse = await AuthService.signin(email, password);
+      if (signinResponse.ChallengeName !== "MFA_SETUP" && signinResponse.ChallengeName !== "SOFTWARE_TOKEN_MFA") {
+        logger.warn({ email, challengeName: signinResponse.ChallengeName }, "verify-otp/MFA_SETUP: unexpected challenge after signup signin");
+        return res.status(401).json({ error: "Unexpected authentication state. Please sign in again." });
+      }
+
+      // Mark email as verified — derive cognito_id from the challenge session
+      // metadata. Cognito doesn't return an access token at challenge stage, so
+      // we use the ChallengeParameters.USER_ID_FOR_SRP if present, otherwise
+      // fall back to upsert by email only (setEmailVerified).
+      try {
+        const cognitoSub = (signinResponse as any).ChallengeParameters?.USER_ID_FOR_SRP as string | undefined;
+        if (cognitoSub) {
+          await upsertUserEmailVerified(email, cognitoSub);
+        } else {
+          await setEmailVerified(email);
+        }
+      } catch (verifyErr) {
+        logger.warn({ email }, "verify-otp: failed to set email_verified — continuing");
+      }
+
+      res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
+      res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
+      res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+      res.cookie("mfaSession", signinResponse.Session!, MFA_SESSION_COOKIE_OPTIONS);
+      return res.status(200).json({
+        message: "OTP verified",
+        step: "verify-mfa",
+        challengeName: signinResponse.ChallengeName,
+        email,
+      });
+    } catch (err: any) {
+      logger.warn({ cognito_error: err.name, email }, "verify-otp: auto-signin after signup failed");
+      return res.status(401).json({ error: "Could not complete setup. Please sign in again." });
+    }
+  }
+
+  // MFA path (signin with existing TOTP) — mfaSession already set by signin route.
+  return res.status(200).json({ message: "OTP verified", step: "verify-mfa", challengeName: nextStep });
+});
+
+const ResendOtpSchema = z.object({
+  email: z.string().email(),
+});
+
+// Resend OTP — rate-limited to 3 attempts per 10-minute window.
+router.post("/resend-otp", async (req, res) => {
+  const parsed = ResendOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email } = parsed.data;
+
+  const pendingEmail = req.cookies?.otpPending;
+  if (!pendingEmail || pendingEmail !== email) {
+    return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+  }
+
+  const recentCount = await countRecentOtpCodes(email);
+  if (recentCount >= 3) {
+    return res.status(429).json({ error: "Too many requests. Please wait before requesting a new code." });
+  }
+
+  const otp = generateOTP();
+  await saveOTP(email, otp);
+  await sendOTPEmail(email, otp);
+
+  // Refresh the pending cookie TTL.
+  res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+
+  return res.status(200).json({ message: "OTP sent" });
+});
+
 // Sign-out route - does NOT require auth middleware
 // Users with expired tokens should still be able to clear cookies
 router.post("/signout", async (req, res) => {
@@ -286,18 +497,21 @@ router.post("/signout", async (req, res) => {
   // GlobalSignOut (Cognito) invalidates all devices and can take several seconds —
   // fire it with a 5-second timeout and let it fail silently if it's slow or the
   // token is already expired. The cookie clear is the security-critical action.
-  res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-  res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-  res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+  clearAllAuthCookies(res);
 
   const accessToken = req.cookies?.accessToken;
   if (accessToken) {
+    try {
+      const [, payloadB64So] = accessToken.split(".");
+      const { jti: soJti, sub: soSub } = JSON.parse(Buffer.from(payloadB64So, "base64url").toString());
+      if (soJti) await deleteActiveSession(soJti);
+      else if (soSub) await deleteAllSessionsForUser(soSub);
+    } catch { /* token malformed — cookies already cleared */ }
+
     const timeout = new Promise<void>((_, reject) =>
       setTimeout(() => reject(new Error("signout timeout")), 5000),
     );
-    Promise.race([AuthService.signout(accessToken), timeout]).catch(() => {
-      // Token may be expired or Cognito may be slow — cookies already cleared
-    });
+    Promise.race([AuthService.signout(accessToken), timeout]).catch(() => {});
   }
 
   res.status(200).json({ message: "Signed out successfully." });
@@ -325,16 +539,11 @@ router.post("/verify-mfa", async (req, res) => {
       return res.status(401).json({ error: "MFA challenge incomplete. Please sign in again." });
     }
 
-    // Clear MFA session — it's single-use and now consumed.
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
 
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
-    }
-
+    const [, payloadB64Mfa] = authResult.AccessToken.split(".");
+    const tokenPayloadMfa = JSON.parse(Buffer.from(payloadB64Mfa, "base64url").toString());
+    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayloadMfa.sub, tokenPayloadMfa.jti);
     res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
 
     res.status(200).json({ message: "MFA verified successfully.", autoLoggedIn: true });
@@ -425,13 +634,9 @@ router.post("/verify-totp-setup", async (req, res) => {
 
     res.clearCookie("mfaSession", CLEAR_COOKIE_OPTIONS);
 
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
-    }
-    if (authResult?.RefreshToken) {
-      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
-    }
-
+    const [, payloadB64Totp] = authResult.AccessToken.split(".");
+    const tokenPayloadTotp = JSON.parse(Buffer.from(payloadB64Totp, "base64url").toString());
+    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayloadTotp.sub, tokenPayloadTotp.jti);
     res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
 
     res.status(200).json({ message: "Authenticator app linked successfully.", autoLoggedIn: true });
@@ -443,31 +648,42 @@ router.post("/verify-totp-setup", async (req, res) => {
 
 // Refresh token route
 router.post("/refresh-token", async (req, res) => {
-  // Read refresh token from httpOnly cookie only — never from the request body.
-  // Accepting it via req.body would allow scripts (which cannot read httpOnly
-  // cookies) to inject an arbitrary token, defeating the cookie-only transport.
   const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
     return res.status(400).json({ error: "Refresh token is required." });
   }
+
+  // Enforce absolute 8h session timeout — reject refresh if session is too old.
+  const sessionStartRaw = req.cookies?.[SESSION_START_COOKIE];
+  if (sessionStartRaw) {
+    const loginTime = verifySessionStart(sessionStartRaw);
+    if (!loginTime || Date.now() - loginTime > appConfig.session.maxAgeMs) {
+      clearAllAuthCookies(res);
+      return res.status(401).json({ error: "Session expired. Please sign in again." });
+    }
+  }
+
   try {
-    const response = await AuthService.refreshToken(refreshToken);
+    const response = await refreshAuthTokensWithRotation(refreshToken);
     const authResult = response.AuthenticationResult;
 
-    // Set new access token cookie
-    if (authResult?.AccessToken) {
-      res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    if (!authResult?.AccessToken) {
+      clearAllAuthCookies(res);
+      return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
     }
 
-    // Do NOT return raw tokens in the body — cookie is the only token transport.
-    res.status(200).json({
-      message: "Tokens refreshed successfully.",
-    });
+    res.cookie("accessToken", authResult.AccessToken, COOKIE_OPTIONS);
+    if (authResult.IdToken) {
+      res.cookie("idToken", authResult.IdToken, COOKIE_OPTIONS);
+    }
+    // Rotate refresh token cookie — old token is now invalidated by Cognito.
+    if (authResult.RefreshToken) {
+      res.cookie("refreshToken", authResult.RefreshToken, REFRESH_COOKIE_OPTIONS);
+    }
+
+    res.status(200).json({ message: "Tokens refreshed successfully." });
   } catch (error: any) {
-    // Clear cookies on refresh failure
-    res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
-    res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
+    clearAllAuthCookies(res);
     res.status(401).json({ error: "Invalid or expired refresh token." });
   }
 });
