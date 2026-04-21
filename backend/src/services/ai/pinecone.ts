@@ -1,10 +1,6 @@
 import logger from "../../utils/logger";
 import { MedicalCodeRecord, loadMedicalCodeCatalog, CodeType } from "./codeCatalog";
-
-const PINECONE_API_KEY = process.env.PINECONE_API_KEY || "";
-const PINECONE_INDEX_HOST = process.env.PINECONE_INDEX_HOST || "";
-const PINECONE_NAMESPACE = process.env.PINECONE_NAMESPACE || "medical-codes";
-const PINECONE_API_VERSION = process.env.PINECONE_API_VERSION || "2026-04";
+import { appConfig } from "../../config/appConfig";
 
 type PineconeSearchMatch = {
   _id: string;
@@ -21,23 +17,23 @@ type RetrievedCode = {
 };
 
 const requirePineconeConfig = () => {
-  if (!PINECONE_API_KEY) {
+  if (!appConfig.ai.pinecone.apiKey) {
     throw new Error("Missing PINECONE_API_KEY");
   }
-  if (!PINECONE_INDEX_HOST) {
+  if (!appConfig.ai.pinecone.indexHost) {
     throw new Error("Missing PINECONE_INDEX_HOST");
   }
 };
 
 const pineconeFetch = async (path: string, init: RequestInit = {}) => {
   requirePineconeConfig();
-  const host = PINECONE_INDEX_HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  const host = appConfig.ai.pinecone.indexHost!.replace(/^https?:\/\//, "").replace(/\/+$/, "");
   const response = await fetch(`https://${host}${path}`, {
     ...init,
     headers: {
-      "Api-Key": PINECONE_API_KEY,
+      "Api-Key": appConfig.ai.pinecone.apiKey!,
       "Content-Type": "application/json",
-      "X-Pinecone-API-Version": PINECONE_API_VERSION,
+      "X-Pinecone-API-Version": appConfig.ai.pinecone.apiVersion,
       ...(init.headers || {}),
     },
   });
@@ -100,7 +96,7 @@ export const upsertMedicalCodes = async (records: MedicalCodeRecord[]) => {
       .join("\n");
 
     logger.info({ count: group.length, codeType }, "upserting medical codes to pinecone");
-    await pineconeFetch(`/records/namespaces/${PINECONE_NAMESPACE}-${codeType}/upsert`, {
+    await pineconeFetch(`/records/namespaces/${appConfig.ai.pinecone.namespace}-${codeType}/upsert`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-ndjson",
@@ -127,7 +123,7 @@ const mapMatch = (match: PineconeSearchMatch, codeType: CodeType): RetrievedCode
 };
 
 const searchNamespace = async (query: string, codeType: CodeType, topK: number) => {
-  const response = await pineconeFetch(`/records/namespaces/${PINECONE_NAMESPACE}-${codeType}/search`, {
+  const response = await pineconeFetch(`/records/namespaces/${appConfig.ai.pinecone.namespace}-${codeType}/search`, {
     method: "POST",
     body: JSON.stringify({
       query: { inputs: { text: query }, top_k: topK },
@@ -156,4 +152,4 @@ export const searchMedicalCodes = async (query: string, topK = 5) => {
   return { icdMatches, cptMatches };
 };
 
-export const getPineconeNamespace = () => PINECONE_NAMESPACE;
+export const getPineconeNamespace = () => appConfig.ai.pinecone.namespace;

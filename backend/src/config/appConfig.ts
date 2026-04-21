@@ -36,6 +36,8 @@ const EnvSchema = z.object({
   AI_SERVER_HEALTH_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
+  GROQ_API_KEY: z.string().min(1).optional(),
+  GROQ_MODEL: z.string().min(1).optional(),
   PINECONE_API_KEY: z.string().min(1).optional(),
   PINECONE_INDEX_HOST: z.string().min(1).optional(),
   PINECONE_NAMESPACE: z.string().min(1).optional(),
@@ -129,6 +131,8 @@ export const appConfig = {
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL ?? "gemini-2.5-flash",
+    groqApiKey: env.GROQ_API_KEY,
+    groqModel: env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
     pinecone: {
       apiKey: env.PINECONE_API_KEY,
       indexHost: env.PINECONE_INDEX_HOST,

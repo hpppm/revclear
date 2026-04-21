@@ -16,4 +16,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=5 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/health')" || exit 1
 
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 2 --timeout 180 --preload whisper_server:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 1 --worker-class gthread --threads 2 --timeout 120 --preload whisper_server:app"]

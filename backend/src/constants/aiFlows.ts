@@ -1,6 +1,7 @@
 export const AI_FLOW_NAMES = {
   transcript: "whisper_transcript",
   soapNote: "soap_note",
+  codeMatch: "code_match",
 } as const;
 
 export const LEGACY_SOAP_FLOW_NAMES = ["soap_gemini", "soap_ollama"] as const;

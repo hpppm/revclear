@@ -165,8 +165,13 @@ function trackRequestRate(ip: string): boolean {
  * Detect security threats based on request patterns
  */
 function detectThreats(metrics: RequestMetrics) {
-  // Detect brute force auth attempts
-  if (metrics.url.includes('/auth/') && metrics.statusCode === 401) {
+  // Detect brute force auth attempts — exclude TOTP setup (legitimate retry flow)
+  const isBruteForceCandidate =
+    metrics.statusCode === 401 &&
+    metrics.url.includes('/auth/') &&
+    !metrics.url.includes('/auth/verify-totp-setup') &&
+    !metrics.url.includes('/auth/associate-totp');
+  if (isBruteForceCandidate) {
     trackFailedAuth(metrics.ipAddress);
   }
 

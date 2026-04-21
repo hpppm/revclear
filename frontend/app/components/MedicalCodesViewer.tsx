@@ -10,6 +10,8 @@ import Card from "./ui/Card";
 import Input from "./ui/Input";
 import Badge from "./ui/Badge";
 
+const MAX_PER_TYPE = 3;
+
 type MedicalCodesViewerProps = {
   encounterId?: string | null;
   savedCodes?: MedicalCode[];
@@ -91,6 +93,8 @@ export default function MedicalCodesViewer({
   const [searchResults, setSearchResults] = useState<MedicalCode[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(savedCodes.length > 0);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const sortCodes = (codes: MedicalCode[]) =>
     [...codes].sort((a, b) => {
@@ -108,6 +112,7 @@ export default function MedicalCodesViewer({
     if (!encounterId || !canUseClinicalAI) return;
 
     setLoading(true);
+    setGenerateError(null);
     try {
       const response = await apiClient.codes.match(encounterId);
       const { icdMatches, cptMatches } = response.data.data;
@@ -117,12 +122,12 @@ export default function MedicalCodesViewer({
 
       setIcdCandidates(newIcd);
       setCptCandidates(newCpt);
-      // Default to top suggestion per type so users start with 1 ICD + 1 CPT.
-      const defaultSelection = [newIcd[0], newCpt[0]].filter(Boolean) as MedicalCode[];
-      setSelection(defaultSelection);
+      // Default-select all candidates (up to 3 per type)
+      setSelection([...newIcd, ...newCpt]);
       setHasGenerated(true);
     } catch {
       logger.error("Code generation failed");
+      setGenerateError("We couldn't generate codes right now. Please try again in a moment.");
       setHasGenerated(true);
     } finally {
       setLoading(false);
@@ -133,6 +138,7 @@ export default function MedicalCodesViewer({
     if (!searchQuery.trim() || !canUseClinicalAI) return;
 
     setSearching(true);
+    setSearchError(null);
     try {
       const response = await apiClient.codes.search(searchQuery, searchType);
       const rawResults = response.data.data || [];
@@ -150,40 +156,44 @@ export default function MedicalCodesViewer({
     } catch {
       logger.error("Search failed");
       setSearchResults([]);
+      setSearchError("Search failed. Please try again.");
     } finally {
       setSearching(false);
     }
   };
 
   const handleSelectCandidate = (code: MedicalCode) => {
-    const isSelected = selectedCodes.some((c) => c.code === code.code && c.type === code.type);
+    const isSelected = selectedCodes.some(
+      (c) => c.code === code.code && c.type === code.type
+    );
     if (isSelected) {
-      setSelection(selectedCodes.filter((c) => !(c.code === code.code && c.type === code.type)));
-    } else {
-      const withoutSameType = selectedCodes.filter((c) => c.type !== code.type);
-      setSelection([...withoutSameType, code]);
+      setSelection(
+        selectedCodes.filter((c) => !(c.code === code.code && c.type === code.type))
+      );
+      return;
     }
+    const sameTypeCount = selectedCodes.filter((c) => c.type === code.type).length;
+    if (sameTypeCount >= MAX_PER_TYPE) return;
+    setSelection([...selectedCodes, code]);
   };
 
   const handleAddFromSearch = (code: MedicalCode) => {
-    // Add to candidates if not already there
     if (code.type === "ICD-10") {
-      if (!icdCandidates.some(c => c.code === code.code)) {
+      if (!icdCandidates.some((c) => c.code === code.code)) {
         setIcdCandidates([...icdCandidates, code]);
       }
     } else {
-      if (!cptCandidates.some(c => c.code === code.code)) {
+      if (!cptCandidates.some((c) => c.code === code.code)) {
         setCptCandidates([...cptCandidates, code]);
       }
     }
-
-    // Keep exactly one selected per type.
-    const withoutSameType = selectedCodes.filter((c) => c.type !== code.type);
-    setSelection([...withoutSameType, code]);
-
-    // Do not clear search results to allow multiple selections
-    // setSearchResults([]);
-    // setSearchQuery("");
+    const alreadySelected = selectedCodes.some(
+      (c) => c.code === code.code && c.type === code.type
+    );
+    if (alreadySelected) return;
+    const sameTypeCount = selectedCodes.filter((c) => c.type === code.type).length;
+    if (sameTypeCount >= MAX_PER_TYPE) return;
+    setSelection([...selectedCodes, code]);
   };
 
   const handleRemoveCode = (code: MedicalCode) => {
@@ -193,25 +203,33 @@ export default function MedicalCodesViewer({
   const isHighAccuracy = (code: MedicalCode) =>
     typeof code.confidence === "number" && code.confidence >= 85;
 
-  const CandidateCard = ({ code, isSelected, onSelect, isRecommended }: {
+  const icdAtCap = selectedCodes.filter((c) => c.type === "ICD-10").length >= MAX_PER_TYPE;
+  const cptAtCap = selectedCodes.filter((c) => c.type === "CPT").length >= MAX_PER_TYPE;
+
+  const CandidateCard = ({ code, isSelected, onSelect, isRecommended, atCap }: {
     code: MedicalCode;
     isSelected: boolean;
     onSelect: () => void;
     isRecommended?: boolean;
+    atCap?: boolean;
   }) => {
     const highAccuracy = isHighAccuracy(code);
     const recommendedHighlight = !isSelected && isRecommended;
+    const disabled = atCap && !isSelected;
 
     return (
     <div
-      onClick={onSelect}
-      className={`rounded-xl border-2 p-4 cursor-pointer transition-all flex flex-col gap-3 min-h-[170px] ${isSelected
-        ? "border-slate-800 bg-white shadow-lg"
-        : recommendedHighlight
-          ? "border-sky-300 bg-white shadow-[0_10px_30px_-15px_rgba(14,165,233,0.45)] hover:border-sky-400 hover:shadow-[0_14px_34px_-15px_rgba(14,165,233,0.6)]"
-        : highAccuracy
-          ? "border-emerald-300 bg-white shadow-[0_10px_30px_-15px_rgba(5,150,105,0.55)] hover:border-emerald-400 hover:shadow-[0_14px_34px_-15px_rgba(5,150,105,0.65)]"
-          : "border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm"
+      onClick={disabled ? undefined : onSelect}
+      className={`rounded-xl border-2 p-4 transition-all flex flex-col gap-3 min-h-[170px] ${
+        disabled
+          ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+          : isSelected
+          ? "cursor-pointer border-slate-800 bg-white shadow-lg"
+          : recommendedHighlight
+            ? "cursor-pointer border-sky-300 bg-white shadow-[0_10px_30px_-15px_rgba(14,165,233,0.45)] hover:border-sky-400 hover:shadow-[0_14px_34px_-15px_rgba(14,165,233,0.6)]"
+          : highAccuracy
+            ? "cursor-pointer border-emerald-300 bg-white shadow-[0_10px_30px_-15px_rgba(5,150,105,0.55)] hover:border-emerald-400 hover:shadow-[0_14px_34px_-15px_rgba(5,150,105,0.65)]"
+            : "cursor-pointer border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm"
         }`}
     >
       {/* Top row: code badge + confidence */}
@@ -262,7 +280,7 @@ export default function MedicalCodesViewer({
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Medical Codes</h3>
           <p className="text-sm text-slate-600">
-            Select one ICD-10 and one CPT code.
+            Select up to 3 ICD-10 and up to 3 CPT codes.
           </p>
         </div>
         <Button onClick={generateCodes} loading={loading} disabled={loading}>
@@ -270,7 +288,19 @@ export default function MedicalCodesViewer({
         </Button>
       </div>
 
-      {hasGenerated && icdCandidates.length === 0 && cptCandidates.length === 0 && (
+      {generateError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start justify-between gap-3"
+        >
+          <span><strong>Code generation failed.</strong> {generateError}</span>
+          <Button size="sm" variant="secondary" onClick={generateCodes} disabled={loading}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {hasGenerated && !generateError && icdCandidates.length === 0 && cptCandidates.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 text-amber-600 mb-3">
             <svg
@@ -309,7 +339,7 @@ export default function MedicalCodesViewer({
                 </h4>
               </div>
               <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap mt-0.5">
-                {selectedCodes.filter(c => c.type === "ICD-10").length} selected
+                {selectedCodes.filter(c => c.type === "ICD-10").length} / {MAX_PER_TYPE} selected
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -319,6 +349,7 @@ export default function MedicalCodesViewer({
                   code={code}
                   isSelected={selectedCodes.some(c => c.code === code.code && c.type === code.type)}
                   isRecommended={icdCandidates[0]?.code === code.code}
+                  atCap={icdAtCap}
                   onSelect={() => handleSelectCandidate(code)}
                 />
               ))}
@@ -334,7 +365,7 @@ export default function MedicalCodesViewer({
                 </h4>
               </div>
               <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap mt-0.5">
-                {selectedCodes.filter(c => c.type === "CPT").length} selected
+                {selectedCodes.filter(c => c.type === "CPT").length} / {MAX_PER_TYPE} selected
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -344,6 +375,7 @@ export default function MedicalCodesViewer({
                   code={code}
                   isSelected={selectedCodes.some(c => c.code === code.code && c.type === code.type)}
                   isRecommended={cptCandidates[0]?.code === code.code}
+                  atCap={cptAtCap}
                   onSelect={() => handleSelectCandidate(code)}
                 />
               ))}
@@ -378,11 +410,24 @@ export default function MedicalCodesViewer({
           </Button>
         </div>
 
+        {searchError && (
+          <div
+            role="alert"
+            className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start justify-between gap-3"
+          >
+            <span><strong>Search failed.</strong> {searchError}</span>
+            <Button size="sm" variant="secondary" onClick={handleSearch} disabled={searching}>
+              Retry
+            </Button>
+          </div>
+        )}
+
         {searchResults.length > 0 && (
           <div className="mt-4 space-y-2">
             <p className="text-xs text-slate-500 mb-2">{searchResults.length} results found</p>
             {searchResults.map((code) => {
               const isAdded = selectedCodes.some(c => c.code === code.code && c.type === code.type);
+              const atCap = selectedCodes.filter(c => c.type === code.type).length >= MAX_PER_TYPE;
               return (
                 <div
                   key={code.id || code.code}
@@ -400,11 +445,11 @@ export default function MedicalCodesViewer({
                   <Button
                     size="sm"
                     variant={isAdded ? "secondary" : "primary"}
-                    onClick={() => !isAdded && handleAddFromSearch(code)}
-                    disabled={isAdded}
-                    className={isAdded ? "opacity-50 cursor-not-allowed" : ""}
+                    onClick={() => !isAdded && !atCap && handleAddFromSearch(code)}
+                    disabled={isAdded || atCap}
+                    className={isAdded || atCap ? "opacity-50 cursor-not-allowed" : ""}
                   >
-                    {isAdded ? "Added" : "Add"}
+                    {isAdded ? "Added" : atCap ? "At limit" : "Add"}
                   </Button>
                 </div>
               );

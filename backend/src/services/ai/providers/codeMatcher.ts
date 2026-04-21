@@ -5,6 +5,7 @@ import { buildCodeSelectionPrompt } from "../prompts";
 import { searchMedicalCodes } from "../pinecone";
 import { appConfig } from "../../../config/appConfig";
 import { scrubPHI } from "../../../utils/textScrubber";
+import { callGroqForJson } from "./groqFallback";
 
 const CodeMatchSchema = z.object({
   code: z.string(),
@@ -17,6 +18,7 @@ export const SoapToCodesOutputSchema = z.object({
   icdMatches: z.array(CodeMatchSchema).max(3),
   cptMatches: z.array(CodeMatchSchema).max(3),
   model_version: z.string(),
+  pineconeDegraded: z.boolean().optional(),
 });
 
 export type CodeMatchResult = z.infer<typeof SoapToCodesOutputSchema>;
@@ -60,7 +62,7 @@ const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
   return {
     icdMatches: normalizeMatches(parsed.icdMatches),
     cptMatches: normalizeMatches(parsed.cptMatches),
-    model_version: appConfig.ai.geminiModel,
+    model_version: safeString(parsed.model_version) || appConfig.ai.geminiModel,
   };
 };
 
@@ -136,33 +138,63 @@ class GenkitCodeMatcher implements CodeMatcher {
     // SECURITY: Scrub structured PHI before sending to external AI endpoint.
     const { scrubbed: scrubbedNote, redactionCount } = scrubPHI(input.soapNote);
     if (redactionCount > 0) {
-      logger.info({ redactionCount }, "code-matcher: PHI redacted before Gemini call");
+      logger.info({ redactionCount }, "code-matcher: PHI redacted before AI call");
     }
 
-    const retrieval = await searchMedicalCodes(scrubbedNote, 5);
+    let retrieval: Awaited<ReturnType<typeof searchMedicalCodes>>;
+    let pineconeDegraded = false;
+    try {
+      retrieval = await searchMedicalCodes(scrubbedNote, 5);
+    } catch (pineconeError) {
+      logger.warn({ err: (pineconeError as Error)?.message }, "code-matcher: pinecone search failed, continuing without retrieval");
+      retrieval = { icdMatches: [], cptMatches: [] };
+      pineconeDegraded = true;
+    }
+
+    const pineconeHasResults = retrieval.icdMatches.length > 0 || retrieval.cptMatches.length > 0;
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
+    const prompt = buildCodeSelectionPrompt(scrubbedNote, icdCandidates, cptCandidates);
 
-    const result = await ai.generate({
-      model: defaultTextModel,
-      prompt: buildCodeSelectionPrompt(scrubbedNote, icdCandidates, cptCandidates),
-      output: { schema: SoapToCodesOutputSchema },
-      config: {
-        temperature: 0.2,
-      },
-    });
+    let rawOutput: unknown;
+    let providerUsed: "gemini" | "groq" = "gemini";
 
-    const normalized = normalizeCodeOutput(result.output ?? {});
-    const filtered = filterToCandidates(normalized, candidateMaps);
+    try {
+      const result = await ai.generate({
+        model: defaultTextModel,
+        prompt,
+        output: { schema: SoapToCodesOutputSchema },
+        config: { temperature: 0.2 },
+      });
+      rawOutput = result.output ?? {};
+    } catch (geminiError) {
+      logger.warn(
+        { provider: "gemini", err: (geminiError as Error)?.message },
+        "code-matcher: gemini failed, attempting groq fallback",
+      );
+      rawOutput = await callGroqForJson(prompt, { operation: "codes" });
+      providerUsed = "groq";
+    }
+
+    const normalized = normalizeCodeOutput(rawOutput);
+    // Use Pinecone candidates to re-rank/validate when available, but fall back
+    // to raw LLM output when the catalog is too small to cover the encounter.
+    const candidateFiltered = pineconeHasResults ? filterToCandidates(normalized, candidateMaps) : null;
+    const hasCandidateResults =
+      candidateFiltered &&
+      (candidateFiltered.icdMatches.length > 0 || candidateFiltered.cptMatches.length > 0);
+    const filtered = hasCandidateResults ? candidateFiltered : normalized;
     logger.info(
       {
         icdCount: filtered.icdMatches.length,
         cptCount: filtered.cptMatches.length,
         model: filtered.model_version,
+        provider: providerUsed,
+        pineconeDegraded,
       },
       "code matching completed",
     );
-    return SoapToCodesOutputSchema.parse(filtered);
+    return { ...SoapToCodesOutputSchema.parse(filtered), pineconeDegraded };
   }
 }
 
