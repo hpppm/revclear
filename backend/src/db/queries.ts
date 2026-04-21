@@ -94,6 +94,20 @@ export const deleteAllSessionsForUser = async (userId: string): Promise<void> =>
   await query(`DELETE FROM active_sessions WHERE user_id = $1`, [userId]);
 };
 
+export const deleteUserFromDb = async (
+  cognitoId: string,
+  organizationId: string,
+): Promise<{ id: string; email: string } | null> => {
+  const result = await query<{ id: string; email: string }>(
+    `DELETE FROM users
+     WHERE cognito_id = $1 AND organization_id = $2
+     RETURNING id, email`,
+    [cognitoId, organizationId],
+  );
+
+  return result.rows[0] ?? null;
+};
+
 type AiResultRow = {
   id: string;
   encounter_id: string;

@@ -8,6 +8,7 @@ import {
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminConfirmSignUpCommand,
+  AdminDeleteUserCommand,
   DescribeUserPoolClientCommand,
   GlobalSignOutCommand,
   ForgotPasswordCommand,
@@ -214,6 +215,18 @@ export async function adminSetUserPassword(email: string, password: string) {
  */
 export async function adminConfirmSignUp(email: string) {
   const command = new AdminConfirmSignUpCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
+ * Admin delete user by username/email.
+ */
+export async function adminDeleteUser(email: string) {
+  const command = new AdminDeleteUserCommand({
     UserPoolId: userPoolId,
     Username: email,
   });

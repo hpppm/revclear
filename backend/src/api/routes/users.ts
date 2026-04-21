@@ -103,15 +103,16 @@ router.delete("/:cognitoId", authMiddleware, requireRole(["admin"]), async (req:
     }
 
     // 2. Invalidate all active sessions
-    await deleteAllSessionsForUser(deleted.id).catch((err) =>
-      logger.warn({ err: err?.message, cognitoId }, "users/delete: failed to clear active sessions"),
+    await deleteAllSessionsForUser(deleted.id).catch((err: unknown) =>
+      logger.warn({ err: (err as { message?: string })?.message, cognitoId }, "users/delete: failed to clear active sessions"),
     );
 
     // 3. Delete from Cognito — fire-and-forget on UserNotFoundException since
     //    the user may have already been removed from the Cognito console.
-    await adminDeleteUser(deleted.email).catch((err) => {
-      if (err?.name !== "UserNotFoundException") {
-        logger.warn({ err: err?.name, cognitoId }, "users/delete: Cognito deletion failed");
+    await adminDeleteUser(deleted.email).catch((err: unknown) => {
+      const cognitoErr = err as { name?: string };
+      if (cognitoErr?.name !== "UserNotFoundException") {
+        logger.warn({ err: cognitoErr?.name, cognitoId }, "users/delete: Cognito deletion failed");
       }
     });
 
