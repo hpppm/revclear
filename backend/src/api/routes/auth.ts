@@ -6,7 +6,7 @@ import { refreshAuthTokensWithRotation } from "../../config/awsCognito";
 import { authMiddleware } from "../../middleware/auth";
 import { changeUserPassword } from "../../config/awsCognito";
 import { appConfig } from "../../config/appConfig";
-import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes, setEmailVerified, upsertUserEmailVerified, deleteAllOtpCodesForEmail } from "../../db/queries";
+import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes, setEmailVerified, upsertUserEmailVerified } from "../../db/queries";
 import { findUserByEmail } from "../../config/db";
 import { generateOTP, saveOTP, verifyOTP } from "../../utils/otp";
 import { sendOTPEmail } from "../../utils/sendOTP";
@@ -233,9 +233,6 @@ router.post("/signup", async (req, res) => {
 
     // Account created — send OTP for email verification.
     // Tokens are not issued until OTP is verified, then TOTP is set up.
-    // Clear any previous OTP codes (e.g. from a deleted+recreated account)
-    // so the rate-limit window starts fresh for this signup.
-    await deleteAllOtpCodesForEmail(email);
     const otp = generateOTP();
     await saveOTP(email, otp);
     await sendOTPEmail(email, otp);
@@ -264,7 +261,6 @@ router.post("/signup", async (req, res) => {
       const existingUser = await findUserByEmail(email).catch(() => null);
       if (existingUser && !existingUser.email_verified) {
         try {
-          await deleteAllOtpCodesForEmail(email);
           const otp = generateOTP();
           await saveOTP(email, otp);
           await sendOTPEmail(email, otp);
@@ -343,9 +339,6 @@ router.post("/signin", async (req, res) => {
       await saveOTP(email, otp);
       await sendOTPEmail(email, otp);
       res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
-      // Signin unverified path has no stashed Cognito session — the MFA_SETUP
-      // challenge must be re-triggered after the user completes confirm-email.
-      // Store the Cognito session if available so verify-otp can continue.
       if (response.Session) {
         res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
       }

@@ -33,10 +33,6 @@ export const deleteExpiredOtpCodes = async (email: string): Promise<void> => {
   await query(`DELETE FROM otp_codes WHERE user_email = $1 AND expires_at <= NOW()`, [email]);
 };
 
-export const deleteAllOtpCodesForEmail = async (email: string): Promise<void> => {
-  await query(`DELETE FROM otp_codes WHERE user_email = $1`, [email]);
-};
-
 export const countRecentOtpCodes = async (email: string): Promise<number> => {
   const result = await query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM otp_codes
@@ -98,19 +94,17 @@ export const deleteAllSessionsForUser = async (userId: string): Promise<void> =>
   await query(`DELETE FROM active_sessions WHERE user_id = $1`, [userId]);
 };
 
-// ------------------------------------------------------------
-// User deletion
-// ------------------------------------------------------------
-
 export const deleteUserFromDb = async (
   cognitoId: string,
   organizationId: string,
 ): Promise<{ id: string; email: string } | null> => {
   const result = await query<{ id: string; email: string }>(
-    `DELETE FROM users WHERE cognito_id = $1 AND organization_id = $2
+    `DELETE FROM users
+     WHERE cognito_id = $1 AND organization_id = $2
      RETURNING id, email`,
     [cognitoId, organizationId],
   );
+
   return result.rows[0] ?? null;
 };
 
