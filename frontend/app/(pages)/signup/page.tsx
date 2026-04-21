@@ -119,9 +119,10 @@ export default function SignupPage() {
         return;
       }
 
-      // Fallback — should not happen with current backend
-      setError("Account created! Please check your email for verification code.");
-      setTimeout(() => router.push("/login"), 2000);
+      // Defensive fallback: keep users in verification flow even if backend
+      // response shape changes and `step` is omitted.
+      router.push(`/confirm-email?email=${encodeURIComponent(form.email)}&source=signup`);
+      return;
     } catch (error: unknown) {
       logger.error("Signup failed");
       // Use the already-sanitized message from the axios interceptor — never

@@ -25,7 +25,7 @@ function ConfirmEmailPageInner() {
   const email = params.get("email") ?? "";
   const showUnverifiedBanner = params.get("banner") === "unverified";
   const source = params.get("source");
-  const allowResend = source === "signup";
+  const allowResend = source !== "signin";
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [formError, setFormError] = useState("");

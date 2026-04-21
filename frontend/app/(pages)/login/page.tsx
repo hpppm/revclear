@@ -142,6 +142,13 @@ function LoginPageInner() {
           return;
         }
 
+        if (data?.autoLoggedIn !== true) {
+          setErrors({
+            form: "Sign-in incomplete. Please complete email verification or try signing in again.",
+          });
+          return;
+        }
+
         invalidateDedupeCache("me.getProfile");
         const userResponse = await apiClient.me.getProfile();
         const user = userResponse.data;
