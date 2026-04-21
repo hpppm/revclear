@@ -5,7 +5,8 @@ import { AuthService } from "../../services/authService";
 import { refreshAuthTokensWithRotation } from "../../config/awsCognito";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
-import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes } from "../../db/queries";
+import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes, setEmailVerified, upsertUserEmailVerified } from "../../db/queries";
+import { findUserByEmail } from "../../config/db";
 import { generateOTP, saveOTP, verifyOTP } from "../../utils/otp";
 import { sendOTPEmail } from "../../utils/sendOTP";
 import logger from "../../utils/logger";
@@ -290,6 +291,27 @@ router.post("/signin", async (req, res) => {
   try {
     const response = await AuthService.signin(email, password);
 
+    // Block unverified users — check after Cognito password verification so we
+    // don't leak whether an account exists to unauthenticated callers.
+    const existingUser = await findUserByEmail(email);
+    if (!existingUser || !existingUser.email_verified) {
+      const otp = generateOTP();
+      await saveOTP(email, otp);
+      await sendOTPEmail(email, otp);
+      res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+      // Signin unverified path has no stashed Cognito session — the MFA_SETUP
+      // challenge must be re-triggered after the user completes confirm-email.
+      // Store the Cognito session if available so verify-otp can continue.
+      if (response.Session) {
+        res.cookie("mfaSession", response.Session, MFA_SESSION_COOKIE_OPTIONS);
+      }
+      return res.status(401).json({
+        error: "Email not verified",
+        step: "confirm-email",
+        email,
+      });
+    }
+
     // MFA challenge — store Session in httpOnly cookie so the frontend can
     // complete via /verify-mfa (SOFTWARE_TOKEN_MFA) or /associate-totp (MFA_SETUP).
     if (
@@ -400,6 +422,22 @@ router.post("/verify-otp", async (req, res) => {
         logger.warn({ email, challengeName: signinResponse.ChallengeName }, "verify-otp/MFA_SETUP: unexpected challenge after signup signin");
         return res.status(401).json({ error: "Unexpected authentication state. Please sign in again." });
       }
+
+      // Mark email as verified — derive cognito_id from the challenge session
+      // metadata. Cognito doesn't return an access token at challenge stage, so
+      // we use the ChallengeParameters.USER_ID_FOR_SRP if present, otherwise
+      // fall back to upsert by email only (setEmailVerified).
+      try {
+        const cognitoSub = (signinResponse as any).ChallengeParameters?.USER_ID_FOR_SRP as string | undefined;
+        if (cognitoSub) {
+          await upsertUserEmailVerified(email, cognitoSub);
+        } else {
+          await setEmailVerified(email);
+        }
+      } catch (verifyErr) {
+        logger.warn({ email }, "verify-otp: failed to set email_verified — continuing");
+      }
+
       res.clearCookie("accessToken", CLEAR_COOKIE_OPTIONS);
       res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
       res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);

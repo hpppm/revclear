@@ -23,6 +23,7 @@ function ConfirmEmailPageInner() {
   const { login } = useAuth();
 
   const email = params.get("email") ?? "";
+  const showUnverifiedBanner = params.get("banner") === "unverified";
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [formError, setFormError] = useState("");
@@ -131,6 +132,14 @@ function ConfirmEmailPageInner() {
               <span className="text-2xl font-bold text-[var(--brand-600)]">RevClear</span>
             </div>
           </div>
+
+          {showUnverifiedBanner && (
+            <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+              <p className="text-sm text-amber-800">
+                You need to confirm your email before signing in. We resent your confirmation code.
+              </p>
+            </div>
+          )}
 
           <div className="mb-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-50)]">

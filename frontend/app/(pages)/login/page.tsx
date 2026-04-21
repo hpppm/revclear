@@ -19,6 +19,8 @@ interface ApiErrorData {
   error?: string;
   message?: string;
   details?: string;
+  step?: string;
+  email?: string;
 }
 
 interface ApiErrorShape {
@@ -44,6 +46,8 @@ function getApiErrorData(error: unknown): ApiErrorData | undefined {
     error: typeof data.error === "string" ? data.error : undefined,
     message: typeof data.message === "string" ? data.message : undefined,
     details: typeof data.details === "string" ? data.details : undefined,
+    step: typeof data.step === "string" ? data.step : undefined,
+    email: typeof data.email === "string" ? data.email : undefined,
   };
 }
 
@@ -155,6 +159,14 @@ function LoginPageInner() {
         }
 
         const errorData = getApiErrorData(error);
+
+        if (errorData?.step === "confirm-email") {
+          router.push(
+            `/confirm-email?email=${encodeURIComponent(errorData.email ?? email)}&banner=unverified`,
+          );
+          return;
+        }
+
         const errorMessage =
           errorData?.error ||
           errorData?.details ||
