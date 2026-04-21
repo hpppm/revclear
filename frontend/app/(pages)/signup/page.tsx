@@ -115,7 +115,7 @@ export default function SignupPage() {
       const data = response.data;
 
       if (data.step === "verify-otp") {
-        router.push(`/confirm-email?email=${encodeURIComponent(form.email)}`);
+        router.push(`/confirm-email?email=${encodeURIComponent(form.email)}&source=signup`);
         return;
       }
 
