@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { query } from "../../config/db";
 import { getAiProviderHealthReport } from "../../services/ai/providerHealth";
-import { authMiddleware } from "../../middleware/auth";
+import { authMiddleware, requireRole } from "../../middleware/auth";
 
 const router = Router();
 
@@ -36,7 +36,7 @@ router.get("/ready", async (_req, res) => {
 // SECURITY: AI health is restricted to authenticated users only.
 // Provider URLs and model names are stripped from the response to avoid
 // leaking infrastructure details that could aid reconnaissance.
-router.get("/ai", authMiddleware, async (_req, res) => {
+router.get("/ai", authMiddleware, requireRole(['admin']), async (_req, res) => {
   try {
     const report = await getAiProviderHealthReport();
     const statusCode = report.overallHealthy ? 200 : 503;
