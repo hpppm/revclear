@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
@@ -17,7 +17,7 @@ function getApiError(error: unknown): string | undefined {
   return typeof data?.error === "string" ? data.error : undefined;
 }
 
-function VerifyOtpPageInner() {
+export default function VerifyOtpPage() {
   const router = useRouter();
   const params = useSearchParams();
   const { login } = useAuth();
@@ -140,17 +140,13 @@ function VerifyOtpPageInner() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-1">2-step verification</h1>
+            <h1 className="text-2xl font-bold text-[var(--brand-600)] mb-1">Check your email</h1>
             <p className="text-sm text-gray-500">
-              Enter the code we sent to <span className="font-medium text-gray-700">{email}</span> to continue signing in.
+              We sent a 6-digit code to <span className="font-medium text-gray-700">{email}</span>
             </p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
-                Verification code
-              </label>
             <div className="flex justify-center gap-2">
               {digits.map((d, i) => (
                 <input
@@ -168,7 +164,6 @@ function VerifyOtpPageInner() {
                   aria-label={`Digit ${i + 1}`}
                 />
               ))}
-            </div>
             </div>
 
             {formError && (
@@ -191,7 +186,7 @@ function VerifyOtpPageInner() {
                 disabled={!isComplete}
                 className="w-full rounded-xl hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--brand-500)] disabled:hover:translate-y-0"
               >
-                Continue
+                Verify Code
               </Button>
 
               <button
@@ -217,13 +212,5 @@ function VerifyOtpPageInner() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function VerifyOtpPage() {
-  return (
-    <Suspense>
-      <VerifyOtpPageInner />
-    </Suspense>
   );
 }

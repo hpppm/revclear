@@ -5,7 +5,9 @@ import { AuthService } from "../../services/authService";
 import { refreshAuthTokensWithRotation } from "../../config/awsCognito";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
-import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser } from "../../db/queries";
+import { upsertActiveSession, deleteActiveSession, deleteAllSessionsForUser, countRecentOtpCodes } from "../../db/queries";
+import { generateOTP, saveOTP, verifyOTP } from "../../utils/otp";
+import { sendOTPEmail } from "../../utils/sendOTP";
 import logger from "../../utils/logger";
 
 const SESSION_START_COOKIE = "sessionStart";
@@ -245,7 +247,19 @@ router.post("/confirm-signup", async (req, res) => {
   }
 });
 
+// Short-lived cookie carrying the pending OTP email so verify-otp and resend-otp
+// can look it up without trusting user-supplied body params.
+const OTP_PENDING_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: cookieSameSite,
+  path: "/",
+  maxAge: 10 * 60 * 1000, // 10 minutes — matches OTP expiry
+};
+
 // Sign-in route
+// After successful Cognito password verification an OTP is generated, saved, and
+// emailed. Tokens are NOT issued here — the client must complete /verify-otp first.
 router.post("/signin", async (req, res) => {
   const parsed = SigninSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -267,9 +281,18 @@ router.post("/signin", async (req, res) => {
       res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
       res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
       res.cookie("mfaSession", response.Session!, MFA_SESSION_COOKIE_OPTIONS);
+
+      // Gate on OTP before continuing to MFA — store Cognito challenge name so
+      // verify-otp can forward the client to the right MFA step afterward.
+      const otp = generateOTP();
+      await saveOTP(email, otp);
+      await sendOTPEmail(email, otp);
+      res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+      res.cookie("otpNextStep", response.ChallengeName!, OTP_PENDING_COOKIE_OPTIONS);
+
       return res.status(200).json({
-        mfaRequired: true,
-        challengeName: response.ChallengeName,
+        message: "OTP sent",
+        step: "verify-otp",
         email,
       });
     }
@@ -286,14 +309,30 @@ router.post("/signin", async (req, res) => {
       });
     }
 
-    // Decode jti + sub from access token (no verify needed — Cognito just issued it)
-    const [, payloadB64] = authResult.AccessToken.split(".");
-    const tokenPayload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
-    await establishSession(res, authResult.AccessToken, authResult.RefreshToken, tokenPayload.sub, tokenPayload.jti);
+    // Password-only path (no MFA configured) — gate on OTP then issue tokens
+    // in /verify-otp once the user confirms the email code.
+    const otp = generateOTP();
+    await saveOTP(email, otp);
+    await sendOTPEmail(email, otp);
 
-    res.status(200).json({
-      message: "User signed in successfully.",
-      autoLoggedIn: true,
+    // Stash the encoded token payload in a signed, httpOnly cookie so verify-otp
+    // can complete the session without re-authenticating with Cognito.
+    const [, payloadB64] = authResult.AccessToken.split(".");
+    res.cookie(
+      "otpPendingTokens",
+      JSON.stringify({
+        accessToken: authResult.AccessToken,
+        refreshToken: authResult.RefreshToken ?? null,
+      }),
+      OTP_PENDING_COOKIE_OPTIONS,
+    );
+    res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+    res.cookie("otpNextStep", "AUTHENTICATED", OTP_PENDING_COOKIE_OPTIONS);
+
+    return res.status(200).json({
+      message: "OTP sent",
+      step: "verify-otp",
+      email,
     });
   } catch (error: any) {
     // Ensure a failed sign-in does not leave stale auth/mfa cookies in place.
@@ -320,6 +359,91 @@ router.post("/signin", async (req, res) => {
         : {};
     res.status(401).json({ error: "Invalid email or password.", ...devDetail });
   }
+});
+
+const VerifyOtpSchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
+});
+
+// Verify OTP — second factor before TOTP/MFA or before issuing tokens directly.
+router.post("/verify-otp", async (req, res) => {
+  const parsed = VerifyOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email, code } = parsed.data;
+
+  // Verify the email matches the pending cookie so the body cannot be
+  // spoofed to verify another user's OTP.
+  const pendingEmail = req.cookies?.otpPending;
+  if (!pendingEmail || pendingEmail !== email) {
+    return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+  }
+
+  const valid = await verifyOTP(email, code);
+  if (!valid) {
+    return res.status(400).json({ error: "Invalid or expired code." });
+  }
+
+  const nextStep: string = req.cookies?.otpNextStep ?? "AUTHENTICATED";
+
+  res.clearCookie("otpPending", CLEAR_COOKIE_OPTIONS);
+  res.clearCookie("otpNextStep", CLEAR_COOKIE_OPTIONS);
+
+  // No MFA — complete session using stashed tokens.
+  if (nextStep === "AUTHENTICATED") {
+    const rawTokens = req.cookies?.otpPendingTokens;
+    if (!rawTokens) {
+      return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+    }
+    let tokens: { accessToken: string; refreshToken: string | null };
+    try {
+      tokens = JSON.parse(rawTokens);
+    } catch {
+      return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+    }
+    res.clearCookie("otpPendingTokens", CLEAR_COOKIE_OPTIONS);
+    const [, payloadB64] = tokens.accessToken.split(".");
+    const tokenPayload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
+    await establishSession(res, tokens.accessToken, tokens.refreshToken ?? undefined, tokenPayload.sub, tokenPayload.jti);
+    return res.status(200).json({ message: "OTP verified", step: "complete", autoLoggedIn: true });
+  }
+
+  // MFA path — continue to TOTP challenge.
+  return res.status(200).json({ message: "OTP verified", step: "verify-mfa", challengeName: nextStep });
+});
+
+const ResendOtpSchema = z.object({
+  email: z.string().email(),
+});
+
+// Resend OTP — rate-limited to 3 attempts per 10-minute window.
+router.post("/resend-otp", async (req, res) => {
+  const parsed = ResendOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  const { email } = parsed.data;
+
+  const pendingEmail = req.cookies?.otpPending;
+  if (!pendingEmail || pendingEmail !== email) {
+    return res.status(401).json({ error: "OTP session expired. Please sign in again." });
+  }
+
+  const recentCount = await countRecentOtpCodes(email);
+  if (recentCount >= 3) {
+    return res.status(429).json({ error: "Too many requests. Please wait before requesting a new code." });
+  }
+
+  const otp = generateOTP();
+  await saveOTP(email, otp);
+  await sendOTPEmail(email, otp);
+
+  // Refresh the pending cookie TTL.
+  res.cookie("otpPending", email, OTP_PENDING_COOKIE_OPTIONS);
+
+  return res.status(200).json({ message: "OTP sent" });
 });
 
 // Sign-out route - does NOT require auth middleware
