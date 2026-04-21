@@ -3,8 +3,16 @@ import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
 import { validateActiveSession } from "../db/queries";
+import { refreshAuthTokensWithRotation } from "../config/awsCognito";
 import { getEffectiveOrganizationRole } from "../utils/organization";
 import logger from "../utils/logger";
+
+const COOKIE_BASE = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: (process.env.NODE_ENV === "production" ? "strict" : "lax") as "strict" | "lax",
+  path: "/",
+};
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
 const clientId = process.env.AWS_CLIENT_ID;
@@ -111,14 +119,49 @@ export const authMiddleware = async (
     try {
       payload = await jwtVerifier.verify(token);
     } catch (jwtErr: any) {
-      logger.warn(
-        { jwtError: jwtErr?.message, jwtName: jwtErr?.name },
-        "Auth: JWT verification failed",
-      );
-      const isExpired = jwtErr?.message?.includes("expired");
-      return res.status(401).json({
-        error: isExpired ? "Token expired" : "Invalid token",
-      });
+      const isExpired =
+        jwtErr?.name === "JwtExpiredError" ||
+        jwtErr?.message?.toLowerCase().includes("expired");
+
+      if (!isExpired) {
+        logger.warn({ jwtError: jwtErr?.message }, "Auth: invalid token");
+        return res.status(401).json({ error: "Invalid token" });
+      }
+
+      // Access token expired — attempt silent refresh using the refresh token cookie.
+      const refreshToken: string | undefined = req.cookies?.refreshToken;
+      if (!refreshToken) {
+        return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
+      }
+
+      try {
+        const refreshed = await refreshAuthTokensWithRotation(refreshToken);
+        const newAccessToken = refreshed.AuthenticationResult?.AccessToken;
+        const newIdToken = refreshed.AuthenticationResult?.IdToken;
+        const newRefreshToken = refreshed.AuthenticationResult?.RefreshToken;
+
+        if (!newAccessToken) {
+          return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
+        }
+
+        res.cookie("accessToken", newAccessToken, { ...COOKIE_BASE, maxAge: 60 * 60 * 1000 });
+        if (newIdToken) {
+          res.cookie("idToken", newIdToken, { ...COOKIE_BASE, maxAge: 60 * 60 * 1000 });
+        }
+        // Rotate refresh token — old one is now invalidated by Cognito.
+        if (newRefreshToken) {
+          res.cookie("refreshToken", newRefreshToken, { ...COOKIE_BASE, maxAge: 7 * 24 * 60 * 60 * 1000 });
+        }
+
+        payload = await jwtVerifier.verify(newAccessToken);
+        logger.info({ sub: payload.sub }, "Auth: tokens silently rotated via refresh");
+      } catch (refreshErr: any) {
+        logger.warn({ err: refreshErr?.message }, "Auth: token refresh failed");
+        res.clearCookie("accessToken", { path: "/" });
+        res.clearCookie("refreshToken", { path: "/" });
+        res.clearCookie("mfaVerified", { path: "/" });
+        return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
+      }
     }
 
     // Enforce that the access token came from an MFA-satisfied Cognito login.
