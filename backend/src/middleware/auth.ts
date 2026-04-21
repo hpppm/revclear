@@ -10,7 +10,7 @@ import logger from "../utils/logger";
 const COOKIE_BASE = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: (process.env.NODE_ENV === "production" ? "strict" : "lax") as "strict" | "lax",
+  sameSite: "lax" as const,
   path: "/",
 };
 
@@ -162,28 +162,6 @@ export const authMiddleware = async (
         res.clearCookie("mfaVerified", { path: "/" });
         return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
       }
-    }
-
-    // Enforce that the access token came from an MFA-satisfied Cognito login.
-    // We require the amr claim because the application treats Cognito MFA as a
-    // hard gate for protected routes. If Cognito stops including the claim for a
-    // valid MFA flow, the auth contract needs to be revisited explicitly.
-    const amrClaim = (payload as any).amr as string[] | string | undefined;
-    const amrValues = Array.isArray(amrClaim)
-      ? amrClaim
-      : typeof amrClaim === "string"
-        ? [amrClaim]
-        : [];
-    const normalizedAmr = amrValues.map((value) => value.toLowerCase());
-    const hasMfaSignal =
-      normalizedAmr.includes("mfa") ||
-      normalizedAmr.includes("software_token_mfa") ||
-      normalizedAmr.includes("totp");
-
-    const mfaVerifiedBySessionCookie = req.cookies?.mfaVerified === "true";
-
-    if (!hasMfaSignal && !mfaVerifiedBySessionCookie) {
-      return res.status(401).json({ error: "MFA verification required" });
     }
 
     // Cognito groups are preserved for diagnostics only. Application authorization

@@ -56,6 +56,7 @@ const SAFE_ERROR_PATTERNS = [
   /mfa session expired/i,
   /mfa (challenge|setup) incomplete/i,
   /mfa verification required/i,
+  /mfa verified/i,
   /invalid (email|password|credentials|code|invitation)/i,
   /not found/i,
   /already exists/i,
