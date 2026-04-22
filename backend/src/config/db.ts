@@ -18,6 +18,7 @@ const userColumns = [
   "taxonomy_code",
   "provider_role",
   "created_at",
+  "email_verified",
 ].join(", ");
 
 const poolConfig: PoolConfig = {

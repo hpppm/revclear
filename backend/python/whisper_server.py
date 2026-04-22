@@ -21,19 +21,33 @@ import sys
 import tempfile
 import logging
 import hmac
+import time
 from pathlib import Path
 
 from flask import Flask, request, jsonify
 from faster_whisper import WhisperModel
+from huggingface_hub import login
+
+# ---------------------------------------------------------------------------
+# HuggingFace authentication
+# ---------------------------------------------------------------------------
+_hf_token = os.getenv("HF_TOKEN")
+if _hf_token:
+    login(token=_hf_token)
+else:
+    print("WARNING: HF_TOKEN not set, using unauthenticated HuggingFace access")
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 PORT = int(os.environ.get("PORT", 8000))
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "tiny")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
 API_KEY = os.environ.get("AI_SERVER_API_KEY", "")
+if not API_KEY:
+    print("FATAL: AI_SERVER_API_KEY is not set. Refusing to start.")
+    sys.exit(1)
 
 ALLOWED_EXTENSIONS = {
     ".mp3", ".mp4", ".mpeg", ".mpga", ".m4a",
@@ -114,8 +128,11 @@ def transcribe():
 
         log.info("Transcribing %s (saved as %s) …", audio_file.filename, tmp_path)
 
-        segments, info = model.transcribe(tmp_path, beam_size=3)
-        full_text = "".join(seg.text for seg in segments)
+        t_start = time.monotonic()
+        segments, info = model.transcribe(tmp_path, beam_size=1)
+        segments_list = list(segments)  # force generator evaluation before logging
+        full_text = "".join(seg.text for seg in segments_list)
+        duration = round(time.monotonic() - t_start, 2)
 
         log.info(
             "Done  lang=%s  prob=%.2f  chars=%d",
@@ -123,6 +140,7 @@ def transcribe():
             info.language_probability,
             len(full_text),
         )
+        log.info("Transcription complete: %ss", duration)
 
         return jsonify({"transcript": full_text})
 

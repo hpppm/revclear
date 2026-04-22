@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Sidebar from "@/app/components/ui/Sidebar";
+import { useIdleTimeout } from "@/app/hooks/useIdleTimeout";
+import { authApi } from "@/app/lib/api/auth";
+
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 // Global scroll-to-center on focus for any input/select/textarea in the dashboard.
 // This covers raw HTML elements that don't go through the Input component.
@@ -29,6 +33,13 @@ export default function DashboardLayout({
     const router = useRouter();
     const [collapsed, setCollapsed] = useState(false);
     useFormAutoScroll();
+
+    const handleIdle = useCallback(async () => {
+        try { await authApi.signout(); } catch { /* ignore */ }
+        router.push("/login?reason=idle");
+    }, [router]);
+
+    useIdleTimeout(IDLE_TIMEOUT_MS, handleIdle);
 
     useEffect(() => {
         if (!isLoading && !user) {

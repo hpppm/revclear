@@ -36,10 +36,14 @@ const EnvSchema = z.object({
   AI_SERVER_HEALTH_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
+  GROQ_API_KEY: z.string().min(1).optional(),
+  GROQ_MODEL: z.string().min(1).optional(),
   PINECONE_API_KEY: z.string().min(1).optional(),
   PINECONE_INDEX_HOST: z.string().min(1).optional(),
   PINECONE_NAMESPACE: z.string().min(1).optional(),
   PINECONE_API_VERSION: z.string().min(1).optional(),
+
+  SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
 
   TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
@@ -129,6 +133,8 @@ export const appConfig = {
     serverHealthUrl: env.AI_SERVER_HEALTH_URL,
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL ?? "gemini-2.5-flash",
+    groqApiKey: env.GROQ_API_KEY,
+    groqModel: env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
     pinecone: {
       apiKey: env.PINECONE_API_KEY,
       indexHost: env.PINECONE_INDEX_HOST,
@@ -139,6 +145,11 @@ export const appConfig = {
   clearinghouse: {
     url: env.CLEARINGHOUSE_URL,
     apiKey: env.CLEARINGHOUSE_API_KEY,
+  },
+  session: {
+    secret: env.SESSION_SECRET,
+    maxAgeMs: 8 * 60 * 60 * 1000,   // 8 hours absolute session limit (HIPAA)
+    idleTimeoutMs: 30 * 60 * 1000,  // 30 minutes idle timeout
   },
   auth: {
     // In development, keep auth flows limited to local test accounts unless overridden.

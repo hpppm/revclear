@@ -154,9 +154,11 @@ export default function ProfilePage() {
                                     </div>
                                     <Input
                                         label="Phone Number"
+                                        type="tel"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 123-4567"
+                                        maxLength={15}
                                         helperText="For account notifications"
                                         error={fieldErrors.phone}
                                     />
@@ -172,13 +174,16 @@ export default function ProfilePage() {
                                         value={formData.practitioner_type}
                                         onChange={(e) => setFormData({ ...formData, practitioner_type: e.target.value })}
                                         placeholder="e.g. Clinical Psychologist"
+                                        maxLength={100}
                                         error={fieldErrors.practitioner_type}
                                     />
                                     <Input
                                         label="Taxonomy Code"
                                         value={formData.taxonomy_code}
-                                        onChange={(e) => setFormData({ ...formData, taxonomy_code: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, taxonomy_code: e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 10).toUpperCase() })}
                                         placeholder="10-character code"
+                                        maxLength={10}
+                                        pattern="[A-Za-z0-9]{10}"
                                         error={fieldErrors.taxonomy_code}
                                     />
                                 </div>
@@ -188,13 +193,15 @@ export default function ProfilePage() {
                                         value={formData.license_id}
                                         onChange={(e) => setFormData({ ...formData, license_id: e.target.value })}
                                         placeholder="State license number"
+                                        maxLength={50}
                                         error={fieldErrors.license_id}
                                     />
                                     <Input
                                         label="License State"
                                         value={formData.license_state}
-                                        onChange={(e) => setFormData({ ...formData, license_state: e.target.value })}
-                                        placeholder="e.g. CA, NY"
+                                        onChange={(e) => setFormData({ ...formData, license_state: e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() })}
+                                        placeholder="CA"
+                                        maxLength={2}
                                         error={fieldErrors.license_state}
                                     />
                                 </div>
@@ -202,8 +209,11 @@ export default function ProfilePage() {
                                     <Input
                                         label="Individual NPI"
                                         value={formData.npi}
-                                        onChange={(e) => setFormData({ ...formData, npi: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, npi: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                                         placeholder="10-digit Type 1 NPI"
+                                        maxLength={10}
+                                        inputMode="numeric"
+                                        pattern="\d{10}"
                                         helperText="Your personal NPI as rendering provider"
                                         error={fieldErrors.npi}
                                     />

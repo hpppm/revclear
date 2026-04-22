@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { invalidateDedupeCache } from "@/app/lib/api/deduplicate";
@@ -19,6 +19,8 @@ interface ApiErrorData {
   error?: string;
   message?: string;
   details?: string;
+  step?: string;
+  email?: string;
 }
 
 interface ApiErrorShape {
@@ -44,6 +46,8 @@ function getApiErrorData(error: unknown): ApiErrorData | undefined {
     error: typeof data.error === "string" ? data.error : undefined,
     message: typeof data.message === "string" ? data.message : undefined,
     details: typeof data.details === "string" ? data.details : undefined,
+    step: typeof data.step === "string" ? data.step : undefined,
+    email: typeof data.email === "string" ? data.email : undefined,
   };
 }
 
@@ -82,8 +86,9 @@ interface MfaState {
   challengeName: "SOFTWARE_TOKEN_MFA" | "MFA_SETUP";
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const params = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -93,6 +98,16 @@ export default function LoginPage() {
   const [mfaState, setMfaState] = useState<MfaState | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
+
+  // Resume MFA step after /verify-otp redirects back with ?mfa=1&email=...&challenge=...
+  useEffect(() => {
+    const mfaParam = params.get("mfa");
+    const emailParam = params.get("email");
+    const challenge = params.get("challenge") as MfaState["challengeName"] | null;
+    if (mfaParam === "1" && emailParam && challenge) {
+      setMfaState({ email: emailParam, challengeName: challenge });
+    }
+  }, [params]);
 
   const isFormInvalid = !email.trim() || !password.trim();
   const isMfaInvalid = mfaCode.length !== 6 || !/^\d{6}$/.test(mfaCode);
@@ -117,6 +132,11 @@ export default function LoginPage() {
         const signinResponse = await apiClient.auth.signin({ email, password });
         const data = signinResponse.data;
 
+        if (data?.step === "verify-otp") {
+          router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+          return;
+        }
+
         if (data?.mfaRequired) {
           setMfaState({ email, challengeName: data.challengeName });
           return;
@@ -129,7 +149,7 @@ export default function LoginPage() {
         login(user);
         router.push("/dashboard");
       } catch (error: unknown) {
-        logger.error("Login failed", error);
+        logger.error("Login failed");
         if (isLikelyNetworkOrTlsFailure(error)) {
           setErrors({
             form:
@@ -139,6 +159,14 @@ export default function LoginPage() {
         }
 
         const errorData = getApiErrorData(error);
+
+        if (errorData?.step === "confirm-email") {
+          router.push(
+            `/confirm-email?email=${encodeURIComponent(errorData.email ?? email)}&banner=unverified&source=signin`,
+          );
+          return;
+        }
+
         const errorMessage =
           errorData?.error ||
           errorData?.details ||
@@ -181,14 +209,13 @@ export default function LoginPage() {
         await apiClient.auth.verifyMfa({ email: mfaState.email, code: mfaCode });
       }
 
-      invalidateDedupeCache("me.getProfile");
       const userResponse = await apiClient.me.getProfile();
       const user = userResponse.data;
 
       login(user);
       router.push("/dashboard");
     } catch (error: unknown) {
-      logger.error("MFA verification failed", error);
+      logger.error("MFA verification failed");
       const errorData = getApiErrorData(error);
       setErrors({
         form: errorData?.error || "Invalid or expired code. Please try again.",
@@ -234,7 +261,7 @@ export default function LoginPage() {
                       <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 break-all select-all">{totpSecret}</code>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-400">Loading QR code...</p>
+                    <p className="text-sm text-gray-400">Loading QR code…</p>
                   )}
                 </>
               ) : (
@@ -505,5 +532,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

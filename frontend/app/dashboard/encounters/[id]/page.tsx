@@ -113,7 +113,6 @@ export default function EncounterSummaryPage() {
 
         try {
             const res = await apiClient.transcribe.transcribeS3({
-                s3Key: encounter.audio_key,
                 encounterId,
             });
 

@@ -2,6 +2,112 @@ import { query } from "../config/db";
 import { decryptPHIJsonFields, encryptPHIJson } from "../utils/crypto";
 import logger from "../utils/logger";
 
+// ------------------------------------------------------------
+// OTP codes
+// ------------------------------------------------------------
+
+export const insertOtpCode = async (email: string, hashedCode: string): Promise<void> => {
+  await query(
+    `INSERT INTO otp_codes (user_email, code, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '10 minutes')`,
+    [email, hashedCode],
+  );
+};
+
+export const findValidOtpCode = async (email: string, hashedCode: string): Promise<{ id: string } | null> => {
+  const result = await query<{ id: string }>(
+    `SELECT id FROM otp_codes
+     WHERE user_email = $1 AND code = $2 AND used = FALSE AND expires_at > NOW()
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [email, hashedCode],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const markOtpCodeUsed = async (id: string): Promise<void> => {
+  await query(`UPDATE otp_codes SET used = TRUE WHERE id = $1`, [id]);
+};
+
+export const deleteExpiredOtpCodes = async (email: string): Promise<void> => {
+  await query(`DELETE FROM otp_codes WHERE user_email = $1 AND expires_at <= NOW()`, [email]);
+};
+
+export const countRecentOtpCodes = async (email: string): Promise<number> => {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM otp_codes
+     WHERE user_email = $1 AND created_at > NOW() - INTERVAL '10 minutes'`,
+    [email],
+  );
+  return parseInt(result.rows[0]?.count ?? "0", 10);
+};
+
+// ------------------------------------------------------------
+// Email verification
+// ------------------------------------------------------------
+
+export const setEmailVerified = async (email: string): Promise<void> => {
+  await query(
+    `UPDATE users SET email_verified = TRUE WHERE email = $1`,
+    [email],
+  );
+};
+
+// Sets email_verified=true for an existing user, or creates the user row
+// with email_verified=true when Cognito auto-confirmed and no row exists yet.
+export const upsertUserEmailVerified = async (email: string, cognitoId: string): Promise<void> => {
+  await query(
+    `INSERT INTO users (cognito_id, email, email_verified)
+     VALUES ($1, $2, TRUE)
+     ON CONFLICT (email) DO UPDATE SET email_verified = TRUE`,
+    [cognitoId, email],
+  );
+};
+
+// ------------------------------------------------------------
+// Active sessions (concurrent session limiting)
+// ------------------------------------------------------------
+
+export const upsertActiveSession = async (userId: string, jti: string): Promise<void> => {
+  // Delete all existing sessions for this user, then insert the new one.
+  // This enforces a single concurrent session per user.
+  await query(`DELETE FROM active_sessions WHERE user_id = $1`, [userId]);
+  await query(
+    `INSERT INTO active_sessions (user_id, jti) VALUES ($1, $2)`,
+    [userId, jti],
+  );
+};
+
+export const validateActiveSession = async (userId: string, jti: string): Promise<boolean> => {
+  const result = await query(
+    `SELECT 1 FROM active_sessions WHERE user_id = $1 AND jti = $2`,
+    [userId, jti],
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+};
+
+export const deleteActiveSession = async (jti: string): Promise<void> => {
+  await query(`DELETE FROM active_sessions WHERE jti = $1`, [jti]);
+};
+
+export const deleteAllSessionsForUser = async (userId: string): Promise<void> => {
+  await query(`DELETE FROM active_sessions WHERE user_id = $1`, [userId]);
+};
+
+export const deleteUserFromDb = async (
+  cognitoId: string,
+  organizationId: string,
+): Promise<{ id: string; email: string } | null> => {
+  const result = await query<{ id: string; email: string }>(
+    `DELETE FROM users
+     WHERE cognito_id = $1 AND organization_id = $2
+     RETURNING id, email`,
+    [cognitoId, organizationId],
+  );
+
+  return result.rows[0] ?? null;
+};
+
 type AiResultRow = {
   id: string;
   encounter_id: string;

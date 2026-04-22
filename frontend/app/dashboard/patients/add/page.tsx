@@ -283,6 +283,7 @@ export default function AddPatientPage() {
                   onChange={(e) => handleChange("phone", formatPhone(e.target.value))}
                   onBlur={(e) => handleBlur("phone", e.target.value, e.target as HTMLElement)}
                   placeholder="(555) 123-4567"
+                  maxLength={15}
                   required
                   error={fieldErrors.phone}
                 />
@@ -294,6 +295,7 @@ export default function AddPatientPage() {
                   onChange={(e) => handleChange("email", e.target.value)}
                   onBlur={(e) => handleBlur("email", e.target.value, e.target as HTMLElement)}
                   placeholder="john.doe@example.com"
+                  maxLength={254}
                   error={fieldErrors.email}
                 />
               </div>
@@ -309,6 +311,7 @@ export default function AddPatientPage() {
                   onChange={(e) => handleChange("address_street", e.target.value)}
                   onBlur={(e) => handleBlur("address_street", e.target.value, e.target as HTMLElement)}
                   placeholder="123 Main St"
+                  maxLength={200}
                   required
                   error={fieldErrors.address_street}
                 />
@@ -319,6 +322,7 @@ export default function AddPatientPage() {
                     onChange={(e) => handleChange("address_city", e.target.value)}
                     onBlur={(e) => handleBlur("address_city", e.target.value, e.target as HTMLElement)}
                     placeholder="Erie"
+                    maxLength={100}
                     required
                     error={fieldErrors.address_city}
                   />
@@ -334,9 +338,11 @@ export default function AddPatientPage() {
                   <Input
                     label="ZIP Code"
                     value={formData.address_zip}
-                    onChange={(e) => handleChange("address_zip", e.target.value)}
+                    onChange={(e) => handleChange("address_zip", e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
                     onBlur={(e) => handleBlur("address_zip", e.target.value, e.target as HTMLElement)}
                     placeholder="16501"
+                    maxLength={10}
+                    inputMode="numeric"
                     required
                     error={fieldErrors.address_zip}
                   />
@@ -423,6 +429,7 @@ export default function AddPatientPage() {
                     onChange={(e) => handleChange("insurance_policy_number", e.target.value)}
                     onBlur={(e) => handleBlur("insurance_policy_number", e.target.value, e.target as HTMLElement)}
                     placeholder="ABC123456789"
+                    maxLength={15}
                     helperText="6–15 characters"
                     required
                     error={fieldErrors.insurance_policy_number}
@@ -433,6 +440,7 @@ export default function AddPatientPage() {
                     onChange={(e) => handleChange("insurance_member_id", e.target.value)}
                     onBlur={(e) => handleBlur("insurance_member_id", e.target.value, e.target as HTMLElement)}
                     placeholder="Member/Subscriber ID"
+                    maxLength={11}
                     helperText="8–11 characters"
                     required
                     error={fieldErrors.insurance_member_id}
@@ -442,6 +450,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_group_number}
                     onChange={(e) => handleChange("insurance_group_number", e.target.value)}
                     placeholder="Group number"
+                    maxLength={50}
                     error={fieldErrors.insurance_group_number}
                   />
                   <Input
@@ -449,6 +458,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_payer_id}
                     onChange={(e) => handleChange("insurance_payer_id", e.target.value)}
                     placeholder="Clearinghouse payer ID"
+                    maxLength={50}
                     helperText="For electronic claim submission"
                     error={fieldErrors.insurance_payer_id}
                   />
@@ -457,6 +467,7 @@ export default function AddPatientPage() {
                     value={formData.insurance_payer_name}
                     onChange={(e) => handleChange("insurance_payer_name", e.target.value)}
                     placeholder="Insurance payer name"
+                    maxLength={100}
                     error={fieldErrors.insurance_payer_name}
                   />
                 </div>

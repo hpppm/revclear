@@ -324,6 +324,7 @@ export default function PatientProfilePage() {
                                                     value={editingValue}
                                                     onChange={(e) => setEditingValue(e.target.value)}
                                                     className="text-3xl font-bold text-slate-900 border-b-2 border-blue-500 outline-none bg-transparent w-64"
+                                                    maxLength={100}
                                                     autoFocus
                                                 />
                                                 <button
@@ -454,6 +455,7 @@ export default function PatientProfilePage() {
                                             value={editedPatient.phone || ""}
                                             onChange={(e) => { setEditedPatient({ ...editedPatient, phone: e.target.value }); clearFieldError('phone'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.phone ? "border-red-500" : "border-slate-300"}`}
+                                            maxLength={15}
                                         />
                                         {fieldErrors.phone && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
@@ -470,6 +472,7 @@ export default function PatientProfilePage() {
                                             value={editedPatient.email || ""}
                                             onChange={(e) => { setEditedPatient({ ...editedPatient, email: e.target.value }); clearFieldError('email'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            maxLength={254}
                                         />
                                         {fieldErrors.email && <p className="mt-1 text-sm text-red-500">{fieldErrors.email}</p>}
                                     </>
@@ -486,6 +489,7 @@ export default function PatientProfilePage() {
                                             value={editedPatient.insuranceType || ""}
                                             onChange={(e) => { setEditedPatient({ ...editedPatient, insuranceType: e.target.value }); clearFieldError('insurance_provider'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_provider ? "border-red-500" : "border-slate-300"}`}
+                                            maxLength={100}
                                         />
                                         {fieldErrors.insurance_provider && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
@@ -502,6 +506,7 @@ export default function PatientProfilePage() {
                                             value={editedPatient.insuranceId || ""}
                                             onChange={(e) => { setEditedPatient({ ...editedPatient, insuranceId: e.target.value }); clearFieldError('insurance_policy_number'); }}
                                             className={`text-slate-900 font-medium border rounded px-2 py-1 w-full ${fieldErrors.insurance_policy_number ? "border-red-500" : "border-slate-300"}`}
+                                            maxLength={50}
                                         />
                                         {fieldErrors.insurance_policy_number && <p className="mt-1 text-sm text-red-500">Required</p>}
                                     </>
@@ -518,6 +523,7 @@ export default function PatientProfilePage() {
                                             value={editedPatient.insurance_member_id || ""}
                                             onChange={(e) => { setEditedPatient({ ...editedPatient, insurance_member_id: e.target.value }); clearFieldError('insurance_member_id'); }}
                                             className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                            maxLength={50}
                                         />
                                         {fieldErrors.insurance_member_id && <p className="mt-1 text-sm text-red-500">{fieldErrors.insurance_member_id}</p>}
                                     </>
@@ -536,6 +542,7 @@ export default function PatientProfilePage() {
                                                 value={editedPatient.address_street || ""}
                                                 onChange={(e) => { setEditedPatient({ ...editedPatient, address_street: e.target.value }); clearFieldError('address_street'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                                maxLength={200}
                                             />
                                             {fieldErrors.address_street && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_street}</p>}
                                         </div>
@@ -546,6 +553,7 @@ export default function PatientProfilePage() {
                                                 value={editedPatient.address_city || ""}
                                                 onChange={(e) => { setEditedPatient({ ...editedPatient, address_city: e.target.value }); clearFieldError('address_city'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                                maxLength={100}
                                             />
                                             {fieldErrors.address_city && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_city}</p>}
                                         </div>
@@ -554,8 +562,9 @@ export default function PatientProfilePage() {
                                                 type="text"
                                                 placeholder="State"
                                                 value={editedPatient.address_state || ""}
-                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_state: e.target.value }); clearFieldError('address_state'); }}
+                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_state: e.target.value.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() }); clearFieldError('address_state'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                                maxLength={2}
                                             />
                                             {fieldErrors.address_state && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_state}</p>}
                                         </div>
@@ -564,8 +573,10 @@ export default function PatientProfilePage() {
                                                 type="text"
                                                 placeholder="ZIP"
                                                 value={editedPatient.address_zip || ""}
-                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_zip: e.target.value }); clearFieldError('address_zip'); }}
+                                                onChange={(e) => { setEditedPatient({ ...editedPatient, address_zip: e.target.value.replace(/[^\d-]/g, "").slice(0, 10) }); clearFieldError('address_zip'); }}
                                                 className="text-slate-900 font-medium border border-slate-300 rounded px-2 py-1 w-full"
+                                                maxLength={10}
+                                                inputMode="numeric"
                                             />
                                             {fieldErrors.address_zip && <p className="mt-1 text-sm text-red-500">{fieldErrors.address_zip}</p>}
                                         </div>

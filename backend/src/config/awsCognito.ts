@@ -2,11 +2,13 @@
 import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
+  GetTokensFromRefreshTokenCommand,
   SignUpCommand,
   ConfirmSignUpCommand,
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminConfirmSignUpCommand,
+  AdminDeleteUserCommand,
   DescribeUserPoolClientCommand,
   GlobalSignOutCommand,
   ForgotPasswordCommand,
@@ -15,6 +17,7 @@ import {
   RespondToAuthChallengeCommand,
   AssociateSoftwareTokenCommand,
   VerifySoftwareTokenCommand,
+  ChangePasswordCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -110,7 +113,8 @@ export async function signInUser(email: string, password: string) {
 }
 
 /**
- * Refresh authentication tokens
+ * Refresh authentication tokens (legacy — used when token rotation is OFF).
+ * Uses REFRESH_TOKEN_AUTH via InitiateAuth. Does not rotate the refresh token.
  */
 export async function refreshAuthTokens(refreshToken: string) {
   const command = new InitiateAuthCommand({
@@ -119,6 +123,21 @@ export async function refreshAuthTokens(refreshToken: string) {
     AuthParameters: {
       REFRESH_TOKEN: refreshToken,
     },
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
+ * Refresh tokens with rotation enabled (Cognito token rotation ON).
+ * Uses GetTokensFromRefreshToken — returns new AccessToken, IdToken, AND
+ * a new RefreshToken. The old refresh token is invalidated immediately.
+ * Must be used when ALLOW_REFRESH_TOKEN_AUTH is disabled on the app client.
+ */
+export async function refreshAuthTokensWithRotation(refreshToken: string) {
+  const command = new GetTokensFromRefreshTokenCommand({
+    ClientId: clientId,
+    RefreshToken: refreshToken,
   });
 
   return cognitoClient.send(command);
@@ -196,6 +215,18 @@ export async function adminSetUserPassword(email: string, password: string) {
  */
 export async function adminConfirmSignUp(email: string) {
   const command = new AdminConfirmSignUpCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+  });
+
+  return cognitoClient.send(command);
+}
+
+/**
+ * Admin delete user by username/email.
+ */
+export async function adminDeleteUser(email: string) {
+  const command = new AdminDeleteUserCommand({
     UserPoolId: userPoolId,
     Username: email,
   });
@@ -295,6 +326,23 @@ export async function respondToMfaSetup(email: string, session: string) {
     ChallengeName: 'MFA_SETUP',
     Session: session,
     ChallengeResponses: { USERNAME: email },
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Change password for an authenticated user.
+ * Requires a valid (non-expired) access token.
+ */
+export async function changeUserPassword(
+  accessToken: string,
+  previousPassword: string,
+  proposedPassword: string,
+) {
+  const command = new ChangePasswordCommand({
+    AccessToken: accessToken,
+    PreviousPassword: previousPassword,
+    ProposedPassword: proposedPassword,
   });
   return cognitoClient.send(command);
 }

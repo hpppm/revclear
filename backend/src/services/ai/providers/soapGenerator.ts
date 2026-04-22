@@ -4,6 +4,7 @@ import { buildSoapPrompt } from "../prompts";
 import { appConfig } from "../../../config/appConfig";
 import logger from "../../../utils/logger";
 import { scrubPHI } from "../../../utils/textScrubber";
+import { callGroqForJson } from "./groqFallback";
 
 export const SoapSchema = z.object({
   soap: z.object({
@@ -54,7 +55,7 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
       plan: safeString(rawSoap.plan),
     },
     confidence: clampConfidence(rawObj.confidence),
-    model_version: appConfig.ai.geminiModel,
+    model_version: safeString(rawObj.model_version) || appConfig.ai.geminiModel,
   };
 };
 
@@ -67,22 +68,42 @@ class GenkitSoapGenerator implements SoapGenerator {
     if (redactionCount > 0) {
       logger.info(
         { encounterId: input.encounterId, redactionCount },
-        "soap-generator: PHI redacted before Gemini call",
+        "soap-generator: PHI redacted before AI call",
       );
     }
 
-    const result = await ai.generate({
-      model: defaultTextModel,
-      prompt: buildSoapPrompt(input.encounterId, scrubbedTranscript),
-      output: { schema: SoapSchema },
-      config: {
-        temperature: 0.2,
-      },
-    });
+    const prompt = buildSoapPrompt(input.encounterId, scrubbedTranscript);
 
-    const output = normalizeSoapOutput(result.output ?? {});
+    let rawOutput: unknown;
+    let providerUsed: "gemini" | "groq" = "gemini";
+
+    try {
+      const result = await ai.generate({
+        model: defaultTextModel,
+        prompt,
+        output: { schema: SoapSchema },
+        config: { temperature: 0.2 },
+      });
+      rawOutput = result.output ?? {};
+    } catch (geminiError) {
+      logger.warn(
+        {
+          encounterId: input.encounterId,
+          provider: "gemini",
+          err: (geminiError as Error)?.message,
+        },
+        "soap-generator: gemini failed, attempting groq fallback",
+      );
+      rawOutput = await callGroqForJson(prompt, {
+        operation: "soap",
+        encounterId: input.encounterId,
+      });
+      providerUsed = "groq";
+    }
+
+    const output = normalizeSoapOutput(rawOutput);
     logger.info(
-      { encounterId: input.encounterId, model: output.model_version },
+      { encounterId: input.encounterId, model: output.model_version, provider: providerUsed },
       "soap generation completed",
     );
     return SoapSchema.parse(output);
