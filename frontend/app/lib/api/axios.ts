@@ -56,7 +56,6 @@ const SAFE_ERROR_PATTERNS = [
   /mfa session expired/i,
   /mfa (challenge|setup) incomplete/i,
   /mfa verification required/i,
-  /mfa verified/i,
   /invalid (email|password|credentials|code|invitation)/i,
   /not found/i,
   /already exists/i,
@@ -77,14 +76,6 @@ const SAFE_ERROR_PATTERNS = [
   /encounter id/i,
   /service failed/i,
   /temporarily unavailable/i,
-  /otp session expired/i,
-  /invalid or expired code/i,
-  /too many (requests|attempts)/i,
-  /could not (resend|send|complete)/i,
-  /email not verified/i,
-  /current password is incorrect/i,
-  /new password does not meet/i,
-  /password changed successfully/i,
 ];
 
 function sanitizeErrorMessage(
@@ -116,8 +107,7 @@ api.interceptors.response.use(
     if (status === 401 && typeof window !== "undefined") {
       const isAuthRoute = error?.config?.url?.includes("/auth/");
       const isDashboard = window.location.pathname.startsWith("/dashboard");
-      const isRefreshFailed = error?.response?.data?.code === "REFRESH_FAILED";
-      if (!isAuthRoute && (isDashboard || isRefreshFailed)) {
+      if (!isAuthRoute && isDashboard) {
         window.location.href = "/login?reason=expired";
       }
     }

@@ -2,17 +2,8 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { SimpleJwksCache } from "aws-jwt-verify/jwk";
 import { Request, Response, NextFunction } from "express";
 import { findUserByCognitoId } from "../config/db";
-import { validateActiveSession } from "../db/queries";
-import { refreshAuthTokensWithRotation } from "../config/awsCognito";
 import { getEffectiveOrganizationRole } from "../utils/organization";
 import logger from "../utils/logger";
-
-const COOKIE_BASE = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  path: "/",
-};
 
 const userPoolId = process.env.AWS_USER_POOL_ID;
 const clientId = process.env.AWS_CLIENT_ID;
@@ -119,49 +110,36 @@ export const authMiddleware = async (
     try {
       payload = await jwtVerifier.verify(token);
     } catch (jwtErr: any) {
-      const isExpired =
-        jwtErr?.name === "JwtExpiredError" ||
-        jwtErr?.message?.toLowerCase().includes("expired");
+      logger.warn(
+        { jwtError: jwtErr?.message, jwtName: jwtErr?.name },
+        "Auth: JWT verification failed",
+      );
+      const isExpired = jwtErr?.message?.includes("expired");
+      return res.status(401).json({
+        error: isExpired ? "Token expired" : "Invalid token",
+      });
+    }
 
-      if (!isExpired) {
-        logger.warn({ jwtError: jwtErr?.message }, "Auth: invalid token");
-        return res.status(401).json({ error: "Invalid token" });
-      }
+    // Enforce that the access token came from an MFA-satisfied Cognito login.
+    // We require the amr claim because the application treats Cognito MFA as a
+    // hard gate for protected routes. If Cognito stops including the claim for a
+    // valid MFA flow, the auth contract needs to be revisited explicitly.
+    const amrClaim = (payload as any).amr as string[] | string | undefined;
+    const amrValues = Array.isArray(amrClaim)
+      ? amrClaim
+      : typeof amrClaim === "string"
+        ? [amrClaim]
+        : [];
+    const normalizedAmr = amrValues.map((value) => value.toLowerCase());
+    const hasMfaSignal =
+      normalizedAmr.includes("mfa") ||
+      normalizedAmr.includes("software_token_mfa") ||
+      normalizedAmr.includes("totp");
 
-      // Access token expired — attempt silent refresh using the refresh token cookie.
-      const refreshToken: string | undefined = req.cookies?.refreshToken;
-      if (!refreshToken) {
-        return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
-      }
+    const mfaVerifiedBySessionCookie = req.cookies?.mfaVerified === "true";
 
-      try {
-        const refreshed = await refreshAuthTokensWithRotation(refreshToken);
-        const newAccessToken = refreshed.AuthenticationResult?.AccessToken;
-        const newIdToken = refreshed.AuthenticationResult?.IdToken;
-        const newRefreshToken = refreshed.AuthenticationResult?.RefreshToken;
-
-        if (!newAccessToken) {
-          return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
-        }
-
-        res.cookie("accessToken", newAccessToken, { ...COOKIE_BASE, maxAge: 60 * 60 * 1000 });
-        if (newIdToken) {
-          res.cookie("idToken", newIdToken, { ...COOKIE_BASE, maxAge: 60 * 60 * 1000 });
-        }
-        // Rotate refresh token — old one is now invalidated by Cognito.
-        if (newRefreshToken) {
-          res.cookie("refreshToken", newRefreshToken, { ...COOKIE_BASE, maxAge: 7 * 24 * 60 * 60 * 1000 });
-        }
-
-        payload = await jwtVerifier.verify(newAccessToken);
-        logger.info({ sub: payload.sub }, "Auth: tokens silently rotated via refresh");
-      } catch (refreshErr: any) {
-        logger.warn({ err: refreshErr?.message }, "Auth: token refresh failed");
-        res.clearCookie("accessToken", { path: "/" });
-        res.clearCookie("refreshToken", { path: "/" });
-        res.clearCookie("mfaVerified", { path: "/" });
-        return res.status(401).json({ error: "Session expired", code: "REFRESH_FAILED" });
-      }
+    if (!hasMfaSignal && !mfaVerifiedBySessionCookie) {
+      return res.status(401).json({ error: "MFA verification required" });
     }
 
     // Cognito groups are preserved for diagnostics only. Application authorization
@@ -194,22 +172,10 @@ export const authMiddleware = async (
       } else {
         logger.debug({ sub: payload.sub }, "Auth: no DB record yet — new user flow");
       }
+
     } catch (dbErr: any) {
       logger.error({ err: dbErr.message }, "Auth: database user lookup failed");
       return res.status(503).json({ error: "Authentication service temporarily unavailable" });
-    }
-
-    // Enforce concurrent session limit — reject if this jti was invalidated by a newer login.
-    const jti = (payload as any).jti as string | undefined;
-    if (jti && req.user) {
-      try {
-        const sessionValid = await validateActiveSession((req.user as any).id, jti);
-        if (!sessionValid) {
-          return res.status(401).json({ error: "Session invalidated. Please sign in again." });
-        }
-      } catch (sessionErr: any) {
-        logger.warn({ err: sessionErr?.message }, "Auth: session validation check failed — allowing request");
-      }
     }
 
     next();
