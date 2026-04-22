@@ -245,7 +245,7 @@ export default function DashboardHome() {
                             {canWritePatients && (
                                 <Link
                                     href="/dashboard/patients/add"
-                                    className="brand-button-secondary rounded-lg px-3 py-2 text-sm font-semibold"
+                                    className="brand-button-primary rounded-lg px-3 py-2 text-sm font-semibold"
                                 >
                                     Add patient
                                 </Link>
