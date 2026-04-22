@@ -57,15 +57,6 @@ const VerifyMfaSchema = z.object({
   code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
 });
 
-const VerifyOtpSchema = z.object({
-  email: z.string().email(),
-  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
-});
-
-const ResendOtpSchema = z.object({
-  email: z.string().email(),
-});
-
 export type SignupPayload = z.infer<typeof SignupSchema>;
 // full_name is sent via attributes.name — not a top-level field on signup
 export type ConfirmSignupPayload = z.infer<typeof ConfirmSignupSchema>;
@@ -119,14 +110,6 @@ export const authApi = {
     enforceCooldown("verifyTotpSetup");
     return api.post("/auth/verify-totp-setup", VerifyMfaSchema.parse(data));
   },
-
-  verifyOtp: (data: { email: string; code: string }) => {
-    enforceCooldown("verifyOtp");
-    return api.post("/auth/verify-otp", VerifyOtpSchema.parse(data));
-  },
-
-  resendOtp: (data: { email: string }) =>
-    api.post("/auth/resend-otp", ResendOtpSchema.parse(data)),
 
   me: () => api.get("/auth/me"),
 };

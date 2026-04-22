@@ -106,9 +106,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
                     title={collapsed ? "Expand navigation" : "Collapse navigation"}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
+                    {collapsed ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5v14" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-7 7 7 7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 5v14" />
+                        </svg>
+                    )}
                 </button>
             </div>
 
