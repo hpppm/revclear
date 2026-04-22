@@ -101,7 +101,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 )}
                 <button
                     onClick={onToggle}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                         collapsed ? "mx-auto" : ""
                     }`}
                     aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
@@ -134,7 +134,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         replace
                         aria-current={isActive(item.href) ? "page" : undefined}
                         title={collapsed ? item.label : undefined}
-                        className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
+                        className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                             isActive(item.href)
                                 ? "brand-button-primary text-white"
                                 : "text-slate-400 hover:bg-white/5 hover:text-white"
@@ -153,7 +153,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     replace
                     aria-current={pathname === "/dashboard/profile" ? "page" : undefined}
                     title={collapsed ? "Profile" : undefined}
-                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                         pathname === "/dashboard/profile"
                             ? "brand-button-primary text-white"
                             : "text-slate-400 hover:bg-white/5 hover:text-white"
@@ -167,7 +167,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <button
                     onClick={logout}
                     title={collapsed ? "Sign out" : undefined}
-                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                         collapsed ? "justify-center" : ""
                     }`}
                 >
