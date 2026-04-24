@@ -24,13 +24,9 @@ function enforceCooldown(key: string): void {
 const SignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  // attributes is passed through to Cognito UserAttributes
   attributes: z.object({
-    name: z.string().min(1),
-    phone: z.string().optional(),
-    state: z.string().optional(),
-    taxonomyCode: z.string().optional(),
-    npi: z.string().optional(),
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
   }).optional(),
   practitionerType: z.string().optional(),
   licenseId: z.string().optional(),

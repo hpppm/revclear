@@ -151,8 +151,10 @@ export const appConfig = {
     idleTimeoutMs: 30 * 60 * 1000,  // 30 minutes idle timeout
   },
   auth: {
-    autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
-    autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
+    // Default false — production must go through Cognito email confirmation.
+    // Set AUTO_CONFIRM_SIGNUP=true only in local dev to skip email verification.
+    autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "false").toLowerCase() === "true",
+    autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "false").toLowerCase() === "true",
   },
 };
 

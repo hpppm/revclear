@@ -64,7 +64,8 @@ export default function SignupPage() {
   }, []);
 
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     agreeTerms: false,
     agreeBaa: false,
@@ -95,7 +96,8 @@ export default function SignupPage() {
     setError("");
 
     const validation = SignupFormSchema.safeParse({
-      name: form.name,
+      firstName: form.firstName,
+      lastName: form.lastName,
       email: form.email,
       password: form.password,
     });
@@ -120,7 +122,8 @@ export default function SignupPage() {
         email: form.email,
         password: form.password,
         attributes: {
-          name: form.name,
+          firstName: form.firstName,
+          lastName: form.lastName,
         },
       });
 
@@ -304,15 +307,26 @@ export default function SignupPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <AuthSection>
-              <AuthField label="Full Name" required>
-                <AuthInput
-                  name="name"
-                  type="text"
-                  onChange={handleChange}
-                  placeholder="Dr. John Carter"
-                  required
-                />
-              </AuthField>
+              <div className="grid grid-cols-2 gap-3">
+                <AuthField label="First Name" required>
+                  <AuthInput
+                    name="firstName"
+                    type="text"
+                    onChange={handleChange}
+                    placeholder="Jane"
+                    required
+                  />
+                </AuthField>
+                <AuthField label="Last Name" required>
+                  <AuthInput
+                    name="lastName"
+                    type="text"
+                    onChange={handleChange}
+                    placeholder="Smith"
+                    required
+                  />
+                </AuthField>
+              </div>
               <AuthField label="Email" required>
                 <AuthInput
                   name="email"

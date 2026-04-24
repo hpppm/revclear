@@ -26,8 +26,14 @@ export class AuthService {
      * Handles the signup process including DB creation, auto-confirm, and auto-login logic.
      */
     static async signup(email: string, password: string, attributes: any, practitionerType?: string, licenseId?: string) {
+        // Build full_name from firstName + lastName; send combined as Cognito `name` attribute
+        const firstName: string = (attributes?.firstName || "").trim();
+        const lastName: string = (attributes?.lastName || "").trim();
+        const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
+        const cognitoAttributes: Record<string, string> = fullName !== "Unknown" ? { name: fullName } : {};
+
         // 1. Sign up in Cognito
-        const response = await signUpUser(email, password, attributes);
+        const response = await signUpUser(email, password, cognitoAttributes);
 
         // 2. Create user in DB
         if (response.UserSub) {
@@ -35,7 +41,7 @@ export class AuthService {
                 await createUser(
                     response.UserSub,
                     email,
-                    attributes.name || "Unknown",
+                    fullName,
                     practitionerType,
                     licenseId
                 );
