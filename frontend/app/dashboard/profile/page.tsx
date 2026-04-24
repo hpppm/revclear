@@ -17,6 +17,8 @@ export default function ProfilePage() {
     const [error, setError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [formData, setFormData] = useState({
+        first_name: (user as any)?.first_name || "",
+        last_name: (user as any)?.last_name || "",
         phone: (user as any)?.phone || "",
         practitioner_type: (user as any)?.practitioner_type || "",
         license_id: (user as any)?.license_id || "",
@@ -27,6 +29,8 @@ export default function ProfilePage() {
     useEffect(() => {
         if (user) {
             setFormData({
+                first_name: (user as any)?.first_name || "",
+                last_name: (user as any)?.last_name || "",
                 phone: (user as any)?.phone || "",
                 practitioner_type: (user as any)?.practitioner_type || "",
                 license_id: (user as any)?.license_id || "",
@@ -36,6 +40,22 @@ export default function ProfilePage() {
             });
         }
     }, [user]);
+
+    // Resolve display name: prefer first+last, then full_name, then email local-part
+    const resolvedDisplayName = (() => {
+        const first = (user as any)?.first_name?.trim();
+        const last = (user as any)?.last_name?.trim();
+        const fromNames = [first, last].filter(Boolean).join(" ");
+        if (fromNames) return fromNames;
+        const n = user?.full_name || user?.name;
+        if (n?.trim() && n.trim() !== "Unknown" && n.trim() !== "Unknown User") return n.trim();
+        const email = user?.email;
+        if (email?.includes("@") && !email.endsWith("@placeholder.local") && !email.endsWith("@auto.local")) {
+            const local = email.split("@")[0];
+            if (!/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(local)) return local;
+        }
+        return "";
+    })();
 
     const handleSave = async () => {
         setError(null);
@@ -54,7 +74,11 @@ export default function ProfilePage() {
 
         setSaving(true);
         try {
+            const derivedFullName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(" ");
             const payload = {
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                full_name: derivedFullName || undefined,
                 phone: formData.phone,
                 practitioner_type: formData.practitioner_type,
                 license_id: formData.license_id,
@@ -128,10 +152,10 @@ export default function ProfilePage() {
                 <div className="mb-8 flex flex-col gap-4 border-b border-slate-100 pb-6 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-4">
                         <div className="brand-accent-icon flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold">
-                            {user.full_name?.charAt(0).toUpperCase() || "U"}
+                            {resolvedDisplayName.charAt(0).toUpperCase() || "U"}
                         </div>
                         <div>
-                            <h2 className="text-2xl font-semibold text-slate-900">{user.full_name}</h2>
+                            <h2 className="text-2xl font-semibold text-slate-900">{resolvedDisplayName || user.email}</h2>
                             <p className="mt-1 text-sm capitalize text-slate-500">{user.role || "User"}</p>
                             <p className="mt-1 text-sm text-slate-500">
                                 {(user as any)?.organization?.name ? `Organization: ${(user as any).organization.name}` : "No Primary Organization"}
@@ -147,11 +171,29 @@ export default function ProfilePage() {
                             <div className="space-y-4">
                                 <h4 className="text-md font-semibold text-slate-900 border-b pb-2">Account Information</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        label="First Name"
+                                        value={formData.first_name}
+                                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                                        placeholder="Jane"
+                                        maxLength={100}
+                                        error={fieldErrors.first_name}
+                                    />
+                                    <Input
+                                        label="Last Name"
+                                        value={formData.last_name}
+                                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                                        placeholder="Smith"
+                                        maxLength={100}
+                                        error={fieldErrors.last_name}
+                                    />
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
                                         <p className="text-slate-900 font-medium px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">{user.email}</p>
                                         <p className="text-xs text-slate-500 mt-1">Managed by identity provider</p>
                                     </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="Phone Number"
                                         type="tel"
@@ -236,6 +278,14 @@ export default function ProfilePage() {
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Account Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-500 mb-1">First Name</label>
+                                        <p className="text-slate-900 font-medium">{(user as any)?.first_name || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-500 mb-1">Last Name</label>
+                                        <p className="text-slate-900 font-medium">{(user as any)?.last_name || "—"}</p>
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
                                         <p className="text-slate-900 font-medium">{user.email}</p>

@@ -149,6 +149,8 @@ export const authMiddleware = async (
       | undefined;
 
     // Attach ONLY minimal claims to req.auth — never spread the full payload.
+    // username is the Cognito username (email for email-based user pools) and is
+    // used by GET /api/me to backfill placeholder emails on existing records.
     req.auth = {
       sub: payload.sub,
       iss: payload.iss,
@@ -156,6 +158,7 @@ export const authMiddleware = async (
       exp: payload.exp,
       iat: payload.iat,
       cognitoGroups,
+      username: (payload as any).username as string | undefined,
     } as any;
 
     // Resolve DB user — DB errors block the request (fail-closed on outage).

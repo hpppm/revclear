@@ -14,12 +14,13 @@ const SignupSchema = z.object({
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[0-9]/, "Password must contain at least one number")
     .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
-  // Strict whitelist — only `name` is needed at signup.
+  // Strict whitelist — only name fields are accepted at signup.
   // An open z.record() would let attackers inject Cognito attributes such as
   // custom:tenant_id, preferred_username, etc. Tenant assignment must happen
   // server-side after signup, never from client-supplied input.
   attributes: z.object({
-    name: z.string().min(1).max(100).optional(),
+    firstName: z.string().min(1).max(50).optional(),
+    lastName: z.string().min(1).max(50).optional(),
   }).strict().optional(),
   practitionerType: z.string().max(100).optional(),
   licenseId: z.string().max(100).optional(),

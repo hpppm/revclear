@@ -103,7 +103,8 @@ export const LoginFormSchema = z.object({
 });
 
 export const SignupFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+  firstName: z.string().min(1, "First name is required").max(50, "First name cannot exceed 50 characters"),
+  lastName: z.string().min(1, "Last name is required").max(50, "Last name cannot exceed 50 characters"),
   email: z.string().email("Please enter a valid email address"),
   password: z
     .string()
@@ -194,6 +195,9 @@ export const EditPatientFormSchema = z
   .superRefine(enforceInsuranceFields);
 
 export const ProfileFormSchema = z.object({
+  first_name: z.string().max(100, "First name cannot exceed 100 characters").optional().or(z.literal("")),
+  last_name: z.string().max(100, "Last name cannot exceed 100 characters").optional().or(z.literal("")),
+  full_name: z.string().max(100, "Name cannot exceed 100 characters").optional().or(z.literal("")),
   phone: phoneSchema,
   practitioner_type: z.string().max(100).optional().or(z.literal("")),
   license_id: z.string().max(50).optional().or(z.literal("")),

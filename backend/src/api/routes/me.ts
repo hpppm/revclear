@@ -32,10 +32,15 @@ router.get("/", authMiddleware, async (req, res) => {
     });
   }
 
-  // Access tokens do not carry email/name claims (those are ID token claims).
-  // Use a deterministic placeholder for new user creation; the user can
-  // update their profile via PATCH /api/me afterwards.
-  const safeEmail: string = `${cognitoId}@placeholder.local`;
+  // The Cognito access token carries `username` (the email for email-based pools).
+  // Prefer it over a placeholder so the user record always has a real email.
+  const tokenEmail: string | undefined = (req.auth as any)?.username;
+  const isRealEmail = (e?: string) =>
+    !!e && !e.endsWith("@placeholder.local") && !e.endsWith("@auto.local");
+
+  const safeEmail: string = isRealEmail(tokenEmail)
+    ? tokenEmail!
+    : `${cognitoId}@placeholder.local`;
 
   try {
     // 1. Check if middleware already resolved the user by cognito_id
@@ -43,6 +48,24 @@ router.get("/", authMiddleware, async (req, res) => {
 
     if (user) {
       logger.debug({ userId: user.id }, 'GET /api/me: user resolved');
+
+      // Backfill placeholder email if we now have the real one from the token
+      if (!isRealEmail(user.email) && isRealEmail(tokenEmail)) {
+        try {
+          const updated = await query(
+            `UPDATE users SET email = $1 WHERE cognito_id = $2 RETURNING id, cognito_id, email, full_name, first_name, last_name, role, organization_id, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at, email_verified`,
+            [tokenEmail, cognitoId],
+          );
+          if (updated.rows[0]) {
+            user = updated.rows[0];
+            logger.info({ userId: user.id }, 'GET /api/me: placeholder email backfilled');
+          }
+        } catch (backfillErr: any) {
+          // Non-fatal — log and continue with stale email
+          logger.warn({ err: backfillErr.message }, 'GET /api/me: email backfill failed');
+        }
+      }
+
       const effectiveRole = getEffectiveOrganizationRole(user);
       const organization = await getUserOrganization(user.id);
       if (!organization) {
@@ -65,9 +88,7 @@ router.get("/", authMiddleware, async (req, res) => {
     // SECURITY: We do NOT fall back to email lookup to prevent account takeover
     logger.info({ cognitoId }, 'GET /api/me: creating new user');
 
-    const fullName = safeEmail;
-
-    const newUser = await createUser(cognitoId, safeEmail, fullName);
+    const newUser = await createUser(cognitoId, safeEmail, safeEmail);
     const organization = await getUserOrganization(newUser.id);
 
     return res.status(201).json({
@@ -114,6 +135,8 @@ router.patch("/", authMiddleware, async (req, res) => {
   const payload = parsed.data;
   const updatableFields: Array<keyof typeof payload> = [
     "full_name",
+    "first_name",
+    "last_name",
     "phone",
     "practitioner_type",
     "license_id",
@@ -142,7 +165,7 @@ router.patch("/", authMiddleware, async (req, res) => {
 
   try {
     const result = await query(
-      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, role, organization_id, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at`,
+      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, first_name, last_name, role, organization_id, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at, email_verified`,
       values,
     );
 

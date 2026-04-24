@@ -9,6 +9,8 @@ extendZodWithOpenApi(z);
 export const UserSchema = z.object({
   email: z.string().email("Invalid email address").openapi({ example: "doctor@example.com" }),
   full_name: z.string().min(1, "Full name is required").openapi({ example: "Dr. John Doe" }),
+  first_name: z.string().max(100).optional().openapi({ example: "Jane" }),
+  last_name: z.string().max(100).optional().openapi({ example: "Doe" }),
   role: z.enum(APP_ROLES).optional().openapi({ example: "clinician" }),
   phone: z.string().optional().openapi({ example: "555-123-4567" }),
   // Personal provider credentials (NOT clinic information)

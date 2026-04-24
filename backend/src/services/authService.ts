@@ -19,30 +19,21 @@ import { appConfig } from "../config/appConfig";
 import logger from "../utils/logger";
 
 export class AuthService {
-    private static allowedEmailDomain = appConfig.auth.testEmailDomain.toLowerCase();
     private static autoConfirmSignups = appConfig.auth.autoConfirmSignup;
     private static autoLoginAfterSignup = appConfig.auth.autoLoginAfterSignup;
-
-    /**
-     * Validates if the email domain is allowed for testing.
-     */
-    static isAllowedEmail(email?: string): boolean {
-        if (!email) return false;
-        // If no domain restriction is configured, allow all emails
-        if (!this.allowedEmailDomain) return true;
-        return email.toLowerCase().endsWith(this.allowedEmailDomain);
-    }
 
     /**
      * Handles the signup process including DB creation, auto-confirm, and auto-login logic.
      */
     static async signup(email: string, password: string, attributes: any, practitionerType?: string, licenseId?: string) {
-        if (!this.isAllowedEmail(email)) {
-            throw new Error(`Email must end with ${this.allowedEmailDomain} for testing`);
-        }
+        // Build full_name from firstName + lastName; send combined as Cognito `name` attribute
+        const firstName: string = (attributes?.firstName || "").trim();
+        const lastName: string = (attributes?.lastName || "").trim();
+        const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
+        const cognitoAttributes: Record<string, string> = fullName !== "Unknown" ? { name: fullName } : {};
 
         // 1. Sign up in Cognito
-        const response = await signUpUser(email, password, attributes);
+        const response = await signUpUser(email, password, cognitoAttributes);
 
         // 2. Create user in DB
         if (response.UserSub) {
@@ -50,9 +41,11 @@ export class AuthService {
                 await createUser(
                     response.UserSub,
                     email,
-                    attributes.name || "Unknown",
+                    fullName,
                     practitionerType,
-                    licenseId
+                    licenseId,
+                    firstName || undefined,
+                    lastName || undefined,
                 );
                 logger.info({ userId: response.UserSub }, 'User stored in DB');
             } catch (dbError: any) {
@@ -158,10 +151,6 @@ export class AuthService {
      * Handles signin with auto-confirm retry logic.
      */
     static async signin(email: string, password: string) {
-        if (!this.isAllowedEmail(email)) {
-            throw new Error(`Email must end with ${this.allowedEmailDomain} for testing`);
-        }
-
         try {
             return await signInUser(email, password);
         } catch (error: any) {
@@ -187,9 +176,6 @@ export class AuthService {
     }
 
     static async confirmSignup(email: string, code: string) {
-        if (!this.isAllowedEmail(email)) {
-            throw new Error(`Email must end with ${this.allowedEmailDomain} for testing`);
-        }
         const result = await confirmSignUp(email, code);
         // Add to the Users group so this user has the same group membership
         // as auto-confirmed users. Failure is non-fatal — user can still sign in.

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 
@@ -56,9 +57,11 @@ const navItems = [
 type SidebarProps = {
     collapsed: boolean;
     onToggle: () => void;
+    mobileOpen?: boolean;
+    onMobileClose?: () => void;
 };
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const {
@@ -67,6 +70,33 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         canManageOrganization,
         canManageEncounters,
     } = useAuthorization();
+
+    const [showHint, setShowHint] = useState(false);
+    const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (!collapsed) {
+            startTransition(() => setShowHint(false));
+            if (hintTimer.current) clearTimeout(hintTimer.current);
+            return;
+        }
+        startTransition(() => setShowHint(true));
+        hintTimer.current = setTimeout(() => setShowHint(false), 3000);
+
+        const dismiss = () => setShowHint(false);
+        document.addEventListener("mousemove", dismiss, { once: true });
+        document.addEventListener("click", dismiss, { once: true });
+        return () => {
+            document.removeEventListener("mousemove", dismiss);
+            document.removeEventListener("click", dismiss);
+            if (hintTimer.current) clearTimeout(hintTimer.current);
+        };
+    }, [collapsed]);
+
+    useEffect(() => {
+        startTransition(() => setShowHint(false));
+        onMobileClose?.();
+    }, [pathname]);
 
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
@@ -79,12 +109,28 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     return (
         <aside
-            className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-white transition-all duration-300 ${
-                collapsed ? "w-16" : "w-60"
-            }`}
+            className={[
+                "fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-white transition-all duration-300",
+                // Desktop: width based on collapsed state
+                "md:translate-x-0",
+                collapsed ? "md:w-16" : "md:w-60",
+                // Mobile: full-width drawer, slides in/out
+                "w-72",
+                mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+            ].join(" ")}
         >
             {/* Header: logo + hamburger */}
             <div className="flex h-16 items-center justify-between border-b border-white/10 px-3">
+                {/* Mobile close button */}
+                <button
+                    onClick={onMobileClose}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors md:hidden"
+                    aria-label="Close navigation"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
                 {!collapsed && (
                     <div className="flex items-center gap-3">
                         <BrandMark
@@ -98,18 +144,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         </div>
                     </div>
                 )}
-                <button
-                    onClick={onToggle}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-                        collapsed ? "mx-auto" : ""
-                    }`}
-                    aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-                    title={collapsed ? "Expand navigation" : "Collapse navigation"}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
+                <div className={`relative ${collapsed ? "mx-auto" : ""}`}>
+                    <button
+                        onClick={onToggle}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                        title={collapsed ? "Expand navigation" : "Collapse navigation"}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    {showHint && (
+                        <span className="pointer-events-none absolute left-10 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-700 px-2.5 py-1 text-xs text-slate-100 shadow-lg animate-fade-in">
+                            Click to expand
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Nav */}
