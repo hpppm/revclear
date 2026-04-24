@@ -2,7 +2,7 @@ import { Pool, PoolConfig, QueryResult, QueryResultRow } from "pg";
 import { appConfig } from "./appConfig";
 import logger from "../utils/logger";
 
-const userColumns = [
+export const userColumns = [
   "id",
   "cognito_id",
   "email",
