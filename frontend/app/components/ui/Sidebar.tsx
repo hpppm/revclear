@@ -59,9 +59,11 @@ type SidebarProps = {
     onToggle: () => void;
     mobileOpen?: boolean;
     onMobileClose?: () => void;
+    onHoverEnter?: () => void;
+    onHoverLeave?: () => void;
 };
 
-export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose, onHoverEnter, onHoverLeave }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const {
@@ -109,6 +111,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
     return (
         <aside
+            onMouseEnter={onHoverEnter}
+            onMouseLeave={onHoverLeave}
             className={[
                 "fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-white transition-all duration-300",
                 // Desktop: width based on collapsed state

@@ -33,6 +33,8 @@ export default function DashboardLayout({
     const router = useRouter();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [hoverOpen, setHoverOpen] = useState(false);
+    const effectiveCollapsed = collapsed && !hoverOpen;
     useFormAutoScroll();
 
     const handleIdle = useCallback(async () => {
@@ -63,10 +65,12 @@ export default function DashboardLayout({
     return (
         <div className="flex min-h-screen bg-slate-100">
             <Sidebar
-                collapsed={collapsed}
+                collapsed={effectiveCollapsed}
                 onToggle={() => setCollapsed((c) => !c)}
                 mobileOpen={mobileOpen}
                 onMobileClose={() => setMobileOpen(false)}
+                onHoverEnter={() => { if (collapsed) setHoverOpen(true); }}
+                onHoverLeave={() => setHoverOpen(false)}
             />
 
             {/* Mobile overlay backdrop */}
@@ -78,7 +82,7 @@ export default function DashboardLayout({
                 />
             )}
 
-            <div className={`flex flex-1 flex-col min-h-screen transition-all duration-300 md:${collapsed ? "ml-16" : "ml-60"}`}>
+            <div className={`flex flex-1 flex-col min-h-screen transition-all duration-300 ${effectiveCollapsed ? "md:ml-16" : "md:ml-60"}`}>
                 {/* Mobile top bar */}
                 <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
                     <button
