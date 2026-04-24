@@ -38,6 +38,15 @@
   }
 }
 
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translate(-6px, -50%); }
+  to   { opacity: 1; transform: translate(0,    -50%); }
+}
+
+.animate-fade-in {
+  animation: fadeInRight 0.18s ease-out both;
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }

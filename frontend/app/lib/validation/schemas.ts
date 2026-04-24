@@ -194,6 +194,7 @@ export const EditPatientFormSchema = z
   .superRefine(enforceInsuranceFields);
 
 export const ProfileFormSchema = z.object({
+  full_name: z.string().min(1, "Name is required").max(100, "Name cannot exceed 100 characters").optional().or(z.literal("")),
   phone: phoneSchema,
   practitioner_type: z.string().max(100).optional().or(z.literal("")),
   license_id: z.string().max(50).optional().or(z.literal("")),

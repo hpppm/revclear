@@ -45,7 +45,6 @@ const EnvSchema = z.object({
 
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
 
-  TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
   AUTO_LOGIN_AFTER_SIGNUP: z.string().optional(),
 
@@ -152,10 +151,6 @@ export const appConfig = {
     idleTimeoutMs: 30 * 60 * 1000,  // 30 minutes idle timeout
   },
   auth: {
-    // Allow all emails by default — Cognito is the authoritative auth gate.
-    // Set TEST_EMAIL_DOMAIN to an explicit suffix (e.g. "@clinic.dev") to
-    // restrict signups to a specific domain in a shared staging environment.
-    testEmailDomain: env.TEST_EMAIL_DOMAIN || "",
     autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
     autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
   },

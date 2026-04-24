@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 
@@ -68,6 +69,32 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         canManageEncounters,
     } = useAuthorization();
 
+    const [showHint, setShowHint] = useState(false);
+    const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (!collapsed) {
+            setShowHint(false);
+            if (hintTimer.current) clearTimeout(hintTimer.current);
+            return;
+        }
+        setShowHint(true);
+        hintTimer.current = setTimeout(() => setShowHint(false), 3000);
+
+        const dismiss = () => setShowHint(false);
+        document.addEventListener("mousemove", dismiss, { once: true });
+        document.addEventListener("click", dismiss, { once: true });
+        return () => {
+            document.removeEventListener("mousemove", dismiss);
+            document.removeEventListener("click", dismiss);
+            if (hintTimer.current) clearTimeout(hintTimer.current);
+        };
+    }, [collapsed]);
+
+    useEffect(() => {
+        setShowHint(false);
+    }, [pathname]);
+
     const isActive = (href: string) => {
         if (href === "/dashboard") return pathname === "/dashboard";
         return pathname.startsWith(href);
@@ -98,18 +125,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         </div>
                     </div>
                 )}
-                <button
-                    onClick={onToggle}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-                        collapsed ? "mx-auto" : ""
-                    }`}
-                    aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-                    title={collapsed ? "Expand navigation" : "Collapse navigation"}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
+                <div className={`relative ${collapsed ? "mx-auto" : ""}`}>
+                    <button
+                        onClick={onToggle}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                        title={collapsed ? "Expand navigation" : "Collapse navigation"}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    {showHint && (
+                        <span className="pointer-events-none absolute left-10 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-700 px-2.5 py-1 text-xs text-slate-100 shadow-lg animate-fade-in">
+                            Click to expand
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Nav */}
