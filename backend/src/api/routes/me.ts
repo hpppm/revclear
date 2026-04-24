@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { QueryResultRow } from "pg";
 import { authMiddleware } from "../../middleware/auth";
-import { findUserByCognitoId, createUser, query } from "../../config/db";
+import { findUserByCognitoId, createUser, query, userColumns } from "../../config/db";
 import { UpdateUserSchema } from "../../types/zod";
 import {
   filterOrganizationForRole,
@@ -53,7 +53,7 @@ router.get("/", authMiddleware, async (req, res) => {
       if (!isRealEmail(user.email) && isRealEmail(tokenEmail)) {
         try {
           const updated = await query(
-            `UPDATE users SET email = $1 WHERE cognito_id = $2 RETURNING id, cognito_id, email, full_name, first_name, last_name, role, organization_id, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at, email_verified`,
+            `UPDATE users SET email = $1 WHERE cognito_id = $2 RETURNING ${userColumns}`,
             [tokenEmail, cognitoId],
           );
           if (updated.rows[0]) {
@@ -165,7 +165,7 @@ router.patch("/", authMiddleware, async (req, res) => {
 
   try {
     const result = await query(
-      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING id, cognito_id, email, full_name, first_name, last_name, role, organization_id, phone, practitioner_type, license_id, license_state, npi, tax_id, taxonomy_code, provider_role, created_at, email_verified`,
+      `UPDATE users SET ${setFragments.join(", ")} WHERE cognito_id = $${values.length} RETURNING ${userColumns}`,
       values,
     );
 
