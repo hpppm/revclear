@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth, useAuthorization } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 
@@ -76,11 +76,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
     useEffect(() => {
         if (!collapsed) {
-            setShowHint(false);
+            startTransition(() => setShowHint(false));
             if (hintTimer.current) clearTimeout(hintTimer.current);
             return;
         }
-        setShowHint(true);
+        startTransition(() => setShowHint(true));
         hintTimer.current = setTimeout(() => setShowHint(false), 3000);
 
         const dismiss = () => setShowHint(false);
@@ -94,7 +94,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     }, [collapsed]);
 
     useEffect(() => {
-        setShowHint(false);
+        startTransition(() => setShowHint(false));
         onMobileClose?.();
     }, [pathname]);
 

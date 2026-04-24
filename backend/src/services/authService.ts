@@ -43,7 +43,9 @@ export class AuthService {
                     email,
                     fullName,
                     practitionerType,
-                    licenseId
+                    licenseId,
+                    firstName || undefined,
+                    lastName || undefined,
                 );
                 logger.info({ userId: response.UserSub }, 'User stored in DB');
             } catch (dbError: any) {

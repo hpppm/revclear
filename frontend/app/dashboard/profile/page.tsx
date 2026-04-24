@@ -17,7 +17,8 @@ export default function ProfilePage() {
     const [error, setError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [formData, setFormData] = useState({
-        full_name: user?.full_name || user?.name || "",
+        first_name: (user as any)?.first_name || "",
+        last_name: (user as any)?.last_name || "",
         phone: (user as any)?.phone || "",
         practitioner_type: (user as any)?.practitioner_type || "",
         license_id: (user as any)?.license_id || "",
@@ -28,7 +29,8 @@ export default function ProfilePage() {
     useEffect(() => {
         if (user) {
             setFormData({
-                full_name: user?.full_name || user?.name || "",
+                first_name: (user as any)?.first_name || "",
+                last_name: (user as any)?.last_name || "",
                 phone: (user as any)?.phone || "",
                 practitioner_type: (user as any)?.practitioner_type || "",
                 license_id: (user as any)?.license_id || "",
@@ -39,8 +41,12 @@ export default function ProfilePage() {
         }
     }, [user]);
 
-    // Resolve display name using same fallback logic as dashboard greeting
+    // Resolve display name: prefer first+last, then full_name, then email local-part
     const resolvedDisplayName = (() => {
+        const first = (user as any)?.first_name?.trim();
+        const last = (user as any)?.last_name?.trim();
+        const fromNames = [first, last].filter(Boolean).join(" ");
+        if (fromNames) return fromNames;
         const n = user?.full_name || user?.name;
         if (n?.trim() && n.trim() !== "Unknown" && n.trim() !== "Unknown User") return n.trim();
         const email = user?.email;
@@ -68,8 +74,11 @@ export default function ProfilePage() {
 
         setSaving(true);
         try {
+            const derivedFullName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(" ");
             const payload = {
-                full_name: formData.full_name,
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                full_name: derivedFullName || undefined,
                 phone: formData.phone,
                 practitioner_type: formData.practitioner_type,
                 license_id: formData.license_id,
@@ -163,12 +172,20 @@ export default function ProfilePage() {
                                 <h4 className="text-md font-semibold text-slate-900 border-b pb-2">Account Information</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
-                                        label="Full Name"
-                                        value={formData.full_name}
-                                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                                        placeholder="Dr. Jane Smith"
+                                        label="First Name"
+                                        value={formData.first_name}
+                                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                                        placeholder="Jane"
                                         maxLength={100}
-                                        error={fieldErrors.full_name}
+                                        error={fieldErrors.first_name}
+                                    />
+                                    <Input
+                                        label="Last Name"
+                                        value={formData.last_name}
+                                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                                        placeholder="Smith"
+                                        maxLength={100}
+                                        error={fieldErrors.last_name}
                                     />
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
@@ -262,8 +279,12 @@ export default function ProfilePage() {
                                 <h3 className="text-lg font-semibold text-slate-900 border-b pb-2 mb-4">Account Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-500 mb-1">Full Name</label>
-                                        <p className="text-slate-900 font-medium">{resolvedDisplayName || "—"}</p>
+                                        <label className="block text-sm font-medium text-slate-500 mb-1">First Name</label>
+                                        <p className="text-slate-900 font-medium">{(user as any)?.first_name || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-500 mb-1">Last Name</label>
+                                        <p className="text-slate-900 font-medium">{(user as any)?.last_name || "—"}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
