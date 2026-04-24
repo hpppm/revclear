@@ -13,6 +13,13 @@ import { CreatePatientFormSchema } from "@/app/lib/validation/schemas";
 
 import BackButton from "@/app/components/ui/BackButton";
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 const US_STATES = [
   { value: "", label: "Select state" },
   { value: "AL", label: "AL — Alabama" }, { value: "AK", label: "AK — Alaska" },
@@ -52,7 +59,8 @@ export default function AddPatientPage() {
   const [isSelfPay, setIsSelfPay] = useState(false);
 
   const [formData, setFormData] = useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     dob: "",
     gender: "M",
     phone: "",
@@ -117,9 +125,11 @@ export default function AddPatientPage() {
     // Apply self-pay override before validation so the schema sees "SELF_PAY"
     // as the insurance_provider (satisfying the required check) and skips the
     // conditional policy/member fields.
+    const full_name = `${formData.first_name.trim()} ${formData.last_name.trim()}`.trim();
     const base = isSelfPay
       ? {
         ...formData,
+        full_name,
         insurance_provider: "SELF_PAY",
         insurance_policy_number: "",
         insurance_member_id: "",
@@ -127,13 +137,14 @@ export default function AddPatientPage() {
         insurance_payer_id: "",
         insurance_payer_name: "",
       }
-      : formData;
+      : { ...formData, full_name };
 
     // Collect all validation errors at once so every red field shows simultaneously
     const allErrors: Record<string, string> = {};
 
     // Required field checks (fast path before Zod for clearer messages)
-    if (!base.full_name.trim()) allErrors.full_name = "Full name is required";
+    if (!base.first_name.trim()) allErrors.first_name = "First name is required";
+    if (!base.last_name.trim()) allErrors.last_name = "Last name is required";
     if (!base.dob) allErrors.dob = "Date of birth is required";
     if (!base.phone.trim()) allErrors.phone = "Phone number is required";
     if (!isSelfPay) {
@@ -222,18 +233,24 @@ export default function AddPatientPage() {
             <div>
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Personal Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Input
-                    label="Full Name *"
-                    value={formData.full_name}
-                    onChange={(e) => handleChange("full_name", e.target.value)}
-                    onBlur={(e) => handleBlur("full_name", e.target.value, e.target as HTMLElement)}
-                    placeholder="John Doe"
-                    maxLength={100}
-                    required
-                    error={fieldErrors.full_name}
-                  />
-                </div>
+                <Input
+                  label="First Name *"
+                  value={formData.first_name}
+                  onChange={(e) => handleChange("first_name", e.target.value)}
+                  onBlur={(e) => handleBlur("first_name", e.target.value, e.target as HTMLElement)}
+                  placeholder="John"
+                  required
+                  error={fieldErrors.first_name}
+                />
+                <Input
+                  label="Last Name *"
+                  value={formData.last_name}
+                  onChange={(e) => handleChange("last_name", e.target.value)}
+                  onBlur={(e) => handleBlur("last_name", e.target.value, e.target as HTMLElement)}
+                  placeholder="Doe"
+                  required
+                  error={fieldErrors.last_name}
+                />
                 <Input
                   label="Date of Birth *"
                   type="date"
@@ -263,7 +280,7 @@ export default function AddPatientPage() {
                   label="Phone *"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => handleChange("phone", e.target.value)}
+                  onChange={(e) => handleChange("phone", formatPhone(e.target.value))}
                   onBlur={(e) => handleBlur("phone", e.target.value, e.target as HTMLElement)}
                   placeholder="(555) 123-4567"
                   maxLength={15}
