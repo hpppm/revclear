@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
+import { resendConfirmationCode } from "../../config/awsCognito";
 import logger from "../../utils/logger";
 
 const SignupSchema = z.object({
@@ -238,6 +239,12 @@ router.post("/signin", async (req, res) => {
       );
     }
 
+    // Signin completed without an MFA challenge — Cognito returned tokens
+    // directly, meaning either MFA is not required for this user or the pool
+    // does not enforce it. Mark the session as MFA-satisfied so the auth
+    // middleware does not reject subsequent requests.
+    res.cookie("mfaVerified", "true", MFA_VERIFIED_COOKIE_OPTIONS);
+
     // Tokens are already set in httpOnly cookies above.
     // NEVER return raw tokens in the response body — the frontend can
     // base64-decode any JWT to read all Cognito claims (sub, username, device_key, etc).
@@ -470,6 +477,20 @@ router.post("/refresh-token", async (req, res) => {
     res.clearCookie("mfaVerified", CLEAR_COOKIE_OPTIONS);
     res.status(401).json({ error: "Invalid or expired refresh token." });
   }
+});
+
+// Resend Cognito confirmation code (for unconfirmed users on the confirm-email page)
+router.post("/resend-confirmation-code", async (req, res) => {
+  const parsed = ForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, errors: parsed.error.issues });
+  }
+  try {
+    await resendConfirmationCode(parsed.data.email);
+  } catch {
+    // Silently fail — don't reveal if email exists or is already confirmed
+  }
+  res.status(200).json({ message: "If the account is pending confirmation, a new code has been sent." });
 });
 
 // Forgot password route

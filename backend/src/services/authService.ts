@@ -190,7 +190,15 @@ export class AuthService {
         if (!this.isAllowedEmail(email)) {
             throw new Error(`Email must end with ${this.allowedEmailDomain} for testing`);
         }
-        return confirmSignUp(email, code);
+        const result = await confirmSignUp(email, code);
+        // Add to the Users group so this user has the same group membership
+        // as auto-confirmed users. Failure is non-fatal — user can still sign in.
+        try {
+            await adminAddUserToGroup(email, "Users");
+        } catch (err: any) {
+            logger.warn({ err: err?.message, email }, "confirmSignup: failed to add user to Users group");
+        }
+        return result;
     }
 
     static async signout(accessToken: string) {

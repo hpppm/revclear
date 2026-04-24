@@ -167,12 +167,13 @@ export default function EncounterPage() {
             if (data.audio_key) {
               logger.log("Restoring audio with key:", data.audio_key);
               setS3Key(data.audio_key);
-              // Fetch presigned URL for audio playback
+              // Fetch presigned URL for audio playback — only if the user hasn't
+              // already selected a local file (blob URL takes precedence).
               try {
                 const audioUrlRes = await apiClient.transcribe.getAudioUrl(searchEncounterId);
                 logger.log("Audio URL response:", audioUrlRes.data);
                 if (audioUrlRes.data?.audioUrl) {
-                  setAudioUrl(audioUrlRes.data.audioUrl);
+                  setAudioUrl((prev) => prev?.startsWith("blob:") ? prev : audioUrlRes.data.audioUrl);
                 }
               } catch (err) {
                 logger.error("Failed to load audio URL", err);
@@ -398,7 +399,10 @@ export default function EncounterPage() {
 
   const handleAudioSelected = async (file: File) => {
     setAudioFile(file);
-    setAudioUrl(URL.createObjectURL(file));
+    setAudioUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
     setTranscript(null);
     setTranscribeError(null);
     setSoap(null);
@@ -514,7 +518,10 @@ export default function EncounterPage() {
 
   const clearAudioState = () => {
     setAudioFile(null);
-    setAudioUrl(null);
+    setAudioUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
     setTranscript(null);
     setTranscriptDraft("");
     setSoap(null);

@@ -7,6 +7,7 @@ import {
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminConfirmSignUpCommand,
+  AdminDeleteUserCommand,
   DescribeUserPoolClientCommand,
   GlobalSignOutCommand,
   ForgotPasswordCommand,
@@ -15,6 +16,7 @@ import {
   RespondToAuthChallengeCommand,
   AssociateSoftwareTokenCommand,
   VerifySoftwareTokenCommand,
+  ResendConfirmationCodeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -295,6 +297,28 @@ export async function respondToMfaSetup(email: string, session: string) {
     ChallengeName: 'MFA_SETUP',
     Session: session,
     ChallengeResponses: { USERNAME: email },
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Admin delete user by username/email.
+ */
+export async function adminDeleteUser(email: string) {
+  const command = new AdminDeleteUserCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+  });
+  return cognitoClient.send(command);
+}
+
+/**
+ * Resend the Cognito email confirmation code to a user who hasn't confirmed yet.
+ */
+export async function resendConfirmationCode(email: string) {
+  const command = new ResendConfirmationCodeCommand({
+    ClientId: clientId,
+    Username: email,
   });
   return cognitoClient.send(command);
 }

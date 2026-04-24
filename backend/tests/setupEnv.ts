@@ -16,3 +16,5 @@ process.env.AWS_CLIENT_ID = process.env.AWS_CLIENT_ID || "test-client-id";
 // S3 placeholder — awsS3.ts throws at module-load time if this is absent.
 // Tests that import server.ts (via supertest) need this to avoid the guard.
 process.env.AWS_S3_BUCKET = process.env.AWS_S3_BUCKET || "test-bucket";
+// SESSION_SECRET placeholder — must be ≥32 chars to pass appConfig Zod validation.
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret-placeholder-for-jest-runs-only";

@@ -95,6 +95,7 @@ export default function MedicalCodesViewer({
   const [hasGenerated, setHasGenerated] = useState(savedCodes.length > 0);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [showManualSearch, setShowManualSearch] = useState(false);
 
   const sortCodes = (codes: MedicalCode[]) =>
     [...codes].sort((a, b) => {
@@ -125,6 +126,7 @@ export default function MedicalCodesViewer({
       // Default-select all candidates (up to 3 per type)
       setSelection([...newIcd, ...newCpt]);
       setHasGenerated(true);
+      if (newIcd.length === 0 && newCpt.length === 0) setShowManualSearch(true);
     } catch {
       logger.error("Code generation failed");
       setGenerateError("We couldn't generate codes right now. Please try again in a moment.");
@@ -276,16 +278,11 @@ export default function MedicalCodesViewer({
 
   return (
     <Card className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Medical Codes</h3>
-          <p className="text-sm text-slate-600">
-            Select up to 3 ICD-10 and up to 3 CPT codes.
-          </p>
-        </div>
-        <Button onClick={generateCodes} loading={loading} disabled={loading}>
-          {loading ? "Finding codes..." : "Find Codes"}
-        </Button>
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900">Medical Codes</h3>
+        <p className="text-sm text-slate-600">
+          Select up to 3 ICD-10 and up to 3 CPT codes.
+        </p>
       </div>
 
       {generateError && (
@@ -384,9 +381,30 @@ export default function MedicalCodesViewer({
         </div>
       )}
 
-      {/* Manual Search */}
-      <div className="border-t border-slate-200 pt-6">
-        <h4 className="text-sm font-semibold text-slate-700 mb-3">Manual Code Search</h4>
+      {/* Find Codes + Manual Search toggle */}
+      <div className="border-t border-slate-200 pt-4">
+        <div className="flex items-center justify-between gap-4">
+          <Button onClick={generateCodes} loading={loading} disabled={loading}>
+            {loading ? "Finding codes..." : "Find Codes"}
+          </Button>
+          <button
+            onClick={() => setShowManualSearch((v) => !v)}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded"
+            aria-expanded={showManualSearch}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 transition-transform ${showManualSearch ? "rotate-90" : ""}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            {showManualSearch ? "Hide manual search" : "Can't find a code? Search manually"}
+          </button>
+        </div>
+
+        {showManualSearch && (
+        <div className="mt-4 space-y-3">
         <div className="flex gap-2">
           <select
             id="code-search-type"
@@ -405,7 +423,7 @@ export default function MedicalCodesViewer({
             onKeyPress={(e) => e.key === "Enter" && handleSearch()}
             className="flex-1"
           />
-          <Button onClick={handleSearch} loading={searching} disabled={searching}>
+          <Button variant="secondary" size="sm" onClick={handleSearch} loading={searching} disabled={searching}>
             Search
           </Button>
         </div>
@@ -455,6 +473,8 @@ export default function MedicalCodesViewer({
               );
             })}
           </div>
+        )}
+        </div>
         )}
       </div>
 

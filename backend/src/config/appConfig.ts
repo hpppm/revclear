@@ -43,6 +43,8 @@ const EnvSchema = z.object({
   PINECONE_NAMESPACE: z.string().min(1).optional(),
   PINECONE_API_VERSION: z.string().min(1).optional(),
 
+  SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
+
   TEST_EMAIL_DOMAIN: z.string().optional(),
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
   AUTO_LOGIN_AFTER_SIGNUP: z.string().optional(),
@@ -144,12 +146,16 @@ export const appConfig = {
     url: env.CLEARINGHOUSE_URL,
     apiKey: env.CLEARINGHOUSE_API_KEY,
   },
+  session: {
+    secret: env.SESSION_SECRET,
+    maxAgeMs: 8 * 60 * 60 * 1000,   // 8 hours absolute session limit (HIPAA)
+    idleTimeoutMs: 30 * 60 * 1000,  // 30 minutes idle timeout
+  },
   auth: {
-    // In development, keep auth flows limited to local test accounts unless overridden.
-    // In production, allow any email unless TEST_EMAIL_DOMAIN is explicitly set.
-    testEmailDomain:
-      env.TEST_EMAIL_DOMAIN ||
-      (env.NODE_ENV === "development" ? "@localhost.dev" : ""),
+    // Allow all emails by default — Cognito is the authoritative auth gate.
+    // Set TEST_EMAIL_DOMAIN to an explicit suffix (e.g. "@clinic.dev") to
+    // restrict signups to a specific domain in a shared staging environment.
+    testEmailDomain: env.TEST_EMAIL_DOMAIN || "",
     autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
     autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
   },
