@@ -16,7 +16,7 @@ import {
 } from "../config/awsCognito";
 import { createUser, updateUserPractitionerInfo } from "../config/db";
 import { appConfig } from "../config/appConfig";
-import logger from "../utils/logger";
+import logger, { maskEmail } from "../utils/logger";
 
 export class AuthService {
     private static autoConfirmSignups = appConfig.auth.autoConfirmSignup;
@@ -76,7 +76,7 @@ export class AuthService {
                 // Also mark email as verified so password reset works
                 await adminMarkEmailVerified(email);
                 await adminAddUserToGroup(email, "Users");
-                logger.info({ email }, 'User auto-assigned to Users group');
+                logger.info({ email: maskEmail(email) }, 'User auto-assigned to Users group');
                 
                 autoConfirmResult.success = true;
             } catch (confirmError: any) {
@@ -182,7 +182,7 @@ export class AuthService {
         try {
             await adminAddUserToGroup(email, "Users");
         } catch (err: any) {
-            logger.warn({ err: err?.message, email }, "confirmSignup: failed to add user to Users group");
+            logger.warn({ err: err?.message, email: maskEmail(email) }, "confirmSignup: failed to add user to Users group");
         }
         return result;
     }

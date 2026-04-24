@@ -203,7 +203,7 @@ router.post(
 
       const formData = new FormData();
       formData.append("audio", audioBuffer, {
-        filename: audioFilename,
+        filename: "audio.webm",
         contentType: audioContentType,
       });
 
@@ -227,14 +227,12 @@ router.post(
       logger.debug({ status: response.status }, "transcribe: AI server response");
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText = (await response.text()).slice(0, 200);
         logger.error(
           { status: response.status, error: errorText },
           "transcribe: AI server error",
         );
-        throw new Error(
-          `AI transcription failed (${response.status}): ${errorText}`,
-        );
+        throw new Error(`AI transcription failed (${response.status})`);
       }
 
       const aiResponse = (await response.json()) as { transcript: string };
