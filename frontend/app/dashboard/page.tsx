@@ -207,12 +207,24 @@ export default function DashboardHome() {
         return "Good evening";
     })();
 
-    const firstName = user?.email
-        ? user.email.split("@")[0].split(".")[0]
-        : null;
-    const greetingName = firstName
-        ? firstName.charAt(0).toUpperCase() + firstName.slice(1)
-        : null;
+    const greetingName = (() => {
+        // user.name is normalized in AuthContext from full_name ?? name
+        const name = user?.name || (user as any)?.full_name as string | undefined;
+        if (name?.trim() && name.trim() !== "Unknown" && name.trim() !== "Unknown User") {
+            return name.trim().split(" ")[0];
+        }
+        const email = user?.email;
+        if (email?.includes("@")) {
+            const local = email.split("@")[0];
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(local);
+            const isPlaceholder = email.endsWith("@placeholder.local") || email.endsWith("@auto.local");
+            if (!isUuid && !isPlaceholder) {
+                const part = local.split(".")[0];
+                return part.charAt(0).toUpperCase() + part.slice(1);
+            }
+        }
+        return null;
+    })();
 
     return (
         <div className="min-h-screen bg-slate-100">
@@ -226,7 +238,7 @@ export default function DashboardHome() {
                         </p>
                         <h1 className="text-3xl font-semibold text-slate-900 mt-1">
                             {organization
-                                ? (greetingName ? `${greeting}, ${greetingName}` : "Dashboard")
+                                ? (greetingName ? `${greeting}, ${greetingName}` : greeting)
                                 : "Welcome to RevClear"}
                         </h1>
                         <p className="text-slate-500 mt-1 text-sm">
@@ -236,7 +248,7 @@ export default function DashboardHome() {
                         </p>
                         {organization && (
                             <p className="mt-2 text-xs text-slate-500">
-                                Terminology: <span className="font-semibold text-slate-700">Visit</span> = encounter. <span className="font-semibold text-slate-700">SOAP</span> = Subjective, Objective, Assessment, Plan.
+                                In this app, <span className="font-semibold text-slate-700">Visit</span> refers to a patient encounter, and <span className="font-semibold text-slate-700">SOAP note</span> stands for Subjective, Objective, Assessment, and Plan.
                             </p>
                         )}
                     </div>
@@ -309,8 +321,8 @@ export default function DashboardHome() {
                                                                 </svg>
                                                             </span>
                                                             <div>
-                                                                <p className="text-sm font-medium text-slate-900">No encounters yet</p>
-                                                                <p className="text-xs text-slate-500 mt-0.5">Start your first encounter to generate billing codes.</p>
+                                                                <p className="text-sm font-medium text-slate-900">No visits yet</p>
+                                                                <p className="text-xs text-slate-500 mt-0.5">Start your first visit to generate billing codes.</p>
                                                             </div>
                                                         </Link>
                                                     </li>
@@ -374,11 +386,11 @@ export default function DashboardHome() {
                                 <p className="text-3xl font-bold text-blue-900">{patients.length}</p>
                             </div>
                             )}
-                            {/* Encounters — pink */}
+                            {/* Visits — pink */}
                             {canManageEncounters && (
                             <div className="rounded-2xl border shadow-sm px-5 py-4" style={{ backgroundColor: "#ffe6ee", borderColor: "#ffb3cc" }}>
                                 <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "#99003d" }}>Encounters</p>
+                                    <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "#99003d" }}>Visits</p>
                                     <span className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: "#cc0052" }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

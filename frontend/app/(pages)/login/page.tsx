@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { apiClient } from "@/app/lib/api/apiClient";
 import { invalidateDedupeCache } from "@/app/lib/api/deduplicate";
@@ -82,11 +82,15 @@ interface MfaState {
   challengeName: "SOFTWARE_TOKEN_MFA" | "MFA_SETUP";
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const params = useSearchParams();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
+
+  const confirmedEmail = params.get("confirmed") === "1";
+  const sessionExpired = params.get("reason") === "expired" || params.get("reason") === "idle";
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -116,11 +120,6 @@ export default function LoginPage() {
       try {
         const signinResponse = await apiClient.auth.signin({ email, password });
         const data = signinResponse.data;
-
-        if (data?.mfaRequired) {
-          setMfaState({ email, challengeName: data.challengeName });
-          return;
-        }
 
         if (data?.mfaRequired) {
           setMfaState({ email, challengeName: data.challengeName });
@@ -325,6 +324,18 @@ export default function LoginPage() {
             </h1>
           </div>
 
+          {confirmedEmail && (
+            <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
+              <p className="text-sm text-green-800">Email confirmed! You can now sign in.</p>
+            </div>
+          )}
+
+          {sessionExpired && (
+            <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+              <p className="text-sm text-amber-800">Your session ended. Please sign in again.</p>
+            </div>
+          )}
+
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <AuthSection>
               <div className="space-y-4">
@@ -509,5 +520,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

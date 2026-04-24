@@ -152,11 +152,10 @@ export const appConfig = {
     idleTimeoutMs: 30 * 60 * 1000,  // 30 minutes idle timeout
   },
   auth: {
-    // In development, keep auth flows limited to local test accounts unless overridden.
-    // In production, allow any email unless TEST_EMAIL_DOMAIN is explicitly set.
-    testEmailDomain:
-      env.TEST_EMAIL_DOMAIN ||
-      (env.NODE_ENV === "development" ? "@localhost.dev" : ""),
+    // Allow all emails by default — Cognito is the authoritative auth gate.
+    // Set TEST_EMAIL_DOMAIN to an explicit suffix (e.g. "@clinic.dev") to
+    // restrict signups to a specific domain in a shared staging environment.
+    testEmailDomain: env.TEST_EMAIL_DOMAIN || "",
     autoConfirmSignup: (env.AUTO_CONFIRM_SIGNUP ?? "true").toLowerCase() !== "false",
     autoLoginAfterSignup: (env.AUTO_LOGIN_AFTER_SIGNUP ?? "true").toLowerCase() !== "false",
   },

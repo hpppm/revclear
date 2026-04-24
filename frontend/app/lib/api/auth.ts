@@ -111,5 +111,8 @@ export const authApi = {
     return api.post("/auth/verify-totp-setup", VerifyMfaSchema.parse(data));
   },
 
+  resendConfirmationCode: (email: string) =>
+    api.post("/auth/resend-confirmation-code", { email: z.string().email().parse(email) }),
+
   me: () => api.get("/auth/me"),
 };

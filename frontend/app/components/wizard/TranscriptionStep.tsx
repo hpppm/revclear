@@ -95,7 +95,16 @@ export default function TranscriptionStep({
                             Clear
                         </Button>
                     </div>
-                    <audio controls src={audioUrl} className="w-full" />
+                    <audio
+                        key={audioUrl}
+                        controls
+                        src={audioUrl}
+                        className="w-full"
+                        onError={(e) => {
+                            const err = (e.target as HTMLAudioElement).error;
+                            logger.error("Audio playback error", err?.message ?? err?.code);
+                        }}
+                    />
                 </div>
             ) : s3Key ? (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-center gap-3">

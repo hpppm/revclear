@@ -134,10 +134,8 @@ export default function SignupPage() {
 
         login(user);
       } else {
-        setError(
-          "Account created! Please check your email for verification code.",
-        );
-        setTimeout(() => router.push("/login"), 2000);
+        // Cognito sent a confirmation email — send user to the confirm-email page
+        router.push(`/confirm-email?email=${encodeURIComponent(form.email)}&source=signup`);
       }
     } catch (error: unknown) {
       logger.error("Signup failed");
