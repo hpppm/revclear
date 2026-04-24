@@ -32,6 +32,7 @@ export default function DashboardLayout({
     const { user, isLoading } = useAuth();
     const router = useRouter();
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
     useFormAutoScroll();
 
     const handleIdle = useCallback(async () => {
@@ -56,15 +57,46 @@ export default function DashboardLayout({
     }
 
     if (!user) {
-        return null; // Will redirect
+        return null;
     }
 
     return (
         <div className="flex min-h-screen bg-slate-100">
-            <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-            <main className={`flex-1 min-h-screen overflow-y-auto transition-all duration-300 ${collapsed ? "ml-16" : "ml-60"}`}>
-                {children}
-            </main>
+            <Sidebar
+                collapsed={collapsed}
+                onToggle={() => setCollapsed((c) => !c)}
+                mobileOpen={mobileOpen}
+                onMobileClose={() => setMobileOpen(false)}
+            />
+
+            {/* Mobile overlay backdrop */}
+            {mobileOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/50 md:hidden"
+                    onClick={() => setMobileOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+
+            <div className={`flex flex-1 flex-col min-h-screen transition-all duration-300 md:${collapsed ? "ml-16" : "ml-60"}`}>
+                {/* Mobile top bar */}
+                <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
+                    <button
+                        onClick={() => setMobileOpen(true)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                        aria-label="Open navigation"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <span className="font-display text-base font-semibold tracking-tight text-slate-900">RevClear</span>
+                </header>
+
+                <main className="flex-1 overflow-y-auto">
+                    {children}
+                </main>
+            </div>
         </div>
     );
 }

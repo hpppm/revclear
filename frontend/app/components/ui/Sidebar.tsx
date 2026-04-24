@@ -57,9 +57,11 @@ const navItems = [
 type SidebarProps = {
     collapsed: boolean;
     onToggle: () => void;
+    mobileOpen?: boolean;
+    onMobileClose?: () => void;
 };
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const {
@@ -93,6 +95,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     useEffect(() => {
         setShowHint(false);
+        onMobileClose?.();
     }, [pathname]);
 
     const isActive = (href: string) => {
@@ -106,12 +109,28 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     return (
         <aside
-            className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-white transition-all duration-300 ${
-                collapsed ? "w-16" : "w-60"
-            }`}
+            className={[
+                "fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-white transition-all duration-300",
+                // Desktop: width based on collapsed state
+                "md:translate-x-0",
+                collapsed ? "md:w-16" : "md:w-60",
+                // Mobile: full-width drawer, slides in/out
+                "w-72",
+                mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+            ].join(" ")}
         >
             {/* Header: logo + hamburger */}
             <div className="flex h-16 items-center justify-between border-b border-white/10 px-3">
+                {/* Mobile close button */}
+                <button
+                    onClick={onMobileClose}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors md:hidden"
+                    aria-label="Close navigation"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
                 {!collapsed && (
                     <div className="flex items-center gap-3">
                         <BrandMark

@@ -128,7 +128,7 @@ export default function EncountersPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8">
+        <div className="min-h-screen bg-slate-50 py-6 px-4 md:py-8 md:px-8">
 
             {/* Delete confirmation modal */}
             {confirmDeleteId && (
@@ -158,7 +158,7 @@ export default function EncountersPage() {
             <div className="max-w-6xl mx-auto space-y-6">
 
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">Encounters</h1>
                         <p className="text-sm text-slate-500 mt-0.5">
@@ -167,7 +167,7 @@ export default function EncountersPage() {
                     </div>
                     <Link
                         href="/dashboard/patients"
-                        className="brand-button-primary rounded-lg px-4 py-2 text-sm font-semibold text-white transition"
+                        className="brand-button-primary self-start rounded-lg px-4 py-2 text-sm font-semibold text-white transition sm:self-auto"
                     >
                         Go to Patients
                     </Link>
@@ -194,7 +194,7 @@ export default function EncountersPage() {
                     <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
 
                         {/* Summary bar */}
-                        <div className="flex items-center gap-6 px-6 py-4 border-b border-slate-100 bg-slate-50 text-sm">
+                        <div className="flex flex-wrap items-center gap-4 px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 bg-slate-50 text-sm">
                             <span className="text-slate-500">{encounters.length} encounter{encounters.length !== 1 ? "s" : ""}</span>
                             <span>
                                 <span className="font-semibold text-amber-600">
@@ -216,8 +216,54 @@ export default function EncountersPage() {
                             </span>
                         </div>
 
-                        {/* Table */}
-                        <div className="overflow-x-auto">
+                        {/* Mobile: card list */}
+                        <div className="divide-y divide-slate-100 md:hidden">
+                            {encounters.map((encounter) => (
+                                <div key={encounter.id} className="flex items-center gap-3 px-4 py-3">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-medium text-slate-900 truncate">
+                                                {encounter.patient_name || "Unknown Patient"}
+                                            </span>
+                                            <Badge variant={statusBadgeVariant(encounter.status)} size="sm">
+                                                {statusLabel(encounter.status)}
+                                            </Badge>
+                                        </div>
+                                        <p className="mt-0.5 text-xs text-slate-500">
+                                            {encounter.date_of_service
+                                                ? new Date(encounter.date_of_service).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                                : "—"}
+                                            {" · "}{encounterTypeLabel(encounter.encounter_type)}
+                                        </p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        {encounter.status === "ready" || encounter.status === "completed" ? (
+                                            <Link href={`/dashboard/encounters/${encounter.id}`} className="rounded-lg bg-[var(--brand-50)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-700)]">
+                                                View
+                                            </Link>
+                                        ) : (
+                                            <Link href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`} className="rounded-lg bg-[var(--brand-50)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-700)]">
+                                                Continue
+                                            </Link>
+                                        )}
+                                        <button
+                                            type="button"
+                                            aria-label="Delete encounter"
+                                            disabled={deletingId === encounter.id}
+                                            onClick={() => setConfirmDeleteId(encounter.id)}
+                                            className="flex h-8 w-8 items-center justify-center text-slate-300 hover:text-red-500 disabled:opacity-40 transition"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop: table */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="text-xs font-medium uppercase tracking-widest text-slate-400 border-b border-slate-100">
@@ -233,10 +279,7 @@ export default function EncountersPage() {
                                         <tr key={encounter.id} className="hover:bg-slate-50 transition">
                                             <td className="px-6 py-4">
                                                 {encounter.patient_id ? (
-                                                    <Link
-                                                        href={`/dashboard/patients/${encounter.patient_id}`}
-                                                        className="font-medium text-slate-900 hover:text-(--brand-600) hover:underline"
-                                                    >
+                                                    <Link href={`/dashboard/patients/${encounter.patient_id}`} className="font-medium text-slate-900 hover:text-[var(--brand-600)] hover:underline">
                                                         {encounter.patient_name || "Unknown Patient"}
                                                     </Link>
                                                 ) : (
@@ -248,9 +291,7 @@ export default function EncountersPage() {
                                                     ? new Date(encounter.date_of_service).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                                                     : "—"}
                                             </td>
-                                            <td className="px-6 py-4 text-slate-500 capitalize">
-                                                {encounterTypeLabel(encounter.encounter_type)}
-                                            </td>
+                                            <td className="px-6 py-4 text-slate-500 capitalize">{encounterTypeLabel(encounter.encounter_type)}</td>
                                             <td className="px-6 py-4">
                                                 <Badge variant={statusBadgeVariant(encounter.status)} size="sm">
                                                     {statusLabel(encounter.status)}
@@ -259,28 +300,12 @@ export default function EncountersPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-end gap-3">
                                                     {encounter.status === "ready" || encounter.status === "completed" ? (
-                                                        <Link
-                                                            href={`/dashboard/encounters/${encounter.id}`}
-                                                            className="inline-flex h-6 items-center text-sm font-semibold text-(--brand-600) hover:text-(--brand-700)"
-                                                        >
-                                                            View
-                                                        </Link>
+                                                        <Link href={`/dashboard/encounters/${encounter.id}`} className="inline-flex h-6 items-center text-sm font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)]">View</Link>
                                                     ) : (
-                                                        <Link
-                                                            href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`}
-                                                            className="inline-flex h-6 items-center text-sm font-semibold text-(--brand-600) hover:text-(--brand-700)"
-                                                        >
-                                                            Continue
-                                                        </Link>
+                                                        <Link href={`/dashboard/encounters/create?id=${encounter.id}&step=${getContinueStep(encounter)}`} className="inline-flex h-6 items-center text-sm font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)]">Continue</Link>
                                                     )}
-                                                    <button
-                                                        type="button"
-                                                        aria-label="Delete encounter"
-                                                        disabled={deletingId === encounter.id}
-                                                        onClick={() => setConfirmDeleteId(encounter.id)}
-                                                        className="inline-flex h-6 w-6 items-center justify-center text-slate-300 hover:text-red-500 disabled:opacity-40 transition"
-                                                    >
- <svg xmlns="http://www.w3.org/2000/svg" className=" h-5 w-5" viewBox="0 0 20 20" fill="currentColor" >
+                                                    <button type="button" aria-label="Delete encounter" disabled={deletingId === encounter.id} onClick={() => setConfirmDeleteId(encounter.id)} className="inline-flex h-6 w-6 items-center justify-center text-slate-300 hover:text-red-500 disabled:opacity-40 transition">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                             <path fillRule="evenodd" d="M8.5 3a1.5 1.5 0 00-1.415 1H4.5a.5.5 0 000 1H5v9.5A1.5 1.5 0 006.5 16h7a1.5 1.5 0 001.5-1.5V5h.5a.5.5 0 000-1h-2.585A1.5 1.5 0 0011.5 3h-3zm0 1a.5.5 0 00-.5.5V5h4v-.5a.5.5 0 00-.5-.5h-3zM6 6h8v8.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V6zm2 2a.5.5 0 10-1 0v5a.5.5 0 001 0V8zm4 .5a.5.5 0 10-1 0v5a.5.5 0 101 0v-5z" clipRule="evenodd" />
                                                         </svg>
                                                     </button>
