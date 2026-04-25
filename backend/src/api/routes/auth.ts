@@ -4,7 +4,7 @@ import { AuthService } from "../../services/authService";
 import { authMiddleware } from "../../middleware/auth";
 import { appConfig } from "../../config/appConfig";
 import { resendConfirmationCode } from "../../config/awsCognito";
-import logger from "../../utils/logger";
+import logger, { maskEmail } from "../../utils/logger";
 
 const SignupSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -220,7 +220,7 @@ router.post("/signin", async (req, res) => {
 
     if (!authResult?.AccessToken) {
       logger.warn(
-        { challengeName: response.ChallengeName, email },
+        { challengeName: response.ChallengeName, email: maskEmail(email) },
         "auth/signin returned no supported challenge and no access token",
       );
       return res.status(401).json({
@@ -266,7 +266,7 @@ router.post("/signin", async (req, res) => {
 
     // Log the actual Cognito error server-side (never sent to client)
     logger.warn(
-      { cognito_error: error.name, message: error.message, email },
+      { cognito_error: error.name, email: maskEmail(email) },
       "auth/signin failed",
     );
 
@@ -329,7 +329,7 @@ router.post("/verify-mfa", async (req, res) => {
     const authResult = response.AuthenticationResult;
 
     if (!authResult?.AccessToken) {
-      logger.warn({ email }, "auth/verify-mfa missing AuthenticationResult.AccessToken");
+      logger.warn({ email: maskEmail(email) }, "auth/verify-mfa missing AuthenticationResult.AccessToken");
       return res.status(401).json({ error: "MFA challenge incomplete. Please sign in again." });
     }
 
@@ -347,7 +347,7 @@ router.post("/verify-mfa", async (req, res) => {
 
     res.status(200).json({ message: "MFA verified successfully.", autoLoggedIn: true });
   } catch (error: any) {
-    logger.warn({ cognito_error: error.name, email }, "auth/verify-mfa failed");
+    logger.warn({ cognito_error: error.name, email: maskEmail(email) }, "auth/verify-mfa failed");
     res.status(401).json({ error: "Invalid or expired verification code." });
   }
 });
@@ -413,7 +413,7 @@ router.post("/verify-totp-setup", async (req, res) => {
     }
 
     if (!verifyResponse.Session) {
-      logger.warn({ email }, "auth/verify-totp-setup: VerifySoftwareToken returned SUCCESS but no Session — cannot complete MFA setup");
+      logger.warn({ email: maskEmail(email) }, "auth/verify-totp-setup: VerifySoftwareToken returned SUCCESS but no Session — cannot complete MFA setup");
       return res.status(401).json({ error: "MFA setup incomplete. Please sign in again." });
     }
 
@@ -427,7 +427,7 @@ router.post("/verify-totp-setup", async (req, res) => {
     const authResult = authResponse.AuthenticationResult;
 
     if (!authResult?.AccessToken) {
-      logger.warn({ email }, "auth/verify-totp-setup missing AuthenticationResult.AccessToken");
+      logger.warn({ email: maskEmail(email) }, "auth/verify-totp-setup missing AuthenticationResult.AccessToken");
       return res.status(401).json({ error: "MFA setup incomplete. Please sign in again." });
     }
 
@@ -444,7 +444,7 @@ router.post("/verify-totp-setup", async (req, res) => {
 
     res.status(200).json({ message: "Authenticator app linked successfully.", autoLoggedIn: true });
   } catch (error: any) {
-    logger.warn({ cognito_error: error.name, email }, "auth/verify-totp-setup failed");
+    logger.warn({ cognito_error: error.name, email: maskEmail(email) }, "auth/verify-totp-setup failed");
     res.status(401).json({ error: "Invalid or expired verification code." });
   }
 });
