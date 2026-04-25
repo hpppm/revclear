@@ -43,6 +43,8 @@ const EnvSchema = z.object({
   PINECONE_NAMESPACE: z.string().min(1).optional(),
   PINECONE_API_VERSION: z.string().min(1).optional(),
 
+  PHI_ENCRYPTION_KEY: z.string().optional(),
+
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
 
   AUTO_CONFIRM_SIGNUP: z.string().optional(),
@@ -61,6 +63,7 @@ const EnvSchema = z.object({
     ["GEMINI_API_KEY", env.GEMINI_API_KEY],
     ["PINECONE_API_KEY", env.PINECONE_API_KEY],
     ["PINECONE_INDEX_HOST", env.PINECONE_INDEX_HOST],
+    ["PHI_ENCRYPTION_KEY", env.PHI_ENCRYPTION_KEY],
   ];
 
   for (const [key, value] of requiredInProd) {
@@ -82,6 +85,26 @@ const EnvSchema = z.object({
       message:
         "One of AI_TRANSCRIBE_URL, TRANSCRIBE_API_URL, or TRANSCRIBE_URL is required in production",
     });
+  } else {
+    // Block known external AI provider hosts — audio PHI must stay within
+    // the BAA boundary. Only self-hosted or explicitly approved endpoints allowed.
+    const BLOCKED_TRANSCRIBE_HOSTS = ["api.openai.com", "api.groq.com", "api.anthropic.com"];
+    try {
+      const host = new URL(transcribeUrl).hostname;
+      if (BLOCKED_TRANSCRIBE_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["AI_TRANSCRIBE_URL"],
+          message: `AI_TRANSCRIBE_URL points to ${host}, which is not approved for PHI audio (no BAA in place). Use a self-hosted Whisper endpoint.`,
+        });
+      }
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AI_TRANSCRIBE_URL"],
+        message: "AI_TRANSCRIBE_URL is not a valid URL",
+      });
+    }
   }
 });
 
