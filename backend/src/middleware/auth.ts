@@ -115,31 +115,11 @@ export const authMiddleware = async (
         "Auth: JWT verification failed",
       );
       const isExpired = jwtErr?.message?.includes("expired");
-      return res.status(401).json({
-        error: isExpired ? "Token expired" : "Invalid token",
-      });
-    }
-
-    // Enforce that the access token came from an MFA-satisfied Cognito login.
-    // We require the amr claim because the application treats Cognito MFA as a
-    // hard gate for protected routes. If Cognito stops including the claim for a
-    // valid MFA flow, the auth contract needs to be revisited explicitly.
-    const amrClaim = (payload as any).amr as string[] | string | undefined;
-    const amrValues = Array.isArray(amrClaim)
-      ? amrClaim
-      : typeof amrClaim === "string"
-        ? [amrClaim]
-        : [];
-    const normalizedAmr = amrValues.map((value) => value.toLowerCase());
-    const hasMfaSignal =
-      normalizedAmr.includes("mfa") ||
-      normalizedAmr.includes("software_token_mfa") ||
-      normalizedAmr.includes("totp");
-
-    const mfaVerifiedBySessionCookie = req.cookies?.mfaVerified === "true";
-
-    if (!hasMfaSignal && !mfaVerifiedBySessionCookie) {
-      return res.status(401).json({ error: "MFA verification required" });
+      return res.status(401).json(
+        isExpired
+          ? { error: "Session expired", code: "REFRESH_FAILED" }
+          : { error: "Invalid token" },
+      );
     }
 
     // Cognito groups are preserved for diagnostics only. Application authorization
