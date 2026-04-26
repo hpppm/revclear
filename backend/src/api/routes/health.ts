@@ -54,9 +54,9 @@ router.get("/ai", authMiddleware, requireRole(['admin']), async (_req, res) => {
           healthy: report.groq.healthy,
           message: report.groq.message,
         },
-        whisper: {
-          healthy: report.whisper.healthy,
-          message: report.whisper.message,
+        assemblyai: {
+          healthy: report.assemblyai.healthy,
+          message: report.assemblyai.message,
         },
         pinecone: {
           healthy: report.pinecone.healthy,
