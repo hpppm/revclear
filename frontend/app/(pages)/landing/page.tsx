@@ -229,9 +229,11 @@ export default function LandingPage() {
             <span className="font-display text-xl font-semibold">RevClear</span>
           </div>
           <p className="text-slate-500 text-sm">© 2026 RevClear. All rights reserved.</p>
-          <div className="flex gap-6">
-            <a href="#" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Privacy Policy</a>
-            <a href="#" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Terms of Service</a>
+          <div className="flex flex-wrap gap-6">
+            <Link href="/privacy-policy" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Privacy Policy</Link>
+            <Link href="/terms-of-service" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Terms of Service</Link>
+            <Link href="/cookie-policy" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">Cookie Policy</Link>
+            <Link href="/hipaa-notice" className="text-slate-500 hover:text-teal-600 text-sm transition-colors">HIPAA Notice</Link>
           </div>
         </div>
       </footer>

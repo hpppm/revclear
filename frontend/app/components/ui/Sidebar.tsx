@@ -128,7 +128,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 {/* Mobile close button */}
                 <button
                     onClick={onMobileClose}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors md:hidden"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors md:hidden"
                     aria-label="Close navigation"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,7 +151,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <div className={`relative ${collapsed ? "mx-auto" : ""}`}>
                     <button
                         onClick={onToggle}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                        className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
                         title={collapsed ? "Expand navigation" : "Collapse navigation"}
                     >
