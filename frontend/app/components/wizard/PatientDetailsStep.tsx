@@ -129,7 +129,13 @@ export default function PatientDetailsStep({
         />
 
         <label className="space-y-1 block">
-          <span className="text-sm font-medium text-slate-700">Encounter Type</span>
+          <span className="text-sm font-medium text-slate-700 flex items-center gap-1">
+            Encounter Type
+            <span
+              className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-xs cursor-help leading-none"
+              title="An encounter is a single clinical visit between a patient and provider. Choose the type that matches how the visit took place: in person, by video (Telehealth), by phone, or at the patient's home."
+            >?</span>
+          </span>
           <select
             id="encounter-type"
             name="encounter-type"

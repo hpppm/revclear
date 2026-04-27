@@ -85,6 +85,8 @@ export default function EncounterPage() {
   const [transcript, setTranscript] = useState<any | null>(null);
   const [transcriptDraft, setTranscriptDraft] = useState<string>("");
   const [savingTranscript, setSavingTranscript] = useState(false);
+  const [transcriptSaved, setTranscriptSaved] = useState(false);
+  const [transcriptSaveError, setTranscriptSaveError] = useState<string | null>(null);
 
   // Step 3: SOAP State
   const [soap, setSoap] = useState<any | null>(null);
@@ -566,12 +568,16 @@ export default function EncounterPage() {
     if (!text) return;
 
     setSavingTranscript(true);
+    setTranscriptSaved(false);
+    setTranscriptSaveError(null);
     try {
       await apiClient.transcribe.saveTranscript(encounterId, text);
       setTranscript({ text });
       setSoap(null); // force regeneration from edited transcript
+      setTranscriptSaved(true);
     } catch (err) {
       logger.error("Failed to save transcript", err);
+      setTranscriptSaveError("failed");
     } finally {
       setSavingTranscript(false);
     }
@@ -714,6 +720,8 @@ export default function EncounterPage() {
           onClearAudio={clearAudioState}
           onTranscribe={handleTranscribe}
           allowedAudioTypes={allowedAudioTypes}
+          transcriptSaved={transcriptSaved}
+          transcriptSaveError={transcriptSaveError}
         />
       ),
       canGoNext: !!(transcript),

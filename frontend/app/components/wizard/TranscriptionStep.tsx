@@ -22,6 +22,8 @@ interface TranscriptionStepProps {
     onClearAudio: () => void;
     onTranscribe: () => void;
     allowedAudioTypes: string[];
+    transcriptSaved?: boolean;
+    transcriptSaveError?: string | null;
 }
 
 export default function TranscriptionStep({
@@ -41,6 +43,8 @@ export default function TranscriptionStep({
     onClearAudio,
     onTranscribe,
     allowedAudioTypes,
+    transcriptSaved,
+    transcriptSaveError,
 }: TranscriptionStepProps) {
     const transcriptText = (() => {
         if (!transcript) return null;
@@ -216,14 +220,32 @@ export default function TranscriptionStep({
                                 rows={10}
                                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                             />
-                            <div className="flex gap-2">
-                                <Button
-                                    onClick={onSaveTranscript}
-                                    loading={savingTranscript}
-                                    disabled={savingTranscript || !transcriptDraft.trim()}
-                                >
-                                    {savingTranscript ? "Saving..." : "Save transcript"}
-                                </Button>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={onSaveTranscript}
+                                        loading={savingTranscript}
+                                        disabled={savingTranscript || !transcriptDraft.trim()}
+                                    >
+                                        {savingTranscript ? "Saving..." : "Save transcript"}
+                                    </Button>
+                                </div>
+                                {transcriptSaved && !savingTranscript && (
+                                    <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+                                        <svg className="w-4 h-4 flex-shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Transcript saved successfully.
+                                    </div>
+                                )}
+                                {transcriptSaveError && !savingTranscript && (
+                                    <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800">
+                                        <svg className="w-4 h-4 flex-shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        Failed to save transcript — please try again.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

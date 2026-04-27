@@ -31,7 +31,10 @@ export default function DashboardLayout({
 }) {
     const { user, isLoading } = useAuth();
     const router = useRouter();
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return localStorage.getItem("sidebar-collapsed") === "true";
+    });
     const [mobileOpen, setMobileOpen] = useState(false);
     const [hoverOpen, setHoverOpen] = useState(false);
     const effectiveCollapsed = collapsed && !hoverOpen;
@@ -66,7 +69,11 @@ export default function DashboardLayout({
         <div className="flex min-h-screen bg-slate-100">
             <Sidebar
                 collapsed={effectiveCollapsed}
-                onToggle={() => setCollapsed((c) => !c)}
+                onToggle={() => setCollapsed((c) => {
+                    const next = !c;
+                    localStorage.setItem("sidebar-collapsed", String(next));
+                    return next;
+                })}
                 mobileOpen={mobileOpen}
                 onMobileClose={() => setMobileOpen(false)}
                 onHoverEnter={() => { if (collapsed) setHoverOpen(true); }}
@@ -87,7 +94,7 @@ export default function DashboardLayout({
                 <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 md:hidden">
                     <button
                         onClick={() => setMobileOpen(true)}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                        className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
                         aria-label="Open navigation"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
