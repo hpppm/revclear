@@ -1,19 +1,17 @@
 import { Router, json } from "express";
 import multer from "multer";
 import path from "path";
-import { Readable } from "stream";
 import { z } from "zod";
 import { IdParamSchema } from "../../types/zod";
-import FormData from "form-data";
-import fetch from "node-fetch";
 import { authMiddleware } from "../../middleware/auth";
 import { requireOrganization } from "../../middleware/context";
 import { requireCapability } from "../../middleware/authorization";
-import { getFile, uploadFile } from "../../config/awsS3";
+import { uploadFile, getDownloadUrl } from "../../config/awsS3";
 import { createAudioRecord, createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
 import { query } from "../../config/db";
 import { AI_FLOW_NAMES } from "../../constants/aiFlows";
+import { transcribeFromUrl } from "../../services/ai/assemblyAI";
 import logger from "../../utils/logger";
 
 const router = Router();
@@ -35,12 +33,9 @@ const upload = multer({
   },
 });
 
-// AI server URL from environment (prefer AI_TRANSCRIBE_URL, support TRANSCRIBE_URL).
-const AI_TRANSCRIBE_URL =
-  process.env.AI_TRANSCRIBE_URL ||
-  process.env.TRANSCRIBE_API_URL ||
-  process.env.TRANSCRIBE_URL;
-const AI_SERVER_API_KEY = process.env.AI_SERVER_API_KEY || "";
+// 120s gives AssemblyAI enough time to fetch the audio (typically <30s) while
+// minimising the window during which a leaked presigned URL could access raw PHI audio.
+const ASSEMBLYAI_PRESIGNED_TTL_SECONDS = 120;
 
 const TranscriptUpdateSchema = z.object({
   text: z.string().min(1, "Transcript text is required"),
@@ -73,14 +68,6 @@ const getLatestEncounterAudioKey = async (encounterId: string) => {
   );
 
   return result.rows[0]?.file_url as string | undefined;
-};
-
-const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
 };
 
 /**
@@ -117,9 +104,6 @@ router.post(
       }
 
       let s3Key = "";
-      let audioBuffer: Buffer;
-      let audioFilename = "audio.webm";
-      let audioContentType = "application/octet-stream";
 
       if (req.file) {
         if (!req.file.mimetype.startsWith("audio/")) {
@@ -135,130 +119,69 @@ router.post(
         const orgPrefix = organizationId;
         s3Key = `audio/${orgPrefix}/encounter_${encounterId}_${Date.now()}${originalExtension || ".tmp"}`;
 
-        // Upload to S3
         await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
         logger.info({ encounterId, s3Key }, "transcribe: audio uploaded to S3");
 
-        // Create a record in audio_records table
         await createAudioRecord({
           encounter_id: encounterId,
           file_url: s3Key,
           transcription_status: "uploaded",
         });
 
-        // Check if upload_only is requested
         if (req.query.upload_only === "true") {
           return res.json({
             success: true,
             message: "Audio uploaded successfully.",
           });
         }
-
-        audioBuffer = req.file.buffer;
-        audioFilename = req.file.originalname || audioFilename;
-        audioContentType = req.file.mimetype || audioContentType;
       } else {
         // Look up the S3 key server-side — never accept it from the client.
-        s3Key = await getLatestEncounterAudioKey(encounterId) ?? "";
+        s3Key = (await getLatestEncounterAudioKey(encounterId)) ?? "";
         if (!s3Key) {
           return sendError(res, 404, "No uploaded audio found for this encounter.");
         }
-
-        const s3Object = await getFile(s3Key);
-        if (!s3Object.Body) {
-          throw new Error(`S3 object has no body for key: ${s3Key}`);
-        }
-
-        audioBuffer = await streamToBuffer(s3Object.Body as Readable);
-        audioFilename = path.basename(s3Key) || audioFilename;
-        audioContentType = s3Object.ContentType || audioContentType;
-        logger.info(
-          { encounterId, s3Key },
-          "transcribe: loaded audio from S3 for transcription",
-        );
       }
 
-      if (!AI_TRANSCRIBE_URL) {
-        logger.error(
-          "transcribe: missing AI_TRANSCRIBE_URL/TRANSCRIBE_API_URL/TRANSCRIBE_URL configuration",
-        );
-        return sendError(
-          res,
-          500,
-          "AI transcription URL is not configured (AI_TRANSCRIBE_URL, TRANSCRIBE_API_URL, or TRANSCRIBE_URL)",
-        );
-      }
-
-      if (AI_SERVER_API_KEY) {
-        logger.debug("transcribe: using AI_SERVER_API_KEY for authentication");
-      } else {
-        logger.debug("transcribe: no AI_SERVER_API_KEY set, proceeding without auth header");
-      }
-
-      // --- Call AI Server for Transcription ---
-      logger.debug(
-        { encounterId, url: AI_TRANSCRIBE_URL },
-        "transcribe: sending to AI server",
+      // Hand AssemblyAI a short-lived presigned GET URL so its servers can pull
+      // the audio directly from S3. No PHI bytes leave our infrastructure twice.
+      const presignedAudioUrl = await getDownloadUrl(
+        s3Key,
+        ASSEMBLYAI_PRESIGNED_TTL_SECONDS,
       );
 
-      const formData = new FormData();
-      formData.append("audio", audioBuffer, {
-        filename: "audio.webm",
-        contentType: audioContentType,
+      const medicalMode = process.env.ASSEMBLYAI_MEDICAL_MODE === "true";
+
+      logger.debug(
+        { encounterId, medicalMode },
+        "transcribe: dispatching to AssemblyAI",
+      );
+
+      const aaResult = await transcribeFromUrl(presignedAudioUrl, {
+        medicalMode,
       });
 
-      const aiAbort = new AbortController();
-      const aiTimeout = setTimeout(() => aiAbort.abort(), 110_000);
-      let response: Awaited<ReturnType<typeof fetch>>;
-      try {
-        response = await fetch(AI_TRANSCRIBE_URL, {
-          method: "POST",
-          body: formData as any,
-          headers: {
-            ...formData.getHeaders(),
-            ...(AI_SERVER_API_KEY ? { "X-API-Key": AI_SERVER_API_KEY } : {}),
-          },
-          signal: aiAbort.signal,
-        });
-      } finally {
-        clearTimeout(aiTimeout);
-      }
-
-      logger.debug({ status: response.status }, "transcribe: AI server response");
-
-      if (!response.ok) {
-        const errorText = (await response.text()).slice(0, 200);
-        logger.error(
-          { status: response.status, error: errorText },
-          "transcribe: AI server error",
-        );
-        throw new Error(`AI transcription failed (${response.status})`);
-      }
-
-      const aiResponse = (await response.json()) as { transcript: string };
-      logger.debug(
-        { hasTranscript: !!aiResponse.transcript },
-        "transcribe: parsed AI response",
-      );
-
       const transcript = {
-        text: aiResponse.transcript,
-        model_version: `whisper-${process.env.WHISPER_MODEL ?? "tiny"}`,
+        text: aaResult.text,
+        model_version: aaResult.modelVersion,
       };
 
       logger.info(
-        { encounterId, s3Key },
+        {
+          encounterId,
+          s3Key,
+          duration: aaResult.audioDurationSeconds,
+          chars: aaResult.text.length,
+        },
         "transcribe: transcription successful",
       );
 
-      // Persist transcript to ai_results table
       const aiResult = await createAiResult({
         encounter_id: encounterId,
         flow_name: AI_FLOW_NAMES.transcript,
         input_json: { s3Key },
         output_json: transcript,
         model_version: transcript.model_version,
-        confidence_score: undefined,
+        confidence_score: aaResult.confidence ?? undefined,
       });
 
       // Update encounter with transcript_result_id
@@ -313,8 +236,6 @@ router.get("/audio/:encounterId", authMiddleware, requireOrganization, requireCa
       return sendError(res, 404, "Audio file not found for this encounter.");
     }
 
-    // Generate presigned URL
-    const { getDownloadUrl } = await import("../../config/awsS3");
     const audioUrl = await getDownloadUrl(audioKey, 3600); // 1 hour expiry
 
     res.json({ audioUrl });

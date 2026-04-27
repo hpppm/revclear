@@ -27,13 +27,9 @@ const EnvSchema = z.object({
 
   SOAP_API_URL: z.string().url().optional(),
   CODES_API_URL: z.string().url().optional(),
-  AI_TRANSCRIBE_URL: z.string().url().optional(),
-  TRANSCRIBE_API_URL: z.string().url().optional(),
-  TRANSCRIBE_URL: z.string().url().optional(),
-  AI_SERVER_API_KEY: z.string().min(1).optional(),
-  // Optional observability URL. Keep non-fatal if malformed so startup does not
-  // hard-fail on an unused/deployment-misconfigured value.
-  AI_SERVER_HEALTH_URL: z.string().optional(),
+  ASSEMBLY_TRANSCRIPTION_API_KEY: z.string().min(1).optional(),
+  ASSEMBLYAI_MEDICAL_MODE: z.string().optional(),
+  ASSEMBLYAI_BAA_CONFIRMED: z.string().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
   GROQ_API_KEY: z.string().min(1).optional(),
@@ -59,7 +55,8 @@ const EnvSchema = z.object({
     ["AWS_S3_BUCKET", env.AWS_S3_BUCKET],
     ["AWS_USER_POOL_ID", env.AWS_USER_POOL_ID],
     ["AWS_CLIENT_ID", env.AWS_CLIENT_ID],
-    ["AI_SERVER_API_KEY", env.AI_SERVER_API_KEY],
+    ["ASSEMBLY_TRANSCRIPTION_API_KEY", env.ASSEMBLY_TRANSCRIPTION_API_KEY],
+    ["ASSEMBLYAI_BAA_CONFIRMED", env.ASSEMBLYAI_BAA_CONFIRMED],
     ["GEMINI_API_KEY", env.GEMINI_API_KEY],
     ["PINECONE_API_KEY", env.PINECONE_API_KEY],
     ["PINECONE_INDEX_HOST", env.PINECONE_INDEX_HOST],
@@ -76,35 +73,17 @@ const EnvSchema = z.object({
     }
   }
 
-  const transcribeUrl =
-    env.AI_TRANSCRIBE_URL || env.TRANSCRIBE_API_URL || env.TRANSCRIBE_URL;
-  if (!transcribeUrl) {
+  // HIPAA: AssemblyAI BAA must be explicitly confirmed before PHI audio is
+  // sent to their servers. ASSEMBLYAI_BAA_CONFIRMED=true must be set only after
+  // a signed Business Associate Agreement is in place with AssemblyAI.
+  if (env.ASSEMBLY_TRANSCRIPTION_API_KEY && env.ASSEMBLYAI_BAA_CONFIRMED !== "true") {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["AI_TRANSCRIBE_URL"],
+      path: ["ASSEMBLYAI_BAA_CONFIRMED"],
       message:
-        "One of AI_TRANSCRIBE_URL, TRANSCRIBE_API_URL, or TRANSCRIBE_URL is required in production",
+        "ASSEMBLYAI_BAA_CONFIRMED must be set to 'true' in production. " +
+        "Set this only after a signed HIPAA BAA is in place with AssemblyAI.",
     });
-  } else {
-    // Block known external AI provider hosts — audio PHI must stay within
-    // the BAA boundary. Only self-hosted or explicitly approved endpoints allowed.
-    const BLOCKED_TRANSCRIBE_HOSTS = ["api.openai.com", "api.groq.com", "api.anthropic.com"];
-    try {
-      const host = new URL(transcribeUrl).hostname;
-      if (BLOCKED_TRANSCRIBE_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`))) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["AI_TRANSCRIBE_URL"],
-          message: `AI_TRANSCRIBE_URL points to ${host}, which is not approved for PHI audio (no BAA in place). Use a self-hosted Whisper endpoint.`,
-        });
-      }
-    } catch {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["AI_TRANSCRIBE_URL"],
-        message: "AI_TRANSCRIBE_URL is not a valid URL",
-      });
-    }
   }
 });
 
@@ -149,10 +128,12 @@ export const appConfig = {
   ai: {
     soapApiUrl: env.SOAP_API_URL,
     codesApiUrl: env.CODES_API_URL,
-    transcribeUrl:
-      env.AI_TRANSCRIBE_URL || env.TRANSCRIBE_API_URL || env.TRANSCRIBE_URL,
-    serverApiKey: env.AI_SERVER_API_KEY,
-    serverHealthUrl: env.AI_SERVER_HEALTH_URL,
+    assemblyAiApiKey: env.ASSEMBLY_TRANSCRIPTION_API_KEY,
+    assemblyAiBaaConfirmed: (env.ASSEMBLYAI_BAA_CONFIRMED ?? "false").toLowerCase() === "true",
+    assemblyAiMedicalMode: (env.ASSEMBLYAI_MEDICAL_MODE ?? "false").toLowerCase() === "true",
+    // Allowlist of approved external hosts for PHI audio egress.
+    // Any transcription call must target one of these hosts.
+    approvedTranscriptionHosts: ["api.assemblyai.com"],
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL ?? "gemini-2.5-flash",
     groqApiKey: env.GROQ_API_KEY,

@@ -12,7 +12,7 @@ export type AiProviderHealthReport = {
   overallHealthy: boolean;
   model: AiProviderHealth;
   groq: AiProviderHealth;
-  whisper: AiProviderHealth;
+  assemblyai: AiProviderHealth;
   pinecone: AiProviderHealth;
 };
 
@@ -27,23 +27,22 @@ const checkModelConfig = async (): Promise<AiProviderHealth> => {
   };
 };
 
-const checkWhisperHealth = async (): Promise<AiProviderHealth> => {
-  const transcribeUrl = appConfig.ai.transcribeUrl;
-  if (!transcribeUrl) {
-    return { configured: false, healthy: false, message: "AI_TRANSCRIBE_URL not configured" };
+const checkAssemblyAiConfig = async (): Promise<AiProviderHealth> => {
+  const configured = Boolean(appConfig.ai.assemblyAiApiKey);
+  if (!configured) {
+    return {
+      configured: false,
+      healthy: false,
+      message: "ASSEMBLY_TRANSCRIPTION_API_KEY not configured",
+    };
   }
-  const healthUrl = transcribeUrl.replace(/\/transcribe\/?$/, "/health");
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(healthUrl, { signal: controller.signal });
-    clearTimeout(timeout);
-    return res.ok
-      ? { configured: true, healthy: true, message: "Whisper service reachable" }
-      : { configured: true, healthy: false, message: `Whisper service returned ${res.status}` };
-  } catch (err: any) {
-    return { configured: true, healthy: false, message: `Whisper unreachable (${err?.message ?? "error"})` };
-  }
+  return {
+    configured: true,
+    healthy: true,
+    message: appConfig.ai.assemblyAiMedicalMode
+      ? "AssemblyAI configured (medical mode)"
+      : "AssemblyAI configured",
+  };
 };
 
 const checkGroqConfig = (): AiProviderHealth => {
@@ -58,18 +57,18 @@ const checkGroqConfig = (): AiProviderHealth => {
 };
 
 export const getAiProviderHealthReport = async (): Promise<AiProviderHealthReport> => {
-  const [model, pinecone, whisper] = await Promise.all([
+  const [model, pinecone, assemblyai] = await Promise.all([
     checkModelConfig(),
     checkPineconeHealth(),
-    checkWhisperHealth(),
+    checkAssemblyAiConfig(),
   ]);
   const groq = checkGroqConfig();
 
   return {
-    overallHealthy: model.healthy && pinecone.healthy && whisper.healthy,
+    overallHealthy: model.healthy && pinecone.healthy && assemblyai.healthy,
     model,
     groq,
-    whisper,
+    assemblyai,
     pinecone: {
       healthy: pinecone.healthy,
       configured: Boolean(appConfig.ai.pinecone.apiKey && appConfig.ai.pinecone.indexHost),
@@ -89,7 +88,7 @@ export const logAiProviderHealthStartup = async () => {
       overall: report.overallHealthy ? "healthy" : "degraded",
       model: { healthy: report.model.healthy, message: report.model.message },
       groq: { healthy: report.groq.healthy, message: report.groq.message },
-      whisper: { healthy: report.whisper.healthy, message: report.whisper.message },
+      assemblyai: { healthy: report.assemblyai.healthy, message: report.assemblyai.message },
       pinecone: { healthy: report.pinecone.healthy, message: report.pinecone.message },
     },
     "AI provider health",
