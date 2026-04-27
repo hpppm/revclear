@@ -35,7 +35,7 @@ const OrgCreateSchema = z.object({
   edi_sftp_host: z.string().optional().nullable(),
   edi_sftp_username: z.string().optional().nullable(),
   edi_sftp_port: z.number().int().optional().nullable(),
-  edi_clearinghouse_url: z.string().optional().nullable(),
+  edi_clearinghouse_url: z.string().url("Must be a valid URL").optional().nullable().or(z.literal("")).or(z.literal(null)),
   edi_clearinghouse_api_key: z.string().optional().nullable(),
 });
 
