@@ -117,7 +117,7 @@ export async function createTranscript(
 
   const body = {
     audio_url: opts.audioUrl,
-    speech_model: speechModel,   // singular string — AssemblyAI v2 API field name
+    speech_models: [speechModel],
     language_code: opts.languageCode ?? "en_us",
     punctuate: true,
     format_text: true,
