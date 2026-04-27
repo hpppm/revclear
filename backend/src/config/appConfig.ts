@@ -29,6 +29,7 @@ const EnvSchema = z.object({
   CODES_API_URL: z.string().url().optional(),
   ASSEMBLY_TRANSCRIPTION_API_KEY: z.string().min(1).optional(),
   ASSEMBLYAI_MEDICAL_MODE: z.string().optional(),
+  ASSEMBLYAI_BAA_CONFIRMED: z.string().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).optional(),
   GROQ_API_KEY: z.string().min(1).optional(),
@@ -55,6 +56,7 @@ const EnvSchema = z.object({
     ["AWS_USER_POOL_ID", env.AWS_USER_POOL_ID],
     ["AWS_CLIENT_ID", env.AWS_CLIENT_ID],
     ["ASSEMBLY_TRANSCRIPTION_API_KEY", env.ASSEMBLY_TRANSCRIPTION_API_KEY],
+    ["ASSEMBLYAI_BAA_CONFIRMED", env.ASSEMBLYAI_BAA_CONFIRMED],
     ["GEMINI_API_KEY", env.GEMINI_API_KEY],
     ["PINECONE_API_KEY", env.PINECONE_API_KEY],
     ["PINECONE_INDEX_HOST", env.PINECONE_INDEX_HOST],
@@ -69,6 +71,19 @@ const EnvSchema = z.object({
         message: `${key} is required in production`,
       });
     }
+  }
+
+  // HIPAA: AssemblyAI BAA must be explicitly confirmed before PHI audio is
+  // sent to their servers. ASSEMBLYAI_BAA_CONFIRMED=true must be set only after
+  // a signed Business Associate Agreement is in place with AssemblyAI.
+  if (env.ASSEMBLY_TRANSCRIPTION_API_KEY && env.ASSEMBLYAI_BAA_CONFIRMED !== "true") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["ASSEMBLYAI_BAA_CONFIRMED"],
+      message:
+        "ASSEMBLYAI_BAA_CONFIRMED must be set to 'true' in production. " +
+        "Set this only after a signed HIPAA BAA is in place with AssemblyAI.",
+    });
   }
 });
 
@@ -114,7 +129,11 @@ export const appConfig = {
     soapApiUrl: env.SOAP_API_URL,
     codesApiUrl: env.CODES_API_URL,
     assemblyAiApiKey: env.ASSEMBLY_TRANSCRIPTION_API_KEY,
+    assemblyAiBaaConfirmed: (env.ASSEMBLYAI_BAA_CONFIRMED ?? "false").toLowerCase() === "true",
     assemblyAiMedicalMode: (env.ASSEMBLYAI_MEDICAL_MODE ?? "false").toLowerCase() === "true",
+    // Allowlist of approved external hosts for PHI audio egress.
+    // Any transcription call must target one of these hosts.
+    approvedTranscriptionHosts: ["api.assemblyai.com"],
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL ?? "gemini-2.5-flash",
     groqApiKey: env.GROQ_API_KEY,

@@ -33,7 +33,9 @@ const upload = multer({
   },
 });
 
-const ASSEMBLYAI_PRESIGNED_TTL_SECONDS = 900; // 15 minutes — covers a 3-min poll budget plus AssemblyAI fetch latency.
+// 120s gives AssemblyAI enough time to fetch the audio (typically <30s) while
+// minimising the window during which a leaked presigned URL could access raw PHI audio.
+const ASSEMBLYAI_PRESIGNED_TTL_SECONDS = 120;
 
 const TranscriptUpdateSchema = z.object({
   text: z.string().min(1, "Transcript text is required"),
@@ -150,7 +152,7 @@ router.post(
       const medicalMode = process.env.ASSEMBLYAI_MEDICAL_MODE === "true";
 
       logger.debug(
-        { encounterId, s3Key, medicalMode },
+        { encounterId, medicalMode },
         "transcribe: dispatching to AssemblyAI",
       );
 
