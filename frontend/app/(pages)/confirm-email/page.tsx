@@ -4,8 +4,6 @@ import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/app/lib/api/apiClient";
-import { invalidateDedupeCache } from "@/app/lib/api/deduplicate";
-import { useAuth } from "@/app/context/AuthContext";
 import { BrandMark } from "@/app/components/ui/BrandMark";
 import Button from "@/app/components/ui/Button";
 
@@ -20,7 +18,6 @@ function getApiError(error: unknown): string | undefined {
 function ConfirmEmailPageInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const { login } = useAuth();
 
   const email = params.get("email") ?? "";
   const showUnverifiedBanner = params.get("banner") === "unverified";
@@ -77,18 +74,9 @@ function ConfirmEmailPageInner() {
     setFormError("");
     setIsLoading(true);
     try {
-      const res = await apiClient.auth.verifyOtp({ email, code });
-      const data = res.data;
-
-      if (data?.step === "complete") {
-        invalidateDedupeCache("me.getProfile");
-        const userRes = await apiClient.me.getProfile();
-        login(userRes.data);
-        router.push("/dashboard");
-        return;
-      }
-
-      router.push(`/login?mfa=1&email=${encodeURIComponent(email)}&challenge=${data?.challengeName ?? "SOFTWARE_TOKEN_MFA"}`);
+      await apiClient.auth.confirmSignup({ email, code });
+      // Account confirmed — user must now sign in
+      router.push(`/login?confirmed=1&email=${encodeURIComponent(email)}`);
     } catch (error: unknown) {
       setFormError(getApiError(error) ?? "Invalid or expired code. Please try again.");
     } finally {
@@ -100,7 +88,7 @@ function ConfirmEmailPageInner() {
     if (cooldown > 0 || !email) return;
     setFormError("");
     try {
-      await apiClient.auth.resendOtp({ email });
+      await apiClient.auth.resendConfirmationCode(email);
       setCooldown(RESEND_COOLDOWN_S);
     } catch (error: unknown) {
       setFormError(getApiError(error) ?? "Could not resend code. Please try again.");

@@ -52,6 +52,8 @@ export function proxy(request: NextRequest) {
     `connect-src ${connectSrc}`,
     "img-src 'self' data: https:",
     "font-src 'self' data:",
+    // blob: required for local audio playback (AudioRecorder/AudioUploader blob URLs)
+    "media-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -70,7 +72,7 @@ export function proxy(request: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "camera=(), microphone=(self), geolocation=(), payment=(), usb=()",
   );
 
   if (!isDev) {

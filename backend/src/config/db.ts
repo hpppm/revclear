@@ -2,11 +2,13 @@ import { Pool, PoolConfig, QueryResult, QueryResultRow } from "pg";
 import { appConfig } from "./appConfig";
 import logger from "../utils/logger";
 
-const userColumns = [
+export const userColumns = [
   "id",
   "cognito_id",
   "email",
   "full_name",
+  "first_name",
+  "last_name",
   "role",
   "organization_id",
   "phone",
@@ -88,19 +90,23 @@ export const createUser = async (
   email?: string,
   fullName?: string,
   practitionerType?: string,
-  licenseId?: string
+  licenseId?: string,
+  firstName?: string,
+  lastName?: string,
 ) => {
   const safeEmail = email || `${cognitoId}@auto.local`;
   const safeName = fullName || "Unknown User";
 
   const result = await query(
-    `INSERT INTO users (cognito_id, email, full_name, practitioner_type, license_id)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO users (cognito_id, email, full_name, first_name, last_name, practitioner_type, license_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING ${userColumns}`,
     [
       cognitoId,
       safeEmail,
       safeName,
+      firstName || null,
+      lastName || null,
       practitionerType || null,
       licenseId || null,
     ]

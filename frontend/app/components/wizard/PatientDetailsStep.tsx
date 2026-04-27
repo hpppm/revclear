@@ -232,6 +232,7 @@ export default function PatientDetailsStep({
                   { value: "child", label: "Child" },
                   { value: "other", label: "Other" },
                 ]}
+                helperText="Choose 'Self' if the patient is the insurance policy holder"
               />
               <Input label="Insurance Provider" value={selectedPatient.insuranceType || ""} disabled error={!selectedPatient.insuranceType ? "Required — update patient profile" : undefined} />
               <Input label="Member / Policy ID" value={selectedPatient.insuranceId || ""} disabled error={!selectedPatient.insuranceId ? "Required — update patient profile" : undefined} />
@@ -245,7 +246,7 @@ export default function PatientDetailsStep({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Subscriber Information</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Fields marked * are required to continue</p>
+                  <p className="text-xs text-slate-500 mt-0.5">The subscriber is the person who holds the insurance policy (e.g. a parent or spouse). Fields marked * are required.</p>
                 </div>
                 <div className="flex items-center gap-3">
                   {subscriberLoading && <p className="text-xs text-slate-500">Loading subscriber...</p>}
@@ -259,7 +260,9 @@ export default function PatientDetailsStep({
                   value={metadata.subscriber?.full_name || ""}
                   onChange={(e) => handleSubscriberChange("full_name", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("full_name", e.target.value)}
+                  placeholder="e.g. Jane Doe"
                   maxLength={100}
+                  helperText="Full legal name of the insurance policy holder"
                   error={subscriberFieldErrors.full_name || encounterFieldErrors?.subscriber_full_name}
                 />
                 <Input
@@ -339,6 +342,7 @@ export default function PatientDetailsStep({
                   onChange={(e) => handleSubscriberChange("member_id", e.target.value)}
                   onBlur={(e) => handleSubscriberBlur("member_id", e.target.value)}
                   maxLength={50}
+                  helperText="Found on the front of the insurance card"
                   error={subscriberFieldErrors.member_id || encounterFieldErrors?.subscriber_member_id}
                 />
                 <Input

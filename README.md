@@ -1,103 +1,110 @@
-# RevClear
+# **RevClear**
 
-AI-assisted medical claims platform. Audio → SOAP notes → ICD-10/CPT codes → billing claims.
+AI-assisted medical claims and speech transcription platform for secure healthcare billing workflows.
 
 ---
 
-## Quick Start
+## **Quick Start**
 
 ```bash
+# Clone and setup
+git clone <repo-url>
+cd revclear
+
 # Backend (port 3005)
 cd backend && npm install && npm run dev
 
-# Frontend (port 3000) — separate terminal
+# Frontend (port 3000) - in another terminal
 cd frontend && npm install && npm run dev
+
+# Or use Docker for full stack
+docker-compose up
 ```
 
----
-
-## Stack
-
-| Layer    | Tech                                      |
-|----------|-------------------------------------------|
-| Backend  | Express + TypeScript                      |
-| Frontend | Next.js 16 App Router                     |
-| Database | PostgreSQL (AWS RDS)                      |
-| Auth     | AWS Cognito + Resend (OTP email)          |
-| AI       | Whisper + Groq + Gemini + Pinecone        |
-| Deploy   | Railway                                   |
+See [docs/RUNBOOK.md](docs/RUNBOOK.md) for operational guidance.
 
 ---
 
-## Project Structure
+## **Project Structure**
 
 ```
 revclear/
-├── backend/
-│   ├── src/api/routes/     REST endpoints
-│   ├── src/middleware/     auth, audit, security
-│   ├── src/services/       business logic
-│   ├── src/db/queries.ts   ALL SQL (never inline)
-│   └── docs/db/            migration SQL files
-├── frontend/
-│   ├── app/dashboard/      main app views
-│   ├── app/lib/api/        API client modules
-│   └── app/lib/validation/ Zod schemas
-└── handoffs/               per-feature implementation docs
+├── backend/           # Express + TypeScript API
+├── frontend/          # Next.js App Router
+├── docs/              # Project documentation
+├── deploy/            # Deployment and NGINX config
+├── tests/             # Integration/security/manual tests
+└── docker-compose.yml # Local full-stack orchestration
 ```
 
 ---
 
-## Auth Flow
+## **Documentation**
 
-**Signup:** email → OTP email verification → TOTP setup → dashboard
-
-**Signin:** email + password → email_verified check → TOTP challenge → dashboard
-
-**Session:** 8h absolute timeout · 30min idle timeout · one concurrent session per user · token rotation on every refresh
-
----
-
-## Required Environment Variables
-
-| Variable | Description |
-|---|---|
-| `PHI_ENCRYPTION_KEY` | 64-char hex — encrypts all PHI at rest |
-| `SESSION_SECRET` | 32+ char random string — signs session cookie |
-| `RESEND_API_KEY` | Sends OTP emails |
-| `AWS_USER_POOL_ID` | Cognito user pool |
-| `AWS_CLIENT_ID` | Cognito app client |
-| `AWS_REGION` | `us-east-1` |
-| `DB_HOST` / `DB_USERNAME` / `DB_PASSWORD` / `DB_DATABASE` | PostgreSQL |
-| `GROQ_API_KEY` | Groq LLM |
-| `GEMINI_API_KEY` | Gemini primary AI |
-| `PINECONE_API_KEY` / `PINECONE_INDEX_HOST` | Vector search |
-| `AWS_S3_BUCKET` | Audio + transcript storage |
+| Document | Description |
+|----------|-------------|
+| [CLAUDE.md](CLAUDE.md) | AI assistant guidance |
+| [docs/](docs/) | Full documentation hub |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Operational runbook |
+| [Backend Docs](backend/docs/) | API & database documentation |
 
 ---
 
-## Security
+## **Security Framework Baseline**
 
-- **HIPAA** — PHI encrypted at rest via `crypto.ts` (AES-256-GCM), never logged
-- **RBAC** — admin / clinician / nurse / billing_staff / receptionist roles enforced at middleware
-- **JWT** — httpOnly cookies only, never localStorage
-- **Token rotation** — `GetTokensFromRefreshTokenCommand`, old refresh token invalidated immediately
-- **Dual-scope queries** — every PHI query filters by `organization_id` AND `clinician_id`
-- **MFA** — TOTP required on every login
+We apply part of the required controls from:  
+- **HIPAA** – encrypted storage and protection of PHI/PII  
+- **NIST CSF** – Protect, Detect, Respond, Recover across system lifecycle  
+- **OWASP API Security** – secure API communication and prevent common API risks  
 
----
-
-## Commands
-
-```bash
-cd backend && npm test          # run test suite
-cd backend && npm run build     # typecheck + compile
-cd frontend && npm run lint     # lint
-cd frontend && npx playwright test  # e2e tests
-```
 
 ---
 
-## License
+## **Platform Overview**
 
-MIT — see [LICENSE](LICENSE)
+### 🔐 **Authentication**
+- Amazon Cognito for secure user identity
+- JWT-based API authentication
+
+### 👤 **Access Control**
+- IAM roles for tenant separation
+- **RBAC currently enforced**  
+
+### 🗄️ **Data Storage**
+- Encrypted medical + billing data in **AWS RDS (PostgreSQL)**
+
+### 📦 **File Storage**
+- Encrypted transcripts and audio files in **Amazon S3**
+
+### 🤖 **AI Processing**
+- Local Whisper transcription (Python)
+- Local Ollama inference by default (`http://localhost:11434`)
+- Optional external AI endpoints via backend env configuration
+- Restricted with encrypted data handling and vendor controls
+
+### 🔍 **Audit Logging**
+- System events logged through **AWS CloudTrail**
+- API + middleware logs monitored via **AWS CloudWatch**
+
+### 🔒 **Encryption**
+- All data encrypted using **AWS KMS**
+- RDS + S3 encrypted at rest (AES-256)
+
+---
+
+## **Environment Variables**
+
+Required variables:
+- `AWS_ACCOUNT_ID`
+- `S3_MAIN_BUCKET`
+- `COGNITO_USER_POOL_ID`
+- `RDS_ENDPOINT` (PostgreSQL)
+- `API_GATEWAY_ID`
+
+See `.env.example` for full list.
+
+---
+
+## **License**
+
+MIT License - see [LICENSE](LICENSE) for details.

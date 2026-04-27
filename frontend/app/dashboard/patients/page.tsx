@@ -72,7 +72,7 @@ export default function PatientsPage() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
                 <DashboardHeader
                     title="Patients"
@@ -115,71 +115,89 @@ export default function PatientsPage() {
                     )}
                 </div>
             ) : (
-                <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-xs font-medium uppercase tracking-widest text-slate-400 border-b border-slate-100 bg-slate-50">
-                                    <th className="px-6 py-4 text-left">Name</th>
-                                    <th className="px-6 py-4 text-left">DOB</th>
-                                    <th className="px-6 py-4 text-left">Phone</th>
-                                    <th className="px-6 py-4 text-left">Email</th>
-                                    <th className="px-6 py-4 text-left">Insurance</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {patients.map((patient) => {
-                                    const initials = patient.name
-                                        ? patient.name.split(" ").slice(0, 2).map((n: string) => n.charAt(0).toUpperCase()).join("")
-                                        : "?";
+                <>
+                    {/* Mobile: card list */}
+                    <div className="space-y-3 md:hidden">
+                        {patients.map((patient) => {
+                            const initials = patient.name
+                                ? patient.name.split(" ").slice(0, 2).map((n: string) => n.charAt(0).toUpperCase()).join("")
+                                : "?";
+                            return (
+                                <Link
+                                    key={patient.id}
+                                    href={`/dashboard/patients/${patient.id}`}
+                                    className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 px-4 py-3 shadow-sm active:bg-slate-50"
+                                >
+                                    <div className="brand-accent-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
+                                        {initials}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate font-medium text-slate-900">{patient.name}</p>
+                                        <p className="text-xs text-slate-500">{patient.phone || patient.email || formatDate(patient.dob)}</p>
+                                    </div>
+                                    <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                        {patient.insuranceType || "Self-Pay"}
+                                    </span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </Link>
+                            );
+                        })}
+                    </div>
 
-                                    return (
-                                        <tr key={patient.id} className="hover:bg-slate-50 transition group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="brand-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                                                        {initials}
-                                                    </div>
-                                                    <div>
-                                                        <Link
-                                                            href={`/dashboard/patients/${patient.id}`}
-                                                            className="font-medium text-slate-900 group-hover:text-[var(--brand-600)] transition-colors"
-                                                        >
+                    {/* Desktop: table */}
+                    <div className="hidden md:block rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-xs font-medium uppercase tracking-widest text-slate-400 border-b border-slate-100 bg-slate-50">
+                                        <th className="px-6 py-4 text-left">Name</th>
+                                        <th className="px-6 py-4 text-left">DOB</th>
+                                        <th className="px-6 py-4 text-left">Phone</th>
+                                        <th className="px-6 py-4 text-left">Email</th>
+                                        <th className="px-6 py-4 text-left">Insurance</th>
+                                        <th className="px-6 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {patients.map((patient) => {
+                                        const initials = patient.name
+                                            ? patient.name.split(" ").slice(0, 2).map((n: string) => n.charAt(0).toUpperCase()).join("")
+                                            : "?";
+                                        return (
+                                            <tr key={patient.id} className="hover:bg-slate-50 transition group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="brand-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                                                            {initials}
+                                                        </div>
+                                                        <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-slate-900 group-hover:text-[var(--brand-600)] transition-colors">
                                                             {patient.name}
                                                         </Link>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500">
-                                                {formatDate(patient.dob)}
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500">
-                                                {patient.phone || "—"}
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500">
-                                                {patient.email || "—"}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                                    {patient.insuranceType || "Self-Pay"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Link
-                                                    href={`/dashboard/patients/${patient.id}`}
-                                                    className="text-[var(--brand-600)] hover:text-[var(--brand-700)] text-sm font-medium"
-                                                >
-                                                    View Profile
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                                </td>
+                                                <td className="px-6 py-4 text-slate-500">{formatDate(patient.dob)}</td>
+                                                <td className="px-6 py-4 text-slate-500">{patient.phone || "—"}</td>
+                                                <td className="px-6 py-4 text-slate-500">{patient.email || "—"}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                        {patient.insuranceType || "Self-Pay"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Link href={`/dashboard/patients/${patient.id}`} className="text-[var(--brand-600)] hover:text-[var(--brand-700)] text-sm font-medium">
+                                                        View Profile
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                </>
             )}
         </div>
     );

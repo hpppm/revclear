@@ -87,8 +87,20 @@ export default function AudioRecorder({ onRecorded }: Props) {
       setStatus("recording");
       stopTimer();
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch {
-      setError("Microphone permission denied or unavailable.");
+    } catch (err: unknown) {
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          setError("Microphone access was denied. Please allow microphone permission in your browser settings and try again.");
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          setError("No microphone found. Please connect a microphone and try again.");
+        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          setError("Microphone is already in use by another application. Please close it and try again.");
+        } else {
+          setError(`Microphone error: ${err.message}`);
+        }
+      } else {
+        setError("Microphone permission denied or unavailable.");
+      }
     }
   };
 

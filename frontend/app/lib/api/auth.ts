@@ -24,13 +24,9 @@ function enforceCooldown(key: string): void {
 const SignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  // attributes is passed through to Cognito UserAttributes
   attributes: z.object({
-    name: z.string().min(1),
-    phone: z.string().optional(),
-    state: z.string().optional(),
-    taxonomyCode: z.string().optional(),
-    npi: z.string().optional(),
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
   }).optional(),
   practitionerType: z.string().optional(),
   licenseId: z.string().optional(),
@@ -55,15 +51,6 @@ const ConfirmForgotPasswordSchema = z.object({
 const VerifyMfaSchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
-});
-
-const VerifyOtpSchema = z.object({
-  email: z.string().email(),
-  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
-});
-
-const ResendOtpSchema = z.object({
-  email: z.string().email(),
 });
 
 export type SignupPayload = z.infer<typeof SignupSchema>;
@@ -120,13 +107,8 @@ export const authApi = {
     return api.post("/auth/verify-totp-setup", VerifyMfaSchema.parse(data));
   },
 
-  verifyOtp: (data: { email: string; code: string }) => {
-    enforceCooldown("verifyOtp");
-    return api.post("/auth/verify-otp", VerifyOtpSchema.parse(data));
-  },
-
-  resendOtp: (data: { email: string }) =>
-    api.post("/auth/resend-otp", ResendOtpSchema.parse(data)),
+  resendConfirmationCode: (email: string) =>
+    api.post("/auth/resend-confirmation-code", { email: z.string().email().parse(email) }),
 
   me: () => api.get("/auth/me"),
 };
