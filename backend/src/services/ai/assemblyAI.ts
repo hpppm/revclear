@@ -38,8 +38,20 @@ export interface TranscriptResult {
   modelVersion: string;
 }
 
-// Allowed egress hostnames for PHI audio — must match appConfig allowlist.
-const ALLOWED_TRANSCRIPTION_HOST = "api.assemblyai.com";
+// Validate at module load that the hardcoded AssemblyAI base URL is on the allowlist.
+// This is a defence-in-depth check — ASSEMBLYAI_BASE_URL is not user-controlled,
+// but this ensures any future refactor that changes it will be caught at startup.
+function assertApiHostAllowed(): void {
+  const hostname = new URL(ASSEMBLYAI_BASE_URL).hostname;
+  if (!appConfig.ai.approvedTranscriptionHosts.includes(hostname)) {
+    throw new Error(
+      `assemblyai: AssemblyAI API host '${hostname}' is not on the approved transcription host list. ` +
+      `Approved: ${appConfig.ai.approvedTranscriptionHosts.join(", ")}`,
+    );
+  }
+}
+
+assertApiHostAllowed();
 
 function getApiKey(): string {
   const key = process.env.ASSEMBLY_TRANSCRIPTION_API_KEY;
@@ -58,21 +70,6 @@ function assertBaaConfirmed(): void {
   }
 }
 
-function assertAllowedHost(url: string): void {
-  let hostname: string;
-  try {
-    hostname = new URL(url).hostname;
-  } catch {
-    throw new Error("assemblyai: invalid audio URL — cannot verify host");
-  }
-  if (hostname !== ALLOWED_TRANSCRIPTION_HOST &&
-      !appConfig.ai.approvedTranscriptionHosts.includes(hostname)) {
-    throw new Error(
-      `assemblyai: PHI audio egress to '${hostname}' is not permitted. ` +
-      `Approved hosts: ${appConfig.ai.approvedTranscriptionHosts.join(", ")}`,
-    );
-  }
-}
 
 function parseTranscriptResponse(raw: unknown): AssemblyAITranscript {
   const result = AssemblyAITranscriptSchema.safeParse(raw);
@@ -113,7 +110,6 @@ export async function createTranscript(
   opts: CreateTranscriptOptions,
 ): Promise<string> {
   assertBaaConfirmed();
-  assertAllowedHost(opts.audioUrl);
 
   const apiKey = getApiKey();
   const speechModel = opts.speechModel ?? "universal";
