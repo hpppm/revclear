@@ -56,6 +56,8 @@ export const EncounterSchema = z.object({
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
   patient_name: z.string().optional().nullable(),
+  encounter_type: z.string().optional().nullable(),
+  chief_complaint: z.string().optional().nullable(),
 }).strip();
 
 // SECURITY: .strip() — unknown fields are dropped, not forwarded.
@@ -229,7 +231,7 @@ export const OrganizationFormSchema = z.object({
   billing_state: z.string().max(2).optional().or(z.literal("")),
   billing_postal_code: zipSchema,
   billing_phone: phoneSchema,
-  default_place_of_service: z.string().max(10).optional().or(z.literal("")),
+  default_place_of_service: z.string().regex(/^[0-9]{2}$/, "Place of service must be a 2-digit code (e.g. 11)").optional().or(z.literal("")),
   edi_sender_id: z.string().max(50).optional().or(z.literal("")),
   edi_receiver_id: z.string().max(50).optional().or(z.literal("")),
   edi_clearinghouse_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
