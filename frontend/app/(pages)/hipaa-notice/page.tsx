@@ -78,7 +78,7 @@ export default function HipaaNoticePage() {
               <li><strong>Audit logs:</strong> Immutable logs of all PHI access, modifications, and disclosures.</li>
               <li><strong>Minimum necessary:</strong> PHI is accessed only to the extent necessary to perform services.</li>
               <li><strong>Workforce training:</strong> All staff with PHI access receive HIPAA training.</li>
-              <li><strong>Breach notification:</strong> We will notify your organization of any breach of unsecured PHI within 60 days of discovery as required by the HIPAA Breach Notification Rule.</li>
+              <li><strong>Breach notification:</strong> We will notify your organization of any breach of unsecured PHI without unreasonable delay, and no later than 60 calendar days after discovery, as required by the HIPAA Breach Notification Rule.</li>
             </ul>
           </section>
 
