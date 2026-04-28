@@ -262,20 +262,28 @@ export default function AddPatientPage() {
                   required
                   error={fieldErrors.dob}
                 />
-                <Input
-                  label="Gender *"
-                  variant="select"
-                  value={formData.gender}
-                  onChange={(e) => handleChange("gender", e.target.value)}
-                  required
-                  options={[
-                    { value: "M", label: "Male" },
-                    { value: "F", label: "Female" },
-                    { value: "U", label: "Unknown" },
-                    { value: "O", label: "Other" },
-                  ]}
-                  error={fieldErrors.gender}
-                />
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-medium text-slate-700">Gender <span className="text-red-500">*</span></span>
+                    <span
+                      className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 text-slate-500 text-xs cursor-help leading-none"
+                      title="Select 'Unknown' when gender was not reported or the patient declined to answer. Select 'Other' for a gender identity not listed."
+                    >?</span>
+                  </div>
+                  <Input
+                    variant="select"
+                    value={formData.gender}
+                    onChange={(e) => handleChange("gender", e.target.value)}
+                    required
+                    options={[
+                      { value: "M", label: "Male" },
+                      { value: "F", label: "Female" },
+                      { value: "U", label: "Unknown — not reported or declined" },
+                      { value: "O", label: "Other" },
+                    ]}
+                    error={fieldErrors.gender}
+                  />
+                </div>
                 <Input
                   label="Phone *"
                   type="tel"
