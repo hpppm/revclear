@@ -115,7 +115,9 @@ class GenkitSoapGenerator implements SoapGenerator {
       { encounterId: input.encounterId, model: output.model_version, provider: providerUsed },
       "soap generation completed",
     );
-    return SoapSchema.parse(output);
+    // safeParse so a malformed LLM response never crashes the route
+    const parseResult = SoapSchema.safeParse(output);
+    return parseResult.success ? parseResult.data : output;
   }
 }
 
