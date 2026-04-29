@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Fraunces, Source_Sans_3 } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,19 +25,16 @@ const displayFont = Fraunces({
   weight: ["500", "600", "700"],
 });
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${bodyFont.variable} ${displayFont.variable} font-body antialiased`}
         suppressHydrationWarning
-        {...(nonce ? { "data-nonce": nonce } : {})}
       >
         <ServerActionErrorBoundary>
           <AuthProvider>{children}</AuthProvider>
