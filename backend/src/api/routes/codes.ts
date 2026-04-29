@@ -352,10 +352,6 @@ router.get("/:id/codes", authMiddleware, requireCapability("use_clinical_ai"), a
   try {
     const codes = await getMedicalCodesByEncounter(encounterId);
 
-    if (codes.length === 0) {
-      return sendError(res, 404, "No codes found for this encounter");
-    }
-
     return res.json({
       success: true,
       data: codes,
