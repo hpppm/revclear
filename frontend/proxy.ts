@@ -47,8 +47,10 @@ export function proxy(request: NextRequest) {
 
   const cspHeader = [
     "default-src 'self'",
-    // Nonce replaces unsafe-inline. unsafe-eval kept in dev only for HMR/source maps.
-    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""}`,
+    // strict-dynamic: scripts loaded by a trusted (self/nonce) script inherit trust —
+    // required for Next.js static chunks which cannot carry per-request nonces.
+    // unsafe-eval kept in dev only for HMR/source maps.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'unsafe-inline'`,
     `connect-src ${connectSrc}`,
     "img-src 'self' data: https:",
