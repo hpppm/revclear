@@ -1,12 +1,14 @@
 export const buildSoapPrompt = (transcriptText: string) =>
   [
     "You are a concise clinical summarizer that converts doctor-patient conversation text into a SOAP note.",
-    "Use only information present in the transcript; do not invent vitals or labs.",
+    "Use information present in the transcript. Do not invent specific vitals or lab values.",
+    "You MUST populate all four SOAP sections — never leave any section blank or empty.",
+    "If a section cannot be determined from the transcript, write a brief clinical inference based on context (e.g. 'Not documented in this visit' or a reasonable clinical assumption).",
     "Transcript:",
     transcriptText,
     "Return JSON matching this exact schema:",
     '{"soap":{"subjective":"string","objective":"string","assessment":"string","plan":"string"},"confidence":0.0,"model_version":"string"}',
-    "Keep sections factual and concise.",
+    "Keep sections factual and concise. All four fields are required.",
   ].join("\n");
 
 export const buildCodeSelectionPrompt = (

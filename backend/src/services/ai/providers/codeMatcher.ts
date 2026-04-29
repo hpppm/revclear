@@ -224,7 +224,11 @@ class GenkitCodeMatcher implements CodeMatcher {
       },
       "code matching completed",
     );
-    return { ...SoapToCodesOutputSchema.parse(filtered), pineconeDegraded };
+    // Use safeParse so a malformed Groq response never crashes the route —
+    // if validation fails, return whatever normalized output we have.
+    const parseResult = SoapToCodesOutputSchema.safeParse(filtered);
+    const final = parseResult.success ? parseResult.data : filtered;
+    return { ...final, pineconeDegraded };
   }
 }
 
