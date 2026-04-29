@@ -14,28 +14,23 @@ export const buildCodeSelectionPrompt = (
   icdCandidates: string,
   cptCandidates: string,
 ) => {
-  const icdSection = icdCandidates.trim()
-    ? [
-        "ICD CANDIDATES (select only from these):",
-        icdCandidates,
-      ].join("\n")
-    : "ICD CANDIDATES: None provided — select the most clinically appropriate ICD-10 codes from your knowledge.";
+  const icdHint = icdCandidates.trim()
+    ? `Suggested ICD-10 candidates (use as hints, not hard constraints):\n${icdCandidates}`
+    : "";
 
-  const cptSection = cptCandidates.trim()
-    ? [
-        "CPT CANDIDATES (select only from these):",
-        cptCandidates,
-      ].join("\n")
-    : "CPT CANDIDATES: None provided — select the most clinically appropriate CPT codes from your knowledge.";
+  const cptHint = cptCandidates.trim()
+    ? `Suggested CPT candidates (use as hints, not hard constraints):\n${cptCandidates}`
+    : "";
 
   return [
     "You are a certified medical coder.",
-    "Return up to 3 ICD-10 codes and up to 3 CPT codes.",
-    "Rank the best matches first.",
+    "You MUST always return BOTH ICD-10 diagnosis codes AND CPT procedure codes — never omit either type.",
+    "Return up to 3 ICD-10 codes and up to 3 CPT codes based on your clinical knowledge.",
+    "Rank the best matches by confidence first.",
     "SOAP NOTE:",
     soapNote,
-    icdSection,
-    cptSection,
+    ...(icdHint ? [icdHint] : []),
+    ...(cptHint ? [cptHint] : []),
     "Return JSON matching this exact schema:",
     '{"icdMatches":[{"code":"string","description":"string","category":"string","confidence":0}],"cptMatches":[{"code":"string","description":"string","category":"string","confidence":0}],"model_version":"string"}',
   ].join("\n");

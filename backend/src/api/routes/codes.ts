@@ -162,7 +162,18 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
       return sendError(res, 400, "Invalid SOAP note format");
     }
 
-    const soapText = `Subjective: ${soap.subjective}\nObjective: ${soap.objective}\nAssessment: ${soap.assessment}\nPlan: ${soap.plan}`;
+    // Only include non-empty sections so the LLM isn't misled by blank fields
+    const soapParts: string[] = [];
+    if (soap.subjective?.trim()) soapParts.push(`Subjective: ${soap.subjective.trim()}`);
+    if (soap.objective?.trim()) soapParts.push(`Objective: ${soap.objective.trim()}`);
+    if (soap.assessment?.trim()) soapParts.push(`Assessment: ${soap.assessment.trim()}`);
+    if (soap.plan?.trim()) soapParts.push(`Plan: ${soap.plan.trim()}`);
+
+    if (soapParts.length === 0) {
+      return sendError(res, 400, "SOAP note has no content to generate codes from");
+    }
+
+    const soapText = soapParts.join("\n");
 
     logger.info({ encounterId }, 'codes/match: matching codes');
 
