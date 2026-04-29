@@ -71,9 +71,6 @@ export default function SoapNoteViewer({ soap, isEditing = false, onEditChange }
                 <p className={`text-xs font-semibold uppercase tracking-widest ${c.label}`}>
                   {sectionLabels[key]}
                 </p>
-                {!isEditing && items.length === 0 && (
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Empty</span>
-                )}
               </div>
 
               {isEditing ? (
@@ -88,7 +85,7 @@ export default function SoapNoteViewer({ soap, isEditing = false, onEditChange }
               ) : (
                 <div className="text-sm text-slate-700">
                   {items.length === 0 ? (
-                    <p className="text-slate-400 italic">No details yet.</p>
+                    <p className="text-slate-400 italic text-xs">Not documented</p>
                   ) : (
                     <ul className="space-y-2">
                       {items.map((line, idx) => (

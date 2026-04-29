@@ -118,18 +118,32 @@ export default function MedicalCodesViewer({
       const response = await apiClient.codes.match(encounterId);
       const { icdMatches, cptMatches } = response.data.data;
 
-      const newIcd = ensureType(icdMatches, "ICD-10");
-      const newCpt = ensureType(cptMatches, "CPT");
+      const newIcd = ensureType(icdMatches ?? [], "ICD-10");
+      const newCpt = ensureType(cptMatches ?? [], "CPT");
 
       setIcdCandidates(newIcd);
       setCptCandidates(newCpt);
       // Default-select all candidates (up to 3 per type)
       setSelection([...newIcd, ...newCpt]);
       setHasGenerated(true);
+      // Open manual search only when truly nothing came back
       if (newIcd.length === 0 && newCpt.length === 0) setShowManualSearch(true);
-    } catch {
-      logger.error("Code generation failed");
-      setGenerateError("We couldn't generate codes right now. Please try again in a moment.");
+    } catch (err: unknown) {
+      logger.error("Code generation failed", err);
+      const status =
+        typeof err === "object" && err !== null && "response" in err
+          ? (err as { response?: { status?: number } }).response?.status
+          : undefined;
+      const serverMsg =
+        typeof err === "object" && err !== null && "response" in err
+          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+          : undefined;
+      // 400 means the SOAP note has no usable content — surface a clear message
+      const displayMsg =
+        status === 400
+          ? "The SOAP note doesn't have enough content to generate codes. Edit the SOAP note and try again."
+          : serverMsg || "We couldn't generate codes right now. Please try again in a moment.";
+      setGenerateError(displayMsg);
       setHasGenerated(true);
     } finally {
       setLoading(false);
@@ -320,7 +334,7 @@ export default function MedicalCodesViewer({
             No matches found
           </h3>
           <p className="text-sm text-amber-700">
-            The AI couldn&apos;t find matching codes. Try manually searching for codes below.
+            The AI couldn&apos;t find matching codes for this note. Use the manual search below to add codes.
           </p>
         </div>
       )}
