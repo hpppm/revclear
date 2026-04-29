@@ -139,16 +139,28 @@ const extractAssessmentAndPlan = (soapNote: string): string => {
   const lines = soapNote.split("\n");
   const relevant: string[] = [];
   let capturing = false;
-  for (const line of lines) {
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const lower = line.toLowerCase().trim();
-    if (/^(assessment|plan|a:|p:|diagnosis|impression)/.test(lower)) {
+
+    // Start capturing on assessment/plan keywords (including indented)
+    if (/\b(assessment|plan|diagnosis|impression|clinical impression)\b/i.test(lower)) {
       capturing = true;
-    } else if (/^(subjective|objective|s:|o:)/.test(lower)) {
+      // Add current line if it has content beyond the header
+      const content = line.replace(/^.*?:\s*/, "").trim();
+      if (content) relevant.push(content);
+    } else if (capturing && /^(subjective|objective|s:|o:)/i.test(lower)) {
+      // Stop capturing on other SOAP sections
       capturing = false;
+    } else if (capturing && line.trim()) {
+      // Capture all non-empty lines while in capture mode
+      relevant.push(line.trim());
     }
-    if (capturing && line.trim()) relevant.push(line.trim());
   }
-  return relevant.join(" ").slice(0, 1000);
+
+  // Return up to 2000 chars (doubled from 1000) to preserve more context
+  return relevant.join(" ").slice(0, 2000);
 };
 
 class GenkitCodeMatcher implements CodeMatcher {
@@ -195,8 +207,16 @@ class GenkitCodeMatcher implements CodeMatcher {
         { provider: "gemini", err: (geminiError as Error)?.message },
         "code-matcher: gemini failed, attempting groq fallback",
       );
-      rawOutput = await callGroqForJson(prompt, { operation: "codes" });
-      providerUsed = "groq";
+      try {
+        rawOutput = await callGroqForJson(prompt, { operation: "codes" });
+        providerUsed = "groq";
+      } catch (groqError) {
+        logger.error(
+          { provider: "groq", err: (groqError as Error)?.message },
+          "code-matcher: groq fallback failed"
+        );
+        throw new Error("Both Gemini and Groq failed to generate codes");
+      }
     }
 
     const normalized = normalizeCodeOutput(rawOutput);
@@ -205,7 +225,9 @@ class GenkitCodeMatcher implements CodeMatcher {
     // that type so a sparse ICD namespace never silences ICD codes entirely.
     let filtered: CodeMatchResult;
     if (!pineconeHasResults) {
+      // No Pinecone results — trust LLM output fully
       filtered = normalized;
+      logger.debug({ reason: "no pinecone results" }, "skipping pinecone filtering");
     } else {
       const candidateFiltered = filterToCandidates(normalized, candidateMaps);
       filtered = {
@@ -213,7 +235,17 @@ class GenkitCodeMatcher implements CodeMatcher {
         cptMatches: candidateFiltered.cptMatches.length > 0 ? candidateFiltered.cptMatches : normalized.cptMatches,
         model_version: normalized.model_version,
       };
+      logger.debug(
+        {
+          icdFiltered: candidateFiltered.icdMatches.length,
+          icdUnfiltered: normalized.icdMatches.length,
+          cptFiltered: candidateFiltered.cptMatches.length,
+          cptUnfiltered: normalized.cptMatches.length,
+        },
+        "pinecone filtering results",
+      );
     }
+    const hasMatches = filtered.icdMatches.length > 0 || filtered.cptMatches.length > 0;
     logger.info(
       {
         icdCount: filtered.icdMatches.length,
@@ -221,6 +253,7 @@ class GenkitCodeMatcher implements CodeMatcher {
         model: filtered.model_version,
         provider: providerUsed,
         pineconeDegraded,
+        hasMatches,
       },
       "code matching completed",
     );
