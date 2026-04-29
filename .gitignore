@@ -165,6 +165,12 @@ GEMINI.md
 *test-results.txt
 jest-test-results.txt
 
+# Build info and local tool output
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+lint-output.txt
+.jest_cmd*.log
+
 # Security audit/fix documentation (internal only, not for public repo)
 SECURITY_FIXES*.md
 SECURITY_AUDIT*.md
