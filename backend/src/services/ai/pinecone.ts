@@ -5,6 +5,7 @@ import { appConfig } from "../../config/appConfig";
 type PineconeSearchMatch = {
   _id: string;
   score?: number;
+  _score?: number;
   fields?: Record<string, unknown>;
 };
 
@@ -117,7 +118,7 @@ const mapMatch = (match: PineconeSearchMatch, codeType: CodeType): RetrievedCode
     code,
     description,
     category,
-    confidence: typeof match.score === "number" ? match.score : 0.5,
+    confidence: typeof match._score === "number" ? match._score : typeof match.score === "number" ? match.score : 0.5,
     code_type: codeType,
   };
 };
