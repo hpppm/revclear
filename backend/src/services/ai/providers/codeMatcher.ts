@@ -42,15 +42,17 @@ const clampConfidence = (value: unknown): number => {
 
 const normalizeMatches = (value: unknown) => {
   if (!Array.isArray(value)) return [];
-  return value.map((entry) => {
-    const e = (entry ?? {}) as Record<string, unknown>;
-    return {
-      code: safeString(e.code),
-      description: safeString(e.description),
-      category: safeString(e.category),
-      confidence: clampConfidence(e.confidence),
-    };
-  });
+  return value
+    .map((entry) => {
+      const e = (entry ?? {}) as Record<string, unknown>;
+      return {
+        code: safeString(e.code),
+        description: safeString(e.description),
+        category: safeString(e.category),
+        confidence: clampConfidence(e.confidence),
+      };
+    })
+    .filter((m) => m.code !== "" && m.description !== "");
 };
 
 const normalizeCodeOutput = (raw: unknown): CodeMatchResult => {
@@ -133,6 +135,22 @@ const filterToCandidates = (
   };
 };
 
+const extractAssessmentAndPlan = (soapNote: string): string => {
+  const lines = soapNote.split("\n");
+  const relevant: string[] = [];
+  let capturing = false;
+  for (const line of lines) {
+    const lower = line.toLowerCase().trim();
+    if (/^(assessment|plan|a:|p:|diagnosis|impression)/.test(lower)) {
+      capturing = true;
+    } else if (/^(subjective|objective|s:|o:)/.test(lower)) {
+      capturing = false;
+    }
+    if (capturing && line.trim()) relevant.push(line.trim());
+  }
+  return relevant.join(" ").slice(0, 1000);
+};
+
 class GenkitCodeMatcher implements CodeMatcher {
   async match(input: CodeInput): Promise<CodeMatchResult> {
     // SECURITY: Scrub structured PHI before sending to external AI endpoint.
@@ -141,10 +159,15 @@ class GenkitCodeMatcher implements CodeMatcher {
       logger.info({ redactionCount }, "code-matcher: PHI redacted before AI call");
     }
 
+    // Extract assessment and plan lines for a focused Pinecone query.
+    // Full SOAP notes dilute vector similarity — diagnosis/plan sections
+    // are what drive ICD and CPT code selection.
+    const pineconeQuery = extractAssessmentAndPlan(scrubbedNote) || scrubbedNote;
+
     let retrieval: Awaited<ReturnType<typeof searchMedicalCodes>>;
     let pineconeDegraded = false;
     try {
-      retrieval = await searchMedicalCodes(scrubbedNote, 5);
+      retrieval = await searchMedicalCodes(pineconeQuery, 5);
     } catch (pineconeError) {
       logger.warn({ err: (pineconeError as Error)?.message }, "code-matcher: pinecone search failed, continuing without retrieval");
       retrieval = { icdMatches: [], cptMatches: [] };
@@ -177,13 +200,20 @@ class GenkitCodeMatcher implements CodeMatcher {
     }
 
     const normalized = normalizeCodeOutput(rawOutput);
-    // Use Pinecone candidates to re-rank/validate when available, but fall back
-    // to raw LLM output when the catalog is too small to cover the encounter.
-    const candidateFiltered = pineconeHasResults ? filterToCandidates(normalized, candidateMaps) : null;
-    const hasCandidateResults =
-      candidateFiltered &&
-      (candidateFiltered.icdMatches.length > 0 || candidateFiltered.cptMatches.length > 0);
-    const filtered = hasCandidateResults ? candidateFiltered : normalized;
+    // Filter each code type independently against Pinecone candidates.
+    // If Pinecone has no results for a type, fall back to raw LLM output for
+    // that type so a sparse ICD namespace never silences ICD codes entirely.
+    let filtered: CodeMatchResult;
+    if (!pineconeHasResults) {
+      filtered = normalized;
+    } else {
+      const candidateFiltered = filterToCandidates(normalized, candidateMaps);
+      filtered = {
+        icdMatches: candidateFiltered.icdMatches.length > 0 ? candidateFiltered.icdMatches : normalized.icdMatches,
+        cptMatches: candidateFiltered.cptMatches.length > 0 ? candidateFiltered.cptMatches : normalized.cptMatches,
+        model_version: normalized.model_version,
+      };
+    }
     logger.info(
       {
         icdCount: filtered.icdMatches.length,

@@ -37,7 +37,7 @@ const clampConfidence = (value: unknown): number => {
   return Math.max(0, Math.min(1, n));
 };
 
-const normalizeSoapOutput = (raw: unknown): SoapOutput => {
+const normalizeSoapOutput = (raw: unknown, encounterId: string): SoapOutput => {
   const rawObj =
     raw && typeof raw === "object"
       ? (raw as Record<string, unknown>)
@@ -45,15 +45,24 @@ const normalizeSoapOutput = (raw: unknown): SoapOutput => {
   const rawSoap =
     rawObj.soap && typeof rawObj.soap === "object"
       ? (rawObj.soap as Record<string, unknown>)
-      : rawObj;
+      : {};
+
+  const sections = {
+    subjective: safeString(rawSoap.subjective),
+    objective: safeString(rawSoap.objective),
+    assessment: safeString(rawSoap.assessment),
+    plan: safeString(rawSoap.plan),
+  };
+
+  const blanks = (Object.keys(sections) as Array<keyof typeof sections>).filter(
+    (k) => !sections[k],
+  );
+  if (blanks.length > 0) {
+    logger.warn({ encounterId, blanks }, "soap-generator: LLM returned blank SOAP sections");
+  }
 
   return {
-    soap: {
-      subjective: safeString(rawSoap.subjective),
-      objective: safeString(rawSoap.objective),
-      assessment: safeString(rawSoap.assessment),
-      plan: safeString(rawSoap.plan),
-    },
+    soap: sections,
     confidence: clampConfidence(rawObj.confidence),
     model_version: safeString(rawObj.model_version) || appConfig.ai.geminiModel,
   };
@@ -72,7 +81,7 @@ class GenkitSoapGenerator implements SoapGenerator {
       );
     }
 
-    const prompt = buildSoapPrompt(input.encounterId, scrubbedTranscript);
+    const prompt = buildSoapPrompt(scrubbedTranscript);
 
     let rawOutput: unknown;
     let providerUsed: "gemini" | "groq" = "gemini";
@@ -101,7 +110,7 @@ class GenkitSoapGenerator implements SoapGenerator {
       providerUsed = "groq";
     }
 
-    const output = normalizeSoapOutput(rawOutput);
+    const output = normalizeSoapOutput(rawOutput, input.encounterId);
     logger.info(
       { encounterId: input.encounterId, model: output.model_version, provider: providerUsed },
       "soap generation completed",
