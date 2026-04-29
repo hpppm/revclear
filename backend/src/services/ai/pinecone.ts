@@ -72,6 +72,8 @@ export const checkPineconeHealth = async () => {
 };
 
 export const upsertMedicalCodes = async (records: MedicalCodeRecord[]) => {
+  const BATCH_SIZE = 96; // Pinecone limit per request
+
   const groups = records.reduce<Record<CodeType, MedicalCodeRecord[]>>(
     (acc, record) => {
       acc[record.code_type].push(record);
@@ -82,28 +84,36 @@ export const upsertMedicalCodes = async (records: MedicalCodeRecord[]) => {
 
   for (const [codeType, group] of Object.entries(groups) as Array<[CodeType, MedicalCodeRecord[]]>) {
     if (group.length === 0) continue;
-    const payload = group
-      .map((record) =>
-        JSON.stringify({
-          _id: `${record.code_type}:${record.code}`,
-          text: record.text,
-          category: record.category,
-          code: record.code,
-          description: record.description,
-          code_type: record.code_type,
-          source: record.source,
-        }),
-      )
-      .join("\n");
 
-    logger.info({ count: group.length, codeType }, "upserting medical codes to pinecone");
-    await pineconeFetch(`/records/namespaces/${appConfig.ai.pinecone.namespace}-${codeType}/upsert`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-ndjson",
-      },
-      body: `${payload}\n`,
-    });
+    // Batch records into chunks of BATCH_SIZE to respect Pinecone's limit
+    for (let i = 0; i < group.length; i += BATCH_SIZE) {
+      const batch = group.slice(i, i + BATCH_SIZE);
+      const payload = batch
+        .map((record) =>
+          JSON.stringify({
+            _id: `${record.code_type}:${record.code}`,
+            text: record.text,
+            category: record.category,
+            code: record.code,
+            description: record.description,
+            code_type: record.code_type,
+            source: record.source,
+          }),
+        )
+        .join("\n");
+
+      logger.info(
+        { count: batch.length, batchNum: Math.floor(i / BATCH_SIZE) + 1, totalBatches: Math.ceil(group.length / BATCH_SIZE), codeType },
+        "upserting medical codes batch to pinecone",
+      );
+      await pineconeFetch(`/records/namespaces/${appConfig.ai.pinecone.namespace}-${codeType}/upsert`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-ndjson",
+        },
+        body: `${payload}\n`,
+      });
+    }
   }
 };
 
