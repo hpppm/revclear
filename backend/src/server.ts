@@ -26,8 +26,6 @@ const DEFAULT_PROD_ORIGINS = [
   "https://revclear.tech",
   "https://www.revclear.tech",
   "https://api.revclear.tech",
-  "https://txgfeozc.up.railway.app",
-  "https://revclear-frontend-production.up.railway.app",
 ];
 
 const normalizeOrigin = (origin: string) =>
