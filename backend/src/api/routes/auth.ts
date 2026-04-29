@@ -97,7 +97,7 @@ const MFA_SESSION_COOKIE_OPTIONS = {
 
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_OPTIONS,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches Cognito refresh token validity
+  maxAge: 1 * 24 * 60 * 60 * 1000, // 1 day — matches Cognito refresh token validity (HIPAA)
 };
 
 // Server-issued marker that this browser session completed MFA challenge

@@ -1,514 +1,145 @@
 {
+  "general_medicine": [
+    { "code": "99202", "short_description": "Office or other outpatient visit, new patient, straightforward medical decision making", "clinical": { "type": "office_visit", "complexity": "straightforward" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99203", "short_description": "Office or other outpatient visit, new patient, low medical decision making", "clinical": { "type": "office_visit", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99204", "short_description": "Office or other outpatient visit, new patient, moderate medical decision making", "clinical": { "type": "office_visit", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99205", "short_description": "Office or other outpatient visit, new patient, high medical decision making", "clinical": { "type": "office_visit", "complexity": "high" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99211", "short_description": "Office or other outpatient visit, established patient, minimal presenting problem", "clinical": { "type": "office_visit", "complexity": "minimal" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99212", "short_description": "Office or other outpatient visit, established patient, straightforward medical decision making", "clinical": { "type": "office_visit", "complexity": "straightforward" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99213", "short_description": "Office or other outpatient visit, established patient, low medical decision making", "clinical": { "type": "office_visit", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office or other outpatient visit, established patient, moderate medical decision making", "clinical": { "type": "office_visit", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99215", "short_description": "Office or other outpatient visit, established patient, high medical decision making", "clinical": { "type": "office_visit", "complexity": "high" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99241", "short_description": "Office consultation for new or established patient, straightforward decision making", "clinical": { "type": "consultation", "complexity": "straightforward" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99242", "short_description": "Office consultation for new or established patient, low complexity decision making", "clinical": { "type": "consultation", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99243", "short_description": "Office consultation for new or established patient, moderate complexity decision making", "clinical": { "type": "consultation", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99244", "short_description": "Office consultation for new or established patient, moderately high complexity decision making", "clinical": { "type": "consultation", "complexity": "moderate_high" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99245", "short_description": "Office consultation for new or established patient, high complexity decision making", "clinical": { "type": "consultation", "complexity": "high" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99401", "short_description": "Preventive medicine counseling, approximately 15 minutes", "clinical": { "type": "preventive", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99402", "short_description": "Preventive medicine counseling, approximately 30 minutes", "clinical": { "type": "preventive", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 30 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99385", "short_description": "Initial preventive medicine evaluation, new patient, 18-39 years", "clinical": { "type": "preventive_exam", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99386", "short_description": "Initial preventive medicine evaluation, new patient, 40-64 years", "clinical": { "type": "preventive_exam", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99395", "short_description": "Periodic preventive medicine evaluation, established patient, 18-39 years", "clinical": { "type": "preventive_exam", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99396", "short_description": "Periodic preventive medicine evaluation, established patient, 40-64 years", "clinical": { "type": "preventive_exam", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
   "mental_health": [
-  {
-    "code": "90791",
-    "short_description": "Psychiatric diagnostic evaluation",
-    "clinical": { "type": "evaluation", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90792",
-    "short_description": "Psychiatric diagnostic evaluation with medical services",
-    "clinical": { "type": "evaluation_medical", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90832",
-    "short_description": "Psychotherapy, 30 minutes with patient",
-    "clinical": { "type": "psychotherapy", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 30 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90834",
-    "short_description": "Psychotherapy, 45 minutes with patient",
-    "clinical": { "type": "psychotherapy", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 45 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90837",
-    "short_description": "Psychotherapy, 60 minutes with patient",
-    "clinical": { "type": "psychotherapy", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 60 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90833",
-    "short_description": "Psychotherapy, 30 minutes, add-on with evaluation and management service",
-    "clinical": { "type": "psychotherapy_addon", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 30 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90836",
-    "short_description": "Psychotherapy, 45 minutes, add-on with evaluation and management service",
-    "clinical": { "type": "psychotherapy_addon", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 45 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90838",
-    "short_description": "Psychotherapy, 60 minutes, add-on with evaluation and management service",
-    "clinical": { "type": "psychotherapy_addon", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 60 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90839",
-    "short_description": "Psychotherapy for crisis, first 60 minutes",
-    "clinical": { "type": "crisis_psychotherapy", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 60 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90840",
-    "short_description": "Psychotherapy for crisis, each additional 30 minutes",
-    "clinical": { "type": "crisis_psychotherapy_addon", "complexity": null },
-    "billing": { "is_timed": true, "unit_minutes": 30 },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90845",
-    "short_description": "Psychoanalysis",
-    "clinical": { "type": "psychoanalysis", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90846",
-    "short_description": "Family psychotherapy without patient present",
-    "clinical": { "type": "family_therapy", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90847",
-    "short_description": "Family psychotherapy with patient present",
-    "clinical": { "type": "family_therapy", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90849",
-    "short_description": "Multiple-family group psychotherapy",
-    "clinical": { "type": "group_family_therapy", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  },
-  {
-    "code": "90853",
-    "short_description": "Group psychotherapy",
-    "clinical": { "type": "group_therapy", "complexity": null },
-    "billing": { "is_timed": false, "unit_minutes": null },
-    "metadata": { "confidence": "high", "source": "manual_cpt_book" }
-  }
-
+    { "code": "90791", "short_description": "Psychiatric diagnostic evaluation", "clinical": { "type": "evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90792", "short_description": "Psychiatric diagnostic evaluation with medical services", "clinical": { "type": "evaluation_medical", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90832", "short_description": "Psychotherapy, 30 minutes with patient", "clinical": { "type": "psychotherapy", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 30 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90834", "short_description": "Psychotherapy, 45 minutes with patient", "clinical": { "type": "psychotherapy", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 45 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90837", "short_description": "Psychotherapy, 60 minutes with patient", "clinical": { "type": "psychotherapy", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 60 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90833", "short_description": "Psychotherapy, 30 minutes, add-on with E&M service", "clinical": { "type": "psychotherapy_addon", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 30 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90836", "short_description": "Psychotherapy, 45 minutes, add-on with E&M service", "clinical": { "type": "psychotherapy_addon", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 45 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90838", "short_description": "Psychotherapy, 60 minutes, add-on with E&M service", "clinical": { "type": "psychotherapy_addon", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 60 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90839", "short_description": "Psychotherapy for crisis, first 60 minutes", "clinical": { "type": "crisis_psychotherapy", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 60 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90840", "short_description": "Psychotherapy for crisis, each additional 30 minutes", "clinical": { "type": "crisis_psychotherapy_addon", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 30 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90845", "short_description": "Psychoanalysis", "clinical": { "type": "psychoanalysis", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90846", "short_description": "Family psychotherapy without patient present, 50 minutes", "clinical": { "type": "family_therapy", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90847", "short_description": "Family psychotherapy with patient present, 50 minutes", "clinical": { "type": "family_therapy", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90849", "short_description": "Multiple-family group psychotherapy", "clinical": { "type": "group_family_therapy", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90853", "short_description": "Group psychotherapy", "clinical": { "type": "group_therapy", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (psychiatric follow-up)", "clinical": { "type": "office_visit_psych", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (psychiatric follow-up)", "clinical": { "type": "office_visit_psych", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
   ],
   "physical_therapy": [
-    {
-      "code": "97161",
-      "short_description": "Physical therapy evaluation",
-      "clinical": {
-        "type": "evaluation",
-        "complexity": "low"
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97162",
-      "short_description": "Physical therapy evaluation",
-      "clinical": {
-        "type": "evaluation",
-        "complexity": "moderate"
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97163",
-      "short_description": "Physical therapy evaluation",
-      "clinical": {
-        "type": "evaluation",
-        "complexity": "high"
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97164",
-      "short_description": "Physical therapy re-evaluation",
-      "clinical": {
-        "type": "evaluation",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97110",
-      "short_description": "Therapeutic exercises",
-      "clinical": {
-        "type": "therapeutic_procedure",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97116",
-      "short_description": "Gait training",
-      "clinical": {
-        "type": "therapeutic_procedure",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97124",
-      "short_description": "Massage therapy",
-      "clinical": {
-        "type": "therapeutic_procedure",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97139",
-      "short_description": "Unlisted therapeutic procedure",
-      "clinical": {
-        "type": "therapeutic_procedure",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97140",
-      "short_description": "Manual therapy techniques",
-      "clinical": {
-        "type": "therapeutic_procedure",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97150",
-      "short_description": "Group therapeutic procedures",
-      "clinical": {
-        "type": "group_therapy",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97530",
-      "short_description": "Therapeutic activities",
-      "clinical": {
-        "type": "functional_training",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97533",
-      "short_description": "Sensory integrative techniques",
-      "clinical": {
-        "type": "functional_training",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97535",
-      "short_description": "Self-care/home management training",
-      "clinical": {
-        "type": "functional_training",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97537",
-      "short_description": "Community integration training",
-      "clinical": {
-        "type": "functional_training",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97542",
-      "short_description": "Wheelchair management",
-      "clinical": {
-        "type": "functional_training",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": true,
-        "unit_minutes": 15
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    },
-    {
-      "code": "97545",
-      "short_description": "Work hardening/conditioning, initial 2 hours",
-      "clinical": {
-        "type": "work_training",
-        "complexity": null
-      },
-      "billing": {
-        "is_timed": false,
-        "unit_minutes": null
-      },
-      "metadata": {
-        "confidence": "high",
-        "source": "manual_cpt_book"
-      }
-    }
+    { "code": "97161", "short_description": "Physical therapy evaluation, low complexity", "clinical": { "type": "evaluation", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97162", "short_description": "Physical therapy evaluation, moderate complexity", "clinical": { "type": "evaluation", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97163", "short_description": "Physical therapy evaluation, high complexity", "clinical": { "type": "evaluation", "complexity": "high" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97164", "short_description": "Physical therapy re-evaluation", "clinical": { "type": "evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97110", "short_description": "Therapeutic exercises, each 15 minutes", "clinical": { "type": "therapeutic_procedure", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97116", "short_description": "Gait training, each 15 minutes", "clinical": { "type": "therapeutic_procedure", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97124", "short_description": "Massage therapy, each 15 minutes", "clinical": { "type": "therapeutic_procedure", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97139", "short_description": "Unlisted therapeutic procedure, each 15 minutes", "clinical": { "type": "therapeutic_procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97140", "short_description": "Manual therapy techniques, each 15 minutes", "clinical": { "type": "therapeutic_procedure", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97150", "short_description": "Therapeutic procedure, group, each 15 minutes", "clinical": { "type": "group_therapy", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97530", "short_description": "Therapeutic activities, each 15 minutes", "clinical": { "type": "functional_training", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97533", "short_description": "Sensory integrative techniques, each 15 minutes", "clinical": { "type": "functional_training", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97535", "short_description": "Self-care/home management training, each 15 minutes", "clinical": { "type": "functional_training", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97537", "short_description": "Community integration training, each 15 minutes", "clinical": { "type": "functional_training", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97542", "short_description": "Wheelchair management, each 15 minutes", "clinical": { "type": "functional_training", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97545", "short_description": "Work hardening/conditioning, initial 2 hours", "clinical": { "type": "work_training", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97010", "short_description": "Application of a modality, hot or cold packs", "clinical": { "type": "modality", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97012", "short_description": "Application of a modality, traction, mechanical", "clinical": { "type": "modality", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97014", "short_description": "Application of a modality, electrical stimulation (unattended)", "clinical": { "type": "modality", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97018", "short_description": "Application of a modality, paraffin bath", "clinical": { "type": "modality", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97032", "short_description": "Application of a modality, electrical stimulation (attended), each 15 minutes", "clinical": { "type": "modality", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "97035", "short_description": "Application of a modality, ultrasound, each 15 minutes", "clinical": { "type": "modality", "complexity": null }, "billing": { "is_timed": true, "unit_minutes": 15 }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
   ],
   "speech_therapy": [
-  {
-    "code": "92521",
-    "short_description": "Evaluation of speech fluency",
-    "clinical": {
-      "type": "evaluation",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92522",
-    "short_description": "Evaluation of speech sound production",
-    "clinical": {
-      "type": "evaluation",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92523",
-    "short_description": "Evaluation of speech sound production with evaluation of language comprehension and expression",
-    "clinical": {
-      "type": "evaluation",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92524",
-    "short_description": "Behavioral and qualitative analysis of voice and resonance",
-    "clinical": {
-      "type": "evaluation",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92526",
-    "short_description": "Treatment of swallowing dysfunction",
-    "clinical": {
-      "type": "treatment",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92507",
-    "short_description": "Treatment of speech, language, voice, communication",
-    "clinical": {
-      "type": "treatment",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92597",
-    "short_description": "Evaluation for use and/or fitting of voice prosthetic device",
-    "clinical": {
-      "type": "device_evaluation",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92607",
-    "short_description": "Evaluation for prescription of speech-generating device",
-    "clinical": {
-      "type": "device_evaluation",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  },
-  {
-    "code": "92609",
-    "short_description": "Therapeutic services for use of speech-generating device",
-    "clinical": {
-      "type": "device_treatment",
-      "complexity": null
-    },
-    "billing": {
-      "is_timed": false,
-      "unit_minutes": null
-    },
-    "metadata": {
-      "confidence": "high",
-      "source": "manual_cpt_book"
-    }
-  }
-]
+    { "code": "92521", "short_description": "Evaluation of speech fluency (e.g., stuttering)", "clinical": { "type": "evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92522", "short_description": "Evaluation of speech sound production", "clinical": { "type": "evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92523", "short_description": "Evaluation of speech sound production with evaluation of language comprehension and expression", "clinical": { "type": "evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92524", "short_description": "Behavioral and qualitative analysis of voice and resonance", "clinical": { "type": "evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92526", "short_description": "Treatment of swallowing dysfunction and/or oral function for feeding", "clinical": { "type": "treatment", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92507", "short_description": "Treatment of speech, language, voice, communication, and/or auditory processing disorder", "clinical": { "type": "treatment", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92508", "short_description": "Treatment of speech, language, voice, communication, and/or auditory processing disorder, group", "clinical": { "type": "group_treatment", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92597", "short_description": "Evaluation for use and/or fitting of voice prosthetic device", "clinical": { "type": "device_evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92607", "short_description": "Evaluation for prescription of speech-generating device, face-to-face with patient, first hour", "clinical": { "type": "device_evaluation", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "92609", "short_description": "Therapeutic services for use of speech-generating device, follow-up", "clinical": { "type": "device_treatment", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "cardiology": [
+    { "code": "93000", "short_description": "Electrocardiogram, routine ECG with at least 12 leads; with interpretation and report", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "93010", "short_description": "Electrocardiogram, routine ECG; interpretation and report only", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "93306", "short_description": "Echocardiography, transthoracic, real-time with image documentation; complete", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "93307", "short_description": "Echocardiography, transthoracic; without spectral or color Doppler echocardiography", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "93015", "short_description": "Cardiovascular stress test using maximal or submaximal treadmill or bicycle exercise, continuous electrocardiographic monitoring", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "93224", "short_description": "External electrocardiographic recording up to 48 hours by continuous rhythm recording and storage", "clinical": { "type": "monitoring", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (cardiology follow-up)", "clinical": { "type": "office_visit_cardiology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (cardiology follow-up)", "clinical": { "type": "office_visit_cardiology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "endocrinology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (endocrinology follow-up)", "clinical": { "type": "office_visit_endocrinology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (endocrinology follow-up)", "clinical": { "type": "office_visit_endocrinology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99215", "short_description": "Office visit, established patient, high complexity (endocrinology follow-up)", "clinical": { "type": "office_visit_endocrinology", "complexity": "high" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "83036", "short_description": "Hemoglobin A1C (HbA1c)", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "82947", "short_description": "Glucose; quantitative, blood (except reagent strip)", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "84443", "short_description": "Thyroid stimulating hormone (TSH)", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "84480", "short_description": "Triiodothyronine (T3); total", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "84439", "short_description": "Thyroxine; total (T4)", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "95251", "short_description": "Ambulatory continuous glucose monitoring of interstitial tissue fluid via a subcutaneous sensor for a minimum of 72 hours; physician or other qualified health care professional interpretation and report", "clinical": { "type": "monitoring", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "pulmonology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (pulmonology follow-up)", "clinical": { "type": "office_visit_pulmonology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (pulmonology follow-up)", "clinical": { "type": "office_visit_pulmonology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "94010", "short_description": "Spirometry, including graphic record, total and timed vital capacity, expiratory flow rate measurement(s)", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "94060", "short_description": "Bronchodilation responsiveness, spirometry as in 94010, pre- and post-bronchodilator administration", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "94640", "short_description": "Pressurized or nonpressurized inhalation treatment for acute airway obstruction or for sputum induction", "clinical": { "type": "treatment", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "94664", "short_description": "Demonstration and/or evaluation of patient utilization of an aerosol generator, nebulizer, metered dose inhaler or IPPB device", "clinical": { "type": "education", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "95803", "short_description": "Actigraphy testing, recording, analysis, interpretation, and report (minimum of 72 hours to 14 consecutive days of recording)", "clinical": { "type": "monitoring", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "gastroenterology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (gastroenterology follow-up)", "clinical": { "type": "office_visit_gi", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (gastroenterology follow-up)", "clinical": { "type": "office_visit_gi", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "45378", "short_description": "Colonoscopy, flexible; diagnostic, including collection of specimen(s) by brushing or washing, when performed", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "45380", "short_description": "Colonoscopy, flexible; with biopsy, single or multiple", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "43239", "short_description": "Esophagogastroduodenoscopy, flexible, transoral; with biopsy, single or multiple", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "43235", "short_description": "Esophagogastroduodenoscopy, flexible, transoral; diagnostic", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "nephrology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (nephrology follow-up)", "clinical": { "type": "office_visit_nephrology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (nephrology follow-up)", "clinical": { "type": "office_visit_nephrology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90935", "short_description": "Hemodialysis procedure with single physician evaluation", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "90945", "short_description": "Dialysis procedure other than hemodialysis with single physician evaluation", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "80069", "short_description": "Renal function panel", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "82565", "short_description": "Creatinine; blood", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "82570", "short_description": "Creatinine; urine", "clinical": { "type": "lab_order", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "neurology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (neurology follow-up)", "clinical": { "type": "office_visit_neurology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (neurology follow-up)", "clinical": { "type": "office_visit_neurology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "95816", "short_description": "Electroencephalogram (EEG); including recording awake and drowsy", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "95860", "short_description": "Needle electromyography; one extremity with or without related paraspinal areas", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "95885", "short_description": "Needle electromyography, each extremity, with nerve conduction, amplitude and latency/velocity study", "clinical": { "type": "diagnostic", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "rheumatology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (rheumatology follow-up)", "clinical": { "type": "office_visit_rheumatology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (rheumatology follow-up)", "clinical": { "type": "office_visit_rheumatology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "20610", "short_description": "Arthrocentesis, aspiration and/or injection, major joint or bursa; without ultrasound guidance", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "20611", "short_description": "Arthrocentesis, aspiration and/or injection, major joint or bursa; with ultrasound guidance", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ],
+  "dermatology": [
+    { "code": "99213", "short_description": "Office visit, established patient, low complexity (dermatology follow-up)", "clinical": { "type": "office_visit_dermatology", "complexity": "low" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "99214", "short_description": "Office visit, established patient, moderate complexity (dermatology follow-up)", "clinical": { "type": "office_visit_dermatology", "complexity": "moderate" }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "11100", "short_description": "Biopsy of skin, subcutaneous tissue and/or mucous membrane (including simple closure), unless otherwise listed; single lesion", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } },
+    { "code": "17000", "short_description": "Destruction of premalignant lesions; first lesion", "clinical": { "type": "procedure", "complexity": null }, "billing": { "is_timed": false, "unit_minutes": null }, "metadata": { "confidence": "high", "source": "cpt_2025" } }
+  ]
 }

@@ -1,237 +1,223 @@
 [
-  {
-    "code": "F32.9",
-    "description": "Major depressive disorder, single episode, unspecified",
-    "category": "mental_health"
-  },
-  {
-    "code": "F33.9",
-    "description": "Major depressive disorder, recurrent, unspecified",
-    "category": "mental_health"
-  },
-  {
-    "code": "F41.1",
-    "description": "Generalized anxiety disorder",
-    "category": "mental_health"
-  },
-  {
-    "code": "F41.0",
-    "description": "Panic disorder without agoraphobia",
-    "category": "mental_health"
-  },
-  {
-    "code": "F43.10",
-    "description": "Post-traumatic stress disorder, acute",
-    "category": "mental_health"
-  },
-  {
-    "code": "F43.11",
-    "description": "Post-traumatic stress disorder, chronic",
-    "category": "mental_health"
-  },
-  {
-    "code": "F90.9",
-    "description": "Attention-deficit/hyperactivity disorder, unspecified type",
-    "category": "mental_health"
-  },
-  {
-    "code": "F32.0",
-    "description": "Major depressive disorder, single episode, mild",
-    "category": "mental_health"
-  },
-  {
-    "code": "F32.1",
-    "description": "Major depressive disorder, single episode, moderate",
-    "category": "mental_health"
-  },
-  {
-    "code": "F32.2",
-    "description": "Major depressive disorder, single episode, severe without psychotic features",
-    "category": "mental_health"
-  },
-  {
-    "code": "F41.9",
-    "description": "Anxiety disorder, unspecified",
-    "category": "mental_health"
-  },
-  {
-    "code": "F40.10",
-    "description": "Social anxiety disorder, generalized",
-    "category": "mental_health"
-  },
-  {
-    "code": "F40.9",
-    "description": "Phobic anxiety disorder, unspecified",
-    "category": "mental_health"
-  },
-  {
-    "code": "F60.3",
-    "description": "Borderline personality disorder",
-    "category": "mental_health"
-  },
-  {
-    "code": "M19.90",
-    "description": "Unspecified osteoarthritis of unspecified site",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "M79.3",
-    "description": "Panniculitis, unspecified",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "M25.5",
-    "description": "Pain in joint",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "M54.5",
-    "description": "Low back pain",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "M54.12",
-    "description": "Cervicalgia, left",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "M79.1",
-    "description": "Myalgia",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "M96.89",
-    "description": "Other intraoperative and postprocedural complications and disorders of musculoskeletal system",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "G82.20",
-    "description": "Paraplegia, unspecified",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "R26.81",
-    "description": "Unsteadiness on feet",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "R26.82",
-    "description": "Abnormality of gait, unspecified",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "Z50.1",
-    "description": "Encounter for physical therapy",
-    "category": "physical_therapy"
-  },
-  {
-    "code": "F80.9",
-    "description": "Language and speech disorder, unspecified",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "F80.0",
-    "description": "Phonological disorder",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "F80.1",
-    "description": "Expressive language disorder",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "F80.2",
-    "description": "Mixed receptive-expressive language disorder",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R47.02",
-    "description": "Dysarthria",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R47.01",
-    "description": "Aphasia",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R48.0",
-    "description": "Dyslexia and alexia",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R49.0",
-    "description": "Dysphonia",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R49.02",
-    "description": "Hoarseness",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R13.10",
-    "description": "Dysphagia, oral phase",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R13.12",
-    "description": "Dysphagia, pharyngeal phase",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R13.13",
-    "description": "Dysphagia, esophageal phase",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R13.14",
-    "description": "Dysphagia, pharyngeal and esophageal phase",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "R13.19",
-    "description": "Other dysphagia",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "Z50.0",
-    "description": "Encounter for speech-language pathology",
-    "category": "speech_therapy"
-  },
-  {
-    "code": "I10",
-    "description": "Essential (primary) hypertension",
-    "category": "cardiology"
-  },
-  {
-    "code": "E11.9",
-    "description": "Type 2 diabetes mellitus without complications",
-    "category": "endocrinology"
-  },
-  {
-    "code": "E10.9",
-    "description": "Type 1 diabetes mellitus without complications",
-    "category": "endocrinology"
-  },
-  {
-    "code": "J45.9",
-    "description": "Asthma, unspecified",
-    "category": "pulmonology"
-  },
-  {
-    "code": "J44.9",
-    "description": "Chronic obstructive pulmonary disease, unspecified",
-    "category": "pulmonology"
-  },
-  {
-    "code": "K21.9",
-    "description": "Unspecified gastro-esophageal reflux disease",
-    "category": "gastroenterology"
-  },
-  {
-    "code": "N18.30",
-    "description": "Chronic kidney disease, stage 3a",
-    "category": "nephrology"
-  }
+  { "code": "F32.9", "description": "Major depressive disorder, single episode, unspecified", "category": "mental_health" },
+  { "code": "F32.0", "description": "Major depressive disorder, single episode, mild", "category": "mental_health" },
+  { "code": "F32.1", "description": "Major depressive disorder, single episode, moderate", "category": "mental_health" },
+  { "code": "F32.2", "description": "Major depressive disorder, single episode, severe without psychotic features", "category": "mental_health" },
+  { "code": "F32.3", "description": "Major depressive disorder, single episode, severe with psychotic features", "category": "mental_health" },
+  { "code": "F33.9", "description": "Major depressive disorder, recurrent, unspecified", "category": "mental_health" },
+  { "code": "F33.0", "description": "Major depressive disorder, recurrent, mild", "category": "mental_health" },
+  { "code": "F33.1", "description": "Major depressive disorder, recurrent, moderate", "category": "mental_health" },
+  { "code": "F33.2", "description": "Major depressive disorder, recurrent severe without psychotic features", "category": "mental_health" },
+  { "code": "F41.1", "description": "Generalized anxiety disorder", "category": "mental_health" },
+  { "code": "F41.0", "description": "Panic disorder without agoraphobia", "category": "mental_health" },
+  { "code": "F41.9", "description": "Anxiety disorder, unspecified", "category": "mental_health" },
+  { "code": "F40.10", "description": "Social anxiety disorder, unspecified", "category": "mental_health" },
+  { "code": "F40.11", "description": "Social anxiety disorder, generalized", "category": "mental_health" },
+  { "code": "F40.9", "description": "Phobic anxiety disorder, unspecified", "category": "mental_health" },
+  { "code": "F43.10", "description": "Post-traumatic stress disorder, unspecified", "category": "mental_health" },
+  { "code": "F43.11", "description": "Post-traumatic stress disorder, acute", "category": "mental_health" },
+  { "code": "F43.12", "description": "Post-traumatic stress disorder, chronic", "category": "mental_health" },
+  { "code": "F43.20", "description": "Adjustment disorder, unspecified", "category": "mental_health" },
+  { "code": "F43.21", "description": "Adjustment disorder with depressed mood", "category": "mental_health" },
+  { "code": "F43.22", "description": "Adjustment disorder with anxiety", "category": "mental_health" },
+  { "code": "F43.23", "description": "Adjustment disorder with mixed anxiety and depressed mood", "category": "mental_health" },
+  { "code": "F90.0", "description": "Attention-deficit hyperactivity disorder, predominantly inattentive type", "category": "mental_health" },
+  { "code": "F90.1", "description": "Attention-deficit hyperactivity disorder, predominantly hyperactive type", "category": "mental_health" },
+  { "code": "F90.2", "description": "Attention-deficit hyperactivity disorder, combined type", "category": "mental_health" },
+  { "code": "F90.9", "description": "Attention-deficit hyperactivity disorder, unspecified type", "category": "mental_health" },
+  { "code": "F60.3", "description": "Borderline personality disorder", "category": "mental_health" },
+  { "code": "F31.9", "description": "Bipolar disorder, unspecified", "category": "mental_health" },
+  { "code": "F31.81", "description": "Bipolar II disorder", "category": "mental_health" },
+  { "code": "F20.9", "description": "Schizophrenia, unspecified", "category": "mental_health" },
+  { "code": "F10.10", "description": "Alcohol abuse, uncomplicated", "category": "mental_health" },
+  { "code": "F10.20", "description": "Alcohol dependence, uncomplicated", "category": "mental_health" },
+  { "code": "F11.10", "description": "Opioid abuse, uncomplicated", "category": "mental_health" },
+  { "code": "F11.20", "description": "Opioid dependence, uncomplicated", "category": "mental_health" },
+  { "code": "F50.00", "description": "Anorexia nervosa, unspecified", "category": "mental_health" },
+  { "code": "F50.2", "description": "Bulimia nervosa", "category": "mental_health" },
+  { "code": "F84.0", "description": "Autistic disorder", "category": "mental_health" },
+  { "code": "F84.5", "description": "Asperger syndrome", "category": "mental_health" },
+  { "code": "Z71.1", "description": "Person with feared complaint in whom no diagnosis is made", "category": "mental_health" },
+
+  { "code": "M19.90", "description": "Unspecified osteoarthritis, unspecified site", "category": "physical_therapy" },
+  { "code": "M19.011", "description": "Primary osteoarthritis, right shoulder", "category": "physical_therapy" },
+  { "code": "M19.012", "description": "Primary osteoarthritis, left shoulder", "category": "physical_therapy" },
+  { "code": "M19.071", "description": "Primary osteoarthritis, right ankle and foot", "category": "physical_therapy" },
+  { "code": "M17.11", "description": "Primary osteoarthritis, right knee", "category": "physical_therapy" },
+  { "code": "M17.12", "description": "Primary osteoarthritis, left knee", "category": "physical_therapy" },
+  { "code": "M16.11", "description": "Primary osteoarthritis, right hip", "category": "physical_therapy" },
+  { "code": "M16.12", "description": "Primary osteoarthritis, left hip", "category": "physical_therapy" },
+  { "code": "M79.3", "description": "Panniculitis, unspecified", "category": "physical_therapy" },
+  { "code": "M25.511", "description": "Pain in right shoulder", "category": "physical_therapy" },
+  { "code": "M25.512", "description": "Pain in left shoulder", "category": "physical_therapy" },
+  { "code": "M25.561", "description": "Pain in right knee", "category": "physical_therapy" },
+  { "code": "M25.562", "description": "Pain in left knee", "category": "physical_therapy" },
+  { "code": "M25.571", "description": "Pain in right foot and toes", "category": "physical_therapy" },
+  { "code": "M25.50", "description": "Pain in unspecified joint", "category": "physical_therapy" },
+  { "code": "M54.50", "description": "Low back pain, unspecified", "category": "physical_therapy" },
+  { "code": "M54.51", "description": "Vertebrogenic low back pain", "category": "physical_therapy" },
+  { "code": "M54.59", "description": "Other low back pain", "category": "physical_therapy" },
+  { "code": "M54.2", "description": "Cervicalgia", "category": "physical_therapy" },
+  { "code": "M54.12", "description": "Radiculopathy, cervical region", "category": "physical_therapy" },
+  { "code": "M54.16", "description": "Radiculopathy, lumbar region", "category": "physical_therapy" },
+  { "code": "M54.17", "description": "Radiculopathy, lumbosacral region", "category": "physical_therapy" },
+  { "code": "M79.1", "description": "Myalgia", "category": "physical_therapy" },
+  { "code": "M79.10", "description": "Myalgia, unspecified site", "category": "physical_therapy" },
+  { "code": "M62.838", "description": "Muscle spasm, other site", "category": "physical_therapy" },
+  { "code": "M96.89", "description": "Other intraoperative and postprocedural complications of musculoskeletal system", "category": "physical_therapy" },
+  { "code": "G82.20", "description": "Paraplegia, unspecified", "category": "physical_therapy" },
+  { "code": "G82.50", "description": "Quadriplegia, unspecified", "category": "physical_therapy" },
+  { "code": "G81.90", "description": "Hemiplegia, unspecified affecting unspecified side", "category": "physical_therapy" },
+  { "code": "R26.81", "description": "Unsteadiness on feet", "category": "physical_therapy" },
+  { "code": "R26.89", "description": "Other abnormalities of gait and mobility", "category": "physical_therapy" },
+  { "code": "R26.0", "description": "Ataxic gait", "category": "physical_therapy" },
+  { "code": "M75.100", "description": "Unspecified rotator cuff tear or rupture of unspecified shoulder, not specified as traumatic", "category": "physical_therapy" },
+  { "code": "M75.101", "description": "Unspecified rotator cuff tear or rupture of right shoulder, not specified as traumatic", "category": "physical_therapy" },
+  { "code": "S93.401A", "description": "Sprain of unspecified ligament of right ankle, initial encounter", "category": "physical_therapy" },
+  { "code": "Z50.1", "description": "Encounter for other physical therapy", "category": "physical_therapy" },
+  { "code": "Z47.89", "description": "Encounter for other orthopedic aftercare", "category": "physical_therapy" },
+  { "code": "Z96.641", "description": "Presence of right artificial knee joint", "category": "physical_therapy" },
+  { "code": "Z96.642", "description": "Presence of left artificial knee joint", "category": "physical_therapy" },
+
+  { "code": "F80.9", "description": "Developmental disorder of speech and language, unspecified", "category": "speech_therapy" },
+  { "code": "F80.0", "description": "Phonological disorder", "category": "speech_therapy" },
+  { "code": "F80.1", "description": "Expressive language disorder", "category": "speech_therapy" },
+  { "code": "F80.2", "description": "Mixed receptive-expressive language disorder", "category": "speech_therapy" },
+  { "code": "F80.4", "description": "Speech and language development delay due to hearing loss", "category": "speech_therapy" },
+  { "code": "F98.5", "description": "Adult onset fluency disorder", "category": "speech_therapy" },
+  { "code": "F98.6", "description": "Childhood onset fluency disorder (stuttering)", "category": "speech_therapy" },
+  { "code": "R47.02", "description": "Dysarthria", "category": "speech_therapy" },
+  { "code": "R47.01", "description": "Aphasia", "category": "speech_therapy" },
+  { "code": "R47.89", "description": "Other speech disturbances", "category": "speech_therapy" },
+  { "code": "R48.0", "description": "Dyslexia and alexia", "category": "speech_therapy" },
+  { "code": "R49.0", "description": "Dysphonia", "category": "speech_therapy" },
+  { "code": "R49.1", "description": "Aphonia", "category": "speech_therapy" },
+  { "code": "R13.10", "description": "Dysphagia, unspecified", "category": "speech_therapy" },
+  { "code": "R13.11", "description": "Dysphagia, oral phase", "category": "speech_therapy" },
+  { "code": "R13.12", "description": "Dysphagia, oropharyngeal phase", "category": "speech_therapy" },
+  { "code": "R13.13", "description": "Dysphagia, pharyngeal phase", "category": "speech_therapy" },
+  { "code": "R13.14", "description": "Dysphagia, pharyngolaryngeal phase", "category": "speech_therapy" },
+  { "code": "R13.19", "description": "Other dysphagia", "category": "speech_therapy" },
+  { "code": "Z50.0", "description": "Encounter for speech-language pathology", "category": "speech_therapy" },
+
+  { "code": "I10", "description": "Essential (primary) hypertension", "category": "cardiology" },
+  { "code": "I11.9", "description": "Hypertensive heart disease without heart failure", "category": "cardiology" },
+  { "code": "I25.10", "description": "Atherosclerotic heart disease of native coronary artery without angina pectoris", "category": "cardiology" },
+  { "code": "I25.110", "description": "Atherosclerotic heart disease of native coronary artery with unstable angina pectoris", "category": "cardiology" },
+  { "code": "I20.9", "description": "Angina pectoris, unspecified", "category": "cardiology" },
+  { "code": "I21.9", "description": "Acute myocardial infarction, unspecified", "category": "cardiology" },
+  { "code": "I50.9", "description": "Heart failure, unspecified", "category": "cardiology" },
+  { "code": "I50.32", "description": "Chronic diastolic (congestive) heart failure", "category": "cardiology" },
+  { "code": "I50.22", "description": "Chronic systolic (congestive) heart failure", "category": "cardiology" },
+  { "code": "I48.0", "description": "Paroxysmal atrial fibrillation", "category": "cardiology" },
+  { "code": "I48.11", "description": "Longstanding persistent atrial fibrillation", "category": "cardiology" },
+  { "code": "I48.19", "description": "Other persistent atrial fibrillation", "category": "cardiology" },
+  { "code": "I48.20", "description": "Chronic atrial fibrillation, unspecified", "category": "cardiology" },
+  { "code": "I49.9", "description": "Cardiac arrhythmia, unspecified", "category": "cardiology" },
+  { "code": "I42.9", "description": "Cardiomyopathy, unspecified", "category": "cardiology" },
+  { "code": "I70.201", "description": "Unspecified atherosclerosis of native arteries of extremities, right leg", "category": "cardiology" },
+  { "code": "Z82.49", "description": "Family history of ischemic heart disease and other diseases of the circulatory system", "category": "cardiology" },
+
+  { "code": "E11.9", "description": "Type 2 diabetes mellitus without complications", "category": "endocrinology" },
+  { "code": "E11.65", "description": "Type 2 diabetes mellitus with hyperglycemia", "category": "endocrinology" },
+  { "code": "E11.649", "description": "Type 2 diabetes mellitus with hypoglycemia without coma", "category": "endocrinology" },
+  { "code": "E11.40", "description": "Type 2 diabetes mellitus with diabetic neuropathy, unspecified", "category": "endocrinology" },
+  { "code": "E11.3519", "description": "Type 2 diabetes mellitus with proliferative diabetic retinopathy without macular edema, unspecified eye", "category": "endocrinology" },
+  { "code": "E10.9", "description": "Type 1 diabetes mellitus without complications", "category": "endocrinology" },
+  { "code": "E10.65", "description": "Type 1 diabetes mellitus with hyperglycemia", "category": "endocrinology" },
+  { "code": "E03.9", "description": "Hypothyroidism, unspecified", "category": "endocrinology" },
+  { "code": "E05.90", "description": "Thyrotoxicosis, unspecified, without thyrotoxic crisis or storm", "category": "endocrinology" },
+  { "code": "E04.9", "description": "Nontoxic goiter, unspecified", "category": "endocrinology" },
+  { "code": "E66.9", "description": "Obesity, unspecified", "category": "endocrinology" },
+  { "code": "E66.01", "description": "Morbid (severe) obesity due to excess calories", "category": "endocrinology" },
+  { "code": "E78.5", "description": "Hyperlipidemia, unspecified", "category": "endocrinology" },
+  { "code": "E78.00", "description": "Pure hypercholesterolemia, unspecified", "category": "endocrinology" },
+  { "code": "E27.49", "description": "Other adrenocortical insufficiency", "category": "endocrinology" },
+  { "code": "E28.2", "description": "Polycystic ovarian syndrome", "category": "endocrinology" },
+
+  { "code": "J45.20", "description": "Mild intermittent asthma, uncomplicated", "category": "pulmonology" },
+  { "code": "J45.30", "description": "Mild persistent asthma, uncomplicated", "category": "pulmonology" },
+  { "code": "J45.40", "description": "Moderate persistent asthma, uncomplicated", "category": "pulmonology" },
+  { "code": "J45.50", "description": "Severe persistent asthma, uncomplicated", "category": "pulmonology" },
+  { "code": "J45.901", "description": "Unspecified asthma with (acute) exacerbation", "category": "pulmonology" },
+  { "code": "J44.9", "description": "Chronic obstructive pulmonary disease, unspecified", "category": "pulmonology" },
+  { "code": "J44.1", "description": "Chronic obstructive pulmonary disease with (acute) exacerbation", "category": "pulmonology" },
+  { "code": "J18.9", "description": "Pneumonia, unspecified organism", "category": "pulmonology" },
+  { "code": "J06.9", "description": "Acute upper respiratory infection, unspecified", "category": "pulmonology" },
+  { "code": "J20.9", "description": "Acute bronchitis, unspecified", "category": "pulmonology" },
+  { "code": "J41.0", "description": "Simple chronic bronchitis", "category": "pulmonology" },
+  { "code": "J84.10", "description": "Pulmonary fibrosis, unspecified", "category": "pulmonology" },
+  { "code": "G47.33", "description": "Obstructive sleep apnea (adult) (pediatric)", "category": "pulmonology" },
+  { "code": "R05.9", "description": "Cough, unspecified", "category": "pulmonology" },
+  { "code": "R06.00", "description": "Dyspnea, unspecified", "category": "pulmonology" },
+  { "code": "R06.09", "description": "Other forms of dyspnea", "category": "pulmonology" },
+
+  { "code": "K21.0", "description": "Gastro-esophageal reflux disease with esophagitis", "category": "gastroenterology" },
+  { "code": "K21.9", "description": "Gastro-esophageal reflux disease without esophagitis", "category": "gastroenterology" },
+  { "code": "K58.9", "description": "Irritable bowel syndrome without diarrhea", "category": "gastroenterology" },
+  { "code": "K58.0", "description": "Irritable bowel syndrome with diarrhea", "category": "gastroenterology" },
+  { "code": "K57.30", "description": "Diverticulosis of large intestine without perforation or abscess without bleeding", "category": "gastroenterology" },
+  { "code": "K57.32", "description": "Diverticulitis of large intestine without perforation or abscess without bleeding", "category": "gastroenterology" },
+  { "code": "K50.90", "description": "Crohn disease of small intestine, unspecified, without complications", "category": "gastroenterology" },
+  { "code": "K51.90", "description": "Ulcerative colitis, unspecified, without complications", "category": "gastroenterology" },
+  { "code": "K70.30", "description": "Alcoholic cirrhosis of liver without ascites", "category": "gastroenterology" },
+  { "code": "K74.60", "description": "Unspecified cirrhosis of liver", "category": "gastroenterology" },
+  { "code": "K80.20", "description": "Calculus of gallbladder without cholecystitis without obstruction", "category": "gastroenterology" },
+  { "code": "K85.90", "description": "Acute pancreatitis without necrosis or infection, unspecified", "category": "gastroenterology" },
+  { "code": "K92.1", "description": "Melena", "category": "gastroenterology" },
+  { "code": "K92.0", "description": "Hematemesis", "category": "gastroenterology" },
+
+  { "code": "N18.1", "description": "Chronic kidney disease, stage 1", "category": "nephrology" },
+  { "code": "N18.2", "description": "Chronic kidney disease, stage 2 (mild)", "category": "nephrology" },
+  { "code": "N18.30", "description": "Chronic kidney disease, stage 3 unspecified", "category": "nephrology" },
+  { "code": "N18.31", "description": "Chronic kidney disease, stage 3a", "category": "nephrology" },
+  { "code": "N18.32", "description": "Chronic kidney disease, stage 3b", "category": "nephrology" },
+  { "code": "N18.4", "description": "Chronic kidney disease, stage 4 (severe)", "category": "nephrology" },
+  { "code": "N18.5", "description": "Chronic kidney disease, stage 5", "category": "nephrology" },
+  { "code": "N18.6", "description": "End stage renal disease", "category": "nephrology" },
+  { "code": "N17.9", "description": "Acute kidney failure, unspecified", "category": "nephrology" },
+  { "code": "N20.0", "description": "Calculus of kidney", "category": "nephrology" },
+  { "code": "N39.0", "description": "Urinary tract infection, site not specified", "category": "nephrology" },
+  { "code": "N40.1", "description": "Benign prostatic hyperplasia with lower urinary tract symptoms", "category": "nephrology" },
+  { "code": "N04.9", "description": "Nephrotic syndrome with unspecified morphologic changes", "category": "nephrology" },
+
+  { "code": "Z00.00", "description": "Encounter for general adult medical examination without abnormal findings", "category": "general_medicine" },
+  { "code": "Z00.01", "description": "Encounter for general adult medical examination with abnormal findings", "category": "general_medicine" },
+  { "code": "Z12.11", "description": "Encounter for screening for malignant neoplasm of colon", "category": "general_medicine" },
+  { "code": "Z12.31", "description": "Encounter for screening mammogram for malignant neoplasm of breast", "category": "general_medicine" },
+  { "code": "Z23", "description": "Encounter for immunization", "category": "general_medicine" },
+  { "code": "R50.9", "description": "Fever, unspecified", "category": "general_medicine" },
+  { "code": "R51.9", "description": "Headache, unspecified", "category": "general_medicine" },
+  { "code": "R10.9", "description": "Unspecified abdominal pain", "category": "general_medicine" },
+  { "code": "R55", "description": "Syncope and collapse", "category": "general_medicine" },
+  { "code": "R73.09", "description": "Other abnormal glucose", "category": "general_medicine" },
+  { "code": "R73.01", "description": "Impaired fasting glucose", "category": "general_medicine" },
+  { "code": "Z87.891", "description": "Personal history of nicotine dependence", "category": "general_medicine" },
+  { "code": "F17.210", "description": "Nicotine dependence, cigarettes, uncomplicated", "category": "general_medicine" },
+
+  { "code": "G43.909", "description": "Migraine, unspecified, not intractable, without status migrainosus", "category": "neurology" },
+  { "code": "G43.019", "description": "Migraine without aura, intractable, without status migrainosus", "category": "neurology" },
+  { "code": "G40.909", "description": "Epilepsy, unspecified, not intractable, without status epilepticus", "category": "neurology" },
+  { "code": "G35", "description": "Multiple sclerosis", "category": "neurology" },
+  { "code": "G20", "description": "Parkinson disease", "category": "neurology" },
+  { "code": "G30.9", "description": "Alzheimer disease, unspecified", "category": "neurology" },
+  { "code": "G45.9", "description": "Transient cerebral ischemic attack, unspecified", "category": "neurology" },
+  { "code": "I63.9", "description": "Cerebral infarction, unspecified", "category": "neurology" },
+  { "code": "G62.9", "description": "Polyneuropathy, unspecified", "category": "neurology" },
+  { "code": "G89.29", "description": "Other chronic pain", "category": "neurology" },
+  { "code": "G89.21", "description": "Chronic pain due to trauma", "category": "neurology" },
+
+  { "code": "L40.0", "description": "Psoriasis vulgaris", "category": "dermatology" },
+  { "code": "L20.9", "description": "Atopic dermatitis, unspecified", "category": "dermatology" },
+  { "code": "L30.9", "description": "Dermatitis, unspecified", "category": "dermatology" },
+  { "code": "L70.0", "description": "Acne vulgaris", "category": "dermatology" },
+  { "code": "L57.0", "description": "Actinic keratosis", "category": "dermatology" },
+  { "code": "C44.91", "description": "Basal cell carcinoma of skin, unspecified", "category": "dermatology" },
+
+  { "code": "M06.9", "description": "Rheumatoid arthritis, unspecified", "category": "rheumatology" },
+  { "code": "M32.9", "description": "Systemic lupus erythematosus, unspecified", "category": "rheumatology" },
+  { "code": "M35.9", "description": "Systemic connective tissue disorder, unspecified", "category": "rheumatology" },
+  { "code": "M45.9", "description": "Ankylosing spondylitis of unspecified sites in spine", "category": "rheumatology" },
+  { "code": "M79.7", "description": "Fibromyalgia", "category": "rheumatology" },
+  { "code": "M10.9", "description": "Gout, unspecified", "category": "rheumatology" }
 ]

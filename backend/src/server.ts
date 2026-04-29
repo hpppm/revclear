@@ -255,33 +255,19 @@ app.use(express.json({ limit: "1mb" }));
 
 const helmetOptions: HelmetOptions = {
   contentSecurityPolicy: {
-    useDefaults: true,
+    useDefaults: false,
     directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://cdn.tailwindcss.com",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.lineicons.com",
-        "https://cdn.jsdelivr.net",
-      ],
-      styleSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.lineicons.com",
-      ],
-      imgSrc: ["'self'", "data:", "https://hpppm.github.io"],
-      fontSrc: [
-        "'self'",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.lineicons.com",
-      ],
+      defaultSrc: ["'none'"],
+      scriptSrc: ["'none'"],
+      styleSrc: ["'none'"],
+      imgSrc: ["'none'"],
+      fontSrc: ["'none'"],
       connectSrc: ["'self'"],
-      mediaSrc: ["'self'", "https://*.s3.amazonaws.com", "https://*.s3.us-east-1.amazonaws.com"],
+      mediaSrc: ["'none'"],
       objectSrc: ["'none'"],
-      frameAncestors: ["'self'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'none'"],
+      baseUri: ["'none'"],
     },
   },
   referrerPolicy: { policy: "no-referrer" },

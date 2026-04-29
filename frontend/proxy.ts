@@ -47,7 +47,8 @@ export function proxy(request: NextRequest) {
 
   const cspHeader = [
     "default-src 'self'",
-    `script-src 'self' https: 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    // Nonce replaces unsafe-inline. unsafe-eval kept in dev only for HMR/source maps.
+    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'unsafe-inline'`,
     `connect-src ${connectSrc}`,
     "img-src 'self' data: https:",
