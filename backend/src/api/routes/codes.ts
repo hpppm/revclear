@@ -201,7 +201,14 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
       },
     });
   } catch (error: any) {
-    logger.error({ err: error }, 'POST codes/match: error');
+    logger.error({ err: error, message: error?.message }, 'POST codes/match: error');
+    // Return specific error codes if available
+    if (error?.message?.includes("Both Gemini and Groq failed")) {
+      return sendError(res, 503, "AI services temporarily unavailable. Please try again in a moment.");
+    }
+    if (error?.message?.includes("SOAP note has no content")) {
+      return sendError(res, 400, "The SOAP note is empty. Please ensure the SOAP note has content before generating codes.");
+    }
     return sendError(res, 500, "Failed to match codes");
   }
 });

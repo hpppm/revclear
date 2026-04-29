@@ -195,8 +195,16 @@ class GenkitCodeMatcher implements CodeMatcher {
         { provider: "gemini", err: (geminiError as Error)?.message },
         "code-matcher: gemini failed, attempting groq fallback",
       );
-      rawOutput = await callGroqForJson(prompt, { operation: "codes" });
-      providerUsed = "groq";
+      try {
+        rawOutput = await callGroqForJson(prompt, { operation: "codes" });
+        providerUsed = "groq";
+      } catch (groqError) {
+        logger.error(
+          { provider: "groq", err: (groqError as Error)?.message },
+          "code-matcher: groq fallback failed"
+        );
+        throw new Error("Both Gemini and Groq failed to generate codes");
+      }
     }
 
     const normalized = normalizeCodeOutput(rawOutput);
@@ -214,6 +222,7 @@ class GenkitCodeMatcher implements CodeMatcher {
         model_version: normalized.model_version,
       };
     }
+    const hasMatches = filtered.icdMatches.length > 0 || filtered.cptMatches.length > 0;
     logger.info(
       {
         icdCount: filtered.icdMatches.length,
@@ -221,6 +230,7 @@ class GenkitCodeMatcher implements CodeMatcher {
         model: filtered.model_version,
         provider: providerUsed,
         pineconeDegraded,
+        hasMatches,
       },
       "code matching completed",
     );

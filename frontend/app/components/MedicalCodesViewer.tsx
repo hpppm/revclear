@@ -116,7 +116,9 @@ export default function MedicalCodesViewer({
     setGenerateError(null);
     try {
       const response = await apiClient.codes.match(encounterId);
-      const { icdMatches, cptMatches } = response.data.data;
+      // Handle both response shapes: { data: { icdMatches, ... } } and { success, data: { icdMatches, ... } }
+      const responseData = response.data?.data || response.data;
+      const { icdMatches, cptMatches } = responseData || {};
 
       const newIcd = ensureType(icdMatches ?? [], "ICD-10");
       const newCpt = ensureType(cptMatches ?? [], "CPT");
