@@ -18,9 +18,23 @@ if (!isTestEnv && !disableListen) {
       logger.warn("GROQ_API_KEY not set — Groq fallback unavailable if Gemini fails");
     }
     void logAiProviderHealthStartup();
-    void ensurePineconeMedicalCodeIndex().catch((error) => {
-      logger.warn({ err: error }, "Pinecone code index warmup failed");
-    });
+    void (async () => {
+      const maxAttempts = 3;
+      const retryDelayMs = 2000;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await ensurePineconeMedicalCodeIndex();
+          logger.info({ attempt }, "Pinecone code index warmup succeeded");
+          return;
+        } catch (error) {
+          logger.warn({ err: error, attempt, maxAttempts }, "Pinecone code index warmup failed");
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+          }
+        }
+      }
+      logger.error("Pinecone code index warmup failed after all attempts — first requests may return empty results");
+    })();
   });
 } else {
   logger.debug('Server listen disabled (test or DISABLE_LISTEN)');

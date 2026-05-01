@@ -186,6 +186,24 @@ class GenkitCodeMatcher implements CodeMatcher {
       pineconeDegraded = true;
     }
 
+    // If Pinecone returned no results (either error or empty — e.g. warmup still
+    // in progress), attempt a single retry after a short delay before giving up.
+    if (pineconeDegraded || (retrieval.icdMatches.length === 0 && retrieval.cptMatches.length === 0)) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      try {
+        const retried = await searchMedicalCodes(pineconeQuery, 5);
+        if (retried.icdMatches.length > 0 || retried.cptMatches.length > 0) {
+          logger.info("code-matcher: pinecone retry succeeded");
+          retrieval = retried;
+          pineconeDegraded = false;
+        } else {
+          logger.warn("code-matcher: pinecone retry returned empty results, continuing without retrieval");
+        }
+      } catch (retryError) {
+        logger.warn({ err: (retryError as Error)?.message }, "code-matcher: pinecone retry failed, continuing without retrieval");
+      }
+    }
+
     const pineconeHasResults = retrieval.icdMatches.length > 0 || retrieval.cptMatches.length > 0;
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
