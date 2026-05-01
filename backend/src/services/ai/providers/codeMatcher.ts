@@ -195,14 +195,22 @@ class GenkitCodeMatcher implements CodeMatcher {
     let providerUsed: "gemini" | "groq" = "gemini";
 
     try {
-      const result = await ai.generate({
+      const AI_TIMEOUT_MS = 25000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AI code matching timed out after 25 seconds")), AI_TIMEOUT_MS),
+      );
+      const generatePromise = ai.generate({
         model: defaultTextModel,
         prompt,
         output: { schema: SoapToCodesOutputSchema },
         config: { temperature: 0.2 },
       });
+      const result = await Promise.race([generatePromise, timeoutPromise]);
       rawOutput = result.output ?? {};
     } catch (geminiError) {
+      if ((geminiError as Error)?.message === "AI code matching timed out after 25 seconds") {
+        throw geminiError;
+      }
       logger.warn(
         { provider: "gemini", err: (geminiError as Error)?.message },
         "code-matcher: gemini failed, attempting groq fallback",
