@@ -125,4 +125,6 @@ export const claimsApi = {
   getStatusHistory: (id: string) => api.get(`/claims/${safeId(id)}/status-history`),
 
   download: (id: string) => api.get(`/claims/${safeId(id)}/download`, { responseType: "blob" }),
+
+  getEdi: (id: string) => api.get(`/claims/${safeId(id)}/edi`),
 };

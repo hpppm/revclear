@@ -67,6 +67,10 @@ export default function ClaimsPage() {
     const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
     const [statusHistories, setStatusHistories] = useState<Record<string, StatusHistory[]>>({});
     const [loadingHistory, setLoadingHistory] = useState<string | null>(null);
+    const [previewClaimId, setPreviewClaimId] = useState<string | null>(null);
+    const [previewContent, setPreviewContent] = useState<string>("");
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!canManageClaims) {
@@ -97,6 +101,29 @@ export default function ClaimsPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePreview = async (claimId: string) => {
+        setPreviewClaimId(claimId);
+        setPreviewContent("");
+        setPreviewError(null);
+        setPreviewLoading(true);
+        try {
+            const response = await apiClient.claims.getEdi(claimId);
+            const ediString: string = response.data?.data?.ediString || "";
+            setPreviewContent(ediString);
+        } catch (err) {
+            logger.error("Failed to load EDI preview", err);
+            setPreviewError("Could not load the EDI file for this claim.");
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    const closePreview = () => {
+        setPreviewClaimId(null);
+        setPreviewContent("");
+        setPreviewError(null);
     };
 
     const handleDownload = async (claimId: string) => {
@@ -332,6 +359,16 @@ export default function ClaimsPage() {
                                                         </Link>
                                                     )}
                                                     <button
+                                                        onClick={() => handlePreview(claim.id)}
+                                                        className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
+                                                        title="View EDI 837 contents"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleDownload(claim.id)}
                                                         className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
                                                         title="Download EDI 837 file"
@@ -382,6 +419,59 @@ export default function ClaimsPage() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {previewClaimId && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8"
+                    onClick={closePreview}
+                >
+                    <div
+                        className="w-full max-w-3xl max-h-full flex flex-col rounded-2xl bg-white shadow-xl border border-slate-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                                    EDI 837 preview
+                                </p>
+                                <p className="font-mono text-sm text-slate-700 mt-0.5">
+                                    {previewClaimId.slice(0, 8).toUpperCase()}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => handleDownload(previewClaimId)}
+                                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                                >
+                                    Download
+                                </button>
+                                <button
+                                    onClick={closePreview}
+                                    className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition"
+                                    aria-label="Close preview"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-auto px-6 py-4">
+                            {previewLoading ? (
+                                <p className="text-sm text-slate-400">Loading EDI…</p>
+                            ) : previewError ? (
+                                <p className="text-sm text-red-600">{previewError}</p>
+                            ) : previewContent ? (
+                                <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-slate-700">
+                                    {previewContent.split("~").filter(Boolean).join("~\n")}
+                                </pre>
+                            ) : (
+                                <p className="text-sm text-slate-400">No EDI content available.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

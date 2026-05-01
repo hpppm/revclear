@@ -160,6 +160,26 @@ router.get("/:id/status-history", authMiddleware, requireCapability("manage_clai
   }
 });
 
+// GET /api/claims/:id/edi — return EDI 837 string as JSON for in-app preview
+router.get("/:id/edi", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
+  try {
+    const parsedParams = IdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return res.status(400).json({ success: false, errors: parsedParams.error.errors });
+    }
+
+    const { ediString, claimId } = await ClaimService.downloadEdi(
+      parsedParams.data.id,
+      req.organization!.id,
+      req.user!.id,
+    );
+
+    res.json({ success: true, data: { ediString, claimId } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/claims/:id/download — download EDI 837 file
 router.get("/:id/download", authMiddleware, requireCapability("manage_claims"), requireOrganization, async (req, res, next) => {
   try {
