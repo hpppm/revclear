@@ -5,10 +5,41 @@ import { MedicalCode } from "../types";
 const UUID = z.string().uuid("Invalid encounter ID format");
 const safeId = (id: string) => encodeURIComponent(UUID.parse(id));
 
+const POLL_INTERVAL_MS = 3000;
+const MAX_POLLS = 10;
+
 export const codesApi = {
-    // Get AI code suggestions based on SOAP note
-    match: (encounterId: string) =>
-        api.post<{ data: { icdMatches: MedicalCode[], cptMatches: MedicalCode[] } }>(`/encounters/${safeId(encounterId)}/codes/match`),
+    // Get AI code suggestions based on SOAP note.
+    // POST returns 202 with jobId; polls status until done or error.
+    match: async (encounterId: string): Promise<{ data: { data: { icdMatches: MedicalCode[], cptMatches: MedicalCode[] } } }> => {
+        const postResponse = await api.post<{ data: { jobId: string; status: string } }>(
+            `/encounters/${safeId(encounterId)}/codes/match`,
+        );
+        const { jobId } = postResponse.data.data;
+
+        for (let poll = 0; poll < MAX_POLLS; poll++) {
+            await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+
+            const statusResponse = await api.get<{
+                success: boolean;
+                data: { status: string; result?: { icdMatches: MedicalCode[]; cptMatches: MedicalCode[] } };
+                error?: string;
+            }>(`/encounters/${safeId(encounterId)}/codes/match/status/${encodeURIComponent(jobId)}`);
+
+            const { data: statusData } = statusResponse.data;
+
+            if (statusData.status === "done" && statusData.result) {
+                return { data: { data: { icdMatches: statusData.result.icdMatches, cptMatches: statusData.result.cptMatches } } };
+            }
+
+            if (statusData.status === "error") {
+                throw new Error(statusResponse.data.error ?? "Code matching failed");
+            }
+            // status === "pending" — continue polling
+        }
+
+        throw new Error("Code matching timed out waiting for results. Please try again.");
+    },
 
     // Manual search for codes
     search: (query: string, type: "icd" | "cpt") =>
