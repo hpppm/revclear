@@ -186,24 +186,6 @@ class GenkitCodeMatcher implements CodeMatcher {
       pineconeDegraded = true;
     }
 
-    // If Pinecone returned no results (either error or empty — e.g. warmup still
-    // in progress), attempt a single retry after a short delay before giving up.
-    if (pineconeDegraded || (retrieval.icdMatches.length === 0 && retrieval.cptMatches.length === 0)) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      try {
-        const retried = await searchMedicalCodes(pineconeQuery, 5);
-        if (retried.icdMatches.length > 0 || retried.cptMatches.length > 0) {
-          logger.info("code-matcher: pinecone retry succeeded");
-          retrieval = retried;
-          pineconeDegraded = false;
-        } else {
-          logger.warn("code-matcher: pinecone retry returned empty results, continuing without retrieval");
-        }
-      } catch (retryError) {
-        logger.warn({ err: (retryError as Error)?.message }, "code-matcher: pinecone retry failed, continuing without retrieval");
-      }
-    }
-
     const pineconeHasResults = retrieval.icdMatches.length > 0 || retrieval.cptMatches.length > 0;
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
@@ -213,14 +195,22 @@ class GenkitCodeMatcher implements CodeMatcher {
     let providerUsed: "gemini" | "groq" = "gemini";
 
     try {
-      const result = await ai.generate({
+      const AI_TIMEOUT_MS = 25000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AI code matching timed out after 25 seconds")), AI_TIMEOUT_MS),
+      );
+      const generatePromise = ai.generate({
         model: defaultTextModel,
         prompt,
         output: { schema: SoapToCodesOutputSchema },
         config: { temperature: 0.2 },
       });
+      const result = await Promise.race([generatePromise, timeoutPromise]);
       rawOutput = result.output ?? {};
     } catch (geminiError) {
+      if ((geminiError as Error)?.message === "AI code matching timed out after 25 seconds") {
+        throw geminiError;
+      }
       logger.warn(
         { provider: "gemini", err: (geminiError as Error)?.message },
         "code-matcher: gemini failed, attempting groq fallback",

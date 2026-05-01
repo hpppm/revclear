@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
 import { requireCapability } from "../../middleware/authorization";
@@ -12,6 +13,32 @@ import { getAuthenticatedUser } from "../../utils/auth";
 import { getUserOrganization } from "../../utils/organization";
 import { SOAP_READ_FLOW_NAMES, AI_FLOW_NAMES } from "../../constants/aiFlows";
 import logger from "../../utils/logger";
+
+// =========================================================
+// ASYNC JOB STATE
+// =========================================================
+
+type JobStatus = "pending" | "done" | "error";
+
+interface CodeMatchJob {
+  status: JobStatus;
+  result?: { icdMatches: unknown[]; cptMatches: unknown[]; model_version: string; pineconeDegraded?: boolean };
+  error?: string;
+  createdAt: number;
+}
+
+const codeMatchJobs = new Map<string, CodeMatchJob>();
+
+const JOB_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+const pruneExpiredJobs = () => {
+  const now = Date.now();
+  for (const [jobId, job] of codeMatchJobs.entries()) {
+    if (now - job.createdAt > JOB_TTL_MS) {
+      codeMatchJobs.delete(jobId);
+    }
+  }
+};
 
 const router = Router();
 
@@ -131,7 +158,8 @@ const requireOwnedEncounter = async (
 
 /**
  * POST /api/encounters/:id/codes/match
- * Get AI-suggested code matches from SOAP note
+ * Start AI code matching as a background job; returns 202 with jobId.
+ * Poll GET /:id/codes/match/status/:jobId for results.
  */
 router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
   const user = await requireUser(req, res);
@@ -149,20 +177,19 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
     return sendError(res, 404, "Encounter not found");
   }
 
+  // Validate SOAP note availability before starting the background job
+  let soapText: string;
   try {
-    // Get SOAP note from database
     const soapResult = await getLatestAiResultByFlowNames(encounterId, SOAP_READ_FLOW_NAMES);
     if (!soapResult) {
       return sendError(res, 404, "No SOAP note found for this encounter");
     }
 
-    // Extract SOAP text
     const soap = soapResult.output_json?.soap;
     if (!soap) {
       return sendError(res, 400, "Invalid SOAP note format");
     }
 
-    // Only include non-empty sections so the LLM isn't misled by blank fields
     const soapParts: string[] = [];
     if (soap.subjective?.trim()) soapParts.push(`Subjective: ${soap.subjective.trim()}`);
     if (soap.objective?.trim()) soapParts.push(`Objective: ${soap.objective.trim()}`);
@@ -173,44 +200,85 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
       return sendError(res, 400, "SOAP note has no content to generate codes from");
     }
 
-    const soapText = soapParts.join("\n");
-
-    logger.info({ encounterId }, 'codes/match: matching codes');
-
-    // Call soapToCodes flow
-    const matches = await soapToCodes({ soapNote: soapText });
-
-    // Persist AI suggestions for audit trail — separate from user-confirmed selections
-    void createAiResult({
-      encounter_id: encounterId,
-      flow_name: AI_FLOW_NAMES.codeMatch,
-      input_json: { soapLength: soapText.length },
-      output_json: { icdMatches: matches.icdMatches, cptMatches: matches.cptMatches },
-      model_version: matches.model_version,
-    }).catch((err) => logger.warn({ err }, "codes/match: failed to persist ai_result"));
-
-    return res.json({
-      success: true,
-      data: {
-        icdMatches: matches.icdMatches,
-        cptMatches: matches.cptMatches,
-      },
-      metadata: {
-        model_version: matches.model_version,
-        pineconeDegraded: (matches as any).pineconeDegraded ?? false,
-      },
-    });
+    soapText = soapParts.join("\n");
   } catch (error: any) {
-    logger.error({ err: error, message: error?.message }, 'POST codes/match: error');
-    // Return specific error codes if available
-    if (error?.message?.includes("Both Gemini and Groq failed")) {
-      return sendError(res, 503, "AI services temporarily unavailable. Please try again in a moment.");
-    }
-    if (error?.message?.includes("SOAP note has no content")) {
-      return sendError(res, 400, "The SOAP note is empty. Please ensure the SOAP note has content before generating codes.");
-    }
-    return sendError(res, 500, "Failed to match codes");
+    logger.error({ err: error }, "codes/match: error reading SOAP note");
+    return sendError(res, 500, "Failed to read SOAP note");
   }
+
+  const jobId = randomUUID();
+  codeMatchJobs.set(jobId, { status: "pending", createdAt: Date.now() });
+
+  logger.info({ encounterId, jobId }, "codes/match: starting background job");
+
+  // Fire and forget — do not await
+  void (async () => {
+    try {
+      const matches = await soapToCodes({ soapNote: soapText });
+
+      void createAiResult({
+        encounter_id: encounterId,
+        flow_name: AI_FLOW_NAMES.codeMatch,
+        input_json: { soapLength: soapText.length },
+        output_json: { icdMatches: matches.icdMatches, cptMatches: matches.cptMatches },
+        model_version: matches.model_version,
+      }).catch((err) => logger.warn({ err }, "codes/match: failed to persist ai_result"));
+
+      codeMatchJobs.set(jobId, {
+        status: "done",
+        result: {
+          icdMatches: matches.icdMatches,
+          cptMatches: matches.cptMatches,
+          model_version: matches.model_version,
+          pineconeDegraded: (matches as any).pineconeDegraded ?? false,
+        },
+        createdAt: Date.now(),
+      });
+
+      logger.info({ encounterId, jobId }, "codes/match: background job completed");
+    } catch (error: any) {
+      logger.error({ err: error, jobId, encounterId }, "codes/match: background job failed");
+      let errorMessage = "Failed to match codes";
+      if (error?.message?.includes("Both Gemini and Groq failed")) {
+        errorMessage = "AI services temporarily unavailable. Please try again in a moment.";
+      } else if (error?.message?.includes("timed out after 25 seconds")) {
+        errorMessage = "AI code matching timed out. Please try again.";
+      }
+      codeMatchJobs.set(jobId, {
+        status: "error",
+        error: errorMessage,
+        createdAt: Date.now(),
+      });
+    }
+  })();
+
+  return res.status(202).json({ success: true, data: { jobId, status: "pending" } });
+});
+
+/**
+ * GET /api/encounters/:id/codes/match/status/:jobId
+ * Poll for the result of a background code matching job.
+ */
+router.get("/:id/codes/match/status/:jobId", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
+  pruneExpiredJobs();
+
+  const jobId = req.params.jobId;
+  const job = codeMatchJobs.get(jobId);
+
+  if (!job) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+
+  if (job.status === "pending") {
+    return res.json({ success: true, data: { status: "pending" } });
+  }
+
+  if (job.status === "done") {
+    return res.json({ success: true, data: { status: "done", result: job.result } });
+  }
+
+  // status === "error"
+  return res.status(200).json({ success: false, error: "Job failed", data: { status: "error" } });
 });
 
 /**
