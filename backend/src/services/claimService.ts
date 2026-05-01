@@ -526,11 +526,14 @@ export class ClaimService {
 
     const DEFAULT_CHARGE = 150.0;
 
+    // Each CPT code should reference ALL applicable ICD codes (by position, 1-indexed)
+    const icdPointers = Array.from({ length: icdCodes.length }, (_, i) => i + 1);
+
     const lineItems = cptCodes.map((c, index) => ({
       line_number: index + 1,
       procedure_code: c.code,
       modifiers: [],
-      diagnosis_pointers: [1],
+      diagnosis_pointers: icdPointers,
       units: 1,
       charge_amount: typeof feeSchedule[c.code] === "number" ? feeSchedule[c.code] : DEFAULT_CHARGE,
       place_of_service: encounter?.place_of_service || "11",

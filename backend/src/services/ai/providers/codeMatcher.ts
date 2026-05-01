@@ -186,7 +186,6 @@ class GenkitCodeMatcher implements CodeMatcher {
       pineconeDegraded = true;
     }
 
-
     const pineconeHasResults = retrieval.icdMatches.length > 0 || retrieval.cptMatches.length > 0;
     const { icdCandidates, cptCandidates } = toCandidatePrompt(retrieval);
     const candidateMaps = buildCandidateMaps(retrieval);
