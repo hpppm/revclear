@@ -2,7 +2,10 @@ import { query } from "../config/db";
 import { AppError } from "../utils/AppError";
 import {
   decryptPHIJsonFields,
+  decryptPHIText,
   encryptPHIJson,
+  encryptPHIText,
+  isEncryptedPHIText,
 } from "../utils/crypto";
 import { decryptPatientRow, decryptSubscriberRow } from "./patientService";
 import { submitClaimToClearinghouse } from "./clearinghouseService";
@@ -240,7 +243,12 @@ export class ClaimService {
     // Fetch org-specific EDI/clearinghouse settings
     const orgEdi = await getOrgEdiSettings(organizationId);
 
-    // Send to clearinghouse using org settings
+    // Build the exact EDI 837P string we will treat as "what was sent" and
+    // submit to the clearinghouse. Snapshotting the raw string (not a re-render
+    // from the DB later) is what makes post-submit downloads HIPAA §164.312(c)
+    // integrity-aligned: the file the clinician retrieves is byte-identical to
+    // what the payer received, even if the underlying claim row is later edited.
+    const ediString = buildEdi837String(claim, orgEdi);
     const response = await submitClaimToClearinghouse(claim, orgEdi);
 
     // Map clearinghouse response to our status
@@ -251,10 +259,21 @@ export class ClaimService {
         ? "denied"
         : "pending";
 
-    // Update claim status and submission date
+    // Persist the encrypted EDI snapshot alongside the status transition.
+    // We snapshot for accepted/denied/pending alike — all three mean "we sent
+    // bytes" and a clinician may need the exact transmitted file for appeals.
+    // Re-submissions overwrite: the column reflects the most-recent transmitted
+    // payload. claim_status_history preserves the chain of attempts.
+    const ediCiphertext = encryptPHIText(ediString);
+
     await query(
-      `UPDATE claims SET status = $1, rejection_reason = $2, submission_date = NOW() WHERE id = $3`,
-      [newStatus, response.reason || null, id],
+      `UPDATE claims
+         SET status = $1,
+             rejection_reason = $2,
+             submission_date = NOW(),
+             submitted_edi_encrypted = $3
+       WHERE id = $4`,
+      [newStatus, response.reason || null, ediCiphertext, id],
     );
 
     // Record in claim_status_history
@@ -298,6 +317,28 @@ export class ClaimService {
     const claim = await this.findById(id, organizationId, clinicianId);
     if (!claim) throw new AppError("Claim not found", 404);
 
+    // Integrity (HIPAA §164.312(c)): if the claim has been submitted, return
+    // the encrypted snapshot of the bytes we actually sent — never re-render
+    // from the (possibly later-edited) row.
+    const snapshot = await query(
+      `SELECT submitted_edi_encrypted
+         FROM claims
+        WHERE id = $1 AND organization_id = $2`,
+      [id, organizationId],
+    );
+    const stored = snapshot.rows[0]?.submitted_edi_encrypted as string | null | undefined;
+
+    if (stored && isEncryptedPHIText(stored)) {
+      const ediString = decryptPHIText(stored);
+      if (typeof ediString === "string" && ediString.length > 0) {
+        return { ediString, claimId: id };
+      }
+    }
+
+    // Pre-submit (or legacy claims submitted before the snapshot column existed):
+    // build fresh from the current row. This path must not be reachable for
+    // claims with status ∈ {submitted, denied, pending, paid, accepted, completed}
+    // once the migration has run on existing data.
     const orgEdi = await getOrgEdiSettings(organizationId);
     const ediString = buildEdi837String(claim, orgEdi);
     return { ediString, claimId: id };

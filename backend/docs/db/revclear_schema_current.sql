@@ -198,6 +198,7 @@ CREATE TABLE public.claims (
     subscriber jsonb,
     rendering_provider jsonb,
     organization_id uuid,
+    submitted_edi_encrypted text,
     CONSTRAINT check_claim_type CHECK ((claim_type = ANY (ARRAY['professional'::text, 'institutional'::text]))),
     CONSTRAINT check_claims_status CHECK ((status = ANY (ARRAY['draft'::text, 'in_progress'::text, 'ready'::text, 'submitted'::text, 'denied'::text, 'paid'::text, 'completed'::text]))),
     CONSTRAINT check_submission_type CHECK ((submission_type = ANY (ARRAY['initial'::text, 'corrected'::text, 'void'::text])))
