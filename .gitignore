@@ -78,6 +78,11 @@ master-key*
 node_modules/
 **/node_modules/
 
+# Root-level package files (this is not a monorepo workspace — each service
+# has its own package.json under backend/ and frontend/)
+/package.json
+/package-lock.json
+
 # Build outputs
 dist/
 build/
