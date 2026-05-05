@@ -50,7 +50,7 @@ Railway — whisper service (Python, private, port 8000)
 |-------------|---------|-----|
 | **Development** | Local development | `http://localhost:3000` |
 | **Staging** | Pre-production testing | TBD |
-| **Production** | Live environment | `https://revclear.tech` (app), `https://api.revclear.tech` (API) |
+| **Production** | Live environment | `https://revclear.tech` |
 
 ---
 

@@ -25,7 +25,6 @@ const DEFAULT_DEV_ORIGINS = [
 const DEFAULT_PROD_ORIGINS = [
   "https://revclear.tech",
   "https://www.revclear.tech",
-  "https://api.revclear.tech",
 ];
 
 const normalizeOrigin = (origin: string) =>
