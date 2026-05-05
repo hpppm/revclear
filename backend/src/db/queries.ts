@@ -129,7 +129,7 @@ export const createAiResult = async (data: {
     confidence_score,
   } = data;
   const result = await query(
-    // SECURITY: Explicit column list — data minimization per CLAUDE.md security patterns.
+    // SECURITY: Explicit column list — never SELECT * on PHI-adjacent tables.
     `INSERT INTO ai_results (encounter_id, flow_name, input_json, output_json, model_version, confidence_score)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, encounter_id, flow_name, input_json, output_json, model_version, confidence_score, created_at`,
