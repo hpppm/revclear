@@ -6,6 +6,7 @@ import { IdParamSchema } from "../../types/zod";
 import { authMiddleware } from "../../middleware/auth";
 import { requireOrganization } from "../../middleware/context";
 import { requireCapability } from "../../middleware/authorization";
+import { requireAiQuota } from "../../middleware/aiQuota";
 import { uploadFile, getDownloadUrl } from "../../config/awsS3";
 import { createAudioRecord, createAiResult, getLatestAiResult } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
@@ -79,6 +80,7 @@ router.post(
   authMiddleware,
   requireOrganization,
   requireCapability("use_clinical_ai"),
+  requireAiQuota("transcribe"),
   json(),
   upload.single("audio"),
   async (req, res) => {

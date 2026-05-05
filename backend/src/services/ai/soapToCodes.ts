@@ -59,7 +59,7 @@ export const soapToCodes = async (
       model_version: result.model_version,
     };
   } catch (error: any) {
-    logger.error({ ...auditBase, success: false, code: error?.code }, "soapToCodes failed");
+    logger.error({ ...auditBase, success: false, code: error?.code, message: error?.message }, "soapToCodes failed");
     throw error;
   }
 };

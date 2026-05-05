@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
 import { requireCapability } from "../../middleware/authorization";
+import { requireAiQuota } from "../../middleware/aiQuota";
 import { IdParamSchema } from "../../types/zod";
 import { createAiResult, getLatestAiResult, getLatestAiResultByFlowNames } from "../../db/queries";
 import { sendError } from "../../utils/httpResponses";
@@ -99,7 +100,7 @@ router.get("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), as
   }
 });
 
-router.post("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
+router.post("/:id/soap", authMiddleware, requireCapability("use_clinical_ai"), requireAiQuota("soap"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);
