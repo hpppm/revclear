@@ -239,12 +239,9 @@ router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_
       logger.info({ encounterId, jobId }, "codes/match: background job completed");
     } catch (error: any) {
       logger.error({ err: error, jobId, encounterId }, "codes/match: background job failed");
-      let errorMessage = "Failed to match codes";
-      if (error?.message?.includes("Both Gemini and Groq failed")) {
-        errorMessage = "AI services temporarily unavailable. Please try again in a moment.";
-      } else if (error?.message?.includes("timed out after 25 seconds")) {
-        errorMessage = "AI code matching timed out. Please try again.";
-      }
+      const errorMessage = error?.message?.includes("Both Gemini and Groq failed")
+        ? "AI services temporarily unavailable. Please try again in a moment."
+        : "Failed to match codes";
       codeMatchJobs.set(jobId, {
         status: "error",
         error: errorMessage,
