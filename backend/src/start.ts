@@ -2,7 +2,7 @@ import app from "./server";
 import { appConfig } from "./config/appConfig";
 import { closePool } from "./config/db";
 import { logAiProviderHealthStartup } from "./services/ai/providerHealth";
-import { ensurePineconeMedicalCodeIndex } from "./services/ai/pinecone";
+import { checkPineconeHealth } from "./services/ai/pinecone";
 import { warmupGemini } from "./services/ai/runtime";
 import logger from "./utils/logger";
 
@@ -24,23 +24,13 @@ if (!isTestEnv && !disableListen) {
     ).catch((err) =>
       logger.warn({ err }, "Gemini warmup failed — first request may be slower")
     );
-    void (async () => {
-      const maxAttempts = 3;
-      const retryDelayMs = 2000;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          await ensurePineconeMedicalCodeIndex();
-          logger.info({ attempt }, "Pinecone code index warmup succeeded");
-          return;
-        } catch (error) {
-          logger.warn({ err: error, attempt, maxAttempts }, "Pinecone code index warmup failed");
-          if (attempt < maxAttempts) {
-            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
-          }
-        }
+    void checkPineconeHealth().then((result) => {
+      if (result.healthy) {
+        logger.info("Pinecone connectivity check passed");
+      } else {
+        logger.warn({ reason: result.message }, "Pinecone unreachable at startup — code matching will run in degraded mode");
       }
-      logger.error("Pinecone code index warmup failed after all attempts — first requests may return empty results");
-    })();
+    });
   });
 } else {
   logger.debug('Server listen disabled (test or DISABLE_LISTEN)');

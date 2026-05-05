@@ -144,14 +144,14 @@ const createRateLimiter = (
 };
 
 // AI routes key by authenticated user ID so clinic NAT IPs don't share quotas.
-// Falls back to IP for unauthenticated requests (shouldn't reach AI routes but
-// keeps the limiter safe if auth middleware order ever changes).
+// Auth middleware always runs before these limiters so user.id is always present.
 const createUserRateLimiter = (max: number, message: string) =>
   rateLimit({
     windowMs: 60 * 1000,
     max,
     message,
-    keyGenerator: (req: Request) => (req as any).user?.id ?? req.ip ?? "unknown",
+    keyGenerator: (req: Request) => (req as any).user?.id ?? "unauthenticated",
+    skip: (req: Request) => !(req as any).user?.id,
   });
 
 app.use(
