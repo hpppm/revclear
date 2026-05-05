@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { authMiddleware } from "../../middleware/auth";
 import { requireCapability } from "../../middleware/authorization";
+import { requireAiQuota } from "../../middleware/aiQuota";
 import { IdParamSchema } from "../../types/zod";
 import { sendError } from "../../utils/httpResponses";
 import { soapToCodes } from "../../services/ai/soapToCodes";
@@ -161,7 +162,7 @@ const requireOwnedEncounter = async (
  * Start AI code matching as a background job; returns 202 with jobId.
  * Poll GET /:id/codes/match/status/:jobId for results.
  */
-router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_ai"), async (req, res) => {
+router.post("/:id/codes/match", authMiddleware, requireCapability("use_clinical_ai"), requireAiQuota("codes"), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return;
   const organizationId = await getRequestOrganizationId(user.id);

@@ -143,6 +143,17 @@ const createRateLimiter = (
   });
 };
 
+// AI routes key by authenticated user ID so clinic NAT IPs don't share quotas.
+// Falls back to IP for unauthenticated requests (shouldn't reach AI routes but
+// keeps the limiter safe if auth middleware order ever changes).
+const createUserRateLimiter = (max: number, message: string) =>
+  rateLimit({
+    windowMs: 60 * 1000,
+    max,
+    message,
+    keyGenerator: (req: Request) => (req as any).user?.id ?? req.ip ?? "unknown",
+  });
+
 app.use(
   "/api/auth",
   createRateLimiter(
@@ -154,7 +165,7 @@ app.use(
 
 app.use(
   "/api/transcribe",
-  createRateLimiter(
+  createUserRateLimiter(
     20,
     "Too many transcribe requests. Try again later.",
   ),
@@ -221,19 +232,30 @@ app.use(
   ),
 );
 
-// Rate limiting for AI endpoints (SOAP generation and code matching)
-// These are expensive operations that call external AI APIs
+// Rate limiting for AI endpoints (SOAP generation and code matching).
+// These are expensive operations that call external AI APIs.
+// Keyed by user ID (not IP) so clinic NAT addresses don't share quota.
 app.use(
   "/api/encounters/:id/soap",
-  createRateLimiter(
+  createUserRateLimiter(
     10,
     "Too many SOAP generation requests. Try again later.",
   ),
 );
 
+// Poll status route gets its own limiter before the broader codes/match limiter
+// so encounter CRUD routes keep their 60 req/min and only AI polling is capped.
+app.use(
+  "/api/encounters/:id/codes/match/status",
+  createUserRateLimiter(
+    60,
+    "Too many code status poll requests. Try again later.",
+  ),
+);
+
 app.use(
   "/api/encounters/:id/codes",
-  createRateLimiter(
+  createUserRateLimiter(
     10,
     "Too many code matching requests. Try again later.",
   ),
