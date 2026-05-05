@@ -1,6 +1,6 @@
 # RevClear Operations Runbook
 
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-05-04
 
 This runbook provides operational procedures for deploying, monitoring, and maintaining the RevClear platform.
 
@@ -24,22 +24,24 @@ This runbook provides operational procedures for deploying, monitoring, and main
 ### System Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Frontend                             │
-│                  Next.js (port 3000)                        │
-└───────────────────────┬─────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Backend API                             │
-│               Express + TypeScript (port 3005)              │
-└─────┬───────────┬───────────┬──────────────┬────────────────┘
-      │           │           │              │
-      ▼           ▼           ▼              ▼
-┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────────┐
-│ PostgreSQL│ │ AWS S3  │ │ Cognito  │ │ Gemini/Pinecone│
-│ Database  │ │ Storage │ │  Auth    │ │  + Whisper    │
-└──────────┘ └─────────┘ └──────────┘ └──────────────┘
+Browser
+  │
+  ▼
+Cloudflare (DNS + CDN + TLS)
+  │
+  ▼
+Railway — frontend service (Next.js, public)
+  │  server-side proxy /api/* → backend.railway.internal
+  ▼
+Railway — backend service (Express, private, port 3005)
+  │  ├── PostgreSQL (AWS RDS)
+  │  ├── AWS S3 (audio / transcripts)
+  │  ├── AWS Cognito (auth)
+  │  ├── Pinecone (medical code vectors)
+  │  └── Gemini / Groq (SOAP generation)
+  │
+  ▼
+Railway — whisper service (Python, private, port 8000)
 ```
 
 ### Environments
@@ -834,6 +836,6 @@ top -n 1
 
 ---
 
-**Last Review:** 2026-01-22
-**Next Review:** 2026-04-22
+**Last Review:** 2026-05-04
+**Next Review:** 2026-08-04
 **Owner:** DevOps Team

@@ -47,6 +47,9 @@ yarn-error.log*
 .env.production
 .env.production.local
 
+# Always track example files
+!.env.example
+
 # API keys and secrets
 *secret*
 *-secret*
