@@ -6,7 +6,7 @@ const UUID = z.string().uuid("Invalid encounter ID format");
 const safeId = (id: string) => encodeURIComponent(UUID.parse(id));
 
 const POLL_INTERVAL_MS = 3000;
-const MAX_POLLS = 10;
+const MAX_POLLS = 20;
 
 export const codesApi = {
     // Get AI code suggestions based on SOAP note.
@@ -38,7 +38,7 @@ export const codesApi = {
             // status === "pending" — continue polling
         }
 
-        throw new Error("Code matching timed out waiting for results. Please try again.");
+        throw new Error("Code matching timed out after 60 seconds. Please try again.");
     },
 
     // Manual search for codes
