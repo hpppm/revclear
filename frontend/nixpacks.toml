@@ -1,2 +1,5 @@
+[phases.install]
+cacheDirectories = ["node_modules"]
+
 [phases.build]
 cacheDirectories = [".next/cache"]
