@@ -11,6 +11,7 @@ import BackButton from "@/app/components/ui/BackButton";
 import Card from "@/app/components/ui/Card";
 import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
 import logger from "@/app/lib/logger";
+import { toast } from "sonner";
 
 const mapPatientResponse = (data: any): Patient => ({
     id: data.id,
@@ -173,9 +174,11 @@ export default function PatientProfilePage() {
             });
             setPatient(editedPatient);
             setEditMode(false);
+            toast.success("Patient updated successfully");
         } catch (err) {
             logger.error("Failed to update patient", err);
             setSaveError("Failed to update patient");
+            toast.error("Failed to update patient");
         } finally {
             setSaving(false);
         }
@@ -247,8 +250,10 @@ export default function PatientProfilePage() {
         try {
             await apiClient.encounters.delete(id);
             setEncounters((prev) => prev.filter((e) => e.id !== id));
+            toast.success("Encounter deleted");
         } catch (err) {
             logger.error("Failed to delete encounter", err);
+            toast.error("Failed to delete encounter");
         } finally {
             setDeletingId(null);
         }

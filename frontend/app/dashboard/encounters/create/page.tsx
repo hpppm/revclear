@@ -15,6 +15,7 @@ import SoapGenerationStep from "@/app/components/wizard/SoapGenerationStep";
 import MedicalCodesStep from "@/app/components/wizard/MedicalCodesStep";
 import ReviewClaimStep from "@/app/components/wizard/ReviewClaimStep";
 import UnauthorizedState from "@/app/components/ui/UnauthorizedState";
+import { toast } from "sonner";
 
 const allowedAudioTypes = [
   "audio/mpeg",
@@ -554,9 +555,10 @@ export default function EncounterPage() {
     try {
       await apiClient.codes.save(encounterId, selectedCodes);
       setSavedCodes(selectedCodes);
-      logger.log("Codes saved successfully");
+      toast.success("Codes saved successfully");
     } catch (err) {
       logger.error("Failed to save codes", err);
+      toast.error("Failed to save codes");
     } finally {
       setSavingCodes(false);
     }
@@ -575,9 +577,11 @@ export default function EncounterPage() {
       setTranscript({ text });
       setSoap(null); // force regeneration from edited transcript
       setTranscriptSaved(true);
+      toast.success("Transcript saved");
     } catch (err) {
       logger.error("Failed to save transcript", err);
       setTranscriptSaveError("failed");
+      toast.error("Failed to save transcript");
     } finally {
       setSavingTranscript(false);
     }
@@ -591,8 +595,10 @@ export default function EncounterPage() {
         soap: updatedSoap,
       });
       setSoap(updatedSoap);
+      toast.success("SOAP note saved");
     } catch (err) {
       logger.error("Failed to save SOAP note", err);
+      toast.error("Failed to save SOAP note");
       throw err;
     }
   };

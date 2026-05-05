@@ -13,6 +13,7 @@ import {
     OrganizationInvite,
     OrganizationMember,
 } from "@/app/lib/types";
+import { toast } from "sonner";
 import { OrganizationMemberRole } from "@/app/lib/auth/roles";
 import logger from "@/app/lib/logger";
 import { OrganizationFormSchema } from "@/app/lib/validation/schemas";
@@ -242,8 +243,7 @@ export default function OrganizationProfilePage() {
                 await loadOrganization();
             }
             setIsEditing(false);
-            // Optionally checkAuth if organization info is attached to user object in context
-            // await checkAuth(); 
+            toast.success("Organization saved successfully");
         } catch (error: any) {
             logger.error("Failed to save organization", error);
             let message = "Could not save organization.";
@@ -255,6 +255,7 @@ export default function OrganizationProfilePage() {
                 message = error.response.data.message;
             }
             setError(message);
+            toast.error(message);
         } finally {
             setSaving(false);
         }
@@ -288,9 +289,11 @@ export default function OrganizationProfilePage() {
         try {
             await navigator.clipboard.writeText(generatedInvite.code);
             setGeneratedInvite({ ...generatedInvite, copied: true });
+            toast.success("Invite code copied to clipboard");
         } catch (error) {
             logger.error("Failed to copy invite code", error);
             setInviteError("Failed to copy invite code.");
+            toast.error("Failed to copy invite code");
         }
     };
 

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "@/app/context/AuthContext";
 import ServerActionErrorBoundary from "@/app/components/ServerActionErrorBoundary";
+import { Toaster } from "sonner";
 
 const bodyFont = Source_Sans_3({
   subsets: ["latin"],
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ServerActionErrorBoundary>
           <AuthProvider>{children}</AuthProvider>
         </ServerActionErrorBoundary>
+        <Toaster position="top-right" richColors closeButton duration={4000} />
       </body>
     </html>
   );
