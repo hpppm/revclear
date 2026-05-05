@@ -165,11 +165,18 @@ whisper_layer/
 revclear_audit_*.txt
 trust.json
 
-# Private documentation (keep these out of repo)
+# Claude Code / AI assistant files (internal tooling, not for public repo)
+CLAUDE.md
 GEMINI.md
 *-private.md
-.claude/*
-!.claude/settings.json
+.claude/
+
+# Internal planning and session docs
+docs/usability/
+backend/docs/phi-rollout-plan.md
+backend/docs/dashboard/
+backend/docs/testing/
+frontend/documentation/FIRST_IMPLEMENTATION.md
 
 # Test result output files
 *-test-results.txt
