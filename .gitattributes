@@ -61,10 +61,6 @@ package-lock.json text eol=lf -diff
 yarn.lock text eol=lf -diff
 pnpm-lock.yaml text eol=lf -diff
 
-# Terraform
-*.tf text eol=lf
-*.tfvars text eol=lf
-
 # Docker
 Dockerfile text eol=lf
 docker-compose*.yml text eol=lf
