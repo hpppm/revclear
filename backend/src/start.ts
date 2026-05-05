@@ -3,6 +3,7 @@ import { appConfig } from "./config/appConfig";
 import { closePool } from "./config/db";
 import { logAiProviderHealthStartup } from "./services/ai/providerHealth";
 import { ensurePineconeMedicalCodeIndex } from "./services/ai/pinecone";
+import { warmupGemini } from "./services/ai/runtime";
 import logger from "./utils/logger";
 
 const PORT = appConfig.port;
@@ -18,6 +19,11 @@ if (!isTestEnv && !disableListen) {
       logger.warn("GROQ_API_KEY not set — Groq fallback unavailable if Gemini fails");
     }
     void logAiProviderHealthStartup();
+    void warmupGemini().then(() =>
+      logger.info("Gemini connection warmup completed")
+    ).catch((err) =>
+      logger.warn({ err }, "Gemini warmup failed — first request may be slower")
+    );
     void (async () => {
       const maxAttempts = 3;
       const retryDelayMs = 2000;

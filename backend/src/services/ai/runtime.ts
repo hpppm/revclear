@@ -23,3 +23,18 @@ export const getGroqClient = (): Groq | null => {
 };
 
 export const groqFallbackModel = appConfig.ai.groqModel;
+
+// Fires a single cheap generate call to warm up the Genkit/Gemini HTTP connection.
+// Without this, the first real user request pays the cold-start cost (~10-15s)
+// which can push it over AI_TIMEOUT_MS and cause a visible error.
+export const warmupGemini = async (): Promise<void> => {
+  try {
+    await ai.generate({
+      model: defaultTextModel,
+      prompt: "Reply with the single word: ready",
+      config: { temperature: 0, maxOutputTokens: 5 },
+    });
+  } catch {
+    // Warmup failure is non-fatal — log and continue
+  }
+};
