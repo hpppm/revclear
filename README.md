@@ -180,10 +180,8 @@ revclear/
 │   │   └── lib/api/          # API client modules
 │   ├── nixpacks.toml         # Railway build config
 │   └── Dockerfile
-├── deploy/nginx/             # Nginx config (self-hosted reference only)
 ├── docs/                     # RUNBOOK and operational documentation
-├── docker-compose.yml        # Local development full-stack
-└── docker-compose.prod.yml   # Self-hosted production stack (Nginx + TLS)
+└── docker-compose.yml        # Local development full-stack
 ```
 
 ---

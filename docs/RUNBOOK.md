@@ -150,38 +150,6 @@ pm2 restart revclear-backend
 systemctl restart revclear-backend
 ```
 
-#### Docker Deployment
-
-```bash
-# 1. Export production env vars or use an env file managed by the server
-set -a
-source /opt/revclear/revclear.env
-set +a
-
-# 1a. Ensure the shared external network exists
-docker network create revclear-shared || true
-
-# 2. Build production images
-docker compose -f docker-compose.prod.yml build
-
-# 3. Start or update the stack
-docker compose -f docker-compose.prod.yml up -d
-
-# 4. Verify deployment
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f nginx
-docker compose -f docker-compose.prod.yml logs -f backend
-```
-
-Production compose expectations:
-
-- Use `docker-compose.prod.yml`, not the root `docker-compose.yml` dev stack
-- Do not bind-mount source code into containers
-- Publish only Nginx on `80/443`
-- Do not publish the frontend or backend ports publicly
-- Inject secrets and environment variables from the server environment or a server-managed env file
-- Route public traffic through the reverse proxy only
-
 #### Railway Deployment
 
 Deploy the frontend, backend, and Whisper as separate Railway services in the
