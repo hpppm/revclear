@@ -9,11 +9,22 @@
 .env.production.local
 .env.production
 backend/.env
-backend/.env.*
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production
 frontend/.env
-frontend/.env.*
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production
 testing-dashboard/.env
 testing-dashboard/.env.*
+
+# Always track example files (must come after the patterns above)
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 
 # AWS credentials and config
@@ -154,11 +165,18 @@ whisper_layer/
 revclear_audit_*.txt
 trust.json
 
-# Private documentation (keep these out of repo)
+# Claude Code / AI assistant files (internal tooling, not for public repo)
+CLAUDE.md
 GEMINI.md
 *-private.md
-.claude/*
-!.claude/settings.json
+.claude/
+
+# Internal planning and session docs
+docs/usability/
+backend/docs/phi-rollout-plan.md
+backend/docs/dashboard/
+backend/docs/testing/
+frontend/documentation/FIRST_IMPLEMENTATION.md
 
 # Test result output files
 *-test-results.txt
@@ -187,3 +205,20 @@ docker-compose.override.yml
 .docker/
 *docker-compose.prod.yml
 nul
+
+# Runtime log files (never commit)
+audit.log
+backend/audit.log
+*.log
+
+# Test output files generated at runtime
+test-output.log
+backend/test-output.log
+
+# Python bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Handoff documents (internal agent work, not for public repo)
+handoffs/

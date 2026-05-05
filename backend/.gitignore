@@ -8,6 +8,9 @@
 .env.production
 .env.production.local
 
+# Always track example files
+!.env.example
+
 
 # Python virtual environment
 venv/
