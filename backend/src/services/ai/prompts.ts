@@ -52,7 +52,7 @@ export const buildCodeSelectionPrompt = (
       cptMatches: [
         { code: "99213", description: "Office visit, established patient, low complexity", category: "Evaluation & Management", confidence: 0.85 },
       ],
-      model_version: "gpt-4",
+      model_version: "gemini-2.5-flash",
     }, null, 2),
   ].join("\n");
 };
