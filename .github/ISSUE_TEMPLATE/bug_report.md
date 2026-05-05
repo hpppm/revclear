@@ -1,29 +1,34 @@
 ---
-name: Bug Report
-about: Report a bug or unexpected behavior
+name: 🐛 Bug Report
+about: Report a bug or unexpected behavior in RevClear
 labels: bug
 ---
 
-## Describe the bug
+## 🐛 Describe the Bug
 
 A clear description of what went wrong.
 
-## Steps to reproduce
+## 🔁 Steps to Reproduce
 
 1. Go to '...'
 2. Click '...'
 3. See error
 
-## Expected behavior
+## ✅ Expected Behavior
 
 What you expected to happen.
 
-## Environment
+## 💻 Environment
 
-- OS:
-- Node version:
-- Browser (if frontend):
+| Field | Value |
+|-------|-------|
+| OS | |
+| Node version | |
+| Browser (if frontend) | |
+| Railway / local | |
 
-## Additional context
+## 📎 Additional Context
 
-Logs, screenshots, or anything else relevant. **Do not include PHI or credentials.**
+Logs, screenshots, or anything else relevant.
+
+> ⚠️ **Do not include PHI, credentials, or patient data in this report.**

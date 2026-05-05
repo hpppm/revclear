@@ -1,21 +1,21 @@
 ---
-name: Feature Request
-about: Suggest a new feature or improvement
+name: 🚀 Feature Request
+about: Suggest a new feature or improvement for RevClear
 labels: enhancement
 ---
 
-## Problem
+## 🎯 Problem
 
 What problem does this feature solve? Who is affected?
 
-## Proposed solution
+## 💡 Proposed Solution
 
 Describe the feature you'd like.
 
-## Alternatives considered
+## 🔄 Alternatives Considered
 
-What else did you consider?
+What else did you consider, and why did you rule it out?
 
-## Additional context
+## 📎 Additional Context
 
 Mockups, related issues, or anything else useful.
