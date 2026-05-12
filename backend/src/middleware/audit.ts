@@ -158,7 +158,7 @@ function maskUrlUuids(url: string): string {
 }
 
 // SECURITY: Mask the Cognito issuer URL to hide AWS region + User Pool ID.
-// Input:  "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_NZCFuSv1l"
+// Input:  "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_EXAMPLE"
 // Output: "cognito-idp.us-east-1.amazonaws.com/***"
 function maskTokenIssuer(iss: string | null | undefined): string | null {
   if (!iss) return null;
