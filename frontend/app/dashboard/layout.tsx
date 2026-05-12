@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Sidebar from "@/app/components/ui/Sidebar";
+import PageTransition from "@/app/components/ui/PageTransition";
 import { useIdleTimeout } from "@/app/hooks/useIdleTimeout";
 import { authApi } from "@/app/lib/api/auth";
 
@@ -105,7 +106,7 @@ export default function DashboardLayout({
                 </header>
 
                 <main className="flex-1 overflow-y-auto">
-                    {children}
+                    <PageTransition>{children}</PageTransition>
                 </main>
             </div>
         </div>

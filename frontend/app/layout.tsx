@@ -10,8 +10,11 @@ export const metadata: Metadata = {
   description: "AI-assisted medical billing and claims platform",
 };
 
+import { Suspense } from "react";
 import { AuthProvider } from "@/app/context/AuthContext";
 import ServerActionErrorBoundary from "@/app/components/ServerActionErrorBoundary";
+import { Toaster } from "sonner";
+import NavigationProgress from "@/app/components/ui/NavigationProgress";
 
 const bodyFont = Source_Sans_3({
   subsets: ["latin"],
@@ -36,9 +39,13 @@ export default function RootLayout({
         className={`${bodyFont.variable} ${displayFont.variable} font-body antialiased`}
         suppressHydrationWarning
       >
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <ServerActionErrorBoundary>
           <AuthProvider>{children}</AuthProvider>
         </ServerActionErrorBoundary>
+        <Toaster position="top-right" richColors closeButton duration={4000} />
       </body>
     </html>
   );

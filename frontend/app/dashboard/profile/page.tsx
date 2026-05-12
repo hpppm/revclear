@@ -9,6 +9,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { apiClient } from "@/app/lib/api/apiClient";
 import logger from "@/app/lib/logger";
 import { ProfileFormSchema } from "@/app/lib/validation/schemas";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
     const { user, checkAuth } = useAuth();
@@ -104,10 +105,12 @@ export default function ProfilePage() {
             // Refresh auth to get updated data
             await checkAuth();
             setIsEditing(false);
+            toast.success("Profile saved successfully");
         } catch (error) {
             logger.error("Failed to save profile", error);
             const message = (error as any)?.response?.data?.message || (error as any)?.response?.data?.error || "Failed to save profile";
             setError(message);
+            toast.error(message);
         } finally {
             setSaving(false);
         }

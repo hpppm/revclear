@@ -12,6 +12,7 @@ import logger from "@/app/lib/logger";
 import { CreatePatientFormSchema } from "@/app/lib/validation/schemas";
 
 import BackButton from "@/app/components/ui/BackButton";
+import { toast } from "sonner";
 
 function formatPhone(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 10);
@@ -186,6 +187,7 @@ export default function AddPatientPage() {
       );
 
       await apiClient.patients.create(dataToSubmit);
+      toast.success("Patient created successfully");
       router.push("/dashboard/patients");
     } catch (error) {
       logger.error("Failed to create patient", error);
@@ -197,8 +199,11 @@ export default function AddPatientPage() {
           if (key && !errs[key]) errs[key] = e.message;
         });
         setFieldErrors(errs);
+        toast.error("Please fix the errors below");
       } else {
-        setError((error as any)?.response?.data?.error || "Failed to create patient");
+        const msg = (error as any)?.response?.data?.error || "Failed to create patient";
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setSaving(false);
